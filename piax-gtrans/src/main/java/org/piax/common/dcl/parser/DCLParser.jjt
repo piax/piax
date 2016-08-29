@@ -1,0 +1,327 @@
+/**
+ * JJTree template file created by SF JavaCC plugin 1.5.17+ wizard for JavaCC 1.5.0+
+ */options{    JDK_VERSION = "1.5";    STATIC = false;
+    MULTI = true;    NODE_PREFIX = "DCL_";
+    VISITOR = true;
+    JAVA_UNICODE_ESCAPE = true;
+    UNICODE_INPUT = true;
+    ERROR_REPORTING = false;
+    DEBUG_PARSER = false;
+}PARSER_BEGIN(DCLParser)package org.piax.common.dcl.parser;
+import org.piax.common.dcl.*;
+
+public class DCLParser{  public static void main(String args [])  {    System.out.println("Reading from standard input...");    System.out.print("Enter an condition like \"age in (0..20]\" :");    DCLParser parser = new DCLParser(System.in);    try    {      SimpleNode n = parser.StartDCL();
+      Object exp = n.jjtAccept(new DCLTranslator(), null);      System.out.println("exp: " + ((DCLFactory) exp).getDstCond());
+      n.dump("");      System.out.println("--end--");    }    catch (Exception e)    {
+      System.out.println("Oops.");      System.out.println(e);    }  }}PARSER_END(DCLParser)// comments
+SKIP: {
+    <COMMENT_LINE: "//" (~["\n","\r"])* ("\n"|"\r"|"\r\n")>
+}
+SKIP: {
+    <COMMENT_BLOCK: "/*" (~["*"])* "*" ("*" | (~["*","/"] (~["*"])* "*"))* "/">
+}
+
+// white space 
+SKIP: {
+      " "
+    | "\t"
+    | "\n"
+    | "\r"
+    | "\f"
+}
+
+// separators
+TOKEN :
+{
+  <LPAR : "(">
+| <RPAR : ")">
+| <LBRA : "[">
+| <RBRA : "]">
+| <LBRACE : "{">
+| <RBRACE : "}">
+| <COMMA : ",">
+}
+
+// operators
+TOKEN :
+{
+  <BETWEEN : "..">
+| <AND : "and">
+| <EQ : "eq">
+| <IN : "in">
+| <OVERLAPS : "overlaps">
+| <INCLUDES : "includes">
+}
+
+// arithmetic operators
+TOKEN :
+{
+  <PLUS : "+">
+| <MINUS : "-">
+| <MULTIPLY : "*">
+| <DIVIDE : "/">
+| <MOD : "%">
+}
+
+// numeric literals
+TOKEN: {
+  <INTEGER:
+        <DECIMAL> (["l","L","g","G"])?
+      | <HEX> (["l","L","g","G"])?
+      | <BINARY> (["l","L","g","G"])?
+  >
+|
+  <#DECIMAL: ["0"-"9"] (("_")? ["0"-"9"])*>
+|
+  <#HEX: "0" ["x","X"] ["0"-"9","a"-"f","A"-"F"] (("_")? ["0"-"9","a"-"f","A"-"F"])*>
+|
+  <#BINARY: "0" ["b","B"] ["0","1"] (("_")? ["0","1"])*> 
+|
+  <FLOATING_POINT:
+        (["0"-"9"])+ "." (["0"-"9"])+ (<EXPONENT>)? (["f","F","d","D"])?
+      | "." (["0"-"9"])+ (<EXPONENT>)? (["f","F","d","D"])?
+      | (["0"-"9"])+ <EXPONENT> (["f","F","d","D"])?
+      | (["0"-"9"])+ (<EXPONENT>)? ["f","F","d","D"]
+  >
+|
+  <#EXPONENT: ["e","E"] (["+","-"])? (["0"-"9"])+>
+}
+
+// string literals
+TOKEN :
+{
+  <STRING :
+    "\""
+    (
+      (~[ "\"", "\\", "\n", "\r" ])
+    |
+      (
+        "\\"
+        (
+          [ "n", "t", "b", "r", "f", "\\", "'", "\"" ]
+        | "u" ["0"-"9","a"-"f","A"-"F"] ["0"-"9","a"-"f","A"-"F"]
+          ["0"-"9","a"-"f","A"-"F"] ["0"-"9","a"-"f","A"-"F"]
+        )
+      )
+    )*
+    "\"">
+}
+
+// identifiers
+TOKEN :
+{
+  <IDENTIFIER :
+    <LETTER>
+    (
+      (<DOT>)?
+      (
+        <LETTER>
+      | <DIGIT>
+      )
+    )*
+    >
+| <#LETTER : [ "$", "A"-"Z", "_", "a"-"z" ]>
+| <#DIGIT : [ "0"-"9" ]>
+| <#DOT : ".">
+}
+
+/*
+   examples:
+   - loc in circle(135.0, 35.0, 5.0) and age in [20..)
+   - name in {Taro, Hanako, Jiro}
+   - plot in {1, 3, (6..10]}
+*/
+
+// start parsing of Destination
+SimpleNode StartDestination() :
+{}
+{
+  Destination()
+  <EOF>
+  {
+    return jjtThis;
+  }
+}
+
+void Destination() :
+{Token t = null;}
+{
+  ( 
+  LOOKAHEAD(2)
+    [ t = <EQ> ]
+    (
+      element()
+    | BuiltinFunc()
+    )
+  | 
+    [  t = <IN> 
+      | t = <OVERLAPS>
+      | t = <INCLUDES>
+    ]
+    (
+      subset()
+    | BuiltinFunc()
+    )
+  )
+  {jjtThis.jjtSetValue((t == null) ? null : t.image);}
+}
+
+// start parsing of DCL
+SimpleNode StartDCL() :
+{}
+{
+  AndCondition()
+  <EOF>
+  {
+    return jjtThis;
+  }
+}
+
+void AndCondition() :
+{}
+{
+  Predicate()
+  (
+    <AND> Predicate()
+  )*
+}
+
+void Predicate() :
+{Token t;}
+{
+  Var() 
+  ( 
+    t = <EQ> 
+    (
+      element()
+    | BuiltinFunc()
+    )
+  | ( 
+      t = <IN> 
+    | t = <OVERLAPS>
+    | t = <INCLUDES>
+    ) 
+    (
+      subset()
+    | BuiltinFunc()
+    )
+  )
+  {jjtThis.jjtSetValue(t.image);}
+}
+
+void Var() :
+{Token t;}
+{
+  t = <IDENTIFIER>
+  {jjtThis.jjtSetValue(t.image);}
+}
+
+void exp() #void :
+{}
+{
+//  LOOKAHEAD(2)
+  element()
+| subset()
+| BuiltinFunc()
+}
+
+void subset() #void :
+{}
+{
+  Enumeration()
+| Interval()
+}
+
+void Enumeration() :
+{}
+{
+  <LBRACE> exp()
+  (
+    <COMMA> exp()
+  )*
+  <RBRACE>
+}
+
+void Interval() :
+{Token t1, t2;}
+{
+  (
+    t1 = <LPAR>
+  | t1 = <LBRA>
+  )
+  [ exp() ] Between() [ exp() ]
+  (
+    t2 = <RPAR>
+  | t2 = <RBRA>
+  )
+  {jjtThis.jjtSetValue(t1.image+t2.image);}
+}
+
+void Between() :
+{}
+{
+  <BETWEEN>
+}
+
+void BuiltinFunc() :
+{Token t;}
+{
+  t = <IDENTIFIER>
+  [ <LPAR>
+    exp()
+    (
+      <COMMA> exp()
+    )*
+    <RPAR>
+  ]
+  {jjtThis.jjtSetValue(t.image);}
+}
+
+void element() #void :
+{}
+{
+  Number()
+| MinusNumber()
+| String()
+//| Constant()
+}
+
+void MinusNumber() :
+{}
+{
+  <MINUS>
+  Number()
+}
+
+void Number() #void :
+{}
+{
+  (
+    Integer()
+  | Floating()
+  )
+}
+
+void Integer() :
+{Token t;}
+{
+  t= <INTEGER>
+  {jjtThis.jjtSetValue(t.image);}
+}
+
+void Floating() :
+{Token t;}
+{
+  t= <FLOATING_POINT>
+  {jjtThis.jjtSetValue(t.image);}
+}
+
+void String() :
+{Token t;}
+{
+  t = <STRING>
+  {jjtThis.jjtSetValue(t.image);}
+}
+
+// constant treated as 0-arity builtin function
+//void Constant() ://{Token t;}//{//  t = <IDENTIFIER>//  {jjtThis.jjtSetValue(t.image);}//}

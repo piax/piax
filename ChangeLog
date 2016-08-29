@@ -1,0 +1,538 @@
+2016-08-28  Yuuichi Teranishi  <teranisi@gohome.org>
+
+	* piax-gtrans-dtn: New package.
+	* BluetoothLocator is now a plugin Locator.
+	* Use maven.
+
+2015-11-09 Ken Takagiwa <giwacchi@gmail.com>
+
+	* src/org/piax/agent/AgentPeer.java (setupTransports): Use
+	parentAgentLoader.
+
+	* src/org/piax/common/attribs/RowData.java (setAttrib): Fixed typo
+	(nama -> name).
+
+2015-11-09  Yuuichi Teranishi  <teranisi@piax.org>
+
+	* src/test/trans/TestOverlay.java (SuzakuRoutingTableTest): New test.
+	(MSGRoutingTableTest): Ditto.
+
+	* src/org/piax/gtrans/ov/sg/SkipGraph.java (getHeight): New method.
+	(getLocal): Ditto.
+	(getNeightbors): Ditto.
+
+	* src/org/piax/gtrans/ov/sg/SGNode.java (getLeftLink): Ditto.
+	(getRightLink): Ditto.
+	(getAllRightLinks): Ditto.
+
+	* src/org/piax/gtrans/ov/szk/ChordSharp.java (getHeight): Ditto.
+	(getLocal): Ditto.
+	(getNeightbors): Ditto.
+
+	* src/org/piax/gtrans/ov/sg/MSkipGraph.java: Implement
+	RoutingTableAccessor.
+
+	* src/org/piax/gtrans/ov/szk/Suzaku.java: Ditto.
+
+	* src/org/piax/gtrans/ov/ring/rq/FlexibleArray.java
+	(getAll): New method.
+
+	* src/org/piax/gtrans/ov/RoutingTableAccessor.java: New file.
+
+2015-11-05  Yuuichi Teranishi  <teranisi@piax.org>
+
+	* src/org/piax/gtrans/ov/szk/ChordSharpVNode.java
+	(scheduleFTUpdate): Don't interrupt running thread to restart.
+
+	* src/org/piax/gtrans/impl/OneToOneMappingTransport.java
+	(_putReceiveQueue): New protected method.
+	(_onReceive): Rewrote (Just dispatch to ChannelListener).
+
+	* src/org/piax/gtrans/base/BaseChannelTransportImpl.java
+	(orgOnReceive): Abolish.
+	(defragReceiveMsg): Returns list of NestedMessage.
+	(ReceiveChannelAndMessage): A class for return value.
+	(onReceive): synchronized with lowerCh while
+	receive bytes, make message object, and put on ReceiveQueue.
+
+	* src/org/piax/gtrans/util/FragmentationTransport.java (onReceive):
+	Follow the changes in above.
+
+	* src/org/piax/gtrans/RPCInvoker.java
+	(ChannelPoolEntry): Define accessors.
+	(expireIfNeeded): Simplify.
+	(sendInvoke): Follow the changes in ChannelPoolEntry;
+	Close the channel to avoid RPC response mismatch if the receiver
+	thread is interrupted;
+	(_onReceive): null message is received not only by error.
+
+2015-11-03  Yuuichi Teranishi  <teranisi@piax.org>
+
+	* src/test/trans/TransportTest.java: finish peers even when the test
+	if failed.
+
+2015-11-01  Yuuichi Teranishi  <teranisi@piax.org>
+
+	* src/org/piax/gtrans/RPCInvoker.java (sendInvoke): Warn if
+	IOException occurs.
+
+	* src/test/trans/TransportTest.java
+	(MSGAddKeyOnRequestOnUDPTest): New test.
+	(MSGAddKeyOnRequestOnTCPTest): Ditto.
+	(SuzakuAddKeyOnRequestOnUDPTest): Ditto.
+	(SuzakuAddKeyOnRequestOnTCPTest): Ditto.
+
+
+2015-10-27  Yuuichi Teranishi  <teranisi@piax.org>
+
+	* src/org/piax/gtrans/ov/ring/MessagingFramework.java
+	(replyMsgReceived): Changed log loglevel for 'maybe ok' part from
+	info to debug.
+
+	* src/org/piax/gtrans/RPCInvoker.java
+	(sendOnewayInvoke): Revert last change.
+
+2015-10-23  Yuuichi Teranishi  <teranisi@piax.org>
+
+	* src/org/piax/gtrans/RPCInvoker.java (checkActive): 'fin' means
+	'finish', not 'finalize'.
+	(sendOnewayInvoke): If USE_CHANNEL_FOR_ONEWAY is true, call sendInvoke.
+	(sendInvoke): Enclosed get&put part with channelPool monitor;
+	If 'call sync' and channel is already in use, then create new channel.
+
+2015-10-23  Yuuichi Teranishi  <teranisi@piax.org>
+
+	* src/org/piax/gtrans/RPCInvoker.java (sendInvoke): Remove entry itself
+	at outside of the monitor;
+	Initialize useCount with 1 (in use from the beginning).
+
+2015-10-22  Yuuichi Teranishi  <teranisi@piax.org>
+
+	* src/org/piax/gtrans/RPCInvoker.java (ChannelPoolEntry):
+	Added useCount field.
+	(expireIfNeeded): Use it.
+	(sendInvoke): Ditto.
+	(expireIfNeeded): Close and remove oldest channel entries more
+	than threshold.
+
+2015-10-21  Yuuichi Teranishi  <teranisi@piax.org>
+
+	* src/org/piax/gtrans/RPCInvoker.java (USE_CHANNEL_FOR_ONEWAY):
+	A flag for using channel on oneway (experimental).
+	(ChannelPoolEntry): Abolish lock.
+	(expireIfNeeded): Ditto.
+	(newMethodCall): Added argument 'oneway'.
+	(sendInvoke): Define as synchronized;
+	Use LRU for channel pooling;
+	Treat 'oneway'.
+	(_onReceive(Channel<E>)): Ditto.
+
+	* src/org/piax/gtrans/ov/OverlayListener.java: Define default method
+	for onReceive.
+
+
+2015-10-01  Yuuichi Teranishi  <teranisi@piax.org>
+
+	* Merged changes in aggr-cs2 branch (r1264-r1265).
+
+2015-09-30  Yuuichi Teranishi  <teranisi@piax.org>
+
+	* Merged changes in aggr-cs2 branch (r1261-r1262).
+
+2015-08-29  Yuuichi Teranishi  <teranisi@piax.org>
+
+	* src/test/trans/TransportTest.java (MSGAddKeyOnRequestTest):
+	New test.
+
+	* src/test/trans/TransportTest.java (SuzakuAddKeyOnRequestTest):
+	New test (Currently fails!).
+
+	* src/org/piax/gtrans/RequestTransportListener.java (onReceive):
+	Define as a default method.
+
+	* src/org/piax/gtrans/ov/OverlayListener.java (onReceive): Ditto.
+
+	* src/test/trans/TestRetrans.java
+	(CSReliabilitySLOWAcceptRepeatedAggregateTest): Fix.
+
+2015-07-24  Yuuichi Teranishi  <teranisi@piax.org>
+
+	* Merged changes in aggr-cs2 branch (r1250-r1253).
+
+2015-08-02  Yuuichi Teranishi  <teranisi@piax.org>
+
+	* src/org/piax/gtrans/ov/szk/ChordSharpRQAlgorithm.java (getQueryAtFind): Extract
+	special nested message with RQ_QUERY_AT_FIND.
+	(rqExecuteLocal): Use it.
+
+	* src/org/piax/gtrans/ov/ring/rq/RQManager.java (RQ_QUERY_AT_FIND): New constant.
+	(findImmedNeighbors): Implement 'query' argument.
+	If ResponseType.NO_RESPONSE is specified, return null if not found.
+	Specify a special query using RQ_QUERY_AT_FIND by NestedMessage if maxLower with
+	1 argument is specified.
+
+	* src/org/piax/gtrans/ov/ring/RingManager.java (find): Added an argument 'query'.
+	(findImmedNeighbors): Ditto.
+
+	* src/org/piax/gtrans/ov/ring/rq/RQIf.java (findImmedNeighbors): Ditto.
+
+	* src/org/piax/gtrans/ov/ring/RingVNode.java: Follow the change above.
+
+	* src/org/piax/agent/impl/AgentHomeImpl.java (discoveryCallAsync): Added an argument
+	'oneway'; If oneway, ResponseType.NO_RESPONSE and RetransMode.NONE is used for opts.
+	(toString): Implemented.
+
+	* src/org/piax/agent/DefaultAgentTransportManager.java (getPeerLocator): New method.
+
+2015-07-30  Yuuichi Teranishi  <teranisi@piax.org>
+
+	* packagesrc/samples/build.xml: Add multiov.
+
+	* src/org/piax/samples/gtrans/multiov: New sample using multiple skip graph
+	overlays.
+
+	* build.xml: version is set as 3.1.0 (SNAPSHOT).
+	Fix for asm-5.0.
+
+2015-07-29  Yuuichi Teranishi  <teranisi@piax.org>
+
+	* lib/asm-5.0.4.jar: Use latest version for Java 8.
+
+	* lib/asm-3.2.jar: Removed.
+
+	* src/org/piax/agent/impl/asm/DependencyVisitor.java: Rewritten for asm-5.0 API.
+
+2015-07-25  Yuuichi Teranishi  <teranisi@piax.org>
+
+	* src/org/piax/agent/AgentTransportFactory.java: New class.
+
+	* src/org/piax/samples/gtrans/hello/agent/receiver/Main.java:
+	Use Suzaku if USE_SZK is true.
+	Call AgentPeer#leave.
+
+	* src/org/piax/samples/gtrans/hello/agent/sender/Main.java:
+	Use Suzaku if USE_SZK is true.
+	Call AgentPeer#leave.
+
+	* src/org/piax/agent/impl/AgentHomeImpl.java (constructor): Get
+	peerId from agentPeer.
+
+	* src/org/piax/agent/AgentTransportManager.java: Rewritten.
+
+	* src/org/piax/agent/DefaultAgentTransportManager.java: Ditto.
+
+	* src/org/piax/agent/AgentPeer.java (constructor): New constructor
+	which don't require peerName (get peer name from
+	AgentTransportManager).
+	(setupTransports): Use AgentTransportManager#getTransport instead of
+	getRPCTransport.
+	Stop calling AgentTransportManager#setupOverlays.
+
+	* src/org/piax/agent/AgentOverlayFactory.java (newOverlay):
+	Renamed to newInstance.
+
+2015-07-24  Yuuichi Teranishi  <teranisi@piax.org>
+
+	* Synch up with aggr-cs2 branch (r1243).
+
+2015-07-24  Kota Abe  <k-abe@media.osaka-cu.ac.jp>
+
+	* src/org/piax/gtrans/ov/ddll/NodeMonitor.java (ping): Node
+	failure is not detected if the left node is on the same node
+	(localhost).
+
+2015-07-21  Yuuichi Teranishi  <teranisi@piax.org>
+
+	* src/org/piax/gtrans/RPCInvoker.java (POOL_CHANNEL): Set default
+	value as true.
+	(POOL_CHANNEL_SIZE): New variable.
+	(ChannelPoolEntry): New inner class.
+	(constructor): Use it.
+	(sendInvoke): Ditto.
+	(fin): Rewrote using stream API.
+
+	* src/org/piax/gtrans/ov/ring/rq/RQManager.java (findImmedNeighbors):
+	Add detailed info for TemporaryIOException .
+
+	* src/org/piax/kvs/dht/DHT.java (REQUEST_TIMEOUT): New static
+	variable.
+	(put): Use it instead of hard-coding timeout value(100ms).
+	(get): Ditto.
+
+	* src/org/piax/gtrans/ov/ring/RingManager.java (find): Revert
+	last change; Throw IOException when TemporaryIOException occured.
+
+2015-07-19  Yuuichi Teranishi  <teranisi@piax.org>
+
+	* src/org/piax/gtrans/ov/ring/RingManager.java (find): Retry if
+	TemporaryIOException occured.
+
+	* src/org/piax/gtrans/ov/szk/ChordSharpVNode.java
+	(toStringRoutingTable): Avoid NullPointerException if backward
+	finger table entry is null.
+
+	* src/org/piax/util/LogFormatter.java (format): Treat throwable.
+
+	* lib/logging.properties,
+	src/org/piax/util/LogFilter.java,
+	src/org/piax/util/LogFormatter.java: New files.
+
+2015-07-17  Yuuichi Teranishi  <teranisi@piax.org>
+
+	* build.xml: Update.
+
+	* lib: Refresh jar file for slf4j-api.
+	Remove simplelog support.
+	Added slf4j-jdk14 as a default driver.
+
+	* Synch up with aggr-cs2 branch (r1225).
+
+2015-07-14  Kota Abe  <k-abe@media.osaka-cu.ac.jp>
+
+	* src/org/piax/gtrans/ov/ddll/NeighborSet.java,
+	src/org/piax/gtrans/ov/ddll/Node.java,
+        src/org/piax/gtrans/ov/ddll/NodeManager.java,
+        src/org/piax/gtrans/ov/ddll/NodeManagerIf.java,
+        src/org/piax/gtrans/ov/ddll/NodeMonitor.java,
+        src/org/piax/gtrans/ov/ddll/Stat.java: Fixed bugs.
+
+        src/org/piax/gtrans/ov/ddll/Node.java: Rename methods
+	getStat -> callGetStat
+	getLiveLeftStat -> findLiveLeft
+	delete unused code and staled comments.
+	delete GOD_MODE.
+
+2015-07-17  Yuuichi Teranishi  <teranisi@piax.org>
+
+	* src/org/piax/agent/DefaultAgentTransportManager.java
+	(newRPCTransport): Changed return value to ChannelTransport<?>.
+	(getRPCTransport): Removed implementation at this class.
+
+	* src/org/piax/agent/AgentTransportManager.java (getRPCTransport):
+	New implementation.
+	(setupOverlays): Ditto (noop).
+
+2015-06-07  Yuuichi Teranishi  <teranisi@piax.org>
+
+	* build.xml: Updated for 3.0.0.
+	(All related portions are updated)
+
+	* packagesrc/samples: New directory.
+
+	* packagesrc/ddllsg: Abolish.
+
+	* src/org/piax/samples/gtrans/hello/multi/receiver/Main.java,
+	src/org/piax/samples/gtrans/hello/udp/receiver/Main.java): Fix for
+	Java 8.
+
+2015-06-06  Yuuichi Teranishi  <teranisi@piax.org>
+
+	* NEWS: New file.
+
+	* Updated licenses.
+
+	* src/org/piax/AgentConfigValues.java: Moved to src/org/piax/agent
+
+	* src/org/piax/GTransConfigValues.java: Moved to src/org/piax/gtrans
+
+	* src/org/piax/StatusRepo.java: Moved to src/org/piax/common
+
+	* All related portions related to above changes are modified.
+
+	* src/org/piax/samples/gtrans/hello/agent,
+	src/org/piax/samples/gtrans/hello/multi,
+        src/org/piax/samples/gtrans/hello/udp: New samples.
+
+2015-05-23  Yuuichi Teranishi  <teranisi@piax.org>
+
+	* src/org/piax/gtrans/szk/Suzaku.java: Renamed from MChordSharp.
+
+	* src/org/piax/gtrans/szk: Renamed from chordsharp.
+
+	* src/org/piax/gtrans/RPCInvoker.java: Experimental channel pooling
+	(off by default).
+
+2015-05-17  Yuuichi Teranishi  <teranisi@piax.org>
+
+	* src/org/piax/samples/gtrans/hello/Hello.java: New sample.
+
+	* src/org/piax/gtrans/ring/RingVNode.java: Search for the insert point
+	if insertion failed.
+
+2015-03-19  Yuuichi Teranishi  <teranisi@piax.org>
+
+	* src/org/piax/agent/DefaultAgentTransportManager.java
+	(baseTransport,	newBaseChannelTransport
+	 getBaseChannelTransport): Moved from DefaultAgentTransportManager.java
+
+	* src/org/piax/agent/AgentTransportManager.java
+	(baseTransport,	newBaseChannelTransport
+	 getBaseChannelTransport): Moved to DefaultAgentTransportManager.java
+
+	* src/org/piax/agent/DefaultAgentTransportManager.java
+	(newBaseChannelTransport): Implemented.
+	(newRPCTransport): Ditto.
+	(setupOverlays): Ditto.
+
+	* src/org/piax/agent/AgentTransportManager.java(baseTransport,
+	rpcTransport): New fields.
+	(newBaseChannelTransport): New abstract method.
+	(getBaseChannelTransport): New method.
+	(newRPCTransport): New abstract method.
+	(getRPCTransport): Simplified.
+	(setupOverlays): Redefine as an abstract method.
+
+2015-03-15  Yuuichi Teranishi  <teranisi@piax.org>
+
+	* src/org/piax/gtrans/ring/RingVNode.java
+	(NUMBER_OF_DDLL_RETRY): Changed the value to 100.
+	(addKey): If pos.left is changed, search insert point from it.
+	(addKey): If insertion was failed, retry the insertion after random
+	interval.
+
+	* src/org/piax/gtrans/chordsharp/ChordSharp.java
+	(getValidFTEntries): Ignore null entry.
+
+	* Merged gtrans-extra branch.
+
+2015-03-12  Yuuichi Teranishi  <teranisi@piax.org>
+
+	* src/org/piax/gtrans/ring/rq/RQIf.java (findImmedNeighbors):
+	Added 'opts' argument.
+
+	* src/org/piax/gtrans/ring/RingManager.java (find): Ditto.
+	(findImmedNeighbors): Ditto.
+
+	* src/org/piax/gtrans/ring/RingVNode.java (addKey): Follow the changes
+	above.
+
+	* src/org/piax/gtrans/ring/MessagingFramework.java
+	(requestMsgReceived): Don't care about the NO_RESPONSE when
+	RetransMode equals RetransMode.NONE.
+
+	* src/org/piax/gtrans/ring/RequestMessage.java (prepareReceivingReply):
+	Ditto.
+
+	* src/org/piax/gtrans/TransOptions.java (RetransMode): Renamed
+	RECORD_ACK to NONE_ACK.
+
+2015-03-06  Yuuichi Teranishi  <teranisi@piax.org>
+
+        * gtrans/toplevel: Abolish.
+
+        * gtrans/sg/SkipGraph.java
+        (fin): Call SGMessagingFramework#fin.
+
+        * gtrans/sg/RQMessage.java: Moved field 'expire' to SGRequestMessage.
+
+        * gtrans/sg/SGMessagingFramework.java
+        (MSGSTORE_EXPIRATION_TASK_PERIOD): New variable.
+        (SGMessagingFramework): Start timer for removeExpiredFromMsgStore.
+        (removeExpiredFromMsgStore): New method.
+        (fin): Ditto.
+        (SGRequestMessage): Moved field 'expire' from RQMessage.
+
+2015-02-22  Yuuichi Teranishi  <teranisi@piax.org>
+
+	* src/org/piax/test/OverlayTest.java,
+	RetransTest.java, TransportTest.java: Rewrote to follow the changes
+	on toplevel API (abolished).
+
+	* RQManager.java (invokeExecQuery): Fixed serious logic bug when
+	ACCEPT_ONCE.
+
+	* src/org/piax/gtrans/impl/TransportImpl.java: Implemented some
+	argument reduced versions of the methods.
+
+	* src/org/piax/gtrans/impl/TransportImpl.java (setDefaultAppId,
+	getDefaultAppId): New methods.
+
+	* src/org/piax/gtrans/impl/RequestTransportImpl.java: Implemented some
+	argument reduced versions of the methods.
+
+	* src/org/piax/gtrans/impl/OverlayImpl.java (request): Try to parse
+	dstExp string as DCL when failed to parse as Destination.
+
+	* src/org/piax/gtrans/impl/OverlayImpl.java: Implemented some
+	argument reduced versions of the methods.
+
+	* src/org/piax/gtrans/chordsharp/MChordSharp.java:
+	(onReceiveRequest): Don't use lower transport on calling onReceive.
+
+	* src/org/piax/gtrans/sg/MSkipGraph.java: Ditto.
+
+	* src/org/piax/gtrans/toplevel: Abolish.
+
+	* src/org/piax/gtrans/Transport.java: Rewrote comments in English.
+	Added some reduced argument versions of the methods.
+
+	* src/org/piax/gtrans/RequestTransport.java: Added some reduced 
+	versions of request.
+
+	* src/org/piax/gtrans/OverlayListener.java: Extend
+	TransportListener instead of RequestTransportListener (To reduce
+	unused implementations).
+
+	* src/org/piax/gtrans/Overlay.java(singletonFutureQueue): New method
+	for utility.
+
+	* src/org/piax/gtrans/Overlay.java: Added some reduced versions of send
+	, request, addKey and removeKey.
+
+	* src/org/piax/gtrans/FutureQueue.java:
+	(FutureQueue#singletoneQueue#getAll,
+	 FutureQueue#singletoneQueue#getAllValues): New method for utility.
+
+	* Channel.java, ChannelListener, FutureQueue.java, OverlayListener.java
+	RequestTransportListener.java, BaseChannelTransportImpl.java,
+	BaseDatagramTransport.java, ChannelImpl.java, ChannelTransportImpl.java,
+	OneToOneMappingTransport.java: Imported from gtrans-rc2.
+
+2015-02-19  Yuuichi Teranishi  <teranisi@piax.org>
+
+	* TransOptions.java (RetransMode.RECORD_ACK): New mode.
+
+	* ChordSharp.java (ChordSharp#rqDisseminate0): Fixed logic for
+	ResponseType.NO_RESPONSE.
+
+	* RQManager.java (RQManager#rqDisseminate0): Ditto.
+
+	* MessagingFramework.java (MessagingFramework#requestMsgReceived):
+	Don't send ack when RetransMode is NONE.
+
+	* RequestMessage.java (RequestMessage#prepareReceivingReply):
+	Don't wait for ack when RetransMode is NONE.
+	(responseReceived): Fixed logic for ResponseType.NO_RESPONSE.
+	(mayReceiveReply): Ditto.
+
+	* RQMessage.java (RQMessage#onReceivingReply): Fixed logic for
+	ResponseType.NO_RESPONSE.
+
+	* ChordSharp.java (ChordSharp#scheduleFingerTableUpdate): New method.
+
+	* MChordSharp.java (MChordSharp#scheduleFingerTableUpdate): New method.
+
+	* ChordSharpVNode.java (ChordSharpVNode#scheduleFTUpdate(int, int)):
+	New method.
+	(scheduleFTUpdate(boolean)): Use it.
+
+	* MessagingFramework.java (MessagingFramework#requestMsgReceived):
+	Send ack only
+	when RetransMode is FAST or RELIABLE if ResponseType is NO_RESPONSE.
+
+	* RequestMessage.java (RequestMessage#RequestMessage):
+	No need to use replyTo if ResponseType is NO_RESPONSE.
+
+	* RQReturn.java (RQReturn#RQReturn): Flush task is not needed if
+	ResponseType is	NO_RESPONSE.
+	(RQReturn#flush): Do nothing when ResponseType is NO_RESPONSE.
+	(RQReturn#isCompleted): If ResponseType is NO_RESPONSE, complated
+	immediately.
+	(RQReturn#retransmit): Reverted log level.
+
+	* RetransTest.java: Adding some tests (halfway).
+
+2015-01-04  Yuuichi Teranishi  <teranisi@piax.org>
+
+        * GTransConfigValues.java, AgentConfigValues.java, StatusRepo.java:
+        Updated copyright and license lines.

@@ -1,0 +1,102 @@
+PIAX NEWS -- User-visible changes in PIAX.
+
+* Changes in 3.1.0.
+  Version 3.1.0 is a new updated version of PIAX 3.
+
+** The project is now managed by Maven.
+
+The structure of the package is changed as follows:
+
+ 'piax-gtrans' - Core modules of GTrans.
+ 'piax-agent' - PIAX Agent modules.
+ 'piax-dht' - A DHT implementation on PIAX.
+ 'piax-gtrans-dtn' - Modules related to DTN, AdHoc and Bluetooth (experimental).
+ 'piax-samples' - Some simple samples of GTrans and PIAX Agents.
+
+** The source code is now based on Java 8.
+
+PIAX no longer support old versions of Java (earlier than version 8).
+
+** Performance is improved.
+
+A connection pooling technique is applied for RPC.
+The performance of RPCs for the same locator is much improved.
+
+** Many bug fixes.
+
+
+* Changes in 3.0.0.
+  Version 3.0.0 is a new major version of PIAX.
+
+** The license of the software is changed.
+
+The license of PIAX software is now a dual license of the AGPLv3 and
+the PIAX binary code license.
+
+** `Generic Transport' framework is introduced.
+
+PIAX 3 provides a new network framework called 'Generic
+Transport(GTrans)'. GTrans is a new framework that provides simple
+interfaces to develop portable and sophisticated network applications
+that integrates multiple different network features.
+
+By incorporating composite pattern, GTrans enables programmers to 
+use various kind of network features by unified interface.
+
+GTrans allows applications to specify communication destinations in
+flexible ways.  One can use IDs, keys, locations, and conditions of
+attributes to specify remote nodes, in addition to conventional
+locators (such as IP addresses and Bluetooth MAC addresses).
+
+Overlay Networks such as Skip Graph, LLNet, DOLR and Flooding are
+integrated to GTrans to support scalable and fault-tolerant discoveries.
+
+As a low-level network transport interface, UDP, TCP, Bluetooth and
+emulation are supported.  Network features such as channels, handover,
+fragmentation and RPC are provided in abstracted manner.  These
+features enables programmers to implement their applications or
+network feature in minimal efforts.
+
+** The implementation of skip graphs is now DDLL-based.
+
+DDLL is an distributed algorithm for constructing distributed
+doubly-linked lists.  It maintains consistency with regard to lookups
+even in a churn situation where multiple peers are simultaneously
+inserted or deleted.  It also provides a link repair mechanism.
+
+The skip graph code is replaced to use DDLL. With the help of DDLL,
+our skip graph is now highly resilient to failures and churns.
+
+** Experimental 'Suzaku' overlay implementation is added.
+
+Suzaku is a new experimental structured overlay implementation.
+It is scalable, range-queriable and fault-tolerant.
+Suzaku has following features:
+- Bi-directional Chord# structure with flexible out-degree setup.
+- Fast range-query algorithm with fault-avoidance mechanism.
+- Employ DDLL as a base ring structure.
+Suzaku is designed to be replaceable with the skip graph
+('MSkipGraph' class can be replaced by 'Suzaku' class).
+
+** Agent API is re-arranged.
+The API of PIAX agent is re-arranged and became very simple to use.
+
+** Addes some new simple samples
+Some simple and easy-to-understand 'hello world' samples are added.
+They only send/receive 'hello' messages and exit.
+
+** Many important bug fixes.
+
+** Now package consists of agent, dht, gtrans and samples.
+
+ 'piax-agent' - PIAX Agent modules.
+ 'piax-dht' - A DHT implementation on PIAX.
+ 'piax-gtrans' - Core modules of GTrans.
+ 'piax-samples' - Some simple samples of GTrans and PIAX Agents.
+
+
+Local variables:
+mode: outline
+paragraph-separate: "[ 	]*$"
+end:
+

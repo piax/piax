@@ -1,0 +1,72 @@
+Samples package
+
+This package contains some simple sample programs which introduce
+features of PIAX / GTrans.
+
+* Hello World
+
+The directory hello contains 'Hello World' of PIAX / GTrans program.
+The sample programs are executable and you can run them on your own computer.
+In each directory, you can run the programs by running scripts on your terminal.
+
+The receiver processes automatically quit running after 60 seconds.
+The sender process quit running after it sends a message.
+
+- udp
+
+The receiver process waits for arrival of udp message.
+The sender sends 'hello world' message to the receiver.
+To run this sample, run followings:
+
+$ sh udp1.sh
+$ sh udp2.sh
+
+- multi
+
+In this sample, there are 16 receiver processes. Each of them has a key
+'hello' on Skip Graph. The sender sends a message 'world' to the key 'hello'.
+Then the all receivers receive the message.
+To run this sample, run followings:
+
+$ sh multi1.sh
+$ sh multi2.sh
+
+- agent
+
+In this example, there are 16 'receiver' agents. Each of them has keys:
+name(String class) and location(Location class).
+The name corresponds to 'hostname:port'.
+The location corresponds to  random coordinate inside a rectangle
+(0, 0, 1.0, 1.0).
+A 'sender' agent searches for agents inside (0, 0, 1.0, 1.0) and
+asks its name. It sends 'hello' message to the first responder.
+Then the receiver agent returns 'world' as a response.
+To run this sample, run followings:
+
+$ sh agent1.sh
+$ sh agent2.sh
+
+* MultiOV
+
+The directory multiov directory contains multiple overlay sample.
+The sample program creates 
+a root agent, which joins to 'MSG' overlay,
+parent agents, which joins to MSG and MSG2 overlays,
+and 
+children agents, which joins to 'MSG2' overlay.
+
+There are 5 parent agents.
+For each parent agents, 5 children are joined using MSG2 overlay.
+Thus 25 children agents are joined.
+
+The data collection  starts from root and each parent do the
+data collection for its children agents.
+
+You can run the program by running following script on your terminal.
+
+$ sh multi.sh
+
+The process starts 31 peers (1 root, 5 parent, 25 children), collect data,
+then exit.
+
+Some more examples are included in the src folder.
