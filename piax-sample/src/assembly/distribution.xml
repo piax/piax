@@ -27,6 +27,13 @@
         <include>README</include>
       </includes>
     </fileSet>
+    <fileSet>
+      <directory>${basedir}/src/main/java</directory>
+      <outputDirectory>src</outputDirectory>
+      <includes>
+        <include>**/*</include>
+      </includes>
+    </fileSet>
   </fileSets>
   <dependencySets>
     <dependencySet>

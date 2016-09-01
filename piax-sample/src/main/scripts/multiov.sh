@@ -2,8 +2,6 @@
 #
 # Copyright (c) 2016 PIAX development team
 #
-cd "$(dirname "$0")"
-
 # resolve links - $0 may be a softlink
 PRG="$0"
 
@@ -19,7 +17,8 @@ done
 
 # Get standard environment variables
 PRGDIR=`dirname "$PRG"`
-
+cd $PRGDIR
+PRGDIR=`pwd`
 # Only set PIAX_HOME if not already set
 [ -f "$PIAX_HOME"/bin/multiov.sh ] || PIAX_HOME=`cd "$PRGDIR/.." ; pwd`
 export PIAX_HOME
