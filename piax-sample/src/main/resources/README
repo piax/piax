@@ -10,7 +10,8 @@ The sample programs are executable and you can run them on your own computer.
 In each directory, you can run the programs by running scripts on your terminal.
 
 The receiver processes automatically quit running after 60 seconds.
-The sender process quit running after it sends a message.
+The sender process quit running after it sends a message (to single or
+multiple receiver(s)).
 
 - udp
 
