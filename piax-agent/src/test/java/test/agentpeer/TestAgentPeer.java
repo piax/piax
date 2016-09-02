@@ -50,7 +50,7 @@ public class TestAgentPeer extends Util {
     static private String remoteAgentName = "remoteAgentName";
     static private Agent localAgent;
     static private Agent remoteAgent;
-    static private ArrayBlockingQueue<String> resultQueue = new ArrayBlockingQueue<String>(3);
+    static private ArrayBlockingQueue<String> resultQueue = new ArrayBlockingQueue<String>(15);
     
     /**
      * リスナー・クラス
