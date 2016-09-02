@@ -1205,7 +1205,7 @@ public class SkipGraph<E extends Endpoint> extends RPCInvoker<SkipGraphIf<E>, E>
         }
         RQReturn<E> rqRet = rqStartRawRange(ranges, query, 
                         RQ_RETRANS_PERIOD, opts, null);
-        return rqRet.fq;
+        return rqRet != null ? rqRet.fq : null;
         // try {
         // Collection<RemoteValue<?>> ret = rqRet.get(timeout);
         // } finally {
@@ -1264,7 +1264,9 @@ public class SkipGraph<E extends Endpoint> extends RPCInvoker<SkipGraphIf<E>, E>
                         query, (int)TransOptions.timeout(opts) + RQ_EXPIRATION_GRACE, opts);
         rqDisseminate(msg, allLinks);
         // schedule retransmission in the root node
-        msg.rqRet.scheduleTask(timer, retransPeriod);
+        if (msg.rqRet != null) {
+            msg.rqRet.scheduleTask(timer, retransPeriod);
+        }
         return msg.rqRet;
     }
 
@@ -1317,6 +1319,7 @@ public class SkipGraph<E extends Endpoint> extends RPCInvoker<SkipGraphIf<E>, E>
             // ノードからクエリが転送される可能性がある）．
             // ここでは単にクエリを無視することにする．
             logger.warn("routing table is empty!: {}", this);
+            // In this case, msg.rqRet is null
             return;
         }
 
