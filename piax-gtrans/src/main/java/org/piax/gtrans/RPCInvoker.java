@@ -913,7 +913,7 @@ public class RPCInvoker<T extends RPCIf, E extends Endpoint> implements RPCIf {
             ret = new ReturnValue<Object>(e.getCause());
         } catch (Throwable e) {
             // any Exception or Error except for InvocationTargetException
-            logger.error("", e);
+            logger.info("", e);
             ret = new ReturnValue<Object>(e);
         }
         return ret;
