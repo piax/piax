@@ -28,11 +28,14 @@ import org.piax.gtrans.RPCInvoker;
 import org.piax.gtrans.RPCMode;
 import org.piax.gtrans.RemoteCallable;
 import org.piax.gtrans.RemoteCallable.Type;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import test.Util;
 
 public class TestRPC extends Util {
-    
+    private static final Logger logger = 
+            LoggerFactory.getLogger(TestRPC.class);
     static ArrayBlockingQueue<String> resultQueue = new ArrayBlockingQueue<String>(1);
     
     public interface SAppIf extends RPCIf {
@@ -79,7 +82,7 @@ public class TestRPC extends Util {
         }
 
         public void longSleep(int stime) {
-            System.out.println("I will sleep now: " + stime);
+            logger.debug("I will sleep now: " + stime);
             sleep(stime);
         }
         
@@ -277,8 +280,8 @@ public class TestRPC extends Util {
     @BeforeClass
     public static void setup() {
         Net ntype = Net.TCP;
-        printf("- start -%n");
-        printf("- locator type: %s%n", ntype);
+        logger.debug("- start -%n");
+        logger.debug("- locator type: %s%n", ntype);
 
         // peerを用意する
         peer1 = Peer.getInstance(new PeerId("peer1"));
@@ -291,10 +294,10 @@ public class TestRPC extends Util {
             transport2 = peer2.newBaseChannelTransport(
                     Util.<PeerLocator>genLocator(ntype, "localhost", 10002));
         } catch (IOException e) {
-            System.out.println(e);
+            logger.debug(e.toString());
             return;
         } catch (IdConflictException e) {
-            System.out.println(e);
+            logger.debug(e.toString());
             return;
         }
 
@@ -305,10 +308,10 @@ public class TestRPC extends Util {
             invokerApp1 = new InvokerApp<PeerLocator>(appId, transport1);
             invokerApp2 = new InvokerApp<PeerLocator>(appId, transport2);
         } catch (IOException e) {
-            System.out.println(e);
+            logger.debug(e.toString());
             return;
         } catch (IdConflictException e) {
-            System.out.println(e);
+            logger.debug(e.toString());
             return;
         }
         
@@ -320,7 +323,7 @@ public class TestRPC extends Util {
             invokerApp1.registerRPCObject(objId, app1);
             invokerApp2.registerRPCObject(objId, app2);
         } catch (IdConflictException e) {
-            System.out.println(e);
+            logger.debug(e.toString());
             return;
         }
     }
@@ -781,7 +784,7 @@ public class TestRPC extends Util {
      * @throws Throwable 
      */
     @Test
-    public void cllAppLocalDynamic() throws Throwable {
+    public void cllAppLocalDynamic() {
         try {
             invokerApp1.rcall(new ObjectId("app"),
                 transport2.getEndpoint(),"localMethod",10);
@@ -790,7 +793,6 @@ public class TestRPC extends Util {
                 // 期待どうり
                 return;
             }
-            throw e;
         }
         fail("expected IlleaglRPCAccessException");
     }
@@ -969,7 +971,7 @@ public class TestRPC extends Util {
         invokerApp2.fin();
         peer1.fin();
         peer2.fin();
-        printf("- end -%n");
+        logger.debug("- end -%n");
     }
     
     /*

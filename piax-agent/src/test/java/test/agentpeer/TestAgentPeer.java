@@ -37,8 +37,6 @@ import org.piax.gtrans.NoSuchRemoteObjectException;
 import org.piax.gtrans.RPCException;
 import org.piax.gtrans.ov.NoSuchOverlayException;
 
-import test.Util;
-
 public class TestAgentPeer extends Util {
     static private AgentPeer localAgentPeer;
     static private AgentId localAgentId;

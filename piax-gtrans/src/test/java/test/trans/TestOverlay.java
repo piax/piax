@@ -46,12 +46,15 @@ import org.piax.gtrans.ov.szk.Suzaku;
 import org.piax.gtrans.raw.tcp.TcpLocator;
 import org.piax.gtrans.raw.udp.UdpLocator;
 import org.piax.util.KeyComparator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TestOverlay {
 
     boolean received1, received2, received3;
     boolean send_recv1, send_recv2, send_recv3;
-
+    private static final Logger logger = 
+            LoggerFactory.getLogger(TestTransport.class);
     static int portNumber = 12366;
     static int seq = 0;
     
@@ -97,7 +100,7 @@ public class TestOverlay {
             public FutureQueue<?> onReceiveRequest(
                     Overlay<GeoRegion, Location> overlay,
                     OverlayReceivedMessage<Location> rmsg) {
-                System.out.println("llnet tr2 matched:" + rmsg.getMatchedKeys());
+                logger.debug("llnet tr2 matched:" + rmsg.getMatchedKeys());
                 return overlay.singletonFutureQueue("recv2");
             }
 
@@ -117,7 +120,7 @@ public class TestOverlay {
             public FutureQueue<?> onReceiveRequest(
                     	Overlay<GeoRegion, Location> overlay,
                     OverlayReceivedMessage<Location> rmsg) {
-                System.out.println("llnet tr3 matched:" + rmsg.getMatchedKeys());
+                logger.debug("llnet tr3 matched:" + rmsg.getMatchedKeys());
                 return overlay.singletonFutureQueue("recv3");
             }
 
@@ -208,7 +211,7 @@ public class TestOverlay {
             public FutureQueue<?> onReceiveRequest(
                     Overlay<GeoRegion, Location> overlay,
                     OverlayReceivedMessage<Location> rmsg) {
-                System.out.println("llnet tr2 matched:" + rmsg.getMatchedKeys());
+                logger.debug("llnet tr2 matched:" + rmsg.getMatchedKeys());
                 return overlay.singletonFutureQueue("recv2");
             }
 
@@ -227,7 +230,7 @@ public class TestOverlay {
             public FutureQueue<?> onReceiveRequest(
                     Overlay<GeoRegion, Location> overlay,
                     OverlayReceivedMessage<Location> rmsg) {
-                System.out.println("llnet tr3 matched:" + rmsg.getMatchedKeys());
+                logger.debug("llnet tr3 matched:" + rmsg.getMatchedKeys());
                 return overlay.singletonFutureQueue("recv3");
             }
 
@@ -317,7 +320,7 @@ public class TestOverlay {
             public FutureQueue<?> onReceiveRequest(
                     Overlay<Key, Key> overlay,
                     OverlayReceivedMessage<Key> rmsg) {
-                System.out.println("dolr tr2 matched:" + rmsg.getMatchedKeys());
+                logger.debug("dolr tr2 matched:" + rmsg.getMatchedKeys());
                 return overlay.singletonFutureQueue("recv2");
             }
             
@@ -336,7 +339,7 @@ public class TestOverlay {
             public FutureQueue<?> onReceiveRequest(
                     Overlay<Key, Key> overlay,
                     OverlayReceivedMessage<Key> rmsg) {
-                System.out.println("dolr tr3 matched:" + rmsg.getMatchedKeys());
+                logger.debug("dolr tr3 matched:" + rmsg.getMatchedKeys());
                 return overlay.singletonFutureQueue("recv3");
             }
             
@@ -433,7 +436,7 @@ public class TestOverlay {
             public FutureQueue<?> onReceiveRequest(
                     Overlay<Key, Key> overlay,
                     OverlayReceivedMessage<Key> rmsg) {
-                System.out.println("dolr tr2 matched:" + rmsg.getMatchedKeys());
+                logger.debug("dolr tr2 matched:" + rmsg.getMatchedKeys());
                 return overlay.singletonFutureQueue("recv2");
             }
             
@@ -452,7 +455,7 @@ public class TestOverlay {
             public FutureQueue<?> onReceiveRequest(
                     Overlay<Key, Key> overlay,
                     OverlayReceivedMessage<Key> rmsg) {
-                System.out.println("dolr tr3 matched:" + rmsg.getMatchedKeys());
+                logger.debug("dolr tr3 matched:" + rmsg.getMatchedKeys());
                 return overlay.singletonFutureQueue("recv3");
             }
             
@@ -532,7 +535,7 @@ public class TestOverlay {
 			public void onReceive(
 					Overlay<LowerUpper, DoubleKey> overlay,
 					OverlayReceivedMessage<DoubleKey> rmsg) {
-				System.out.println("OnReceive O");
+				logger.debug("OnReceive O");
 				send_recv2 = true;
 			}
 
@@ -540,7 +543,7 @@ public class TestOverlay {
 			public FutureQueue<?> onReceiveRequest(
 					Overlay<LowerUpper, DoubleKey> overlay,
 					OverlayReceivedMessage<DoubleKey> rmsg) {
-				System.out.println("2.0 matched:" + rmsg.getMatchedKeys());
+				logger.debug("2.0 matched:" + rmsg.getMatchedKeys());
 				FutureQueue<?> fq = new FutureQueue();
 				fq.add(new RemoteValue(overlay.getPeerId(), "recv2"));
 				fq.setEOFuture();
@@ -565,7 +568,7 @@ public class TestOverlay {
     			public FutureQueue<?> onReceiveRequest(
     					Overlay<LowerUpper, DoubleKey> overlay,
     					OverlayReceivedMessage<DoubleKey> rmsg) {
-    				System.out.println("3.0 matched:" + rmsg.getMatchedKeys());
+    				logger.debug("3.0 matched:" + rmsg.getMatchedKeys());
     				FutureQueue<?> fq = new FutureQueue();
     				fq.add(new RemoteValue(overlay.getPeerId(), "recv3"));
     				fq.setEOFuture();
@@ -585,7 +588,7 @@ public class TestOverlay {
         ov1.addKey(new DoubleKey(1.0));
         ov2.addKey(new DoubleKey(2.0));
         ov3.addKey(new DoubleKey(3.0));
-        System.out.println("sleeping 10 secs");
+        logger.debug("sleeping 10 secs");
         Thread.sleep(10000);
 
         DoubleKey k = new DoubleKey(2.5);
@@ -666,7 +669,7 @@ public class TestOverlay {
 			public FutureQueue<?> onReceiveRequest(
 					Overlay<LowerUpper, DoubleKey> overlay,
 					OverlayReceivedMessage<DoubleKey> rmsg) {
-				System.out.println("2.0 matched:" + rmsg.getMatchedKeys());
+				logger.debug("2.0 matched:" + rmsg.getMatchedKeys());
                 return overlay.singletonFutureQueue("recv2");
 			}
 
@@ -689,7 +692,7 @@ public class TestOverlay {
 			public FutureQueue<?> onReceiveRequest(
 					Overlay<LowerUpper, DoubleKey> overlay,
 					OverlayReceivedMessage<DoubleKey> rmsg) {
-				System.out.println("3.0 matched:" + rmsg.getMatchedKeys());
+				logger.debug("3.0 matched:" + rmsg.getMatchedKeys());
                 return overlay.singletonFutureQueue("recv3");
 			}
 
@@ -773,7 +776,7 @@ public class TestOverlay {
             public FutureQueue<?> onReceiveRequest(
                     Overlay<Destination, Key> overlay,
                     OverlayReceivedMessage<Key> rmsg) {
-                System.out.println("flood tr2 matched:" + rmsg.getMatchedKeys());
+                logger.debug("flood tr2 matched:" + rmsg.getMatchedKeys());
                 return overlay.singletonFutureQueue("recv2");
             }
             
@@ -793,7 +796,7 @@ public class TestOverlay {
             public FutureQueue<?> onReceiveRequest(
                     Overlay<Destination, Key> overlay,
                     OverlayReceivedMessage<Key> rmsg) {
-                System.out.println("flood tr3 matched:" + rmsg.getMatchedKeys());
+                logger.debug("flood tr3 matched:" + rmsg.getMatchedKeys());
                 return overlay.singletonFutureQueue("recv3");
             }
             
@@ -902,7 +905,7 @@ public class TestOverlay {
             public FutureQueue<?> onReceiveRequest(
                     Overlay<Destination, Key> overlay,
                     OverlayReceivedMessage<Key> rmsg) {
-                System.out.println("comb tr2 matched:" + rmsg.getMatchedKeys());
+                logger.debug("comb tr2 matched:" + rmsg.getMatchedKeys());
                 return overlay.singletonFutureQueue("recv2");
             }
             
@@ -922,7 +925,7 @@ public class TestOverlay {
             public FutureQueue<?> onReceiveRequest(
                     Overlay<Destination, Key> overlay,
                     OverlayReceivedMessage<Key> rmsg) {
-                System.out.println("comb tr3 matched:" + rmsg.getMatchedKeys());
+                logger.debug("comb tr3 matched:" + rmsg.getMatchedKeys());
                 return overlay.singletonFutureQueue("recv3");
             }
             
@@ -1060,7 +1063,7 @@ public class TestOverlay {
             public FutureQueue<?> onReceiveRequest(
                     Overlay<Destination, Key> overlay,
                     OverlayReceivedMessage<Key> rmsg) {
-                System.out.println("comb tr2 matched:" + rmsg.getMatchedKeys());
+                logger.debug("comb tr2 matched:" + rmsg.getMatchedKeys());
                 return overlay.singletonFutureQueue("recv2");
             }
             
@@ -1080,7 +1083,7 @@ public class TestOverlay {
             public FutureQueue<?> onReceiveRequest(
                     Overlay<Destination, Key> overlay,
                     OverlayReceivedMessage<Key> rmsg) {
-                System.out.println("comb tr3 matched:" + rmsg.getMatchedKeys());
+                logger.debug("comb tr3 matched:" + rmsg.getMatchedKeys());
                 return overlay.singletonFutureQueue("recv3");
             }
             
@@ -1234,7 +1237,7 @@ public class TestOverlay {
             public FutureQueue<?> onReceiveRequest(
                     Overlay<Destination, Key> overlay,
                     OverlayReceivedMessage<Key> rmsg) {
-                System.out.println("comb tr2 matched:" + rmsg.getMatchedKeys());
+                logger.debug("comb tr2 matched:" + rmsg.getMatchedKeys());
                 return overlay.singletonFutureQueue("recv2");
             }
             
@@ -1253,7 +1256,7 @@ public class TestOverlay {
             public FutureQueue<?> onReceiveRequest(
                     Overlay<Destination, Key> overlay,
                     OverlayReceivedMessage<Key> rmsg) {
-                System.out.println("comb tr3 matched:" + rmsg.getMatchedKeys());
+                logger.debug("comb tr3 matched:" + rmsg.getMatchedKeys());
                 return overlay.singletonFutureQueue("recv3");
             }
             
@@ -1328,7 +1331,7 @@ public class TestOverlay {
                     try {
                         DoubleKey key = new DoubleKey((double) x + numOfPeers);
                         if (!overlay.getKeys().contains(key)) {
-                            System.out.println("adding key" + key);
+                            logger.debug("adding key" + key);
                             overlay.addKey(key);
                         }
                     } catch (IOException e) {
@@ -1344,20 +1347,20 @@ public class TestOverlay {
             trs[i].join(loc);
             trs[i].addKey(new DoubleKey((double) i));
         }
-        System.out.println("sleeping 25 sec...");
+        logger.debug("sleeping 25 sec...");
         Thread.sleep(25000);
 
         for (int i = 0; i < numOfPeers; i++) {
-            System.out.println("size=" + trs[i].getAll().length);
-            System.out.println("height=" + trs[i].getHeight(new DoubleKey((double)i)));
+            logger.debug("size=" + trs[i].getAll().length);
+            logger.debug("height=" + trs[i].getHeight(new DoubleKey((double)i)));
             for (int j = 0; j < trs[i].getHeight(new DoubleKey((double)i)); j++) {
                 int rkeys = trs[i].getRights(new DoubleKey((double)i), j).length;
                 for (int k = 0; k < rkeys; k++) {
-                    System.out.println("rights" + trs[i].getLocal(new DoubleKey((double) i)).key + "[" + j + "]=" + trs[i].getRights(new DoubleKey((double)i), j)[k].key);
+                    logger.debug("rights" + trs[i].getLocal(new DoubleKey((double) i)).key + "[" + j + "]=" + trs[i].getRights(new DoubleKey((double)i), j)[k].key);
                 }
                 int lkeys = trs[i].getLefts(new DoubleKey((double)i), j).length;
                 for (int k = 0; k < lkeys; k++) {
-                    System.out.println("lefts" + trs[i].getLocal(new DoubleKey((double) i)).key + "[" + j + "]=" + trs[i].getLefts(new DoubleKey((double)i), j)[k].key);
+                    logger.debug("lefts" + trs[i].getLocal(new DoubleKey((double) i)).key + "[" + j + "]=" + trs[i].getLefts(new DoubleKey((double)i), j)[k].key);
                 }
             }
             if (i != numOfPeers - 1) { 
@@ -1404,7 +1407,7 @@ public class TestOverlay {
                     try {
                         DoubleKey key = new DoubleKey((double) x + numOfPeers);
                         if (!overlay.getKeys().contains(key)) {
-                            System.out.println("adding key" + key);
+                            logger.debug("adding key" + key);
                             overlay.addKey(key);
                         }
                     } catch (IOException e) {
@@ -1422,16 +1425,16 @@ public class TestOverlay {
         }
 
         for (int i = 0; i < numOfPeers; i++) {
-            System.out.println("size=" + trs[i].getAll().length);
-            System.out.println("height=" + trs[i].getHeight(new DoubleKey((double)i)));
+            logger.debug("size=" + trs[i].getAll().length);
+            logger.debug("height=" + trs[i].getHeight(new DoubleKey((double)i)));
             for (int j = 0; j < trs[i].getHeight(new DoubleKey((double)i)); j++) {
                 int rkeys = trs[i].getRights(new DoubleKey((double)i), j).length;
                 for (int k = 0; k < rkeys; k++) {
-                    System.out.println("rights" + trs[i].getLocal(new DoubleKey((double) i)).key + "[" + j + "]=" + trs[i].getRights(new DoubleKey((double)i), j)[k].key);
+                    logger.debug("rights" + trs[i].getLocal(new DoubleKey((double) i)).key + "[" + j + "]=" + trs[i].getRights(new DoubleKey((double)i), j)[k].key);
                 }
                 int lkeys = trs[i].getLefts(new DoubleKey((double)i), j).length;
                 for (int k = 0; k < lkeys; k++) {
-                    System.out.println("lefts" + trs[i].getLocal(new DoubleKey((double) i)).key + "[" + j + "]=" + trs[i].getLefts(new DoubleKey((double)i), j)[k].key);                    
+                    logger.debug("lefts" + trs[i].getLocal(new DoubleKey((double) i)).key + "[" + j + "]=" + trs[i].getLefts(new DoubleKey((double)i), j)[k].key);                    
                 }
             }
             if (i != numOfPeers - 1) { 

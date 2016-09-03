@@ -37,11 +37,14 @@ import org.piax.gtrans.raw.tcp.TcpLocator;
 import org.piax.gtrans.raw.udp.UdpLocator;
 import org.piax.gtrans.util.FailureSimulationChannelTransport;
 import org.piax.gtrans.util.ThroughTransport;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TestTransport {
 	
     boolean udp_received1, udp_received2;
-
+    private static final Logger logger = 
+            LoggerFactory.getLogger(TestTransport.class);
     @Test
     public void UDPTransportTest() throws Exception {
         // get peers
@@ -171,7 +174,7 @@ public class TestTransport {
         tr1.setListener(new TransportListener<ComparableKey<?>>() {
             public void onReceive(Transport<ComparableKey<?>> trans,
                     ReceivedMessage rmsg) {
-                System.out.println("udp recv1:" + rmsg.getMessage());
+                logger.debug("udp recv1:" + rmsg.getMessage());
                 sg_received1 = rmsg.getMessage().equals("recv");
             }
         });
@@ -180,9 +183,9 @@ public class TestTransport {
             public void onReceive(Transport<ComparableKey<?>> trans,
                     ReceivedMessage rmsg) {
                 try {
-                    System.out.println("udp recv2:" + rmsg.getMessage());
+                    logger.debug("udp recv2:" + rmsg.getMessage());
                     sg_received2 = true;
-                    System.out.println(trans.getTransportIdPath());
+                    logger.debug("" + trans.getTransportIdPath());
                     trans.send(new DoubleKey(Double.parseDouble(
                     		(String) rmsg.getMessage())), "recv");
                 } catch (IOException e) {
@@ -209,7 +212,7 @@ public class TestTransport {
                 key = (DoubleKey) obj;
             }
         }
-        System.out.println(tr2.getTransportIdPath());
+        logger.debug("" + tr2.getTransportIdPath());
         tr2.send(new DoubleKey(1.0), "recv");
         tr1.send(new DoubleKey(2.0), key.getKey().toString());
         //tr1.send(new DoubleKey(1.0), "recv");
@@ -259,7 +262,7 @@ public class TestTransport {
         tr1.setListener(new TransportListener<ComparableKey<?>>() {
             public void onReceive(Transport<ComparableKey<?>> trans,
                     ReceivedMessage rmsg) {
-                System.out.println("tcp recv1:" + rmsg.getMessage());
+                logger.debug("tcp recv1:" + rmsg.getMessage());
                 sg_received1 = rmsg.getMessage().equals("recv");
             }
         });
@@ -268,7 +271,7 @@ public class TestTransport {
             public void onReceive(Transport<ComparableKey<?>> trans,
                     ReceivedMessage rmsg) {
                 try {
-                    System.out.println("tcp recv2:" + rmsg.getMessage());
+                    logger.debug("tcp recv2:" + rmsg.getMessage());
                     sg_received2 = true;
                     trans.send(new DoubleKey(Double.parseDouble(
                             (String) rmsg.getMessage())), "recv");
@@ -330,7 +333,7 @@ public class TestTransport {
         tr1.setListener(new TransportListener<ComparableKey<?>>() {
             public void onReceive(Transport<ComparableKey<?>> trans,
                     ReceivedMessage rmsg) {
-                System.out.println("emu recv1:" + rmsg.getMessage());
+                logger.debug("emu recv1:" + rmsg.getMessage());
                 sg_received1 = rmsg.getMessage().equals("recv");
             }
         });
@@ -339,7 +342,7 @@ public class TestTransport {
             public void onReceive(Transport<ComparableKey<?>> trans,
                     ReceivedMessage rmsg) {
                 try {
-                    System.out.println("emu recv2:" + rmsg.getMessage());
+                    logger.debug("emu recv2:" + rmsg.getMessage());
                     sg_received2 = true;
                     trans.send(new DoubleKey(Double.parseDouble(
                             (String) rmsg.getMessage())), "recv");
@@ -404,7 +407,7 @@ public class TestTransport {
         ov1.setListener(new TransportListener<ComparableKey<?>>() {
             public void onReceive(Transport<ComparableKey<?>> trans,
                     ReceivedMessage rmsg) {
-                System.out.println("udp recv1:" + rmsg.getMessage());
+                logger.debug("udp recv1:" + rmsg.getMessage());
                 sg_received1 = rmsg.getMessage().equals("recv");
             }
         });
@@ -413,7 +416,7 @@ public class TestTransport {
             public void onReceive(Transport<ComparableKey<?>> trans,
                     ReceivedMessage rmsg) {
                 try {
-                    System.out.println("udp recv2:" + rmsg.getMessage());
+                    logger.debug("udp recv2:" + rmsg.getMessage());
                     sg_received2 = rmsg.getMessage().equals("12345");
                     trans.send((PeerId) rmsg.getSource(), "recv");
                 } catch (IOException e) {
@@ -681,7 +684,7 @@ public class TestTransport {
         tr1.setListener(new TransportListener<ComparableKey<?>>() {
             public void onReceive(Transport<ComparableKey<?>> trans,
                     ReceivedMessage rmsg) {
-                System.out.println("udp recv1:" + rmsg.getMessage());
+                logger.debug("udp recv1:" + rmsg.getMessage());
                 sg_received1 = rmsg.getMessage().equals("recv");
             }
         });
@@ -690,7 +693,7 @@ public class TestTransport {
             public void onReceive(Transport<ComparableKey<?>> trans,
                     ReceivedMessage rmsg) {
                 try {
-                    System.out.println("udp recv2:" + rmsg.getMessage());
+                    logger.debug("udp recv2:" + rmsg.getMessage());
                     sg_received2 = true;
                     trans.send(new DoubleKey(Double.parseDouble(
                             (String) rmsg.getMessage())), "recv");
@@ -720,27 +723,27 @@ public class TestTransport {
         }
         long start = System.currentTimeMillis();
         tr1.send(new DoubleKey(2.0), key.getKey().toString());
-        System.out.println("send took:" + (System.currentTimeMillis() - start) + "(ms)");
+        logger.debug("send took:" + (System.currentTimeMillis() - start) + "(ms)");
         Thread.sleep(1000);
         assertTrue("SG2 receive failed", sg_received2);
         assertTrue("SG1 receive failed", sg_received1);
         start = System.currentTimeMillis();
         tr1.send(new DoubleKey(2.0), key.getKey().toString(), new TransOptions(RetransMode.NONE));
-        System.out.println("send/no-retrans took:" + (System.currentTimeMillis() - start) + "(ms)");
+        logger.debug("send/no-retrans took:" + (System.currentTimeMillis() - start) + "(ms)");
         Thread.sleep(1000);
         assertTrue("SG2 receive failed", sg_received2);
         assertTrue("SG1 receive failed", sg_received1);
         
         start = System.currentTimeMillis();
         tr1.send(new DoubleKey(2.0), key.getKey().toString(), new TransOptions(RetransMode.FAST));
-        System.out.println("send/fast-retrans took:" + (System.currentTimeMillis() - start) + "(ms)");
+        logger.debug("send/fast-retrans took:" + (System.currentTimeMillis() - start) + "(ms)");
         Thread.sleep(1000);
         assertTrue("SG2 receive failed", sg_received2);
         assertTrue("SG1 receive failed", sg_received1);
         
         start = System.currentTimeMillis();
         tr1.request(new DoubleKey(2.0), key.getKey().toString());
-        System.out.println("send-sync (request) took:" + (System.currentTimeMillis() - start) + "(ms)");
+        logger.debug("send-sync (request) took:" + (System.currentTimeMillis() - start) + "(ms)");
 //        tr2.send(new Ranges<Double>(new Range<Double>(1.0)), "recv");
 //        tr1.send(new DestinationDescription("[2.0..2.0]"));
 //        tr2.send(new Ranges<Integer>(new Range<Integer>(1)),
@@ -778,7 +781,7 @@ public class TestTransport {
         tr1.setListener(new TransportListener<ComparableKey<?>>() {
             public void onReceive(Transport<ComparableKey<?>> trans,
                     ReceivedMessage rmsg) {
-                System.out.println("tcp recv1:" + rmsg.getMessage());
+                logger.debug("tcp recv1:" + rmsg.getMessage());
                 sg_received1 = rmsg.getMessage().equals("recv");
             }
         });
@@ -787,7 +790,7 @@ public class TestTransport {
             public void onReceive(Transport<ComparableKey<?>> trans,
                     ReceivedMessage rmsg) {
                 try {
-                    System.out.println("tcp recv2:" + rmsg.getMessage());
+                    logger.debug("tcp recv2:" + rmsg.getMessage());
                     sg_received2 = true;
                     trans.send(new DoubleKey(Double.parseDouble(
                             (String) rmsg.getMessage())), "recv");
@@ -851,7 +854,7 @@ public class TestTransport {
         ov1.setListener(new TransportListener<ComparableKey<?>>() {
             public void onReceive(Transport<ComparableKey<?>> trans,
                     ReceivedMessage rmsg) {
-                System.out.println("emu recv1:" + rmsg.getMessage());
+                logger.debug("emu recv1:" + rmsg.getMessage());
                 sg_received1 = rmsg.getMessage().equals("recv");
             }
         });
@@ -860,7 +863,7 @@ public class TestTransport {
             public void onReceive(Transport<ComparableKey<?>> trans,
                     ReceivedMessage rmsg) {
                 try {
-                    System.out.println("emu recv2:" + rmsg.getMessage());
+                    logger.debug("emu recv2:" + rmsg.getMessage());
                     sg_received2 = true;
                     trans.send(new DoubleKey(Double.parseDouble(
                             (String) rmsg.getMessage())), "recv");
@@ -923,7 +926,7 @@ public class TestTransport {
         tr1.setListener(new TransportListener<ComparableKey<?>>() {
             public void onReceive(Transport<ComparableKey<?>> trans,
                     ReceivedMessage rmsg) {
-                System.out.println("udp recv1:" + rmsg.getMessage());
+                logger.debug("udp recv1:" + rmsg.getMessage());
                 sg_received1 = rmsg.getMessage().equals("recv");
             }
         });
@@ -932,7 +935,7 @@ public class TestTransport {
             public void onReceive(Transport<ComparableKey<?>> trans,
                     ReceivedMessage rmsg) {
                 try {
-                    System.out.println("udp recv2:" + rmsg.getMessage());
+                    logger.debug("udp recv2:" + rmsg.getMessage());
                     sg_received2 = rmsg.getMessage().equals("12345");
                     trans.send((PeerId) rmsg.getSource(), "recv");
                 } catch (IOException e) {
@@ -997,7 +1000,7 @@ public class TestTransport {
             public void onReceive(
                     Overlay<Destination, ComparableKey<?>> overlay,
                     OverlayReceivedMessage<ComparableKey<?>> rmsg) {
-                System.out.println("udp recv1:" + rmsg.getMessage());
+                logger.debug("udp recv1:" + rmsg.getMessage());
                 if (rmsg.getMessage().equals("recv")) {
                     response_count++;
                 }
