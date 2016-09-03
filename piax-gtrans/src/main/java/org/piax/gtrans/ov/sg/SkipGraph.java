@@ -1907,7 +1907,12 @@ public class SkipGraph<E extends Endpoint> extends RPCInvoker<SkipGraphIf<E>, E>
     int getHeight(Comparable<?> key) {
         SGNode s = keyHash.get(key);
         if (s != null) {
-            return s.getInsertedHeight();
+            rtLockR();
+            try {
+                return s.getInsertedHeight();
+            } finally {
+                rtUnlockR();
+            }
         }
         return 0;
     }
