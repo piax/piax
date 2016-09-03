@@ -23,9 +23,11 @@ import org.piax.gtrans.raw.tcp.TcpLocator;
 import org.piax.gtrans.raw.udp.UdpLocator;
 import org.piax.kvs.dht.DHT;
 import org.piax.kvs.dht.HashId;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TestOnDHT {
-	
+    private static final Logger logger = LoggerFactory.getLogger(TestOnDHT.class);
 	static <D extends Destination, K extends ComparableKey<?>>
 	Overlay<D, K> genOv(boolean isSG, Peer peer, PeerLocator locator) 
 			throws IdConflictException, IOException {
@@ -41,7 +43,7 @@ public class TestOnDHT {
 	}
     
     public static void printf(String f, Object... args) {
-        System.out.printf(f, args);
+        logger.debug(f, args);
     }
     
     public static void sleep(int i) {
@@ -52,7 +54,7 @@ public class TestOnDHT {
     }
 
     static void printDHT() {
-        System.out.printf("%n** print DHT repo%n");
+        logger.debug("%n** print DHT repo%n");
         for (int i = 0; i < numPeer; i++) {
             printf(" * DHT repository status on %s, %s", dhts[i].sg.getPeerId(),
                     dhts[i]);
@@ -127,7 +129,7 @@ public class TestOnDHT {
 //                dhts[i] = new DHT(new ServiceId("dht"), ovs[i], id, true);
                 dhts[i] = new DHT(ovs[i], true);
             } catch (IdConflictException e) {
-                System.out.println(e);
+                logger.debug(e.toString());
             }
             printf("%s ", peers[i].getPeerId());
             if ((i+1) % 20 == 0) printf("%n");
