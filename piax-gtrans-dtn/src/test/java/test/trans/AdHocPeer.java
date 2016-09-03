@@ -20,8 +20,6 @@ import org.piax.gtrans.TransportListener;
 import org.piax.gtrans.adhoc.AdHocTransport;
 import org.piax.gtrans.tsd.TSDDiscoverable;
 
-import test.Util;
-
 public class AdHocPeer<E extends PeerLocator> extends Util {
 
     /**
