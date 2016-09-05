@@ -77,16 +77,16 @@ public class AgentAttribs extends RowData {
     public synchronized void attach() {
         logger.debug("attach called");
         if (isAttached) {
-            logger.warn("duplicated attach call");
+            logger.info("duplicated attach call");
             return;
         }
         this.isBoundToAttribute = false;
         try {
             table.insertRow(this);
         } catch (IllegalStateException ignore) {
-            logger.error("", ignore);
+            logger.info("", ignore);
         } catch (IdConflictException ignore) {
-            logger.error("", ignore);
+            logger.info("", ignore);
         }
         this.bindToAttribute();
         isAttached = true;

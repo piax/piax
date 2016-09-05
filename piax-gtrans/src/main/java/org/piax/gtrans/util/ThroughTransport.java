@@ -47,14 +47,12 @@ public class ThroughTransport<E extends PeerLocator> extends
     @Override
     protected Object _preSend(ObjectId sender, ObjectId receiver,
             E dst, Object msg) throws IOException {
-        System.out.print("*");
         return msg;
     }
 
     @Override
     protected Object _postReceive(ObjectId sender, ObjectId receiver,
             E src, Object msg) {
-        System.out.print("+");
         return msg;
     }
 }
