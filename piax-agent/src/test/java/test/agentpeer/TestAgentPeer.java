@@ -16,7 +16,9 @@ import java.util.concurrent.ArrayBlockingQueue;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestName;
 import org.piax.agent.Agent;
 import org.piax.agent.AgentAccessDeniedException;
 import org.piax.agent.AgentCapabilityException;
@@ -49,6 +51,8 @@ public class TestAgentPeer extends Util {
     static private Agent localAgent;
     static private Agent remoteAgent;
     static private ArrayBlockingQueue<String> resultQueue = new ArrayBlockingQueue<String>(15);
+    @Rule
+    public TestName testName = new TestName();
     
     /**
      * リスナー・クラス
@@ -1239,7 +1243,9 @@ public class TestAgentPeer extends Util {
     public void finAgents() throws Exception {
         localAgentPeer.setListener(null);
         remoteAgentPeer.setListener(null);
-        localAgent.destroy();
+        if (!testName.getMethodName().equals("onDestruction")) {
+            localAgent.destroy();
+        }
         remoteAgent.destroy();
         localAgentPeer.leave();
         remoteAgentPeer.leave();
