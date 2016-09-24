@@ -18,7 +18,6 @@ import org.piax.agent.AgentPeer;
 import org.piax.agent.AgentTransportManager;
 import org.piax.agent.DefaultAgentTransportManager;
 import org.piax.common.Location;
-import org.piax.gtrans.ov.ddll.NodeMonitor;
 import org.piax.gtrans.raw.tcp.TcpLocator;
 
 /* 

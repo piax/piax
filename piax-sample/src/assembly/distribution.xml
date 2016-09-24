@@ -22,7 +22,7 @@
     </fileSet>
     <fileSet>
       <directory>${basedir}/src/main/resources</directory>
-      <outputDirectory>/</outputDirectory>
+      <outputDirectory></outputDirectory>
       <includes>
         <include>README</include>
       </includes>
