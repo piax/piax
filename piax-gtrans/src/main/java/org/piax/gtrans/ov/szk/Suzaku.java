@@ -23,7 +23,6 @@ import java.util.Set;
 import org.piax.common.ComparableKey;
 import org.piax.common.Destination;
 import org.piax.common.Endpoint;
-import org.piax.common.Key;
 import org.piax.common.ObjectId;
 import org.piax.common.TransportId;
 import org.piax.common.subspace.KeyRange;
@@ -45,7 +44,6 @@ import org.piax.gtrans.ov.RoutingTableAccessor;
 import org.piax.gtrans.ov.compound.CompoundOverlay.SpecialKey;
 import org.piax.gtrans.ov.ddll.Link;
 import org.piax.gtrans.ov.impl.OverlayImpl;
-import org.piax.gtrans.ov.ring.NoSuchKeyException;
 import org.piax.gtrans.ov.ring.UnavailableException;
 import org.piax.gtrans.ov.ring.rq.RQExecQueryCallback;
 import org.piax.gtrans.ov.ring.rq.RQResults;
@@ -130,6 +128,9 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
             throws ProtocolUnsupportedException, IOException {
         logger.trace("ENTRY:");
         logger.debug("peer:{} dst:{} msg:{}", peerId, dst, msg);
+        if (!isJoined) {
+            throw new IllegalStateException("Not joined to the network yet.");
+        }
         if (dst instanceof KeyRanges) {
             return request3(sender, receiver, (KeyRanges<K>) dst, msg, opts);
         } else if (dst instanceof KeyRange) {
@@ -153,6 +154,9 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
             ObjectId receiver, LowerUpper lu, Object msg, TransOptions opts)
             throws IllegalStateException {
         logger.trace("ENTRY:");
+        if (!isJoined) {
+            throw new IllegalStateException("Not joined to the network yet.");
+        }
         NestedMessage nmsg = new NestedMessage(sender, receiver, null, peerId,
                 msg);
         Collection<RemoteValue<?>> ret = chordSharp.forwardQuery(lu.isPlusDir(),
@@ -188,6 +192,9 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
      */
     public RemoteValue<?> rqExecQuery(Comparable<?> key, Object msg) {
         logger.trace("ENTRY:");
+        if (!isJoined) {
+            throw new IllegalStateException("Not joined to the network yet.");
+        }
         @SuppressWarnings("unchecked")
         FutureQueue<?> rets = onReceiveRequest(
                 Collections.<K>singleton((K) key), (NestedMessage) msg);
