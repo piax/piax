@@ -1,0 +1,150 @@
+PIAX Shell is an application that demonstrates features of PIAX.
+
+1. Start up
+On a console, type following commands.
+
+console 1:
+ $ piaxshell -i12367 -slocalhost:12367 YAMBO
+
+console 2:
+ $ piaxshell -i12368 -slocalhost:12367 MAABO
+
+By these commands peers named YAMBO and MAABO start on console 1 and
+console 2, respectively.
+
+The -i option specifies port number of the peer itself.
+The -s option specifies the address and port number of a 'seed peer'.
+In this case, YAMBO is the first peer that joins to
+the P2P network (we call it the 'root peer').
+
+On start up, a default agent is created on the peer.
+
+2. Display the status
+
+By typing 'i' or 'info', the peer status is displayed.
+
+3. Set location
+
+By 'move' command, the location of the peer is set.
+The first argument is x-axis value and the second argument is y-axis value.
+By default these axis are treated as longitude and latitude.
+
+For example, on console 1, type following.
+Input Command> move 0 0
+
+For example, on console 2, type following.
+Input Command> move 1 1
+
+4. Creating Agents
+
+By 'mk' or 'mkagent' command, you can create an agent. The first
+argument is the name of the class and the second argument is a name of
+the agent (you can name it).
+
+On cosole 1, type following.
+Input Command> mk agent.HelloAgent hi
+
+In this case, an agent named 'hi' using a class samples.HelloAgent is created.
+By typing 'ag' or 'agents' command, you can see the list of created agents.
+
+5. Persistent Agents, Cloning
+
+The SleepyAgent is an instance of PersistentAgent. It can be stored on a storage
+and restored from a storage.
+By 'sl' or 'sleep' command, you can store an agent. The first argument is
+the agent number, which you can confirm by the 'agent' command.
+'wa' or 'wake' command restores the stored agent.
+'dup' command creates a clone of the peer.
+
+For example, type following on console 1.
+
+Input Command >mk samples.SleepyAgent nyan
+Input Command >agent
+ 0. name: nyan, ID: 4d27d47383e957d057979655f40808b3
+ 1. name: ag-YAMBO, ID: fba2be2f5992638352d4ed669ab4d18c
+
+In this case, the number of an agent named 'nyan' is '0'.
+Then, type following on console 1.
+
+Input Command >sleep 0
+Ahhh, Good Night.
+
+Input Command >wake 0
+Good Morning.
+
+Input Command >dup 0
+Oh, I'm splitting myself.
+Hello, it's another me.
+
+6. Join to the P2P network
+
+To join to the P2P network, simply type 'join' on the console.
+
+on console 1:
+Input Command >join
+
+on console 2:
+Input Command >join
+
+7. Mobile agents on P2P network
+
+By 'go' command, an agent can move to another peer.
+A sample TravelAgent has an ability to move among peers.
+Following is an example.
+
+On console 1:
+Input Command >mk samples.TravelAgent pisuke
+Input Command >agents
+ 0. name: pisuke, ID: c1797c197e88b8ca40945fbe6c57e74e
+ 1. name: nyan, ID: 2006d15ea7dfd6b03fa45ce07ac0d822
+ 2. name: nyan, ID: 4d27d47383e957d057979655f40808b3
+ 3. name: ag-YAMBO, ID: 2b5c3db06bacca2b82c2f9fcecf5be6c
+Input Command >go 0 MAABO
+Just I'm going on...
+
+On console 2:
+Input Command >agents
+ 0. name: pisuke, ID: 4d27d47383e957d057979655f40808b3
+ 1. name: ag-MAABO, ID: fba2be2f5992638352d4ed669ab4d18c
+
+8. Calling a method
+
+1) synchronous method call
+
+By 'c' or 'call' method, you can invoke methods of a local agent.
+Following is an example.
+
+Input Command >ag
+Input Command >call 0 getName
+ return value: ag-YAMBO
+
+2) discovery call
+
+By 'dc' or 'discover' call, you can invoke 'discovery call', which
+can call query-based remote procedure call for the agents located
+on remote and local peers.
+Following is an example.
+
+Input Command >ag
+Input Command >discover 0 0 1 1 hello
+ value: hello, my name is ag-YAMBO
+ value: hello, my name is ag-MAABO
+
+9. DHT put and get
+
+The piax shell sample also includes the DHT feature.
+Following is an example.
+
+On console 1:
+Input Command >put a 1
+
+On console 2:
+Input Command >get a
+ value: 1
+
+10. Leave
+
+By 'leave' and 'bye' commands, you can finish shell.
+'leave' command lets the peer leave from P2P network.
+'bye' command quit running the program.
+

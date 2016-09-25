@@ -21,5 +21,6 @@
     <module>piax-gtrans-dtn</module>
     <module>piax-sample</module>
     <module>piax-dht</module>
+    <module>piax-shell</module>
   </modules>
 </project>

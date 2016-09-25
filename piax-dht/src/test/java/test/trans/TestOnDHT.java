@@ -61,7 +61,7 @@ public class TestOnDHT {
         }
     }
     
-    static int numPeer = 100;
+    static int numPeer = 32;
     static DHT[] dhts = new DHT[numPeer];
     
     enum L {

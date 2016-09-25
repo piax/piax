@@ -94,40 +94,40 @@ public class DefaultAgentTransportManager extends AgentTransportManager {
     public String getName() {
     		return name;
     }
-    
+
     @SuppressWarnings("unchecked")
     @Override
     public void setup(AgentHome home) throws Exception {
-    		defineTransport("BASE", () -> {
-    			return Peer.getInstance(peerId).newBaseChannelTransport(peerLocator);
-    		});
-    		
-    		// If not defined, set range query overlay as Multi-key Skip Graph.
-	    defineOverlay("RQ", () -> {
-	    		return getOverlay("MSG");
-	    }, seedLocator);
-	    
-   		defineTransport("RPC", () -> {
-    			return new ChannelAddOnTransport<PeerId>((Transport<? super PeerId>) getOverlay("RQ"));
-    		});
-    	
-		// LLNET
-	    defineOverlay("LLNET", () -> {
-	    		return new LLNet((Overlay<Destination,ComparableKey<?>>)getOverlay("RQ"));
-	    }, seedLocator);
-	    
-	    // DOLR
-	    defineOverlay("DOLR", () -> {
-	    		return new DOLR<Key>((Overlay<Destination,ComparableKey<?>>)getOverlay("RQ"));
-	    }, seedLocator);
-	    
-	    // Suzaku factories
-	    defineOverlay("SZK", () -> {
-	    		return new Suzaku<Destination,ComparableKey<?>>((ChannelTransport<?>)getTransport("BASE"));
-	    }, seedLocator);
+        defineTransport("BASE", () -> {
+            return Peer.getInstance(peerId).newBaseChannelTransport(peerLocator);
+        });
 
-	    defineOverlay("MSG", () -> {
-			return new MSkipGraph<Destination,ComparableKey<?>>((ChannelTransport<?>)getTransport("BASE"));
-		}, seedLocator);
-	}
+        // If not defined, set range query overlay as Multi-key Skip Graph.
+        defineOverlay("RQ", () -> {
+            return getOverlay("MSG");
+        }, seedLocator);
+
+        defineTransport("RPC", () -> {
+            return new ChannelAddOnTransport<PeerId>((Transport<? super PeerId>) getOverlay("RQ"));
+        });
+
+        // LLNET
+        defineOverlay("LLNET", () -> {
+            return new LLNet((Overlay<Destination,ComparableKey<?>>)getOverlay("RQ"));
+        }, seedLocator);
+
+        // DOLR
+        defineOverlay("DOLR", () -> {
+            return new DOLR<Key>((Overlay<Destination,ComparableKey<?>>)getOverlay("RQ"));
+        }, seedLocator);
+
+        // Suzaku factories
+        defineOverlay("SZK", () -> {
+            return new Suzaku<Destination,ComparableKey<?>>((ChannelTransport<?>)getTransport("BASE"));
+        }, seedLocator);
+
+        defineOverlay("MSG", () -> {
+            return new MSkipGraph<Destination,ComparableKey<?>>((ChannelTransport<?>)getTransport("BASE"));
+        }, seedLocator);
+    }
 }
