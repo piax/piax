@@ -12,10 +12,16 @@ The structure of the package is changed as follows:
  'piax-dht' - A DHT implementation on PIAX.
  'piax-gtrans-dtn' - Modules related to DTN, AdHoc and Bluetooth (experimental).
  'piax-samples' - Some simple samples of GTrans and PIAX Agents.
+ 'piax-shell' - A command-line application to demonstrate PIAX Agents.
+
+** The project repository is moved to Github.
+
+The repository is on 'http://github.com/piax/piax'.
 
 ** The source code is now based on Java 8.
 
-PIAX no longer support old versions of Java (earlier than version 8).
+PIAX no longer support old versions of Java (earlier than version 8)
+because of security reasons.
 
 ** Performance is improved.
 
