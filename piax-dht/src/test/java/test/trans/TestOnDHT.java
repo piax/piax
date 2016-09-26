@@ -11,6 +11,7 @@ import org.piax.common.Destination;
 import org.piax.common.Endpoint;
 import org.piax.common.PeerId;
 import org.piax.common.PeerLocator;
+import org.piax.common.StatusRepo;
 import org.piax.common.subspace.LowerUpper;
 import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.IdConflictException;
@@ -99,6 +100,7 @@ public class TestOnDHT {
     }
     
     public void DHTRun(boolean useSG, L loc) throws Exception {
+        StatusRepo.ON_MEMORY = true;
         Peer[] peers = new Peer[numPeer];
         @SuppressWarnings("unchecked")
         Overlay<LowerUpper, HashId>[] ovs = new Overlay[numPeer];

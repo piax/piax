@@ -52,6 +52,7 @@ import org.piax.common.CalleeId;
 import org.piax.common.Location;
 import org.piax.common.PeerId;
 import org.piax.common.PeerLocator;
+import org.piax.common.StatusRepo;
 import org.piax.common.TransportId;
 import org.piax.common.attribs.IncompatibleTypeException;
 import org.piax.common.subspace.LowerUpper;
@@ -79,14 +80,13 @@ public class SimpleShell {
     static PeerLocator seedLocator = null;
     static String locType = "";
     static Location loc = null;
-    static boolean renewRepo = false;
     static InetSocketAddress myAddr;
     static InetSocketAddress seedAddr;
     static DHT dht = null;
 
     private static void printUsage() {
         System.out
-                .println("Usage: piaxshell -? [-{u,t,n,p}] [-i<me>] -s<seed> [-x<x> -y<y>] name\n"
+                .println("Usage: piaxshell -? [-{u,t}] [-i<me>] -s<seed> [-x<x> -y<y>] name\n"
                         + "  ex(root).  piaxshell -s12367 root\n"
                         + "  ex(root).  piaxshell -i9000 -s9000 root\n"
                         + "  ex(root).  piaxshell -i210.156.0.59:12367 -s12367 -x130 -y30 root\n"
@@ -148,9 +148,6 @@ public class SimpleShell {
                     case 's':
                         seed = arg.substring(2);
                         break;
-                    case 'c':
-                        renewRepo = true;
-                        break;
                     case 'x':
                         x = Double.parseDouble(arg.substring(2));
                         break;
@@ -202,6 +199,8 @@ public class SimpleShell {
         agents = new ArrayList<AgentId>();
         ragents = new ArrayList<AgentId>();
         // home = piaxPeer.getHome();
+        
+        StatusRepo.ON_MEMORY = true;
     }
 
     public String getServiceName() {
@@ -228,6 +227,8 @@ public class SimpleShell {
                         + "                  create new agent as class and set name\n"
                         + "  mk)agent file\n"
                         + "                  create new agent by using file described agent info\n"
+                        + "                  The format of the file is as follows:\n"
+                        + "                  <agent class name> <name>\n"
                         + "  dup agent_NO    duplicate agent from which indicated by agent_NO\n"
                         + "  sl)eep agent_NO sleep agent indicated by agent_NO\n"
                         + "  wa)ke agetn_NO  wakeup agent indicated by agent_NO\n"
@@ -675,11 +676,15 @@ public class SimpleShell {
     }
 
     void mkagent(String file) {
-        String agentPath = System.getProperty("piax.agent.path");
-        File agentFile = new File(new File(agentPath), file);
+//        String agentPath = System.getProperty("piax.agent.path");
+//        if (agentPath == null) {
+//            System.out.println("\t>> cannot create agent from agent info file.");
+//            return;
+//        }
+        File agentFile = new File(file);
         if (!agentFile.isFile()) {
             System.out
-                    .println("\t>> " + file + " is not found at " + agentPath);
+                    .println("\t>> agent info file named " + file + " is not found");
             return;
         }
 
@@ -689,13 +694,14 @@ public class SimpleShell {
             String line;
             while ((line = reader.readLine()) != null) {
                 String[] items = line.split("\\s+");
-                if (items.length == 3) {
+                if (items.length == 2) {
                     p.createAgent(items[0], items[1]);
                 }
-                reader.close();
             }
+            reader.close();
         } catch (Exception e) {
-            System.out.println("\t>> cannot create new agent.");
+            System.out.println("\t>> creating agent failed from agent info file.");
+            return;
         }
         move(0, 0);
     }
