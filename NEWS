@@ -9,7 +9,7 @@ The structure of the package is changed as follows:
 
  'piax-gtrans' - Core modules of GTrans.
  'piax-agent' - PIAX Agent modules.
- 'piax-dht' - A DHT implementation on PIAX.
+ 'piax-dht' - A DHT implementation on PIAX (experimental).
  'piax-gtrans-dtn' - Modules related to DTN, AdHoc and Bluetooth (experimental).
  'piax-samples' - Some simple samples of GTrans and PIAX Agents.
  'piax-shell' - A command-line application to demonstrate PIAX Agents.
