@@ -172,9 +172,9 @@ public class MSkipGraph<D extends Destination, K extends ComparableKey<?>>
     /*
      * DDLL SGから呼ばれるexecQuery TODO 取り出す値の個数については要検討
      */
+    @SuppressWarnings("unchecked")
     public RemoteValue<?> sgExecQuery(Comparable<?> key, Object msg) {
         logger.trace("ENTRY:");
-        @SuppressWarnings("unchecked")
         FutureQueue<?> rets = onReceiveRequest(
                 Collections.<K>singleton((K) key), (NestedMessage) msg);
         /*

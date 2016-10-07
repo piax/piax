@@ -190,12 +190,12 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
     /*
      * rqExecQuery 
      */
+    @SuppressWarnings("unchecked")
     public RemoteValue<?> rqExecQuery(Comparable<?> key, Object msg) {
         logger.trace("ENTRY:");
         if (!isJoined) {
             throw new IllegalStateException("Not joined to the network yet.");
         }
-        @SuppressWarnings("unchecked")
         FutureQueue<?> rets = onReceiveRequest(
                 Collections.<K>singleton((K) key), (NestedMessage) msg);
         /*

@@ -460,6 +460,7 @@ public class RingManager<E extends Endpoint> extends RPCInvoker<RingIf, E>
      * @throws IOException
      * @throws UnavailableException  
      */
+    @SuppressWarnings("unchecked")
     public InsertPoint findImmedNeighbors(E introducer, DdllKey key, Object query, TransOptions opts)
             throws UnavailableException, IOException {
         E p = introducer;
