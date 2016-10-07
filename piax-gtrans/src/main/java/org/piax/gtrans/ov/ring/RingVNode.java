@@ -186,6 +186,7 @@ public class RingVNode<E extends Endpoint> implements NodeObserver {
      * @throws UnavailableException introducerにkeyが存在しない
      * @throws IOException introducerとの通信でエラー or insertion failure
      */
+    @SuppressWarnings("unchecked")
     protected boolean addKey(E introducer) throws UnavailableException,
             IOException {
         logger.trace("ENTRY:");

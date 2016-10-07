@@ -208,6 +208,7 @@ public class DTNMessageMgr<D extends Destination> {
         }
     }
     
+    @SuppressWarnings("unchecked")
     public MessageEntry<D> newMsg(Destination dst, NestedMessage nmsg, long msgTTL) {
         MessageCtrl ctrl = new MessageCtrl(mother.getPeerId(), msgTTL);
         MessageEntry<D> entry = new MessageEntry<D>(ctrl, (D) dst, nmsg);

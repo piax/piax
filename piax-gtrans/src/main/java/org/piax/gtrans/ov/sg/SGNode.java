@@ -530,6 +530,7 @@ public class SGNode<E extends Endpoint> implements NodeObserver {
      * @throws ConflictException found that another node is simultaneously 
      *                           traversing.
      */
+    @SuppressWarnings("unchecked")
     private InsertPoint findMatchingNode0(int level)
     throws NoSuchKeyException, ConflictException, IOException {
         assert level > 0;
@@ -1001,6 +1002,7 @@ public class SGNode<E extends Endpoint> implements NodeObserver {
      * @param failedLinks   set of failed nodes
      * @param rLimit
      */
+    @SuppressWarnings("unchecked")
     private void propagateRightward(Link failedLink,
             Collection<Link> failedLinks, DdllKey rLimit) {
         String h = "propagateRightward@" + sg.myLocator;
@@ -1037,6 +1039,7 @@ public class SGNode<E extends Endpoint> implements NodeObserver {
         }
     }
     
+    @SuppressWarnings("unchecked")
     @Override
     public void onRightNodeChange(Link prevRight, Link newRight, Object payload) {
         if (payload == null) {
@@ -1068,6 +1071,7 @@ public class SGNode<E extends Endpoint> implements NodeObserver {
         }
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public void payloadNotSent(Object payload) {
         if (payload instanceof RQMessage) {

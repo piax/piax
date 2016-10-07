@@ -133,6 +133,7 @@ public class FloodingNode<D extends Destination, K extends Key> extends
         return matched;
     }
     
+    @SuppressWarnings("unchecked")
     public List<RemoteValue<?>> request(List<Endpoint> visited, Destination dst,
             NestedMessage nmsg) {
         logger.trace("ENTRY:");

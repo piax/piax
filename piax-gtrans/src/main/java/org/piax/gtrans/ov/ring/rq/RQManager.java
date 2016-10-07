@@ -205,11 +205,13 @@ public class RQManager<E extends Endpoint> extends RingManager<E> implements
         this.stdRQAlgo = algo;
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public RQIf<E> getStub(E addr, int rpcTimeout) {
         return (RQIf<E>) super.getStub(addr, rpcTimeout);
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public RQIf<E> getStub(Endpoint dst) {
         return (RQIf<E>) super.getStub(dst);
