@@ -11,6 +11,7 @@ import java.util.List;
 import org.junit.Test;
 import org.piax.common.ComparableKey;
 import org.piax.common.Destination;
+import org.piax.common.ObjectId;
 import org.piax.common.PeerId;
 import org.piax.common.PeerLocator;
 import org.piax.common.TransportId;
@@ -824,6 +825,92 @@ public class TestTransport {
         assertTrue("SG2 receive failed", sg_received2);
         assertTrue("SG1 receive failed", sg_received1);
 
+        p1.fin();
+        p2.fin();
+    }
+
+    @Test
+    public void DifferentObjectIDTest() throws Exception {
+        // get peers
+        Peer p1 = Peer.getInstance(new PeerId("p1"));
+        Peer p2 = Peer.getInstance(new PeerId("p2"));
+        
+        // base transport (TCP)
+        PeerLocator loc;
+        ChannelTransport<?> bt1 = p1.newBaseChannelTransport(
+                loc = new TcpLocator(new InetSocketAddress("localhost", 12367)));
+        ChannelTransport<?> bt2 = p2.newBaseChannelTransport(
+                new TcpLocator(new InetSocketAddress("localhost", 12368)));
+
+        // top level
+        Overlay<ComparableKey<?>, ComparableKey<?>> tr1 = new Suzaku<>(bt1);
+        Overlay<ComparableKey<?>, ComparableKey<?>> tr2 = new Suzaku<>(bt2);
+
+        sg_received1 = false;
+        sg_received2 = false;
+        
+        ObjectId oid = new ObjectId("app");
+        ObjectId oid2 = new ObjectId("app2");
+
+        tr1.setListener(oid, new TransportListener<ComparableKey<?>>() {
+            public void onReceive(Transport<ComparableKey<?>> trans,
+                    ReceivedMessage rmsg) {
+                logger.debug("tcp recv1:" + rmsg.getMessage());
+                sg_received1 = rmsg.getMessage().equals("recv");
+            }
+        });
+
+        tr2.setListener(oid, new TransportListener<ComparableKey<?>>() {
+            public void onReceive(Transport<ComparableKey<?>> trans,
+                    ReceivedMessage rmsg) {
+                try {
+                    logger.debug("tcp recv2:" + rmsg.getMessage());
+                    sg_received2 = true;
+                    trans.send(oid, new DoubleKey(Double.parseDouble(
+                            (String) rmsg.getMessage())), "recv");
+                } catch (IOException e) {
+                    fail("IOException occured");
+                }
+            }
+        });
+
+        boolean succ1 = tr1.join(loc);
+        boolean succ2 = tr2.join(loc);
+        Thread.sleep(500);
+        boolean succ3 = tr1.addKey(oid2, new DoubleKey(1.0));
+        boolean succ4 = tr2.addKey(oid2, new DoubleKey(2.0));
+
+        assertTrue("ov1 join failed", succ1);
+        assertTrue("ov2 join failed", succ2);
+        assertTrue("ov1 addKey failed", succ3);
+        assertTrue("ov2 addKey failed", succ4);
+        Thread.sleep(500);
+
+        DoubleKey key = null;
+        for (ComparableKey<?> obj : tr1.getKeys()) {
+            if (obj instanceof DoubleKey) {
+                key = (DoubleKey) obj;
+            }
+        }
+        tr1.send(oid2, new DoubleKey(2.0), key.getKey().toString());
+
+        Thread.sleep(1000);
+        assertTrue("ov2 falsely received", !sg_received2);
+        assertTrue("ov1 falsely received", !sg_received1);
+
+        succ3 = tr1.addKey(oid, new DoubleKey(1.0));
+        succ4 = tr2.addKey(oid, new DoubleKey(2.0));
+        
+        assertTrue("ov1 addKey failed", succ3);
+        assertTrue("ov2 addKey failed", succ4);
+        Thread.sleep(500);
+        
+        tr1.send(oid, new DoubleKey(2.0), key.getKey().toString());
+
+        Thread.sleep(1000);
+        assertTrue("ov2 receive failed", sg_received2);
+        assertTrue("ov1 receive failed", sg_received1);
+        
         p1.fin();
         p2.fin();
     }
