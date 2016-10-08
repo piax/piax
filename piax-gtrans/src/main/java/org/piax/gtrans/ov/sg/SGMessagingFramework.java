@@ -348,6 +348,7 @@ public class SGMessagingFramework<E extends Endpoint> {
          * 
          * @param dst   destination node
          */
+        @SuppressWarnings("unchecked")
         public void send(Link dst) {
             assert !isRecvdInstance;
             receiver = dst;

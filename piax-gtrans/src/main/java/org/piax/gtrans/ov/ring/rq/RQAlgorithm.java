@@ -48,7 +48,7 @@ public interface RQAlgorithm {
      * @param failedLinks   (maybe) failed links
      * @return subranges
      */
-    @Deprecated
+    //@Deprecated
     List<SubRange> assignDelegate(Object query, SubRange queryRange,
             NavigableMap<DdllKey, Link> allLinks,
             Collection<Endpoint> failedLinks);

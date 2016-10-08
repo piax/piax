@@ -40,7 +40,7 @@ public class LocationId extends Id implements ComparableKey<Id> {
         this(loc.getX(), loc.getY());
     }
     
-    @Deprecated
+    //@Deprecated
     public LocationId(double x, double y) throws IllegalArgumentException {
         super(new byte[BYTE_LENGTH]);
         if (x < -180.0 || 180.0 < x || y < -90.0 || 90.0 < y) {

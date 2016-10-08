@@ -569,6 +569,7 @@ public class SkipGraph<E extends Endpoint> extends RPCInvoker<SkipGraphIf<E>, E>
      * @throws IOException
      *             seedと通信する際にエラーが発生
      */
+    @SuppressWarnings("unchecked")
     @Deprecated
     public InsertPoint findOld(E introducer, DdllKey key, boolean accurate)
             throws UnavailableException, IOException {
@@ -794,6 +795,7 @@ public class SkipGraph<E extends Endpoint> extends RPCInvoker<SkipGraphIf<E>, E>
      * @param query
      * @return
      */
+    @SuppressWarnings("unchecked")
     private List<RemoteValue<?>> forwardQuery0(Range<?> range, Object query) {
         logger.trace("ENTRY:");
         DdllKey fromKey = new DdllKey(range.from, UniqId.MINUS_INFINITY); // inclusive
@@ -1921,6 +1923,7 @@ public class SkipGraph<E extends Endpoint> extends RPCInvoker<SkipGraphIf<E>, E>
         return keyHash.get(key).getMyLinkAtLevel0();
     }
     
+    @SuppressWarnings("unchecked")
     Link[] getNeighbors(Comparable<?> key, boolean right, int level) {
         ArrayList<Link> ret = new ArrayList<Link>();
         if (key == null) {

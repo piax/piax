@@ -269,6 +269,7 @@ public abstract class OneToOneMappingTransport<E extends Endpoint> extends
         return msg;
     }
 
+    @SuppressWarnings("unchecked")
     private OneToOneChannel<E> newAcceptCh(Channel<E> lowerCh, NestedMessage nmsg) {
         OneToOneChannel<E> ch = new OneToOneChannel<E>(lowerCh, nmsg.srcPeerId, this,
                 nmsg.receiver, nmsg.sender, (E) nmsg.src);
@@ -308,6 +309,7 @@ public abstract class OneToOneMappingTransport<E extends Endpoint> extends
     
     // Put the received nested message on the corresponding channel queue.
     // Returns true if successfully finished.
+    @SuppressWarnings("unchecked")
     protected OneToOneChannel<E> _putReceiveQueue(Channel<E> lowerCh, NestedMessage nmsg) {
         /*
          * TODO think!
@@ -367,6 +369,7 @@ public abstract class OneToOneMappingTransport<E extends Endpoint> extends
         _onReceive(lowerTrans, nmsg);
     }
 
+    @SuppressWarnings("unchecked")
     protected void _onReceive(Transport<E> lowerTrans, NestedMessage nmsg) {
         logger.trace("ENTRY:");
         // サブクラスで定義する受信後処理を呼ぶ

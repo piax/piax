@@ -122,6 +122,7 @@ public class FlexibleArray<T> implements Serializable {
         return list.toString();
     }
     
+    @SuppressWarnings("unchecked")
     public List<T> getAll() {
         return (List<T>)list.clone();
     }

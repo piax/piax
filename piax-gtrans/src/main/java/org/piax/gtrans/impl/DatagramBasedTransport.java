@@ -273,6 +273,7 @@ public abstract class DatagramBasedTransport<U extends Endpoint, L extends Endpo
      */
     protected abstract boolean useReceiverThread(int numProc);
 
+    @SuppressWarnings("unchecked")
     private void dispatchCmd(NestedMessage nmsg) {
         DatagramChannel<U> ch;
         ChannelListener<U> listener = getChannelListener(nmsg.receiver);
@@ -345,6 +346,7 @@ public abstract class DatagramBasedTransport<U extends Endpoint, L extends Endpo
         }
     }
 
+    @SuppressWarnings("unchecked")
     protected void raiseUpperListener(NestedMessage nmsg) {
         if (nmsg.channelNo == 0) {
             // datagram case
