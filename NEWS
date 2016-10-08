@@ -16,11 +16,11 @@ The structure of the package is changed as follows:
 
 ** The project repository is moved to Github.
 
-The repository is on 'http://github.com/piax/piax'.
+The PIAX project repository is on 'http://github.com/piax/piax'.
 
 ** The source code is now based on Java 8.
 
-PIAX no longer support old versions of Java (earlier than version 8)
+PIAX no longer supports old versions of Java (earlier than version 8)
 because of security reasons.
 
 ** Performance is improved.
