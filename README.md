@@ -19,3 +19,14 @@ The structure of PIAX is as follows:
 
 cd into cloned source directory and `mvn -Dmaven.test.skip=true clean package`. 
 Of course you can do tests by eliminating `-Dmaven.test.skip=true` (it takes a while).
+
+# Maven build settings
+
+PIAX artifacts are available on Maven Central Repository. You can build your program using maven by following settings.
+
+    <!-- https://mvnrepository.com/artifact/org.piax/piax-gtrans -->
+     <dependency>
+        <groupId>org.piax</groupId>
+        <artifactId>piax-gtrans</artifactId>
+        <version>3.1.0</version>
+     </dependency>
