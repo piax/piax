@@ -56,7 +56,7 @@ public class FTEntry implements Serializable, Cloneable {
     /**
      * update this entry as the local entry (where its index == LOCALINDEX).
      * 
-     * @param vnode
+     * @param vnode the virtual node object.
      */
     public void updateLocalEntry(ChordSharpVNode<?> vnode) {
         // empty

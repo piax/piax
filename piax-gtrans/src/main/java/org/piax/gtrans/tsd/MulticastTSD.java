@@ -30,9 +30,8 @@ import org.slf4j.LoggerFactory;
  * TODO
  * 交換する ServiceInfoについてはJavaのserializeを使っているが、JSONに切り替えた方がよい。
  * <p>
- * 正確なことを書くと、TSD<T>を型指定しているが、実際にはシングルトンで起動させるので、アプリにとって、
+ * 正確なことを書くと、TSDを型指定しているが、実際にはシングルトンで起動させるので、アプリにとって、
  * 型Tの情報を扱うように見えても、様々な型をハンドリングしていることになる。
- * 本来、TSD<T> とジェネリック宣言すべきかよくわからない。
  */
 public class MulticastTSD<T> extends TSD<T> implements Runnable {
     /*--- logger ---*/

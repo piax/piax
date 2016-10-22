@@ -451,6 +451,7 @@ public class MethodUtil {
      * 
      * @param target target object
      * @param superIf super interface
+     * @param localCall true if it is local call.
      * @param methodName method name
      * @param args the arguments used for the method call
      * @return the result of invoking the method

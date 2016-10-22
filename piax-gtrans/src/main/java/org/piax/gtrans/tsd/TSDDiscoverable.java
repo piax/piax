@@ -125,9 +125,7 @@ public class TSDDiscoverable<E extends Endpoint> implements Discoverable<E>,
     /**
      * peerId, receiverの区分で、有効なサービスのリストを取得する。
      * 
-     * @param peerId
-     * @param receiver
-     * @return
+     * @return the list of PeerInfo.
      */
     public List<PeerInfo<E>> getAvailablePeerInfos() {
         List<PeerInfo<E>> avail = new ArrayList<PeerInfo<E>>();

@@ -70,7 +70,7 @@ import org.slf4j.LoggerFactory;
 /**
  * オンメモリーで動作するDHTサービスを実現する。
  * <p>
- * key, valueペアは、Map<Comparable, Object> を型に持つメモリー上のデータ構造に格納する。
+ * key, valueペアは、Map&lt;Comparable, Object&gt; を型に持つメモリー上のデータ構造に格納する。
  * 突然のピアダウンによるデータの喪失を防ぐため、更新データを定期的にストレージにセーブする。
  * メモリー上に、key, valueペアを置くことで、以下の利点を持つ。
  * <ul>
@@ -190,8 +190,6 @@ public class DHT implements OverlayListener<LowerUpper, HashId> {
     
     /**
      * DHTオブジェクトを生成する。
-     * 
-     * @param mgr Overlayオブジェクト
      */
     public DHT(Overlay<? super LowerUpper, ? super HashId> sg)
             throws IOException {
@@ -568,7 +566,6 @@ public class DHT implements OverlayListener<LowerUpper, HashId> {
      * 
      * @param key key
      * @return byte列にシリアライズされたvalue
-     * @throws ObjectStreamException シリアライズに失敗した場合
      */
     protected <K> Object getLocal(Comparable<K> key) {
         logger.trace("ENTRY:");
@@ -579,10 +576,6 @@ public class DHT implements OverlayListener<LowerUpper, HashId> {
 
     /**
      * 型情報を記載した本来の execQuery
-     * 
-     * @param keys マッチしたkeｙのコレクション
-     * @param dhtq QueryPackオブジェクト
-     * @return putの場合はnull、getの場合は、RemoteValue<byte[]>のリスト
      */
     @SuppressWarnings({ "unchecked", "rawtypes" })
     public FutureQueue<?> onReceiveRequest(Overlay<LowerUpper, HashId> ov,

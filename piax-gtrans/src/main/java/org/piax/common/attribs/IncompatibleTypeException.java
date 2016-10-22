@@ -23,14 +23,14 @@ public class IncompatibleTypeException extends Exception {
     }
 
     /**
-     * @param message
+     * @param message the detail message.
      */
     public IncompatibleTypeException(String message) {
         super(message);
     }
 
     /**
-     * @param cause
+     * @param cause the cause.
      */
     public IncompatibleTypeException(Throwable cause) {
         super(cause);

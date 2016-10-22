@@ -26,32 +26,35 @@ public interface ChannelTransport<E extends Endpoint> extends Transport<E> {
     
     /**
      * 
-     * @return
+     * @return true when the channel supports duplex communication.
      */
     boolean supportsDuplex();
 
     /**
+     * Set channel listener.
      * 
-     * @param upper
-     * @param listener
+     * @param upper the object ID of the transport object to set listener.
+     * @param listener the channel listener to set.
      */
     void setChannelListener(ObjectId upper, ChannelListener<E> listener);
     
     /**
-     * 
-     * @param upper
-     * @return
+     * Get channel listener.
+     * @param upper the object ID
+     * @return the channel listener.
      */
     ChannelListener<E> getChannelListener(ObjectId upper);
     
     /**
-     * @param listener
+     * Set channel listener for the object which has default object ID.
+     * 
+     * @param listener the channel listner to set.
      */
     void setChannelListener(ChannelListener<E> listener);
     
     /**
-     * 
-     * @return
+     * Get channel listener for the object which has default object ID.
+     * @return the channel listener.
      */
     ChannelListener<E> getChannelListener();
     
@@ -60,53 +63,57 @@ public interface ChannelTransport<E extends Endpoint> extends Transport<E> {
     // ** for channel based communication
     // for application
     /**
+     * Create a new channel.
      * 
-     * @param sender
-     * @param receiver
-     * @param dst
-     * @return
-     * @throws ProtocolUnsupportedException
-     * @throws IOException
+     * @param sender object ID of the sender. 
+     * @param receiver object ID of the receiver. 
+     * @param dst the endpoint of the destination to create channel. 
+     * @return a new instance of channel.
+     * @throws ProtocolUnsupportedException an exception thrown when the protocol is not supported.
+     * @throws IOException an exception when thrown when an I/O error occurred.
      */
     Channel<E> newChannel(ObjectId sender, ObjectId receiver, E dst)
             throws ProtocolUnsupportedException, IOException;
 
     /**
+     * Create a new channel with timeout.
      * 
-     * @param sender
-     * @param receiver
-     * @param dst
-     * @param timeout
-     * @return
-     * @throws ProtocolUnsupportedException
-     * @throws IOException
+     * @param sender object ID of the sender. 
+     * @param receiver object ID of the receiver. 
+     * @param dst the endpoint of the destination to create channel.
+     * @param timeout the timeout length.
+     * @return a new instance of channel.
+     * @throws ProtocolUnsupportedException an exception thrown when the protocol is not supported.
+     * @throws IOException an exception when thrown when an I/O error occurred.
      */
     Channel<E> newChannel(ObjectId sender, ObjectId receiver, E dst,
             int timeout) throws ProtocolUnsupportedException, IOException;
 
     /**
+     * Create a new channel with isDuplex.
      * 
-     * @param sender
-     * @param receiver
-     * @param dst
-     * @param isDuplex
-     * @return
-     * @throws ProtocolUnsupportedException
-     * @throws IOException
+     * @param sender object ID of the sender. 
+     * @param receiver object ID of the receiver. 
+     * @param dst the endpoint of the destination to create channel.
+     * @param isDuplex whether the connection is duplex or not.
+     * @return a new instance of channel.
+     * @throws ProtocolUnsupportedException an exception thrown when the protocol is not supported.
+     * @throws IOException an exception when thrown when an I/O error occurred.
      */
     Channel<E> newChannel(ObjectId sender, ObjectId receiver, E dst,
             boolean isDuplex) throws ProtocolUnsupportedException, IOException;
 
     /**
+     * Create a new channel with isDuplex and timeout.
      * 
-     * @param sender
-     * @param receiver
-     * @param dst
-     * @param isDuplex
-     * @param timeout
-     * @return
-     * @throws ProtocolUnsupportedException
-     * @throws IOException
+     * @param sender object ID of the sender. 
+     * @param receiver object ID of the receiver. 
+     * @param dst the endpoint of the destination to create channel.
+     * @param isDuplex whether the connection is duplex or not.
+     * @param timeout the timeout length.
+     * @return a new instance of channel.
+     * @throws ProtocolUnsupportedException an exception thrown when the protocol is not supported.
+     * @throws IOException an exception when thrown when an I/O error occurred.
      */
     Channel<E> newChannel(ObjectId sender, ObjectId receiver, E dst,
             boolean isDuplex, int timeout) throws ProtocolUnsupportedException,
@@ -137,49 +144,49 @@ public interface ChannelTransport<E extends Endpoint> extends Transport<E> {
     
     // for Transport
     /**
-     * 
-     * @param upperTrans
-     * @param dst
-     * @return
-     * @throws ProtocolUnsupportedException
-     * @throws IOException
+     * Create a new channel for a transport object.
+     * @param upperTrans the transport object.
+     * @param dst the endpoint of the destination to create channel.
+     * @return a new instance of channel.
+     * @throws ProtocolUnsupportedException an exception thrown when the protocol is not supported.
+     * @throws IOException an exception when thrown when an I/O error occurred.
      */
     Channel<E> newChannel(TransportId upperTrans, E dst)
             throws ProtocolUnsupportedException, IOException;
 
     /**
-     * 
-     * @param upperTrans
-     * @param dst
-     * @param timeout
-     * @return
-     * @throws ProtocolUnsupportedException
-     * @throws IOException
+     * Create a new channel for a transport object with timeout.
+     * @param upperTrans the transport object.
+     * @param dst the endpoint of the destination to create channel.
+     * @param timeout timeout the timeout length.
+     * @return a new instance of channel.
+     * @throws ProtocolUnsupportedException an exception thrown when the protocol is not supported.
+     * @throws IOException an exception when thrown when an I/O error occurred.
      */
     Channel<E> newChannel(TransportId upperTrans, E dst, int timeout)
             throws ProtocolUnsupportedException, IOException;
 
     /**
-     * 
-     * @param upperTrans
-     * @param dst
-     * @param isDuplex
-     * @return
-     * @throws ProtocolUnsupportedException
-     * @throws IOException
+     * Create a new channel for a transport object with isDuplex.
+     * @param upperTrans the transport object.
+     * @param dst the endpoint of the destination to create channel.
+     * @param isDuplex whether the connection is duplex or not.
+     * @return a new instance of channel.
+     * @throws ProtocolUnsupportedException an exception thrown when the protocol is not supported.
+     * @throws IOException an exception when thrown when an I/O error occurred.
      */
     Channel<E> newChannel(TransportId upperTrans, E dst, boolean isDuplex)
             throws ProtocolUnsupportedException, IOException;
 
     /**
-     * 
-     * @param upperTrans
-     * @param dst
-     * @param isDuplex
-     * @param timeout
-     * @return
-     * @throws ProtocolUnsupportedException
-     * @throws IOException
+     * Create a new channel for a transport object with isDuplex and timeout.
+     * @param upperTrans the transport object.
+     * @param dst the endpoint of the destination to create channel.
+     * @param isDuplex whether the connection is duplex or not.
+     * @param timeout timeout the timeout length.
+     * @return a new instance of channel.
+     * @throws ProtocolUnsupportedException an exception thrown when the protocol is not supported.
+     * @throws IOException an exception when thrown when an I/O error occurred.
      */
     Channel<E> newChannel(TransportId upperTrans, E dst, boolean isDuplex,
             int timeout) throws ProtocolUnsupportedException, IOException;

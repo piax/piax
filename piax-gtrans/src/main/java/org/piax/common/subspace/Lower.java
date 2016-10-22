@@ -23,9 +23,9 @@ public class Lower<K extends ComparableKey<?>> extends LowerUpper {
     private static final long serialVersionUID = 1L;
 
     /**
-     * @param inclusive
-     * @param point
-     * @param k
+     * @param inclusive true if the point is included.
+     * @param point the point to specify.
+     * @param maxNum specify how many keys match.
      */
     public Lower(boolean inclusive, K point, int maxNum) {
         super(new KeyRange<ComparableKey<?>>(

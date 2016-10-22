@@ -330,7 +330,6 @@ public class TestRPC extends Util {
     
     /**
      * RPCInvokerのサブクラスへの通常のRPC
-     * @throws RPCException
      */
     @Test
     public void rpcToInvokerAppNormal() throws RPCException {
@@ -342,7 +341,6 @@ public class TestRPC extends Util {
     /**
      * RPCInvokerのサブクラスへの通常のRPC
      * timeout付き
-     * @throws RPCException
      */
     @Test
     public void rpcToInvokerAppNormalTimeout() throws RPCException {
@@ -353,7 +351,6 @@ public class TestRPC extends Util {
     
     /**
      * RPCInvokerのサブクラスへの通常のRPC
-     * @throws RPCException
      */
     @Test
     public void callInvokerAppNormal() throws RPCException {
@@ -364,7 +361,6 @@ public class TestRPC extends Util {
     /**
      * RPCInvokerのサブクラスへの通常のRPC
      * timeout付き
-     * @throws RPCException
      */
     @Test
     public void callInvokerAppNormalTimeout() throws RPCException {
@@ -374,8 +370,6 @@ public class TestRPC extends Util {
     
     /**
      * RPCInvokerのサブクラスへのoneway RPC
-     * @throws RPCException
-     * @throws InterruptedException 
      */
     @Test
     public void rpcToInvokerAppOneway() throws RPCException, InterruptedException {
@@ -389,8 +383,6 @@ public class TestRPC extends Util {
     
     /**
      * RPCInvokerのサブクラスのvoidメソッドへの同期型RPC
-     * @throws RPCException
-     * @throws InterruptedException 
      */
     @Test
     public void callInvokerAppVoid() throws RPCException, InterruptedException {
@@ -401,7 +393,6 @@ public class TestRPC extends Util {
     
     /**
      * RPCInvokerのサブクラスのExceptionを発生するメソッドへのRPC
-     * @throws RPCException
      */
     @Test
     public void callInvokerAppException() throws RPCException {
@@ -416,7 +407,6 @@ public class TestRPC extends Util {
     
     /**
      * RPCInvokerのサブクラスのnullを返すメソッドへのRPC
-     * @throws RPCException
      */
     @Test
     public void callInvokerAppNull() throws RPCException {
@@ -427,7 +417,6 @@ public class TestRPC extends Util {
     /**
      * RPCInvokerのlocalメソッドへのRPC
      * IllegalRPCAccessExceptionが発生するはず
-     * @throws RPCException
      */
     @Test
     public void callInvokerAppLocal() throws RPCException {
@@ -445,7 +434,6 @@ public class TestRPC extends Util {
     
     /**
      * RPCInvokerの最初の引数が配列のメソッドへのRPC
-     * @throws RPCException
      */
     @Test
     public void callInvokerAppArray() throws RPCException {
@@ -456,7 +444,6 @@ public class TestRPC extends Util {
     
     /**
      * RPCInvokerの引数が配列とスカラーが混じったメソッドへのRPC
-     * @throws RPCException
      */
     @Test
     public void callInvokerAppArray2() throws RPCException {
@@ -468,7 +455,6 @@ public class TestRPC extends Util {
     
     /**
      * RPCInvokerの引数が可変長のメソッドへのRPC
-     * @throws RPCException
      */
     @Test
     public void callInvokerAppVarArgs() throws RPCException {
@@ -482,7 +468,6 @@ public class TestRPC extends Util {
      * RPCInvokerのサブクラスへのRPC
      * NetworkTimeoutExceptionが発生するはず
      * 10秒かかる
-     * @throws RPCException
      */
     @Test
     public void callInvokerAppTimeout() throws RPCException {
@@ -501,7 +486,6 @@ public class TestRPC extends Util {
 
     /**
      * RPCInvokerのサブクラスへの通常のlocal call
-     * @throws RPCException
      */
     @Test
     public void localCallInvokerAppNormal() throws RPCException {
@@ -511,8 +495,6 @@ public class TestRPC extends Util {
     
     /**
      * RPCInvokerのサブクラスへのoneway local call
-     * @throws RPCException
-     * @throws InterruptedException 
      */
     @Test
     public void localCallToInvokerAppOneway() throws RPCException, InterruptedException {
@@ -526,8 +508,6 @@ public class TestRPC extends Util {
     
     /**
      * RPCInvokerのサブクラスのvoidメソッドへのlocal call
-     * @throws RPCException
-     * @throws InterruptedException 
      */
     @Test
     public void localCallInvokerAppVoid() throws RPCException, InterruptedException {
@@ -538,7 +518,6 @@ public class TestRPC extends Util {
     
     /**
      * RPCInvokerのサブクラスのExceptionを発生するメソッドへのlocal call
-     * @throws RPCException
      */
     @Test
     public void localCallInvokerAppException() throws RPCException {
@@ -553,7 +532,6 @@ public class TestRPC extends Util {
     
     /**
      * RPCInvokerのサブクラスのnullを返すメソッドへのlocal call
-     * @throws RPCException
      */
     @Test
     public void localCallInvokerAppNull() throws RPCException {
@@ -563,7 +541,6 @@ public class TestRPC extends Util {
     
     /**
      * RPCInvokerのlocalメソッドへのlocal call
-     * @throws RPCException
      */
     @Test
     public void localCallInvokerAppLocal() throws RPCException {
@@ -572,7 +549,6 @@ public class TestRPC extends Util {
     
     /**
      * RPCInvokerの最初の引数が配列のメソッドへのlocal call
-     * @throws RPCException
      */
     @Test
     public void localCallInvokerAppArray() throws RPCException {
@@ -583,7 +559,6 @@ public class TestRPC extends Util {
     
     /**
      * RPCInvokerの引数が配列とスカラーが混じったメソッドへのlocal call
-     * @throws RPCException
      */
     @Test
     public void localCallInvokerAppArray2() throws RPCException {
@@ -595,7 +570,6 @@ public class TestRPC extends Util {
     
     /**
      * RPCInvokerの引数が可変長のメソッドへのlocal call
-     * @throws RPCException
      */
     @Test
     public void localCallInvokerAppVarArgs() throws RPCException {
@@ -607,7 +581,6 @@ public class TestRPC extends Util {
     
     /**
      * RPCInvokerのサブクラスへのlocal call
-     * @throws RPCException
      */
     @Test
     public void localCallInvokerAppTimeout() throws RPCException {
@@ -617,7 +590,6 @@ public class TestRPC extends Util {
 
     /**
      * 通常のオブジェクトへのRPC
-     * @throws RPCException
      */
     @Test
     public void rpcToAppNormal() throws RPCException {
@@ -630,7 +602,6 @@ public class TestRPC extends Util {
     /**
      * 通常のオブジェクトへのRPC
      * timeout付き
-     * @throws RPCException
      */
     @Test
     public void rpcToAppNormalTimeout() throws RPCException {
@@ -642,7 +613,6 @@ public class TestRPC extends Util {
     
     /**
      * 通常のオブジェクトへのRPC
-     * @throws RPCException
      */
     @Test
     public void calAppNormal() throws RPCException {
@@ -655,7 +625,6 @@ public class TestRPC extends Util {
      * 通常のオブジェクトへのRPC。
      * クラス指定
      * IllegalArgumentExceprtionが発生するはず
-     * @throws RPCException
      */
     @Test(expected = IllegalArgumentException.class)
     public void calAppNormalWithClass() throws RPCException {
@@ -667,7 +636,6 @@ public class TestRPC extends Util {
     /**
      * 通常のオブジェクトへのRPC
      * timeout付き
-     * @throws RPCException
      */
     @Test
     public void callAppNormalTimeout() throws RPCException {
@@ -678,7 +646,6 @@ public class TestRPC extends Util {
     
     /**
      * 通常のオブジェクトへのlocal call
-     * @throws RPCException
      */
     @Test
     public void localCallAppNormal() throws RPCException {
@@ -689,7 +656,6 @@ public class TestRPC extends Util {
     
     /**
      * RemoteRefを用いた通常のオブジェクトへのRPC
-     * @throws RPCException
      */
     @Test
     public void callAppNormalWithRemoteRef() throws RPCException {
@@ -701,7 +667,6 @@ public class TestRPC extends Util {
     
     /**
      * Dynamic RPC
-     * @throws Throwable 
      */
     @Test
     public void callAppDynamic() throws Throwable {
@@ -713,7 +678,6 @@ public class TestRPC extends Util {
     
     /**
      * 引数なしメソッドへのDynamic RPC
-     * @throws Throwable 
      */
     @Test
     public void callAppNoArgDynamic() throws Throwable {
@@ -725,7 +689,6 @@ public class TestRPC extends Util {
     
     /**
      * 最初の引数が配列のメソッドへのDynamic RPC
-     * @throws Throwable 
      */
     @Test
     public void callAppArrayDynamic() throws Throwable {
@@ -738,7 +701,6 @@ public class TestRPC extends Util {
     
     /**
      * 配列とスカラーが混じったメソッドへのDynamic RPC
-     * @throws Throwable 
      */
     @Test
     public void callAppArray2Dynamic() throws Throwable {
@@ -752,7 +714,6 @@ public class TestRPC extends Util {
     
     /**
      * 引数が可変長のメソッドへのDynamic RPC
-     * @throws Throwable 
      */
     @Test
     public void callAppVarArgsDynamic() throws Throwable {
@@ -766,7 +727,6 @@ public class TestRPC extends Util {
     
     /**
      * oneway Dynamic RPC
-     * @throws Throwable 
      */
     @Test
     public void callAppOnewayDynamic() throws Throwable {
@@ -781,7 +741,6 @@ public class TestRPC extends Util {
     /**
      * local methodへのDynamic RPC
      * IllegalRPCAccessExceptionが発生するはず
-     * @throws Throwable 
      */
     @Test
     public void cllAppLocalDynamic() {
@@ -800,7 +759,6 @@ public class TestRPC extends Util {
     /**
      * local methodへのoneway Dynamic RPC
      * IllegalRPCAccessExceptionが発生するはず
-     * @throws Throwable 
      */
     @Test(expected = IllegalRPCAccessException.class)
     public void callAppLocalOnewayDynamic() throws Throwable {
@@ -812,7 +770,6 @@ public class TestRPC extends Util {
     
     /**
      * local dynamic call
-     * @throws Throwable 
      */
     @Test
     public void localCallAppDynamic() throws Throwable {
@@ -824,7 +781,6 @@ public class TestRPC extends Util {
     
     /**
      * 引数なしメソッドへのlocal dynamic call
-     * @throws Throwable 
      */
     @Test
     public void localCallAppNoArgDynamic() throws Throwable {
@@ -836,7 +792,6 @@ public class TestRPC extends Util {
     
     /**
      * 最初の引数が配列のメソッドへのlocal dynamic call
-     * @throws Throwable 
      */
     @Test
     public void localCallAppArrayDynamic() throws Throwable {
@@ -849,7 +804,6 @@ public class TestRPC extends Util {
     
     /**
      * 配列とスカラーが混じったメソッドへのlocal dynamic call
-     * @throws Throwable 
      */
     @Test
     public void localCallAppArray2Dynamic() throws Throwable {
@@ -863,7 +817,6 @@ public class TestRPC extends Util {
     
     /**
      * 引数が可変長のメソッドへのlocal dynamic call
-     * @throws Throwable 
      */
     @Test
     public void localCallAppVarArgsDynamic() throws Throwable {
@@ -877,7 +830,6 @@ public class TestRPC extends Util {
     
     /**
      * oneway local dynamic call
-     * @throws Throwable 
      */
     @Test
     public void localCallAppOnewayDynamic() throws Throwable {
@@ -891,7 +843,6 @@ public class TestRPC extends Util {
     
     /**
      * local methodへのlocal dynamic call
-     * @throws Throwable 
      */
     @Test
     public void localCallAppLocalDynamic() throws Throwable {
@@ -903,7 +854,6 @@ public class TestRPC extends Util {
     
     /**
      * local methodへのlocal oneway dynamic call
-     * @throws Throwable 
      */
     @Test
     public void localCallAppLocalOnewayDynamic() throws Throwable {
@@ -913,8 +863,6 @@ public class TestRPC extends Util {
     
     /**
      * oneway宣言なしのvoidメソッドへのoneway RPC
-     * @throws RPCException
-     * @throws InterruptedException 
      */
     @Test
     public void callAppVoidOneway1() throws RPCException, InterruptedException {
@@ -930,8 +878,6 @@ public class TestRPC extends Util {
      * oneway宣言なしのvoidメソッドへのoneway RPC.
      * クラス指定。
      * IllegalArgumentExceptionが発生するはず。
-     * @throws RPCException
-     * @throws InterruptedException 
      */
     @Test(expected = IllegalArgumentException.class)
     public void callAppVoidOneway1WithClass() throws RPCException, InterruptedException {
@@ -946,8 +892,6 @@ public class TestRPC extends Util {
     /**
      * oneway宣言なしのvoidメソッドへのoneway RPC。
      * RemoteRef指定
-     * @throws RPCException
-     * @throws InterruptedException 
      */
     @Test
     public void callAppVoidOneway2() throws RPCException, InterruptedException {

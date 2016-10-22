@@ -18,9 +18,9 @@ import org.piax.common.PeerLocator;
 /**
  * PeerLocatorの状態通知を受理するために定義されるインタフェース。
  * <p>
- * <code>受理したPeerLocatorの変更は、適切なタイミングで、
+ * 受理したPeerLocatorの変更は、適切なタイミングで、
  * <code>HandoverTransport</code>オブジェクトに渡す必要がある。
- * 
+ * </p>
  * 
  */
 public interface LocatorStatusObserver {
@@ -30,6 +30,9 @@ public interface LocatorStatusObserver {
     /**
      * PeerLocatorの変更通知を受理する。
      * oldLocからnewLocに変化があったことを受理するためのメソッド。
+     * 
+     * @param oldLoc the old locator
+     * @param newLoc the new locator to be changed.
      */
     void onChanging(PeerLocator oldLoc, PeerLocator newLoc);
     void onHangup(PeerLocator loc, Exception cause);

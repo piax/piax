@@ -40,7 +40,7 @@ public class StatManager {
 
     /**
      * Node 
-     * @param p
+     * @param p the endpoint.
      */
     public void nodeTimeout(final Endpoint p) {
         nodeAlive(p, RTT_INFINITE);

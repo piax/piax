@@ -70,7 +70,7 @@ public interface AgentHome extends AgentCaller, Attributable {
      * AgentPeerを使用する場合は、
      * AgentPeerの設定と矛盾するのを避けるため
      * AgentPeer以外から呼び出してはいけない。
-     * @param listener
+     * @param listener the listener.
      */
     void setListener(AgentHomeListener listener);
     AgentHomeListener getListener();

@@ -246,8 +246,6 @@ public class NeighborSet {
      * 右ノードに送信するノード集合を計算する．
      *
      * @param right 右ノード
-     * @param adds nodes to add before computing the set.
-     *
      * @return 右ノードに送信するノード集合．
      */
     Set<Link> computeNSForRight(Link right) {

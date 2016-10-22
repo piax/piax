@@ -42,7 +42,7 @@ public class Link implements Cloneable, Serializable, Comparable<Link> {
     /**
      * equals() method.
      * Note that `key' field is compared with {@link DdllKey#compareTo(DdllKey)},
-     * not {@link DdllKey#equals()}.
+     * not {@link DdllKey#equals(Object)}.
      */
     @Override
     public boolean equals(Object o) {

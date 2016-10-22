@@ -126,9 +126,6 @@ public class DTNPeer<D extends Destination, K extends Key> {
         peer.fin();
     }
 
-    /**
-     * @param args
-     */
     public static void main(String[] args) throws Exception {
 
         TSDDiscoverable.DEFAULT_EXPIRATION_TIME = 3000;

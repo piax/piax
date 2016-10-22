@@ -77,8 +77,6 @@ public class TestHandover extends Util {
     
     /**
      * test code
-     * 
-     * @param args
      */
     public static void main(String[] args) throws IOException {
         // Id

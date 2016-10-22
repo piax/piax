@@ -45,7 +45,8 @@ public abstract class MonoTransportImpl<E extends Endpoint> extends
     /**
      * RawTransportのように、ServiceIdを持たないTransportを生成する。
      * 
-     * @param supportsDuplex
+     * @param peerId the id of the peer.
+     * @param supportsDuplex true if the transport supports duplex.
      */
     protected MonoTransportImpl(PeerId peerId, boolean supportsDuplex) {
         super(Peer.getInstance(peerId), supportsDuplex);

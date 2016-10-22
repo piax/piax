@@ -37,9 +37,6 @@ public class ComparableTest {
         }
     }
 
-    /**
-     * @param args
-     */
     public static void main(String[] args) {
         Integer e = new Integer(1);
         f0(e);

@@ -10,10 +10,11 @@
   <groupId>org.piax</groupId>
   <artifactId>piax-sample</artifactId>
   <version>3.2-SNAPSHOT</version>
-  <name>piax-sample</name>
-  <url>http://maven.apache.org</url>
+  <name>PIAX Sample Codes</name>
+  <url>http://www.piax.org/</url>
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <maven.deploy.skip>true</maven.deploy.skip>
   </properties>
   <dependencies>
     <dependency>
@@ -25,9 +26,8 @@
     <dependency>
       <groupId>org.piax</groupId>
       <artifactId>piax-agent</artifactId>
-      <version>3.1.0</version>
+      <version>3.2-SNAPSHOT</version>
     </dependency>
-    
   </dependencies>
   <build>
     <plugins>

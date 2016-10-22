@@ -23,14 +23,14 @@ public class RPCException extends Exception {
     }
 
     /**
-     * @param message
+     * @param message the message string.
      */
     public RPCException(String message) {
         super(message);
     }
 
     /**
-     * @param cause
+     * @param cause the cause.
      */
     public RPCException(Throwable cause) {
         super(cause);

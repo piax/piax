@@ -26,14 +26,14 @@ public class IllegalRPCAccessException extends RuntimeException {
     }
 
     /**
-     * @param message
+     * @param message the message string.
      */
     public IllegalRPCAccessException(String message) {
         super(message);
     }
 
     /**
-     * @param cause
+     * @param cause the cause.
      */
     public IllegalRPCAccessException(Throwable cause) {
         super(cause);

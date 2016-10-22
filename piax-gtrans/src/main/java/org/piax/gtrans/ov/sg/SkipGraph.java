@@ -152,15 +152,14 @@ public class SkipGraph<E extends Endpoint> extends RPCInvoker<SkipGraphIf<E>, E>
     /**
      * create a SkipGraph instance.
      * 
-     * @param peerId
-     *            peerId
      * @param trans
      *            underlying transport
      * @param execQueryCallback
      *            a callback object called when
-     *            {@link #execQuery(Deque, Comparable, QueryCondition, Object)}
+     *            #execQuery(Deque, Comparable, QueryCondition, Object)
      *            is called
-     * @throws MagicNumberConflictException
+     * @throws IdConflictException an exception occurs when the default transport id is registered.
+     * @throws IOException an exception thrown when an I/O error occurred.
      */
     public SkipGraph(ChannelTransport<E> trans,
             SGExecQueryCallback execQueryCallback)
@@ -241,8 +240,8 @@ public class SkipGraph<E extends Endpoint> extends RPCInvoker<SkipGraphIf<E>, E>
     /**
      * get SGNode instance (for debugging only)
      * 
-     * @param rawkey
-     * @return SGNode
+     * @param rawkey the raw key.
+     * @return the corresponding SGNode object.
      */
     public SGNode<E> getSGNode(Comparable<?> rawkey) {
         SGNode<E> snode = keyHash.get(rawkey);
@@ -710,7 +709,7 @@ public class SkipGraph<E extends Endpoint> extends RPCInvoker<SkipGraphIf<E>, E>
      * ローカルに登録されている全てのSGNodeが保持する経路表の高さをlevelに設定する．
      * 各経路表の現在の高さよりも高い部分は，ローカルノード内で相互に接続する．
      * 
-     * @param level
+     * @param level the leve.
      */
     void adjustHeight(int level) {
         logger.debug("adjustHeight to {}", level);
@@ -1157,9 +1156,8 @@ public class SkipGraph<E extends Endpoint> extends RPCInvoker<SkipGraphIf<E>, E>
     /**
      * Range Query実行時に呼び出されるメソッド．
      * 
-     * @param keys
-     * @param callbackOv
-     * @param query
+     * @param key the key.
+     * @param query the query.
      */
     RemoteValue<?> execQuery(Comparable<?> key, Object query) {
         logger.trace("ENTRY:");
@@ -1185,7 +1183,7 @@ public class SkipGraph<E extends Endpoint> extends RPCInvoker<SkipGraphIf<E>, E>
      * this procedure tries to send a query message to all the nodes within the
      * specified ranges.  this method is asynchronous; this method returns
      * immediately and results are returned asynchronously via
-     * {@link ReturnSet}.
+     * ReturnSet.
      * <p> 
      * if some results could not be obtained within {@link #RQ_RETRANS_PERIOD},
      * the originating node retransmits a range query message that covers the
@@ -1193,11 +1191,7 @@ public class SkipGraph<E extends Endpoint> extends RPCInvoker<SkipGraphIf<E>, E>
      *
      * @param ranges    set of query ranges
      * @param query     the object passed to the nodes in the query range
-     * @param timeout   timeout (in msec) 
-     * @param scalableReturn
-     *            if true, range query results are aggregated in intermediate
-     *            nodes and obtained in O(log n) hops. if false, results are
-     *            sent directly to the querying node.
+     * @param opts      the options.
      * @return ReturnSet to obtain query results
      */
     public FutureQueue<?> scalableRangeQuery(Collection<? extends Range<?>> ranges,
@@ -1795,10 +1789,10 @@ public class SkipGraph<E extends Endpoint> extends RPCInvoker<SkipGraphIf<E>, E>
      * called from {@link RQMessage#onReceivingReply(SkipGraph, SGReplyMessage)}
      * when a reply message is received.
      * 
-     * @param rq
-     * @param sender
-     * @param vals
-     * @param hops
+     * @param rq the range query return.
+     * @param sender the query sender.
+     * @param vals the values.
+     * @param hops the hops.
      */
     void rqSetReturnValue(RQReturn<E> rq, PeerId sender,
             Collection<DdllKeyRange<RemoteValue<?>>> vals, int hops) {
@@ -2004,7 +1998,7 @@ public class SkipGraph<E extends Endpoint> extends RPCInvoker<SkipGraphIf<E>, E>
 
     /**
      * This is a class used as a return type for
-     * {@link SkipGraph#getSGNodeInfo(Comparable, int)}.
+     * SkipGraph#getSGNodeInfo
      */
     @SuppressWarnings("serial")
     public static class SGNodeInfo implements Serializable {

@@ -70,9 +70,6 @@ public class TestRPCInterruption extends Util {
         }
     }
 
-    /**
-     * @param args
-     */
     public static <E extends PeerLocator> void main(String[] args) {
         Net ntype = Net.UDP;
         printf("- start -%n");

@@ -166,10 +166,10 @@ public class RQManager<E extends Endpoint> extends RingManager<E> implements
     public final static String QUERY_KEY_SPECIAL = "*QueryKeySpecial*";
     public final static ObjectId RQ_QUERY_AT_FIND = new ObjectId("*QueryAtFind*");
 
-    /** timeout for {@link #find(Endpoint, DdllKey, boolean)} */
+    /** timeout for {@link #find(Endpoint, DdllKey, boolean, Object, TransOptions)} */
     public static int FIND_INSERT_POINT_TIMEOUT = 30 * 1000;
 
-    /** pseudo PeerID used by {@link #rqDisseminate(RQMessage, boolean)} */
+    /** pseudo PeerID used by {@link #rqDisseminate(RQMessage, NavigableMap)} */
     protected final static UniqId FIXPEERID = UniqId.PLUS_INFINITY;
     /** pseudo Link instance that represents the link should be fixed */
     public/*protected*/final Link FIXLEFT;
@@ -224,9 +224,8 @@ public class RQManager<E extends Endpoint> extends RingManager<E> implements
      *            the node to communicate with.
      * @param key
      *            the query key
-     * @param accurate
-     *            true if accurate location is required (do not trust left links
-     *            of DDLL node)
+     * @param query the object for query.
+     * @param opts the transport options.
      * @return the insertion point for `key'
      * @throws UnavailableException
      *             自ノードあるいはseedにkeyが登録されていない
@@ -344,13 +343,13 @@ public class RQManager<E extends Endpoint> extends RingManager<E> implements
      * @param ranges
      *            ranges for the range query
      * @param query
+     *            the query object
      * @param opts
      *            transmission option
      * @param retransPeriod
      *            slow retransmission period (in msec)
      * @param allLinks
-     *            all links to split the ranges. if null, the return value of
-     *            {@link #getAllLinks(boolean)} is used.
+     *            all links to split the ranges.
      * @param rqAlgo
      *            range query algorithm
      * @return RQReturn
@@ -594,11 +593,13 @@ public class RQManager<E extends Endpoint> extends RingManager<E> implements
      * Split a range into subranges, by the keys in allLinks. Also assign an
      * appropriate remote delegate node for each subrange.
      * 
+     * @param query the query object.
      * @param range0    the range to be split
-     * @param allLinks
-     * @param failedLinks
-     * @param rvals
-     * @return subranges
+     * @param allLinks all links to split ranges.
+     * @param failedLinks the failed links.
+     * @param rvals return values for each range.
+     * @param rqAlgo the algorithm for the range query.
+     * @return the list of subranges. 
      */
     protected List<SubRange> rqSplit(Object query, final SubRange range0,
             final NavigableMap<DdllKey, Link> allLinks,
@@ -718,6 +719,7 @@ public class RQManager<E extends Endpoint> extends RingManager<E> implements
      * @param range 探索対象となるRange
      * @param maxNum 条件を満たす最大個数
      * @param query the query passed to execQuery()
+     * @param opts the transport options.
      * @return クエリ結果のリスト
      */
     public List<RemoteValue<?>> forwardQuery(boolean isPlusDir, Range<?> range,
@@ -797,7 +799,7 @@ public class RQManager<E extends Endpoint> extends RingManager<E> implements
                 getStartNode = false;
             }
             if (!new Range(toKey, fromKey).contains(n.key)) {
-                logger.debug("forwardQueryLeft: finish (reached end of range)");
+                logger.debug("forwardQueryLeft: finish (reached end of range) [{} {}], {}",toKey,fromKey,n.key);
                 break;
             }
             // 例えば key 0 しか存在しないときに，find() で -1 を検索すると，一周して
@@ -922,7 +924,7 @@ public class RQManager<E extends Endpoint> extends RingManager<E> implements
      * 指定されたパラメータで execQuery を実行する． 
      * curRight != null の場合，レベル0の右リンクがcurRightと等しい場合にのみ実行．
      * execQueryの結果(RemoteValue)と，レベル0での左右のリンクを
-     * {@link ExecQueryReturn} に詰めて返す．
+     * ExecQueryReturn に詰めて返す．
      * 
      * @throws NoSuchKeyException
      *             rawkeyが存在しない
@@ -990,9 +992,9 @@ public class RQManager<E extends Endpoint> extends RingManager<E> implements
     /**
      * Range Query実行時に呼び出されるメソッド．
      * 
-     * @param keys
-     * @param callbackOv
-     * @param query
+     * @param key the key 
+     * @param query the query object
+     * @return the result of the query (remote values).
      */
     public/*protected*/RemoteValue<?> execQuery(Comparable<?> key, Object query) {
         logger.trace("ENTRY:");
@@ -1008,8 +1010,7 @@ public class RQManager<E extends Endpoint> extends RingManager<E> implements
     }
 
     /**
-     * a TimerTask for purging stale QueryId entries from
-     * {@link RQVNode#queryHistory}.
+     * a TimerTask for purging stale QueryId entries
      */
     class PurgeTask implements Runnable {
         @Override

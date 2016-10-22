@@ -24,17 +24,10 @@ public interface AgentCaller {
     /*--- synchronous discovery call ---*/
 
     /**
-     * @param queryCond
-     * @param method
-     * @param args
      */
     Object[] discoveryCall(String queryCond, String method, Object... args);
     
     /**
-     * @param queryCond
-     * @param clazz
-     * @param method
-     * @param args
      */
     Object[] discoveryCall(String queryCond,
             Class<? extends AgentIf> clazz, String method, Object... args);
@@ -42,18 +35,11 @@ public interface AgentCaller {
     /*--- asynchronous discovery call ---*/
 
     /**
-     * @param queryCond
-     * @param method
-     * @param args
      */
     FutureQueue<?> discoveryCallAsync(String queryCond,
             String method, Object... args);
     
     /**
-     * @param queryCond
-     * @param clazz
-     * @param method
-     * @param args
      */
     FutureQueue<?> discoveryCallAsync(String queryCond,
             Class<? extends AgentIf> clazz, String method, Object... args);
@@ -61,18 +47,11 @@ public interface AgentCaller {
     /*--- oneway discovery call ---*/
 
     /**
-     * @param queryCond
-     * @param method
-     * @param args
      */
     void discoveryCallOneway(String queryCond,
             String method, Object... args);
     
     /**
-     * @param queryCond
-     * @param clazz
-     * @param method
-     * @param args
      */
     void discoveryCallOneway(String queryCond,
             Class<? extends AgentIf> clazz, String method, Object... args);

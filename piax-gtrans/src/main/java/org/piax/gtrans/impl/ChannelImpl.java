@@ -52,7 +52,7 @@ public abstract class ChannelImpl<E extends Endpoint> implements Channel<E> {
      * メッセージ送信時にChannel生成をするためのコンストラクタ。
      * 
      * @param mother このChannelオブジェクトの生成主となるChannelTransportオブジェクト
-     * @param localObjectId　ローカル側に位置するエンティティのobject ID
+     * @param localObjectId ローカル側に位置するエンティティのobject ID
      * @param remoteObjectId リモート側に位置するエンティティのobject ID
      * @param remote リモート側のEndpoint
      */
@@ -65,7 +65,7 @@ public abstract class ChannelImpl<E extends Endpoint> implements Channel<E> {
      * メッセージ送信時にChannel生成をするためのコンストラクタ。
      * 
      * @param mother このChannelオブジェクトの生成主となるChannelTransportオブジェクト
-     * @param localObjectId　ローカル側に位置するエンティティのobject ID
+     * @param localObjectId ローカル側に位置するエンティティのobject ID
      * @param remoteObjectId リモート側に位置するエンティティのobject ID
      * @param remote リモート側のEndpoint
      * @param isDuplex 双方向指定
@@ -81,7 +81,7 @@ public abstract class ChannelImpl<E extends Endpoint> implements Channel<E> {
      * 
      * @param creater 元のchannelを生成したpeerのpeer ID
      * @param mother このChannelオブジェクトの生成主となるChannelTransportオブジェクト
-     * @param localObjectId　ローカル側に位置するエンティティのobject ID
+     * @param localObjectId ローカル側に位置するエンティティのobject ID
      * @param remoteObjectId リモート側に位置するエンティティのobject ID
      * @param remote リモート側のEndpoint
      */
@@ -94,9 +94,9 @@ public abstract class ChannelImpl<E extends Endpoint> implements Channel<E> {
      * メッセージ受信時にChannel生成をするためのコンストラクタ。
      * creatorには元のchannelを生成したpeerのpeer IDをセットする。
      * 
-     * @param creater 元のchannelを生成したpeerのpeer ID
+     * @param creator 元のchannelを生成したpeerのpeer ID
      * @param mother このChannelオブジェクトの生成主となるChannelTransportオブジェクト
-     * @param localObjectId　ローカル側に位置するエンティティのobject ID
+     * @param localObjectId ローカル側に位置するエンティティのobject ID
      * @param remoteObjectId リモート側に位置するエンティティのobject ID
      * @param remote リモート側のEndpoint
      * @param isDuplex 双方向指定

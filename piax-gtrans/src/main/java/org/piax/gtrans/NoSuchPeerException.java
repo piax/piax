@@ -25,14 +25,14 @@ public class NoSuchPeerException extends IOException {
     }
 
     /**
-     * @param message
+     * @param message the message string.
      */
     public NoSuchPeerException(String message) {
         super(message);
     }
 
     /**
-     * @param cause
+     * @param cause the cause.
      */
     public NoSuchPeerException(Throwable cause) {
         super(cause);

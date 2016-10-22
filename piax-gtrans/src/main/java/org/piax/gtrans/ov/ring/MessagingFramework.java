@@ -61,9 +61,9 @@ import org.slf4j.LoggerFactory;
  * this class provides features to send a message, which is a subclass of
  * {@link RequestMessage}, to a remote node and get an ack and a reply
  * message, which is a subclass of {@link ReplyMessage}. when a reply message
- * arrives, {@link RequestMessage#onReceivingReply(RingManager, ReplyMessage)}
+ * arrives, {@link RequestMessage#onReceivingReply(ReplyMessage)}
  * is called. if ack message timeouts,
- * {@link RequestMessage#onResponseTimeout(RingManager)} is called.
+ * {@link RequestMessage#onResponseTimeout()} is called.
  * <p>
  * the destination of the ack message and the reply message may be different
  * node.
@@ -123,7 +123,6 @@ public class MessagingFramework {
 
     /**
      * prepare for receiving a reply for this message.
-     * see {@link #prepareReceivingReply(RequestMessage, boolean, boolean)}.
      */
     void prepareReceivingReply(RequestMessage msg) {
         prepareReceivingReply(msg, false);
