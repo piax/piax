@@ -118,7 +118,7 @@ public abstract class AgentTransportManager {
 	 * Define overlays and transports.
 	 * This method must be implemented in the subclass.
 	 * @param home the AgentHome instance.
-	 * @throws Exception
+	 * @throws Exception an exception during setup.
 	 */
 	abstract public void setup(AgentHome home) throws Exception;
 
@@ -126,7 +126,7 @@ public abstract class AgentTransportManager {
 	 * Returns an instance named transportName.
 	 * If the instance does not exist, the transport is newly instanciated.
 	 * 
-	 * @param transportName
+	 * @param transportName the transpot name.
 	 * @return　transport instance
 	 * @throws SetupTransportException Transport setup failure
 	 */
@@ -167,7 +167,7 @@ public abstract class AgentTransportManager {
 	 * @param overlayName オーバレイ名
 	 * @return　オーバレイIDパス
 	 * @throws SetupTransportException オーバレイの作成に失敗
-	 * @throws NoSuchOverlayException 
+	 * @throws NoSuchOverlayException an overlay exception.
 	 */
 	public synchronized Overlay<?,?> getOverlay(String overlayName) throws SetupTransportException,
 	    NoSuchOverlayException {
@@ -232,7 +232,7 @@ public abstract class AgentTransportManager {
 	
 	/**
 	 * 支配下のオーバレイをすべてleaveさせる。
-	 * @throws Exception
+	 * @throws Exception an exception occurs during leave.
 	 */
 	public synchronized void leave() throws Exception {
 	    if (!joined) {
@@ -249,7 +249,7 @@ public abstract class AgentTransportManager {
 	
     /**
      * 支配下のオーバレイをすべてjoinさせる。
-     * @throws Exception
+     * @throws Exception an exception occurs during join.
      */
 	public synchronized void join() throws Exception {
 	    if (joined) {
@@ -272,10 +272,10 @@ public abstract class AgentTransportManager {
 
 	/**
 	 * Define an overlay with name.
-	 * @param name
-	 * @param factory
-	 * @param seed
-	 * @throws IOException
+	 * @param name the overlay name.
+	 * @param factory the overlay factory.
+	 * @param seed the seed endpoint.
+	 * @throws IOException an exception of I/O error.
 	 */
 	public void defineOverlay(String name, AgentOverlayFactory factory, Endpoint seed) throws IOException {
 		OverlayEntry oe = overlayMap.get(name);
@@ -295,7 +295,7 @@ public abstract class AgentTransportManager {
 	 * @param name オーバレイの名前
 	 * @param factory オーバレイのインスタンスを作成するファクトリ
 	 * @param seed joinする際のシード
-	 * @throws IOException
+	 * @throws IOException an I/O error.
 	 */
 	public void setOverlay(String name, AgentOverlayFactory factory, Endpoint seed) throws IOException {
 		OverlayEntry oe = new OverlayEntry(null, seed, factory, name);
@@ -325,9 +325,9 @@ public abstract class AgentTransportManager {
 	/**
 	 * オーバレイを削除する。
 	 * インスタンスが登録されていれば、leave, finを行う。
-	 * @param name
-	 * @throws NoSuchOverlayException
-	 * @throws IOException
+	 * @param name the overlay name.
+	 * @throws NoSuchOverlayException thrown if the overlay is not found.
+	 * @throws IOException thrown if an I/O error occurs.
 	 */
 	protected synchronized void removeOverlay(String name) throws NoSuchOverlayException, IOException {
 	    OverlayEntry oe = overlayMap.remove(name);

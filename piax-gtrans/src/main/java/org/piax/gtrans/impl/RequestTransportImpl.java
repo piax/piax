@@ -43,9 +43,11 @@ public abstract class RequestTransportImpl<D extends Destination> extends
             .getLogger(RequestTransportImpl.class);
 
     /**
-     * @param peerId
-     * @param transId
-     * @throws IdConflictException
+     * Generate a request transport.
+     * @param peer the peer object
+     * @param transId the id of the transport object.
+     * @param lowerTrans the transport object.
+     * @throws IdConflictException thrown when the transport id is conflicted.
      */
     protected RequestTransportImpl(Peer peer, TransportId transId, Transport<?> lowerTrans)
             throws IdConflictException {

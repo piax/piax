@@ -201,7 +201,6 @@ public class TestAgentPeer extends Util {
     /**
      * 前準備
      * エージェント・ピア、エージェントの作成
-     * @throws Exception
      */
     @Before
     public void setup() throws Exception {
@@ -232,7 +231,6 @@ public class TestAgentPeer extends Util {
     
     /**
      * getFullNameのテスト
-     * @throws AgentException
      */
     @Test
     public void getFullName() throws AgentException {
@@ -242,7 +240,6 @@ public class TestAgentPeer extends Util {
     
     /**
      * getAgentPeerのテスト
-     * @throws AgentException
      */
     @Test
     public void getAgentPeer() throws AgentException {
@@ -252,7 +249,6 @@ public class TestAgentPeer extends Util {
     
     /**
      * getNameのテスト
-     * @throws AgentException
      */
     @Test
     public void getName() throws AgentException {
@@ -263,11 +259,6 @@ public class TestAgentPeer extends Util {
     /**
      * 宣言していない属性をbindする。
      * IllegalArgumentExceptionを発生するはず。
-     * 
-     * @throws IllegalArgumentException
-     * @throws NoSuchOverlayException
-     * @throws IncompatibleTypeException
-     * @throws SetupTransportException
      */
     @Test(expected=IllegalArgumentException.class)
     public void bindOverlayNotDeclare() throws IllegalArgumentException,
@@ -279,11 +270,6 @@ public class TestAgentPeer extends Util {
     /**
      * 登録されていないオーバレイにbindする。
      * NoSuchOverlayExceptionが発生するはず
-     * 
-     * @throws IllegalArgumentException
-     * @throws NoSuchOverlayException
-     * @throws IncompatibleTypeException
-     * @throws SetupTransportException
      */
     @Test(expected=NoSuchOverlayException.class)
     public void bindOverlayUnknown() throws IllegalArgumentException,
@@ -296,11 +282,6 @@ public class TestAgentPeer extends Util {
     
     /**
      * setAttribのテスト
-     * 
-     * @throws IllegalArgumentException
-     * @throws NoSuchOverlayException
-     * @throws IncompatibleTypeException
-     * @throws SetupTransportException
      */
     @Test
     public void setAttrib() throws IllegalArgumentException,
@@ -329,10 +310,6 @@ public class TestAgentPeer extends Util {
     /**
      * getAttribNamesのテスト
      * 
-     * @throws IllegalArgumentException
-     * @throws NoSuchOverlayException
-     * @throws IncompatibleTypeException
-     * @throws SetupTransportException
      */
     @Test
     public void getAttribNames() throws IllegalArgumentException,
@@ -354,10 +331,6 @@ public class TestAgentPeer extends Util {
      * 宣言した型と異なる値を属性に設定する。
      * IncompatibleTypeExceptionが発生するはず。
      * 
-     * @throws IllegalArgumentException
-     * @throws NoSuchOverlayException
-     * @throws IncompatibleTypeException
-     * @throws SetupTransportException
      */
     @Test(expected = IncompatibleTypeException.class)
     public void setAttribTypeIncompatible() throws IllegalArgumentException,
@@ -372,10 +345,6 @@ public class TestAgentPeer extends Util {
      * オーバレイが受け付ける型と異なる値を属性に設定する。
      * IncompatibleTypeExceptionが発生するはず。
      * 
-     * @throws IllegalArgumentException
-     * @throws NoSuchOverlayException
-     * @throws IncompatibleTypeException
-     * @throws SetupTransportException
      */
     @Test(expected = IncompatibleTypeException.class)
     public void setAttribTypeIncompatible2() throws IllegalArgumentException,
@@ -390,10 +359,6 @@ public class TestAgentPeer extends Util {
     /**
      * 型宣言された属性へのsetAttribのテスト
      * 
-     * @throws IllegalArgumentException
-     * @throws NoSuchOverlayException
-     * @throws IncompatibleTypeException
-     * @throws SetupTransportException
      */
     @Test
     public void setAttribType() throws IllegalArgumentException,
@@ -407,10 +372,6 @@ public class TestAgentPeer extends Util {
     /**
      * isIndexedのテスト
      * 
-     * @throws IllegalArgumentException
-     * @throws NoSuchOverlayException
-     * @throws IncompatibleTypeException
-     * @throws SetupTransportException
      */
     @Test
     public void isIndexed() throws IllegalArgumentException,
@@ -431,11 +392,6 @@ public class TestAgentPeer extends Util {
     /**
      * LLNETのbind
      * 
-     * @throws AgentException
-     * @throws IllegalArgumentException
-     * @throws NoSuchOverlayException
-     * @throws IncompatibleTypeException
-     * @throws SetupTransportException
      */
     @Test
     public void bindLLNET() throws AgentException,
@@ -450,11 +406,6 @@ public class TestAgentPeer extends Util {
     /**
      * getBindOverlayのテスト
      * 
-     * @throws AgentException
-     * @throws IllegalArgumentException
-     * @throws NoSuchOverlayException
-     * @throws IncompatibleTypeException
-     * @throws SetupTransportException
      */
     @Test
     public void getBindOverlay() throws AgentException,
@@ -470,11 +421,6 @@ public class TestAgentPeer extends Util {
     /**
      * unbindOverlayのテスト
      * 
-     * @throws AgentException
-     * @throws IllegalArgumentException
-     * @throws NoSuchOverlayException
-     * @throws IncompatibleTypeException
-     * @throws SetupTransportException
      */
     @Test
     public void unbindOverlay() throws AgentException,
@@ -493,11 +439,6 @@ public class TestAgentPeer extends Util {
     /**
      * 型宣言された属性へのLLNETのbind
      * 
-     * @throws AgentException
-     * @throws IllegalArgumentException
-     * @throws NoSuchOverlayException
-     * @throws IncompatibleTypeException
-     * @throws SetupTransportException
      */
     @Test
     public void bindLLNETType() throws AgentException,
@@ -512,11 +453,6 @@ public class TestAgentPeer extends Util {
     /**
      * LLNETをbindして、discovertCallをする。
      * 
-     * @throws AgentException
-     * @throws IllegalArgumentException
-     * @throws NoSuchOverlayException
-     * @throws IncompatibleTypeException
-     * @throws SetupTransportException
      */
     @Test
     public void bindLLNETdc() throws AgentException,
@@ -541,11 +477,6 @@ public class TestAgentPeer extends Util {
      * DOLRをbindして整数を属性に設定して
      * getDCStubをする。
      * 
-     * @throws AgentException
-     * @throws IllegalArgumentException
-     * @throws NoSuchOverlayException
-     * @throws IncompatibleTypeException
-     * @throws SetupTransportException
      */
     @Test
     public void bindDOLRInt() throws AgentException,
@@ -572,11 +503,6 @@ public class TestAgentPeer extends Util {
      * DOLRをbindして文字列を属性に設定して
      * getDCStubをする。
      * 
-     * @throws AgentException
-     * @throws IllegalArgumentException
-     * @throws NoSuchOverlayException
-     * @throws IncompatibleTypeException
-     * @throws SetupTransportException
      */
     @Test
     public void bindDOLRStr() throws AgentException,
@@ -603,11 +529,6 @@ public class TestAgentPeer extends Util {
      * MSkipGraphをbindして
      * discovertCallをする。
      * 
-     * @throws AgentException
-     * @throws IllegalArgumentException
-     * @throws NoSuchOverlayException
-     * @throws IncompatibleTypeException
-     * @throws SetupTransportException
      */
     @Test
     public void bindMSG() throws AgentException,
@@ -635,11 +556,6 @@ public class TestAgentPeer extends Util {
      * AgentのsetAttribとAgentPeerのsetAttribの関係を
      * テストする。
      * 
-     * @throws AgentException
-     * @throws IllegalArgumentException
-     * @throws NoSuchOverlayException
-     * @throws IncompatibleTypeException
-     * @throws SetupTransportException
      */
     @Test
     public void bindMSGovr() throws AgentException,
@@ -675,11 +591,6 @@ public class TestAgentPeer extends Util {
     /**
      * removeAttribのテスト
      * 
-     * @throws AgentException
-     * @throws IllegalArgumentException
-     * @throws NoSuchOverlayException
-     * @throws IncompatibleTypeException
-     * @throws SetupTransportException
      */
     @Test
     public void removeAttr() throws AgentException,
@@ -730,8 +641,6 @@ public class TestAgentPeer extends Util {
     
     /**
      * getPeerIdのテスト
-     * 
-     * @throws Exception
      */
     @Test
     public void getPeerId() throws Exception {
@@ -766,8 +675,6 @@ public class TestAgentPeer extends Util {
     
     /**
      * getAgentNameのテスト
-     * 
-     * @throws AgentException
      */
     @Test
     public void getAgentName() throws AgentException {
@@ -779,7 +686,6 @@ public class TestAgentPeer extends Util {
     /**
      * 存在しないAgentを指定してのgetAgentName。
      * NoSuchAgentExceptionが発生するはず
-     * @throws AgentException
      */
     @Test(expected = NoSuchAgentException.class)
     public void getAgentNameNotexist() throws AgentException {
@@ -789,7 +695,6 @@ public class TestAgentPeer extends Util {
     
     /**
      * getAgentClassのテスト
-     * @throws AgentException
      */
     @Test
     public void getAgentClass() throws AgentException {
@@ -801,7 +706,6 @@ public class TestAgentPeer extends Util {
     /**
      * 存在しないAgentを指定してのgetAgentClass。
      * NoSuchAgentExceptionが発生するはず
-     * @throws AgentException
      */
     @Test(expected = NoSuchAgentException.class)
     public void getAgentClassNotexist() throws AgentException {
@@ -812,8 +716,6 @@ public class TestAgentPeer extends Util {
     /**
      * 存在しないクラスを指定してエージェントを作成する。
      * ClassNotFoundExceptionが発生するはず。
-     * @throws ClassNotFoundException
-     * @throws AgentInstantiationException
      */
     @Test(expected = ClassNotFoundException.class)
     public void createAgentClassNotFound() throws ClassNotFoundException,
@@ -824,8 +726,6 @@ public class TestAgentPeer extends Util {
     
     /**
      * giveAgentNameのテスト
-     * @throws AgentException
-     * @throws ClassNotFoundException
      */
     @Test
     public void giveAgentName() throws AgentException, ClassNotFoundException {
@@ -841,7 +741,6 @@ public class TestAgentPeer extends Util {
     /**
      * 既に名前のあるエージェントにgiveAgentNameを適用する。
      * 
-     * @throws AgentException
      */
     @Test
     public void giveAgentNameFalse() throws AgentException {
@@ -853,7 +752,6 @@ public class TestAgentPeer extends Util {
     /**
      * 存在しないエージェントを指定してgiveAgentNameを呼び出す。
      * NoSuchAgentExceptionは発生するはず。
-     * @throws AgentException
      */
     @Test(expected = NoSuchAgentException.class)
     public void giveAgentNameException() throws AgentException {
@@ -863,12 +761,6 @@ public class TestAgentPeer extends Util {
     
     /**
      * getDeclareAttribNamesのテスト
-     * 
-     * @throws AgentException
-     * @throws IllegalArgumentException
-     * @throws NoSuchOverlayException
-     * @throws IncompatibleTypeException
-     * @throws SetupTransportException
      */
     @Test
     public void getDeclaredAttribNames() throws AgentException,
@@ -887,10 +779,6 @@ public class TestAgentPeer extends Util {
     /**
      * createAgentおよび
      * リスナーのonCreationのテスト
-     * 
-     * @throws ClassNotFoundException
-     * @throws AgentInstantiationException
-     * @throws InterruptedException
      */
     @Test
     public void onCreation() throws ClassNotFoundException,
@@ -910,8 +798,6 @@ public class TestAgentPeer extends Util {
     /**
      * destroyAgentおよび
      * リスナーのonDesctructionのテスト
-     * @throws AgentException
-     * @throws InterruptedException
      */
     @Test
     public void onDestruction() throws AgentException, InterruptedException {
@@ -923,7 +809,6 @@ public class TestAgentPeer extends Util {
     
     /**
      * リスナーのonJoining, onJoinCompletedのテスト
-     * @throws Exception
      */
     @Test
     public void onJoiningAndJoinCompleted() throws Exception {
@@ -941,10 +826,6 @@ public class TestAgentPeer extends Util {
     /**
      * PersisitentAgentでないエージェントに対しsleepAgentを適用する。
      * AgentCapabilityExceptionがは発生するはず。
-     * @throws ObjectStreamException
-     * @throws AgentException
-     * @throws IOException
-     * @throws InterruptedException
      */
     @Test(expected = AgentCapabilityException.class)
     public void sleepAgentNotPersistent() throws ObjectStreamException, AgentException,
@@ -955,12 +836,6 @@ public class TestAgentPeer extends Util {
     /**
      * sleepAgent,wakeupAgent,isAgentSleepingおよび
      * リスナーのonSleeping, onWakeupのテスト
-     * 
-     * @throws ObjectStreamException
-     * @throws AgentException
-     * @throws IOException
-     * @throws InterruptedException
-     * @throws ClassNotFoundException
      */
     @Test
     public void sleepAgent() throws ObjectStreamException, AgentException,
@@ -982,11 +857,6 @@ public class TestAgentPeer extends Util {
     /**
      * PersisitentAgentでないエージェントに対しduplicateAgentを適用する。
      * AgentCapabilityExceptionがは発生するはず。
-     * 
-     * @throws ObjectStreamException
-     * @throws AgentException
-     * @throws IOException
-     * @throws InterruptedException
      */
     @Test(expected = AgentCapabilityException.class)
     public void duplicateAgentNotPersistent() throws ObjectStreamException, AgentException,
@@ -997,12 +867,6 @@ public class TestAgentPeer extends Util {
     /**
      * duplicateAgentおよび
      * リスナーのonDuplicating, onDuplicationのテスト
-     * 
-     * @throws ObjectStreamException
-     * @throws AgentException
-     * @throws IOException
-     * @throws InterruptedException
-     * @throws ClassNotFoundException
      */
     @Test
     public void duplicateAgent() throws ObjectStreamException, AgentException,
@@ -1020,11 +884,6 @@ public class TestAgentPeer extends Util {
     /**
      * PersisitentAgentでないエージェントに対しsaveAgentを適用する。
      * AgentCapabilityExceptionがは発生するはず。
-     * 
-     * @throws ObjectStreamException
-     * @throws AgentException
-     * @throws IOException
-     * @throws InterruptedException
      */
     @Test(expected = AgentCapabilityException.class)
     public void saveAgentNotPersistent() throws ObjectStreamException, AgentException,
@@ -1035,12 +894,6 @@ public class TestAgentPeer extends Util {
     /**
      * saveAgent, restoreAgentおよび
      * リスナーのonSaving, onRestoreのテスト
-     * 
-     * @throws ObjectStreamException
-     * @throws AgentException
-     * @throws IOException
-     * @throws InterruptedException
-     * @throws ClassNotFoundException
      */
     @Test
     public void saveAgent() throws ObjectStreamException, AgentException,
@@ -1065,11 +918,6 @@ public class TestAgentPeer extends Util {
     /**
      * PersisitentAgentでないエージェントに対しFile指定のsaveAgentを適用する。
      * AgentCapabilityExceptionがは発生するはず。
-     * 
-     * @throws ObjectStreamException
-     * @throws AgentException
-     * @throws IOException
-     * @throws InterruptedException
      */
     @Test(expected = AgentCapabilityException.class)
     public void saveAgentNotPersistentToFile() throws ObjectStreamException, AgentException,
@@ -1080,12 +928,6 @@ public class TestAgentPeer extends Util {
     /**
      * File指定のsaveAgent, restoreAgentおよび
      * リスナーのonSaving, onRestoreのテスト
-     * 
-     * @throws ObjectStreamException
-     * @throws AgentException
-     * @throws IOException
-     * @throws InterruptedException
-     * @throws ClassNotFoundException
      */
     @Test
     public void saveAgentToFile() throws ObjectStreamException, AgentException,
@@ -1112,12 +954,6 @@ public class TestAgentPeer extends Util {
     /**
      * MobileAgentでないエージェントに対しtravelAgentを適用する。
      * AgentCapabilityExceptionがは発生するはず。
-     * 
-     * @throws ObjectStreamException
-     * @throws AgentException
-     * @throws IOException
-     * @throws InterruptedException
-     * @throws ClassNotFoundException
      */
     @Test(expected = AgentCapabilityException.class)
     public void travelAgentNotMobile() throws ObjectStreamException, AgentException,
@@ -1129,12 +965,6 @@ public class TestAgentPeer extends Util {
      * travelAgentおよび
      * リスナーのonDepartureのテストをする。
      * 移動したエージェントが存在しないことを確認する。
-     * 
-     * @throws ObjectStreamException
-     * @throws AgentException
-     * @throws IOException
-     * @throws InterruptedException
-     * @throws ClassNotFoundException
      */
     @Test
     public void travelAgent0() throws ObjectStreamException, AgentException,
@@ -1167,12 +997,6 @@ public class TestAgentPeer extends Util {
      /**
      * travelAgentおよび
      * リスナーのonDeparture, onArriving, onArrivalのテスト
-      * 
-      * @throws ObjectStreamException
-      * @throws AgentException
-      * @throws IOException
-      * @throws InterruptedException
-      * @throws ClassNotFoundException
       */
     @Test
     public void travelAgent() throws ObjectStreamException, AgentException,
@@ -1200,11 +1024,6 @@ public class TestAgentPeer extends Util {
     /**
      * travelAgentでリスナのOnArrivingでfalseを返し
      * 、拒否される場合のテスト
-     * @throws ObjectStreamException
-     * @throws AgentException
-     * @throws IOException
-     * @throws InterruptedException
-     * @throws ClassNotFoundException
      */
     @Test
     public void travelAgentDenied() throws ObjectStreamException, AgentException,
@@ -1237,7 +1056,6 @@ public class TestAgentPeer extends Util {
     
     /**
      * 後始末
-     * @throws Exception
      */
     @After
     public void finAgents() throws Exception {

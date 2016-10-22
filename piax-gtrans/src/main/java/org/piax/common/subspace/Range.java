@@ -85,10 +85,10 @@ public class Range<K extends Comparable<?>> implements Serializable, Cloneable {
     /**
      * constructor to allow the form like Range('[', 10, 20, ')');
      * 
-     * @param fromEdgeSpec
-     * @param from
-     * @param to
-     * @param toEdgeSpec
+     * @param fromEdgeSpec the lower-side edge specifier of range 
+     * @param from lower value of the range.
+     * @param to upper value of the range.
+     * @param toEdgeSpec the upper-side edge specifier of range 
      */
     public Range(char fromEdgeSpec, K from, K to, char toEdgeSpec) {
         this(from, fromEdgeSpec == '[', to, toEdgeSpec == ']');
@@ -107,13 +107,12 @@ public class Range<K extends Comparable<?>> implements Serializable, Cloneable {
     }
 
     /**
-     * keyがこのRangeに含まれるときにtrueを返す。
+     * Returns true if a key is within this Range.
      * <p>
-     * keyの型がKではなく、Comparable<?>になっているのは、Set<E>におけるcontainsがObject型を
-     * とるのと同様の理由で、引数にワイルドカードを持つ型を対応させるため。
+     * Comparable wildcard type key is specified.
      * 
-     * @param key Rangeに含まれるかどうかを調べるkey
-     * @return keyがこのRangeに含まれるときはtrue
+     * @param key the target key.
+     * @return true if the key is within this range.
      */
     public boolean contains(Comparable<?> key) {
         /*boolean b1 =

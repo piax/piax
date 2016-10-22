@@ -200,7 +200,7 @@ public class LWTcpChannel extends RawChannel<TcpLocator> implements Runnable {
      * GCを待たずにDirectByteBufferを開放する。 JVMの実装に依存しているので注意
      * 失敗しても元々で、GCで開放されるはず。
      * 
-     * @param buffer
+     * @param buffer the bytebuffer to free.
      */
     public static void freeDirectBuffer(ByteBuffer buffer) {
         try {

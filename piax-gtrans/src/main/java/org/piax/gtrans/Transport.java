@@ -97,7 +97,7 @@ public interface Transport<D extends Destination> {
      * Returns the lower layer Transport object.
      * 
      * If there are multiple Transport objects exist or no Transport object exists,
-     * @code{null} is returned.
+     * {@code null} is returned.
      * 
      * @return The lower layer Transport object.
      */
@@ -115,7 +115,7 @@ public interface Transport<D extends Destination> {
     /**
      * Returns the lowest Transport object (BaseTransport).
      * If there are multiple Transport objects exist or no Transport object exists,
-     * @code{null} is returned.
+     * {@code null} is returned.
      * 
      * @return The lowest layer BaseTransport object.
      */
@@ -145,8 +145,8 @@ public interface Transport<D extends Destination> {
     /**
      * Set the TransportListener to receive messages on the Transport.
      * 
-     * @code{upper} is an ObjectId needed to specify the receiver entity.
-     * If @code{null} is specifided as @code{listener}, the listener is unregistered.
+     * {@code upper} is an ObjectId needed to specify the receiver entity.
+     * If {@code null} is specifided as {@code listener}, the listener is unregistered.
      * 
      * @param upper The ObjectId of the receiver (upper layer) entity.
      * @param listener The TransportListener to register.
@@ -162,10 +162,10 @@ public interface Transport<D extends Destination> {
     
     /**
      * Return the registered TransportListener.
-     * @code{upper} is an ObjectId specified by the setListener.
-     * If TransportListener is not registered, @code{null} is returned.
+     * {@code upper} is an ObjectId specified by the setListener.
+     * If TransportListener is not registered, {@code null} is returned.
      * 
-     * @param The ObjectId of the receiver (upper layer) entity.
+     * @param upper The ObjectId of the receiver (upper layer) entity.
      * @return The TransportListener registered.
      */
     TransportListener<D> getListener(ObjectId upper);
@@ -220,7 +220,7 @@ public interface Transport<D extends Destination> {
      * Send a message to the dst which have same ObjectId as an application Id.
      * 
      * The message is delivered to the entities which have same appId and on 
-     * the peers which match to the @code{dst}. 
+     * the peers which match to the {@code dst}. 
      * 
      * This type of send can be applicable for the cases where the application have
      * a common application Id.
@@ -229,7 +229,7 @@ public interface Transport<D extends Destination> {
      * @param dst The Destination
      * @param msg The message
      * @throws ProtocolUnsupportedException is thrown when the protocol is not supported
-     * 		   for the @code{dst}
+     * 		   for the {@code dst}
      * 
      * @throws IOException is thrown when an I/O error occurs.
      */
@@ -243,7 +243,7 @@ public interface Transport<D extends Destination> {
      * Send a message to the dst which have the default ObjectId.
      * 
      * The message is delivered to the entities which have default appId and on 
-     * the peers which match to the @code{dst}. 
+     * the peers which match to the {@code dst}. 
      * 
      * This type of send can be applicable for the cases where the application have
      * the default application Id.
@@ -251,7 +251,7 @@ public interface Transport<D extends Destination> {
      * @param dst The Destination
      * @param msg The message
      * @throws ProtocolUnsupportedException is thrown when the protocol is not supported
-     * 		   for the @code{dst}
+     * 		   for the {@code dst}
      * 
      * @throws IOException is thrown when an I/O error occurs.
      */

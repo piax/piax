@@ -31,9 +31,9 @@ import org.slf4j.LoggerFactory;
  * this class provides features to send a message, which is a subclass of
  * {@link SGRequestMessage}, to a remote node and get an ack and a reply
  * message, which is a subclass of {@link SGReplyMessage}. when a reply message
- * arrives, {@link SGRequestMessage#onReceivingReply(SkipGraph, SGReplyMessage)}
+ * arrives, SGRequestMessage#onReceivingReply(SkipGraph, SGReplyMessage)
  * is called. if ack message timeouts,
- * {@link SGRequestMessage#onTimeOut(SkipGraph)} is called.
+ * SGRequestMessage#onTimeOut(SkipGraph) is called.
  * <p>
  * the destination of the ack message and the reply message may be different
  * node.
@@ -254,9 +254,8 @@ public class SGMessagingFramework<E extends Endpoint> {
         /**
          * create a SGRequestMessage instance.
          * 
-         * @param sgmf
-         * @param isRoot
-         *            indicate whether this message is
+         * @param sgmf the messaging framework.
+         * @param isRoot indicate whether this message is root.
          * @param isDirectReturn
          *            true if the reply for this message is directly sent to
          *            the root node.
@@ -266,6 +265,7 @@ public class SGMessagingFramework<E extends Endpoint> {
          * @param replyId
          *            used only when replyTo != null and specify the replyId at
          *            the root node.
+         * @param expire the expiration time.
          */
         public SGRequestMessage(SGMessagingFramework<E> sgmf, boolean isRoot,
                 boolean isDirectReturn, E replyTo, int replyId, int expire) {
@@ -330,8 +330,8 @@ public class SGMessagingFramework<E extends Endpoint> {
          * an ACK message is automatically sent to the sender node and
          * {@link #execute(SkipGraph)} is called at the destination node.
          * <p>
-         * when we receive a reply message, {@link #onReceivingReply(SkipGraph,
-         * SGReplyMessage)} is called.  (note that when {@link #isDirectReturn}
+         * when we receive a reply message, {@link #onReceivingReply}
+         * is called.  (note that when isDirectReturn
          * == true, we do not receive any reply message in non-root nodes).
          * <p>
          * if we do not receive an ACK message
@@ -339,11 +339,11 @@ public class SGMessagingFramework<E extends Endpoint> {
          * {@link #onTimeOut(SkipGraph)} is called. 
          * <p>
          * Note:
-         * the message is stored in {@link SGMessagingFramework#msgStore}
+         * the message is stored in SGMessagingFramework#msgStore
          * for handling ACK and reply messages.
          * <p> 
          * the message is removed when (1) ACK is received (if
-         * {@link #isDirectReturn}==true), or (2) a reply message is received
+         * isDirectReturn==true), or (2) a reply message is received
          * (otherwise).
          * 
          * @param dst   destination node
@@ -432,8 +432,7 @@ public class SGMessagingFramework<E extends Endpoint> {
         final transient E receiver;
 
         /**
-         * compose a reply message against the specified
-         * {@link SGRequestMessage}.
+         * compose a reply message against the specified SGRequestMessage.
          * 
          * @param sg        Skip Graph instance
          * @param received  the SGRequestMessage for which this reply message

@@ -5,8 +5,8 @@
   <artifactId>piax</artifactId>
   <packaging>pom</packaging>
   <version>3.1.0</version>
-  <name>piax</name>
-  <url>http://maven.apache.org</url>
+  <name>PIAX</name>
+  <url>http://www.piax.org/</url>
   <dependencies>
     <dependency>
       <groupId>junit</groupId>

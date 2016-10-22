@@ -55,7 +55,7 @@ import org.slf4j.LoggerFactory;
  * appMethodは、AppIfあるいは、
  * そのスーパー・インターフェースで宣言されていなければいけない。さらに、対象が呼び出し側と異なるピアに存在する場合は
  * {@literal @}RemoteCallableアノテーションがついていて、かつRPCExceptionをスローするように宣言されていなければいけない。
- * 例えば、以下のとうりである。
+ * 例えば、以下の通りである。
  * </p>
  * <pre>
  * import org.piax.gtrans.RemoteCallable;
@@ -64,25 +64,24 @@ import org.slf4j.LoggerFactory;
  *   {@literal @}RemoteCallable
  *   int appMethod(int a1, String a2) throws RPCException;
  * }
+ * </pre>
+ * 引数のコピー
  * 
- * <h3>引数のコピー</h3>
- * <p>
  * RPCでは、引数は、一般にはコピーされるが、保証されない。呼び出されたメソッド内で引数のオブジェクトを変更した場合、
  * それが呼び出し側に反映されるかどうかは不明であるので注意が必要である。
  * 呼び出された側では、変更しない方が無難である。
- * </p>
- * <h3>oneway RPC</h3>
  * <p>
+ * oneway RPC
+ * </p>
  * 呼び出したメソッドの終了を待つ通常の同期型RPCの他に、終了を待たないoneway RPCが存在する。
  * oneway RPCでは、呼び出したメソッドの返り値を受け取ることはできない。
- * {@literal @}RemoteCallableアノテーションにType.ONEWAYの引数を指定すると
+ * {@literal @RemoteCallable} アノテーションに{@code Type.ONEWAY}の引数を指定すると
  * デフォルトではONEWAY RPCとして呼ばれる。
  * oneway RPCを指定しても実際に、非同期になるかどうかは、
  * 使用しているトランスポートに依存するので、注意が必要である。
+ *<p>
+ * 動的RPC
  * </p>
- *
- * <h3>動的RPC</h3>
- * <p>
  * RPCは原則として対象のインターフェースを指定して行うが
  * 例外的に対象のインターフェースが、実行時まで不明な場合がある。
  * 例えば、デバッグなどで実行時に人間が、メソッドや引数を指定する場合である。
@@ -90,7 +89,7 @@ import org.slf4j.LoggerFactory;
  * インターフェースが存在しないことがある。
  * このような場合のために、動的な呼び出しを用意している。
  * 以下のように使用する。
- * </p>
+ * 
  * <pre>
  * try {
  *     Object r = rpcInvoker.rcall(targetObjectId,targetEndpoint,"appMethod",arg1,arg2);
@@ -98,12 +97,12 @@ import org.slf4j.LoggerFactory;
  *     // 例外処理
  * }
  * </pre>
- * <p>
+ * 
  * 返り値は常にObject型となる。intなど基本型はボクシングが行われてInteger型などになる。
  * 例外は、何が発生するか不明なので、Throwableを受けなければいけない。
- * </p>
- * <h3>その他</h3>
  * <p>
+ * その他
+ * </p>
  * getStubには、いくつかバリエーションが存在する。
  * timeoutを指定できるもの、RPCModeを指定できるもの、
  * targetObjectId,targetEndpointの代わりにCallerrIdを指定するものが存在する。
@@ -111,12 +110,12 @@ import org.slf4j.LoggerFactory;
  * RPCModeを指定できるものでは、指定によりoneway RPCかどうかの決定方法を
  * 以下のように変更可能である。
  * <ul>
- *　<li>AUTOならば、Annotationにより決定する。(デフォルト)</li>
- *  <li>SYNCならば、常に同期型である。</li>
- *  <li>ONEWAYならば、常にOnewayである。</li>
+ * <li>AUTOならば、Annotationにより決定する(デフォルト)
+ * <li>SYNCならば、常に同期型である
+ * <li>ONEWAYならば、常にOnewayである
  * </ul>
  * 詳細は、各メソッドの説明を見て欲しい。
- * </p>
+ * 
  */
 public class RPCInvoker<T extends RPCIf, E extends Endpoint> implements RPCIf {
 	/*--- logger ---*/
@@ -303,7 +302,7 @@ public class RPCInvoker<T extends RPCIf, E extends Endpoint> implements RPCIf {
      * 
      * @param objId 対象のObjectId
      * @param obj 対象オブジェクト
-     * @throws IdConflictException
+     * @throws IdConflictException thrown if the object ID is already used. 
      */
     public void registerRPCObject(ObjectId objId, RPCIf obj)
             throws IdConflictException {
@@ -314,7 +313,7 @@ public class RPCInvoker<T extends RPCIf, E extends Endpoint> implements RPCIf {
     /**
      * RPC対象から抹消する。
      * 
-     * @param objId　対象のObjectId
+     * @param objId 対象のObjectId
      * @param obj 対象オブジェクト
      * @return 削除したらtrue、もともと登録されていない場合はfalseを返す。
      */
@@ -412,6 +411,7 @@ public class RPCInvoker<T extends RPCIf, E extends Endpoint> implements RPCIf {
      * 　　　　AUTOならば、Annotationにより決定する。
      *        SYNCならば、常に同期型である。
      *        ONEWAYならば、常にOnewayである。
+     * @param <S> A type of RPCIf
      * @return RPCのためのstub
      */
     public <S extends RPCIf> S getStub(Class<S> clz,
@@ -434,6 +434,7 @@ public class RPCInvoker<T extends RPCIf, E extends Endpoint> implements RPCIf {
      * 　　　　AUTOならば、Annotationにより決定する。
      *        SYNCならば、常に同期型である。
      *        ONEWAYならば、常にOnewayである。
+     * @param <S> A type of RPCIf
      * @return RPCのためのstub
      */
     public <S extends RPCIf> S getStub(Class<S> clz,
@@ -450,6 +451,7 @@ public class RPCInvoker<T extends RPCIf, E extends Endpoint> implements RPCIf {
      * @param targetId RPC呼び出しの対象となるオブジェクトのId
      * @param remotePeer リモートピアを示すEndpoint
      * @param timeout timeout値（msec）
+     * @param <S> A type of RPCIf
      * @return RPCのためのstub
      */
     public <S extends RPCIf> S getStub(Class<S> clz,
@@ -467,6 +469,7 @@ public class RPCInvoker<T extends RPCIf, E extends Endpoint> implements RPCIf {
      * @param clz RPC呼び出しの対象となるオブジェクトの型
      * @param targetId RPC呼び出しの対象となるオブジェクトのId
      * @param remotePeer リモートピアを示すEndpoint
+     * @param <S> A type of RPCIf
      * @return RPCのためのstub
      */
     public <S extends RPCIf> S getStub(Class<S> clz,
@@ -480,13 +483,13 @@ public class RPCInvoker<T extends RPCIf, E extends Endpoint> implements RPCIf {
      * cidで指定されるオブジェクトのメソッドを呼び出すためのstubを返す。
      * 
      * @param clz RPC呼び出しの対象となるオブジェクトが実装しているインターフェース
-     * @param targetId RPC呼び出しの対象となるオブジェクトのId
-     * @param remotePeer リモートピアを示すEndpoint
+     * @param cid RPC呼び出しの対象となるオブジェクトのId
      * @param timeout timeout値（msec）
      * @param rpcMode Onewayかどうかを指定する。
      * 　　　　AUTOならば、Annotationにより決定する。
      *        SYNCならば、常に同期型である。
      *        ONEWAYならば、常にOnewayである。
+     * @param <S> A type of RPCIf
      * @return RPCのためのstub
      */
     @SuppressWarnings("unchecked")
@@ -500,12 +503,12 @@ public class RPCInvoker<T extends RPCIf, E extends Endpoint> implements RPCIf {
      * cidで指定されるオブジェクトのメソッドを呼び出すためのstubを返す。
      * 
      * @param clz RPC呼び出しの対象となるオブジェクトが実装しているインターフェース
-     * @param targetId RPC呼び出しの対象となるオブジェクトのId
-     * @param remotePeer リモートピアを示すEndpoint
+     * @param cid RPC呼び出しの対象となるオブジェクトのId
      * @param rpcMode Onewayかどうかを指定する。
      * 　　　　AUTOならば、Annotationにより決定する。
      *        SYNCならば、常に同期型である。
      *        ONEWAYならば、常にOnewayである。
+     * @param <S> A type of RPCIf
      * @return RPCのためのstub
      */
     @SuppressWarnings("unchecked")
@@ -520,8 +523,9 @@ public class RPCInvoker<T extends RPCIf, E extends Endpoint> implements RPCIf {
      * オブジェクトのメソッドを呼び出すためのstubを返す。
      * 
      * @param clz RPC呼び出しの対象となるオブジェクトの型
-     * @param ref 対象オブジェクトを指定する
+     * @param cid the id of the callee. 
      * @param timeout timeout値（msec）
+     * @param <S> A type of RPCIf
      * @return RPCのためのstub
      */
     @SuppressWarnings("unchecked")
@@ -537,7 +541,8 @@ public class RPCInvoker<T extends RPCIf, E extends Endpoint> implements RPCIf {
      * オブジェクトのメソッドを呼び出すためのstubを返す。
      * 
      * @param clz RPC呼び出しの対象となるオブジェクトの型
-     * @param ref 対象オブジェクトを指定する
+     * @param cid the id of the callee.
+     * @param <S> A type of RPCIf
      * @return RPCのためのstub
      */
     @SuppressWarnings("unchecked")
@@ -548,10 +553,8 @@ public class RPCInvoker<T extends RPCIf, E extends Endpoint> implements RPCIf {
     }
     
     /**
-     * リモートピア上の、clz型のインターフェースを実装し、
      * targetIdを持つオブジェクトのメソッドを動的に呼び出す。
      * 
-     * @param clz RPC呼び出しの対象となるオブジェクトが実装しているインターフェース
      * @param targetId RPC呼び出しの対象となるオブジェクトのId
      * @param remotePeer リモートピアを示すEndpoint
      * @param timeout timeout値（msec）
@@ -559,7 +562,10 @@ public class RPCInvoker<T extends RPCIf, E extends Endpoint> implements RPCIf {
      * 　　　　AUTOならば、Annotationにより決定する。
      *        SYNCならば、常に同期型である。
      *        ONEWAYならば、常にOnewayである。
+     * @param method the name of the method.
+     * @param args the arguments for the method.
      * @return RPCのためのstub
+     * @throws Throwable exceptions occurred while RPC. 
      */
     public Object rcall(
             ObjectId targetId, E remotePeer, int timeout,
@@ -571,14 +577,16 @@ public class RPCInvoker<T extends RPCIf, E extends Endpoint> implements RPCIf {
      * リモートピア上の、clz型のインターフェースを実装し、
      * targetIdを持つオブジェクトのメソッドを動的に呼び出す。
      * 
-     * @param clz RPC呼び出しの対象となるオブジェクトが実装しているインターフェース
      * @param targetId RPC呼び出しの対象となるオブジェクトのId
      * @param remotePeer リモートピアを示すEndpoint
      * @param rpcMode Onewayかどうかを指定する。
      * 　　　　AUTOならば、Annotationにより決定する。
      *        SYNCならば、常に同期型である。
      *        ONEWAYならば、常にOnewayである。
+     * @param method the name of the method.
+     * @param args the arguments for the method.
      * @return RPCのためのstub
+     * @throws Throwable exceptions occurred while RPC. 
      */
     public Object rcall(
             ObjectId targetId, E remotePeer,
@@ -590,11 +598,13 @@ public class RPCInvoker<T extends RPCIf, E extends Endpoint> implements RPCIf {
      * リモートピア上の、clz型のインターフェースを実装し、
      * targetIdを持つオブジェクトのメソッドを動的に呼び出す。
      * 
-     * @param clz RPC呼び出しの対象となるオブジェクトが実装しているインターフェース
      * @param targetId RPC呼び出しの対象となるオブジェクトのId
      * @param remotePeer リモートピアを示すEndpoint
      * @param timeout timeout値（msec）
+     * @param method the name of the method.
+     * @param args the arguments for the method.
      * @return RPCのためのstub
+     * @throws Throwable exceptions occurred while RPC. 
      */
     public Object rcall(
             ObjectId targetId, E remotePeer, int timeout,
@@ -606,10 +616,12 @@ public class RPCInvoker<T extends RPCIf, E extends Endpoint> implements RPCIf {
      * リモートピア上の、clz型のインターフェースを実装し、
      * targetIdを持つオブジェクトのメソッドを動的に呼び出す。
      * 
-     * @param clz RPC呼び出しの対象となるオブジェクトが実装しているインターフェース
      * @param targetId RPC呼び出しの対象となるオブジェクトのId
      * @param remotePeer リモートピアを示すEndpoint
+     * @param method the name of the method.
+     * @param args the arguments for the method.
      * @return RPCのためのstub
+     * @throws Throwable exceptions occurred while RPC. 
      */
     public Object rcall(
             ObjectId targetId, E remotePeer,
@@ -618,18 +630,18 @@ public class RPCInvoker<T extends RPCIf, E extends Endpoint> implements RPCIf {
     }
     
     /**
-     * リモートピア上の、clz型のインターフェースを実装し、
      * cidで指定されるオブジェクトのメソッドを動的に呼び出す。
      * 
-     * @param clz RPC呼び出しの対象となるオブジェクトが実装しているインターフェース
-     * @param targetId RPC呼び出しの対象となるオブジェクトのId
-     * @param remotePeer リモートピアを示すEndpoint
+     * @param cid the id of the callee.
      * @param timeout timeout値（msec）
      * @param rpcMode Onewayかどうかを指定する。
      * 　　　　AUTOならば、Annotationにより決定する。
      *        SYNCならば、常に同期型である。
      *        ONEWAYならば、常にOnewayである。
+     * @param method the name of the method.
+     * @param args the arguments for the method.
      * @return RPCのためのstub
+     * @throws Throwable exceptions occurred while RPC. 
      */
     @SuppressWarnings("unchecked")
     public Object rcall(
@@ -639,17 +651,17 @@ public class RPCInvoker<T extends RPCIf, E extends Endpoint> implements RPCIf {
     }
     
     /**
-     * リモートピア上の、clz型のインターフェースを実装し、
      * cidで指定されるオブジェクトのメソッドを動的に呼び出す。
      * 
-     * @param clz RPC呼び出しの対象となるオブジェクトが実装しているインターフェース
-     * @param targetId RPC呼び出しの対象となるオブジェクトのId
-     * @param remotePeer リモートピアを示すEndpoint
+     * @param cid the id of the callee.
      * @param rpcMode Onewayかどうかを指定する。
      * 　　　　AUTOならば、Annotationにより決定する。
      *        SYNCならば、常に同期型である。
      *        ONEWAYならば、常にOnewayである。
+     * @param method the name of the method.
+     * @param args the arguments for the method.
      * @return RPCのためのstub
+     * @throws Throwable exceptions occurred while RPC. 
      */
     public Object rcall(
             CalleeId cid,
@@ -660,12 +672,12 @@ public class RPCInvoker<T extends RPCIf, E extends Endpoint> implements RPCIf {
     /**
      * リモートピア上の、clz型のインターフェースを実装し、
      * cidで指定されるオブジェクトのメソッドを動的に呼び出す。
-     * 
-     * @param clz RPC呼び出しの対象となるオブジェクトが実装しているインターフェース
-     * @param targetId RPC呼び出しの対象となるオブジェクトのId
-     * @param remotePeer リモートピアを示すEndpoint
+     * @param cid the id of the callee.
      * @param timeout timeout値（msec）
+     * @param method the name of the method.
+     * @param args the arguments for the method.
      * @return RPCのためのstub
+     * @throws Throwable exceptions occurred while RPC.
      */
     @SuppressWarnings("unchecked")
     public Object rcall(
@@ -675,13 +687,13 @@ public class RPCInvoker<T extends RPCIf, E extends Endpoint> implements RPCIf {
     }
     
     /**
-     * リモートピア上の、clz型のインターフェースを実装し、
-     * cidで指定されるオブジェクトのメソッドを動的に呼び出す。
+     * Call a remote method on the object specified by cid.
      * 
-     * @param clz RPC呼び出しの対象となるオブジェクトが実装しているインターフェース
-     * @param targetId RPC呼び出しの対象となるオブジェクトのId
-     * @param remotePeer リモートピアを示すEndpoint
-     * @return RPCのためのstub
+     * @param cid the id of the callee.
+     * @param method the name of the method.
+     * @param args the arguments for the method.
+     * @return a stub for RPC
+     * @throws Throwable exceptions occurred while RPC.
      */
     public Object rcall(
             CalleeId cid,
@@ -703,13 +715,13 @@ public class RPCInvoker<T extends RPCIf, E extends Endpoint> implements RPCIf {
     }
 
     /**
-     * oneway RPCのための送信処理を行う。
+     * send an oneway RPC invocation message.
      * 
-     * @param target
-     * @param remotePeer
-     * @param method
-     * @param args
-     * @throws RPCException 
+     * @param target the target object ID.
+     * @param remotePeer the endpoint of the remote peer.
+     * @param method the name of the method.
+     * @param args the arguments of the method.
+     * @throws RPCException an exception occurred while the RPC.
      */
     public void sendOnewayInvoke(ObjectId target,
             E remotePeer, String method, Object... args) throws RPCException {
@@ -748,17 +760,15 @@ public class RPCInvoker<T extends RPCIf, E extends Endpoint> implements RPCIf {
     }
 
     /**
-     * RPCのための送信処理を行う。
-     * 返り値に例外がセットされた場合、次の例外のケースに限る。
-     * RPCException - 通信処理の中で発生した例外をcauseとして保持する
+     * send an oneway RPC invocation message.
      * 
-     * @param target
-     * @param remotePeer
-     * @param timeout
-     * @param method
-     * @param args
-     * @return RPCの結果
-     * @throws RPCException 
+     * @param target the target object ID.
+     * @param remotePeer the endpoint of the remote peer.
+     * @param timeout the timeout.
+     * @param method the name of the method.
+     * @param args the arguments of the method.
+     * @return the return value object of the invocation.
+     * @throws RPCException an exception occurred while the RPC.
      */
     public ReturnValue<?> sendInvoke(ObjectId target, E remotePeer, int timeout,
             String method, Object... args) throws RPCException {

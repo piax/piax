@@ -26,7 +26,7 @@ public class ProtocolUnsupportedException extends IOException {
     }
 
     /**
-     * @param message
+     * @param message the message string.
      */
     public ProtocolUnsupportedException(String message) {
         super(message);

@@ -93,17 +93,10 @@ public class RingManager<E extends Endpoint> extends RPCInvoker<RingIf, E>
      * 
      * @param transId
      *            transportId
-     * @param peerId
-     *            peerId
      * @param trans
      *            underlying transport
-     * @param execQueryCallback
-     *            a callback object called when
-     *            {@link #execQuery(Deque, Comparable, QueryCondition, Object)}
-     *            is called
-     * @throws MagicNumberConflictException
-     * @throws IdConflictException
-     * @throws IOException
+     * @throws IdConflictException the exception for id confliction.
+     * @throws IOException the exeption for I/O error.
      */
     public RingManager(TransportId transId, ChannelTransport<E> trans)
             throws IdConflictException, IOException {
@@ -242,8 +235,8 @@ public class RingManager<E extends Endpoint> extends RPCInvoker<RingIf, E>
     /**
      * get RingVNode instance (for debugging only)
      * 
-     * @param rawkey
-     * @return RingVNode
+     * @param rawkey the raw key.
+     * @return RingVNode the ring node.
      */
     public RingVNode<E> getVNode(Comparable<?> rawkey) {
         RingVNode<E> snode = keyHash.get(rawkey);
@@ -268,7 +261,9 @@ public class RingManager<E extends Endpoint> extends RPCInvoker<RingIf, E>
     }
 
     /**
-     * factory method
+     * @param rawkey the rawkey
+     * @param params parameters.
+     * @return the RingVNode object.
      */
     protected RingVNode<E> newVNode(Comparable<?> rawkey, Object... params) {
         return new RingVNode<E>(this, rawkey);
@@ -431,6 +426,8 @@ public class RingManager<E extends Endpoint> extends RPCInvoker<RingIf, E>
      *            of DDLL node)
      * @param query
      * 			  non-null if NO_RESPONSE
+     * @param opts
+     *            the transport options.
      * @return the insertion point for `key'
      * @throws UnavailableException
      *             自ノードあるいはseedにkeyが登録されていない
@@ -456,9 +453,11 @@ public class RingManager<E extends Endpoint> extends RPCInvoker<RingIf, E>
      * 
      * @param introducer   an introducer node
      * @param key          a DDLL key to be searched
+     * @param query        the query object.
+     * @param opts         the transport options.
      * @return an InsertPoint.  null if there's no existing node.
-     * @throws IOException
-     * @throws UnavailableException  
+     * @throws IOException the exception thrown when an I/O error occurred.
+     * @throws UnavailableException the exception thrown when the insert point is unavailable.
      */
     @SuppressWarnings("unchecked")
     public InsertPoint findImmedNeighbors(E introducer, DdllKey key, Object query, TransOptions opts)

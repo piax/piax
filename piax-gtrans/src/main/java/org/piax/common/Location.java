@@ -67,7 +67,7 @@ public class Location extends Point2D implements Key {
      *          constructed <code>Location</code>
      * @param y the latitude of the newly
      *          constructed <code>Location</code>
-     * @throws IllegalArgumentException
+     * @throws IllegalArgumentException an exception that occurs when the argument is out of range.
      */
     public Location(double x, double y) throws IllegalArgumentException {
         setLocation(x, y);

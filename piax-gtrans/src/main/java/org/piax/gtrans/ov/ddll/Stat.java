@@ -13,13 +13,14 @@ package org.piax.gtrans.ov.ddll;
 
 import java.io.Serializable;
 
+import org.piax.common.Endpoint;
 import org.piax.gtrans.ov.ddll.Node.Mode;
 
 /**
  * a container class for storing node states.
  * 
  * @see NodeManagerIf#setStat(DdllKey, int, Stat)
- * @see NodeManagerIf#setStatMulti(org.piax.trans.common.Endpoint, Stat[]) 
+ * @see NodeManagerIf#setStatMulti(Endpoint, Stat[])
  */
 public class Stat implements Serializable {
     private static final long serialVersionUID = 1L;
@@ -33,11 +34,11 @@ public class Stat implements Serializable {
     /**
      * constructor
      * 
-     * @param mode
-     * @param me
-     * @param left
-     * @param right
-     * @param rNum
+     * @param mode the mode.
+     * @param me the link.
+     * @param left the left link.
+     * @param right the right link.
+     * @param rNum the link number.
      */
     Stat(Mode mode, Link me, Link left, Link right, LinkNum rNum) {
         this.key = me.key;

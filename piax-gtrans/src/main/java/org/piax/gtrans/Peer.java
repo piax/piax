@@ -193,6 +193,7 @@ public class Peer {
      * @return 指定されたPeerLocatorをEndpointとして持つBaseTransport
      * @throws IOException BaseTransportの生成中にI/Oエラーが発生した場合
      * @throws IdConflictException 指定したtransIdが他とコンフリクトを起こした場合
+     * @param <E> the type of peer locator.
      */
     public <E extends PeerLocator> Transport<E> newBaseTransport(E locator)
             throws IOException, IdConflictException {
@@ -213,6 +214,7 @@ public class Peer {
      * @return 指定されたPeerLocatorをEndpointとして持つBaseTransport
      * @throws IOException BaseTransportの生成中にI/Oエラーが発生した場合
      * @throws IdConflictException 指定したtransIdが他とコンフリクトを起こした場合
+     * @param <E> the type of peer locator.
      */
     public <E extends PeerLocator> Transport<E> newBaseTransport(
             String desc, E locator) throws IOException, IdConflictException {
@@ -234,6 +236,7 @@ public class Peer {
      * @return 指定されたPeerLocatorをEndpointとして持つBaseTransport
      * @throws IOException BaseTransportの生成中にI/Oエラーが発生した場合
      * @throws IdConflictException 指定したtransIdが他とコンフリクトを起こした場合
+     * @param <E> the type of peer locator.
      */
     public <E extends PeerLocator> Transport<E> newBaseTransport(
             String desc, TransportId transId, E locator) throws IOException,
@@ -252,6 +255,7 @@ public class Peer {
      * @return 指定されたPeerLocatorをEndpointとして持つBaseTransport
      * @throws IOException BaseChannelTransportの生成中にI/Oエラーが発生した場合
      * @throws IdConflictException 指定したtransIdが他とコンフリクトを起こした場合
+     * @param <E> the type of peer locator.
      */
     public <E extends PeerLocator> ChannelTransport<E> newBaseChannelTransport(
             E locator) throws IOException, IdConflictException {
@@ -267,11 +271,12 @@ public class Peer {
      * 生成後のBaseChannelTransportのTransportIdにはデフォルトの値がセットされる。
      * BaseChannelTransportの生成手段がない場合はnullが返される。
      * 
-     * @param desc BaseChannelTransportを生成する際に与える補助情報
-     * @param locator PeerLocator
-     * @return 指定されたPeerLocatorをEndpointとして持つBaseChannelTransport
+     * @param desc base channel transport description.
+     * @param locator the locator. 
      * @throws IOException BaseChannelTransportの生成中にI/Oエラーが発生した場合
      * @throws IdConflictException 指定したtransIdが他とコンフリクトを起こした場合
+     * @param <E> the type of peer locator.
+     * @return the peer locator.
      */
     public <E extends PeerLocator> ChannelTransport<E> newBaseChannelTransport(
             String desc, E locator) throws IOException, IdConflictException {
@@ -293,6 +298,7 @@ public class Peer {
      * @return 指定されたPeerLocatorをEndpointとして持つBaseChannelTransport
      * @throws IOException BaseChannelTransportの生成中にI/Oエラーが発生した場合
      * @throws IdConflictException 指定したtransIdが他とコンフリクトを起こした場合
+     * @param <E> the type of peer locator.
      */
     public <E extends PeerLocator> ChannelTransport<E> newBaseChannelTransport(
             String desc, TransportId transId, E locator) throws IOException,

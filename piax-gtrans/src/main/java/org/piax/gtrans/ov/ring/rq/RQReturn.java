@@ -256,10 +256,10 @@ public class RQReturn {
     }
 
     /**
-     * called from {@link RQMessage#onReceivingReply(RingManager, ReplyMessage)}
+     * called from {@link RQMessage#onReceivingReply(ReplyMessage)}
      * when a reply message is received.
      * 
-     * @param reply
+     * @param reply the reply message.
      */
     void setReturnValue(RQReplyMessage reply) {
         manager.checkLocked();
@@ -298,7 +298,7 @@ public class RQReturn {
     /**
      * store results of (sub)ranges and flush if appropriate.
      * 
-     * @param ranges
+     * @param ranges the ranges.
      */
     public void addRemoteValues(
             Collection<DKRangeRValue<?>> ranges) {
@@ -531,9 +531,9 @@ public class RQReturn {
     /**
      * get the results. might return partial results.
      * 
-     * @param timeout
+     * @param timeout the timeout.
      * @return the results that is obtained so far. possibly empty.
-     * @throws InterruptedException
+     * @throws InterruptedException the exception occurs when interrpted.
      */
     Collection<RemoteValue<?>> get(long timeout)
             throws InterruptedException {

@@ -47,7 +47,7 @@ public interface NodeObserver {
      * when false is returned, it is application's responsibility to repair the
      * failed link.
      * 
-     * @param failedLinks
+     * @param failedLinks the collection of failed links.
      * @return true to execute DDLL's link fixing procedure
      */
     boolean onNodeFailure(Collection<Link> failedLinks);

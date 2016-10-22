@@ -167,7 +167,7 @@ public class ByteUtil {
      * @param b バイトデータ
      * @param ix 上位から数えたビット数
      * @return 上位ixビット目が1の時はtrue、それ以外はfalse
-     * @throws IllegalArgumentException 0 <= ix < 8 でない場合
+     * @throws IllegalArgumentException 0 &lt;= ix &lt; 8 でない場合
      */
     public static boolean testBit(byte b, int ix) throws IllegalArgumentException {
         if (ix < 0 || ix >= 8) {
@@ -184,7 +184,7 @@ public class ByteUtil {
      * @param b バイト列データ
      * @param ix 上位から数えたビット数
      * @return 上位ixビット目が1の時はtrue、それ以外はfalse
-     * @throws IllegalArgumentException 0 <= ix < 8*byte長、 でない場合
+     * @throws IllegalArgumentException 0 &lt;= ix &lt; 8*byte長、 でない場合
      */
     public static boolean testBit(byte[] b, int ix) throws IllegalArgumentException {
         if (ix < 0 || ix >= b.length * 8) {

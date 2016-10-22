@@ -26,7 +26,7 @@ public class NoSuchRemoteObjectException extends IOException {
     }
 
     /**
-     * @param message
+     * @param message the message string.
      */
     public NoSuchRemoteObjectException(String message) {
         super(message);

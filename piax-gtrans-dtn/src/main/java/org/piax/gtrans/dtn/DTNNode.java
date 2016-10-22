@@ -189,8 +189,8 @@ public class DTNNode<D extends Destination, K extends Key> extends
     /**
      * SimpleDTNから最初に発行されるsend
      * 
-     * @param dst
-     * @param nmsg
+     * @param dst the destination.
+     * @param nmsg the message.
      */
     public void firstSend(Destination dst, NestedMessage nmsg) {
         logger.trace("ENTRY:");

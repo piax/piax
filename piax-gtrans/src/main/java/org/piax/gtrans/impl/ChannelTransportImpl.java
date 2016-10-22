@@ -56,8 +56,8 @@ public abstract class ChannelTransportImpl<E extends Endpoint> extends
     /**
      * RawTransportのように、ServiceIdを持たないTransportを生成する。
      * 
-     * @param peerId
-     * @param supportsDuplex
+     * @param peer the peer object.
+     * @param supportsDuplex true if the transport supports duplex communication.
      */
     protected ChannelTransportImpl(Peer peer, boolean supportsDuplex) {
         super(peer);

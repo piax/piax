@@ -40,11 +40,11 @@ public class RangeUtils {
      *     [a--------------b)
      *                      [--ret---)
      *     
-     * @param <K>
-     * @param r
-     * @param a
-     * @param b
-     * @return
+     * @param <K> the comparable type.
+     * @param r the range.
+     * @param a the left value.
+     * @param b the right value.
+     * @return the range.
      */
     static <K extends Comparable<?>> Range<K> retainRange(Range<K> r, K a, K b) {
         if (r.contains(a) && keyComp.compare(a, r.from) != 0) {
@@ -79,11 +79,11 @@ public class RangeUtils {
      *     [a--------------b)
      *           [---ret----)
      *
-     * @param <K>
-     * @param r
-     * @param a
-     * @param b
-     * @return
+     * @param <K> the type of comparable.
+     * @param r the range.
+     * @param a the left value.
+     * @param b the right value.
+     * @return the range.
      */
     static <K extends Comparable<?>> Range<K> removedRange(Range<K> r, K a, K b) {
         if (r.contains(a) && keyComp.compare(a, r.from) != 0) {

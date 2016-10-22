@@ -82,7 +82,7 @@ public class RingVNode<E extends Endpoint> implements NodeObserver {
     /**
      * create a RingVNode instance.
      * 
-     * @param manager       the p2p network instance that manages this node
+     * @param rman       the p2p network instance that manages this node
      * @param rawkey    the key
      */
     public RingVNode(RingManager<E> rman, Comparable<?> rawkey) {

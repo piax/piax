@@ -54,10 +54,10 @@ public class AdHocTransport<E extends Endpoint> extends
     /**
      * Bluetoothを用いたAdHocTransportを生成する。
      * 
-     * @param me
-     * @param transId
-     * @throws IdConflictException
-     * @throws IOException
+     * @param peer the peer object.
+     * @param transId the tranpsort id.
+     * @throws IdConflictException an exception for id conflicts.
+     * @throws IOException an exception for I/O error
      */
     @SuppressWarnings("unchecked")
     public AdHocTransport(Peer peer, TransportId transId)

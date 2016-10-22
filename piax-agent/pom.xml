@@ -10,8 +10,56 @@
   <groupId>org.piax</groupId>
   <artifactId>piax-agent</artifactId>
   <version>3.1.0</version>
-  <name>piax-agent</name>
-  <url>http://maven.apache.org</url>
+  <name>PIAX Agent</name>
+  <description>The mobile agent library of PIAX</description>
+  <url>http://www.piax.org/</url>
+  <licenses>
+    <license>
+      <name>GNU Affero General Public License (AGPL) version 3.0</name>
+      <url>https://www.gnu.org/licenses/agpl-3.0.html</url>
+    </license>
+    <license>
+      <name>PIAX Binary Code License</name>
+      <url>http://www.piax.org/pbcl.html</url>
+    </license>
+  </licenses>
+  <developers>
+    <developer>
+      <name>Yuuichi Teranishi</name>
+      <email>teranisi@piax.org</email>
+      <organization>PIAX Development Team</organization>
+      <organizationUrl>https://github.com/teranisi</organizationUrl>
+    </developer>
+    <developer>
+      <name>Kota Abe</name>
+      <email>k-abe@media.osaka-cu.ac.jp</email>
+      <organization>PIAX Development Team</organization>
+      <organizationUrl>https://github.com/ktabe</organizationUrl>
+    </developer>
+    <developer>
+      <name>Koji Otani</name>
+      <email>sho@bbr.jp</email>
+      <organization>PIAX Development Team</organization>
+      <organizationUrl>https://github.com/sho-otani</organizationUrl>
+    </developer>
+    <developer>
+      <name>Yoshimasa Ishi</name>
+      <email>ishi@piax.jp</email>
+      <organization>PIAX Development Team</organization>
+      <organizationUrl>https://github.com/yoshishi</organizationUrl>
+    </developer>
+    <developer>
+      <name>Junichi Shiba</name>
+      <email>shibajun@piax.jp</email>
+      <organization>PIAX Development Team</organization>
+      <organizationUrl>https://github.com/shibajun</organizationUrl>
+    </developer>
+  </developers>
+  <scm>
+    <connection>scm:git:git://github.com/piax/piax.git</connection>
+    <developerConnection>scm:git:git://github.com/piax/piax.git</developerConnection>
+    <url>http://github.com/piax/piax/tree/master</url>
+  </scm>
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
@@ -71,6 +119,57 @@
           </systemProperties>
         </configuration>
       </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-gpg-plugin</artifactId>
+        <version>1.5</version>
+        <executions>
+          <execution>
+            <id>sign-artifacts</id>
+            <configuration>
+	      <gpgArguments>
+                <arg>-u</arg>
+                <arg>steering@piax.org</arg>
+              </gpgArguments>
+            </configuration>
+            <phase>verify</phase>
+            <goals>
+              <goal>sign</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-source-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>attach-sources</id>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-javadoc-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>attach-javadocs</id>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
     </plugins>
   </build>
+  <distributionManagement>
+    <repository>
+      <id>sonatype-nexus-staging</id>
+      <name>Nexus Release Repository</name>
+      <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+    </repository>
+  </distributionManagement>
 </project>

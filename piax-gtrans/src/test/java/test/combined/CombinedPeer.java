@@ -189,9 +189,6 @@ public class CombinedPeer extends Util {
         }
     }
     
-    /**
-     * @param args
-     */
     public static void main(String[] args) throws Exception {
 
         printf("-- CombinedOverlay test --%n");

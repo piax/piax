@@ -25,7 +25,7 @@ public class NetworkTimeoutException extends IOException {
     }
 
     /**
-     * @param message
+     * @param message the message string.
      */
     public NetworkTimeoutException(String message) {
         super(message);
