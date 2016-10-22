@@ -5,11 +5,11 @@
   <parent>
     <groupId>org.piax</groupId>
     <artifactId>piax</artifactId>
-    <version>3.1.0</version>
+    <version>3.2-SNAPSHOT</version>
   </parent>
   <groupId>org.piax</groupId>
   <artifactId>piax-gtrans</artifactId>
-  <version>3.1.0</version>
+  <version>3.2-SNAPSHOT</version>
   <name>piax-gtrans</name>
   <url>http://maven.apache.org</url>
   <properties>

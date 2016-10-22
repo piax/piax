@@ -4,7 +4,7 @@
   <groupId>org.piax</groupId>
   <artifactId>piax</artifactId>
   <packaging>pom</packaging>
-  <version>3.1.0</version>
+  <version>3.2-SNAPSHOT</version>
   <name>piax</name>
   <url>http://maven.apache.org</url>
   <dependencies>
