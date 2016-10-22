@@ -6,7 +6,6 @@ import org.piax.gtrans.RemoteValue;
 
 /**
  * @author     Mikio Yoshida
- * @version    
  */
 public class TestMisc {
 

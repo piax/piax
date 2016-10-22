@@ -62,7 +62,7 @@ public class DefaultAgentTransportManager extends AgentTransportManager {
      * ロケータは、このメソッドに渡せるものでなければいけない。
      * 2つのロケータpeerLocator, seedLocatorは同じ型でなければいけない。
      * 
-     * @param peerName　ピア名
+     * @param peerName ピア名
      * @param peerLocator 自身のピアのロケータ
      * @param seedLocator シードのロケータ
      */

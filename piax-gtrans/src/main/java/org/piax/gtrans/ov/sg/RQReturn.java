@@ -286,9 +286,9 @@ public class RQReturn<E extends Endpoint> extends TimerTask {
     /**
      * get the results. might return partial results.
      * 
-     * @param timeout
+     * @param timeout the timeout.
      * @return the results that is obtained so far. possibly empty.
-     * @throws InterruptedException
+     * @throws InterruptedException an exception when an interruption occurred.
      */
     synchronized Collection<RemoteValue<?>> get(long timeout)
             throws InterruptedException {

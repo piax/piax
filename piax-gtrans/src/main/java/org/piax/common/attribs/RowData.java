@@ -106,8 +106,9 @@ public class RowData implements Key {
      * 通常は、AttribTableがRowDataの生成を行う。
      * このため、protected にしている。
      * 
-     * @param table
-     * @param rowId
+     * @param table a table.
+     * @param rowId a row ID.
+     * @param isBoundToAttribute a flag that indicates the row data is managed by the Attribute.
      */
     protected RowData(AttributeTable table, Id rowId, boolean isBoundToAttribute) {
         this.table = table;
@@ -328,20 +329,20 @@ public class RowData implements Key {
     }
     
     /**
-     * 登録されている属性名のListを返す。
-     * 返されるList<String>はコピーされたその時点のスナップショットである。
+     * Returns a list of attribute names.
+     * The returned list is a snapshot at the time the function is called.
      * 
-     * @return 属性名のスナップショットList
+     * @return a list of attribute names. 
      */
     public synchronized List<String> getAttribNames() {
         return new ArrayList<String>(values.keySet());
     }
 
     /**
-     * index化された属性名のListを返す。
-     * 返されるList<String>はコピーされたその時点のスナップショットである。
+     * Returns an indexed list of attribute names.
      * 
-     * @return index化された属性名のスナップショットList
+     * The returned list is a snapshot at the time the function is called.
+     * @return a list of indexed attribute names.
      */
     public synchronized List<String> getIndexedAttribNames() {
         List<String> list = new ArrayList<String>();
@@ -353,10 +354,10 @@ public class RowData implements Key {
     }
 
     /**
-     * index化されていない属性名のListを返す。
-     * 返されるList<String>はコピーされたその時点のスナップショットである。
+     * Returns an not-indexed attribute names.
+     * The returned list is a snapshot at the time the function is called.
      * 
-     * @return index化されていない属性名のスナップショットList
+     * @return an not-indexed list of attribute names. 
      */
     public synchronized List<String> getUnindexedAttribNames() {
         List<String> list = new ArrayList<String>();

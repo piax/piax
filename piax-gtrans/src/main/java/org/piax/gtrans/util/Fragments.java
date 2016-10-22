@@ -368,6 +368,7 @@ public class Fragments {
      * @param bbuf fragment byte列を持つ配列
      * @param boff fragment byte列のoffset
      * @param blen fragment byte列の長さ
+     * @return the byte array.
      */
     public byte[] newPacketBytes(int msgId, int seq, int fragNum, byte[] bbuf, 
             int boff, int blen) {
@@ -396,7 +397,7 @@ public class Fragments {
      * として、再構成したメッセージを持つByteBufferを返す。
      * 未完成の場合は、nullが返る。
      * 
-     * @param srcAddr 送信元のアドレス
+     * @param src 送信元のアドレス
      * @param fpac FragmentPacket
      * @return メッセージを完成した場合はそのByteBuffer、それ以外はnull
      */

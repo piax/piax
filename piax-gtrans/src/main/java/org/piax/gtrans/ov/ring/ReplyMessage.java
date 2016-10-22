@@ -34,7 +34,7 @@ public abstract class ReplyMessage extends ResponseMessage {
     /** reply先のrequestを指定する */
     public final int replyId;
     /** ack先のrequestを指定する．通常はreplyIdと等しいが，
-     * isRoot && isDirectReturn の場合には異なる */
+     * isRoot and isDirectReturn の場合には異なる */
     protected final int ackId;
     final transient RingManager<?> manager;
     final transient RequestMessage requestMsg;

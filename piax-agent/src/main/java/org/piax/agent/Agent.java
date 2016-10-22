@@ -113,7 +113,6 @@ import org.slf4j.LoggerFactory;
  * 返り値は常にObject型となる。intなど基本型はボクシングが行われてInteger型などになる。
  * 例外は、何が発生するか不明なので、Throwableを受けなければいけない。
  * </p>
- * <p>
  * <h3>その他</h3>
  * <p>
  * getStubには、いくつかバリエーションが存在する。
@@ -123,12 +122,12 @@ import org.slf4j.LoggerFactory;
  * RPCModeを指定できるものでは、指定によりoneway RPCかどうかの決定方法を
  * 以下のように変更可能である。
  * <ul>
- *　<li>AUTOならば、Annotationにより決定する。(デフォルト)</li>
- *  <li>SYNCならば、常に同期型である。</li>
- *  <li>ONEWAYならば、常にOnewayである。</li>
+ * <li>AUTOならば、Annotationにより決定する。(デフォルト)
+ * <li>SYNCならば、常に同期型である。
+ * <li>ONEWAYならば、常にOnewayである。
  * </ul>
  * 詳細は、各メソッドの説明を見て欲しい。
- * </p>
+ * 
  * <h3>ディスカバリコール</h3>
  * <p>
  * ディスカバリコールは、getListとgetDCStub組み合わせて以下のように行う。
@@ -359,9 +358,9 @@ public abstract class Agent implements AgentIf {
      * @param remotePeer リモートピアを示すEndpoint
      * @param timeout timeout値（msec）
      * @param rpcMode Onewayかどうかを指定する。
-     * 　　　　AUTOならば、Annotationにより決定する。
-     *        SYNCならば、常に同期型である。
-     *        ONEWAYならば、常にOnewayである。
+     *       AUTOならば、Annotationにより決定する。
+     *       SYNCならば、常に同期型である。
+     *       ONEWAYならば、常にOnewayである。
      * @return RPCのためのstub
      */
     public <S extends RPCIf> S getStub(Class<S> clz, AgentId agId,
@@ -535,20 +534,20 @@ public abstract class Agent implements AgentIf {
     /**
      * discoveryCall用のスタブを取得する。
      * rpcModeには、以下が指定可能である。
-　　 * <ul>
-　　 *　<li>AUTOならば、Annotationにより決定する。(デフォルト)</li>
-　　 *  <li>SYNCならば、常に同期型である。</li>
-　　 *  <li>ASYNCならば、常に非同期型である。</li>
-　　 *  <li>ONEWAYならば、常にOnewayである。</li>
-　　 * </ul>
+     * <ul>
+     * <li> AUTOならば、Annotationにより決定する。(デフォルト)
+     * <li> SYNCならば、常に同期型である。
+     * <li> ASYNCならば、常に非同期型である。
+     * <li> ONEWAYならば、常にOnewayである。
+     * </ul>
      * ONEWAY以外ではスタブは、明示的には使用せず
      * 必ず以下のようにgetListやgetFQとともに使用する。
      * <pre>
      * //同期型
-     * List<String> r = getList(getDCStub(App.class,"$location in rect(10.0,11.0)")
+     * List&lt;String&gt; r = getList(getDCStub(App.class,"$location in rect(10.0,11.0)")
      *                    .appMethod(arg),RPCMode.SYNC);
      * //非同期型
-     * FutureQueue<String> r = getFQ(getDCStub(App.class,"$location in rect(10.0,11.0)")
+     * FutureQueue&lt;String&gt; r = getFQ(getDCStub(App.class,"$location in rect(10.0,11.0)")
      *                    .appMethod(arg),RPCMode.ASYNC);
      * </pre>
      * ただし、呼び出しメソッドの型がvoidの場合は、getListやgetFQを使用せず以下のようにする。

@@ -22,15 +22,15 @@ import org.slf4j.LoggerFactory;
 /**
  * A class representing a key for DDLL.
  * <p>
- * An instance of DdllKey contains a {@link #primaryKey}, {@link #uniqId} and 
- * {@link #id}. A UniqId is used for making the DdllKey unique.
+ * An instance of DdllKey contains a primaryKey, uniqId and 
+ * id. A UniqId is used for making the DdllKey unique.
  * <p>
  * IDs are used for identifying linked-lists.  Different linked-lists 
  * should have different IDs. 
  * When repairing a linked-list, keys that have the same ID is used as a 
  * hint for finding a live left node.
  * <p>
- * {@link appData} is an application-specific data, which is not used by the
+ * appData is an application-specific data, which is not used by the
  * DDLL package.  The skip graph implementation {@link org.piax.gtrans.ov.sg} uses 
  * this field for passing a {@link org.piax.gtrans.ov.sg.MembershipVector}. 
  */
@@ -133,7 +133,7 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
     /**
      * compare without id
      * 
-     * @param o
+     * @param o the key object.
      * @return  comparison results
      */
     public boolean equals2(DdllKey o) {

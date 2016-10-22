@@ -89,7 +89,7 @@ import org.piax.gtrans.ov.Overlay;
  * </pre>
  * <p>
  * テストベッドのMainAgentでは、 TestbedAgentTransportManagerクラスを定義して自身のjar内に
- * 入れることによりAgentTransportManagerを自身のものに設定可能である。 </pre>
+ * 入れることによりAgentTransportManagerを自身のものに設定可能である。 
  * 
  * <h3>リスナー</h3>
  * <p>
@@ -105,7 +105,7 @@ import org.piax.gtrans.ov.Overlay;
  * <pre>
  * final AgentRef ref;
  * ...
- * Future&lt;Integer&gt; f = agentPeer.submit(new Callable<Integer>() {
+ * Future&lt;Integer&gt; f = agentPeer.submit(new Callable&lt;Integer&gt;() {
  *     {@literal @}Override
  *     public Integer call() throws RPCException {
  *         return rcall(AppIf.class,ref).sum(10);       
@@ -149,9 +149,9 @@ public class AgentPeer {
     
     /**
      * executorを使用してタスクを実行する。
-     * @param task　実行するタスク
+     * @param task 実行するタスク
      * @return 実行結果を表すFuture
-     * @throws InterruptedException
+     * @throws InterruptedException an interrupted exception.
      */
     public <T> Future<T> submit(Callable<T> task) throws InterruptedException {
         return executor.submit(task);
@@ -224,7 +224,7 @@ public class AgentPeer {
      * @param agClassPath エージェントが作成される際に、クラスのclassファイルが 存在するパスの並び。既にそのクラスがパス中に存在しない場合は
      *            これらのパスが左から順に検索される。 各パスは'/'で終了していれば、ディレクトリを示し、
      *            そうでなければJARファイル名を示すものとする。
-     * @throws Exception
+     * @throws Exception an exception occurred during instanciate.
      */
     public AgentPeer(String name, AgentTransportManager transportManager,
             File... agClassPath) throws Exception {
@@ -240,7 +240,7 @@ public class AgentPeer {
      * @param agClassPath エージェントが作成される際に、クラスのclassファイルが 存在するパスの並び。既にそのクラスがパス中に存在しない場合は
      *            これらのパスが左から順に検索される。 各パスは'/'で終了していれば、ディレクトリを示し、
      *            そうでなければJARファイル名を示すものとする。
-     * @throws Exception
+     * @throws Exception an exception occurred during instanciate.
      */
     public AgentPeer(AgentTransportManager transportManager,
             File... agClassPath) throws Exception {
@@ -259,7 +259,7 @@ public class AgentPeer {
      * @param agClassPath エージェントが作成される際に、クラスのclassファイルが 存在するパスの並び。既にそのクラスがパス中に存在しない場合は
      *            これらのパスが左から順に検索される。 各パスは'/'で終了していれば、ディレクトリを示し、
      *            そうでなければJARファイル名を示すものとする。
-     * @throws Exception
+     * @throws Exception an exception occurred during instanciate.
      */
     public AgentPeer(String name, AgentTransportManager transportManager,
             ClassLoader parentAgentLoader, File... agClassPath)
@@ -283,7 +283,7 @@ public class AgentPeer {
      *            　エージェントが作成される際に、クラスのclassファイルが 存在するパスの並び。既にそのクラスがパス中に存在しない場合は
      *            これらのパスが左から順に検索される。 各パスは'/'で終了していれば、ディレクトリを示し、
      *            そうでなければJARファイル名を示すものとする。
-     * @throws Exception
+     * @throws Exception an exception occurred during instanciate.
      */
     public AgentPeer(String name, PeerLocator peerLocator,
             PeerLocator seedLocator, File... agClassPath) throws Exception {
@@ -311,7 +311,7 @@ public class AgentPeer {
      *            　エージェントが作成される際に、クラスのclassファイルが 存在するパスの並び。既にそのクラスがパス中に存在しない場合は
      *            これらのパスが左から順に検索される。 各パスは'/'で終了していれば、ディレクトリを示し、
      *            そうでなければJARファイル名を示すものとする。
-     * @throws Exception
+     * @throws Exception an exception occurred during instanciate.
      */
     public AgentPeer(String name, PeerLocator peerLocator,
             PeerLocator seedLocator, ClassLoader parentAgentLoader,
@@ -352,7 +352,7 @@ public class AgentPeer {
     /**
      * 支配下のオーバレイをすべてleaveさせる。
      * 
-     * @throws Exception
+     * @throws Exception an exception occurs during leave.
      */
     public void leave() throws Exception {
         transportManager.leave();
@@ -361,7 +361,7 @@ public class AgentPeer {
     /**
      * 支配下のオーバレイをすべてjoinさせる。
      * 
-     * @throws Exception
+     * @throws Exception an exception occurs during join.
      */
     public void join() throws Exception {
         transportManager.join();
@@ -376,10 +376,10 @@ public class AgentPeer {
      *            属性名
      * @param overlayName
      *            オーバレイ名
-     * @throws IllegalArgumentException
-     * @throws NoSuchOverlayException
-     * @throws IncompatibleTypeException
-     * @throws SetupTransportException
+     * @throws IllegalArgumentException a argument exception.
+     * @throws NoSuchOverlayException an overlay exception.
+     * @throws IncompatibleTypeException a type exception.
+     * @throws SetupTransportException a transport exception.
      */
     public void bindOverlay(String attribName, String overlayName)
             throws IllegalArgumentException, NoSuchOverlayException,
@@ -397,8 +397,7 @@ public class AgentPeer {
      * @param attribName
      *            属性名
      * @return オーバレイ名
-     * @throws IllegalArgumentException
-     * @throws SetupTransportException
+     * @throws IllegalArgumentException an argument exception.
      */
     public String getBindOverlay(String attribName)
             throws IllegalArgumentException {

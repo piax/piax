@@ -68,9 +68,11 @@ public class ChordSharpRQAlgorithm<E extends Endpoint> implements RQAlgorithm {
      * 各 range を subRange に分割し，それぞれ担当ノードを割り当てる．
      * 各ノード毎に割り当てたSubRangeのリストのMapを返す．
      * 
-     * @param msg
+     * @param msg the range query message.
      * @param closeRanges   List of {[predecessor, n), [n, successor}},
      *                      where n is myself.
+     * @param rvals the retruan values on subranges.
+     * @return the map of id and subranges.
      */
     @Override
     public StrictMap<Id, List<SubRange>> assignDelegates(RQMessage msg,

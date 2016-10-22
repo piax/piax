@@ -145,6 +145,7 @@ public class ClassUtil {
      * 
      * @param clazz 基準となるクラス
      * @param superIf super interface
+     * @param <T> the type of the class.
      * @return clazz から見て super であり、superIf から見て subである
      *          interface の中で下界なもの
      */

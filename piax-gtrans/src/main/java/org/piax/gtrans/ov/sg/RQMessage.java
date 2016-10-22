@@ -36,12 +36,12 @@ import org.slf4j.LoggerFactory;
  * a class representing a message used for propagating range queries.
  * <p>
  * this class contains various data that are required to be transmitted to the
- * target nodes. this class also contains {@link #failedLinks} field, which
+ * target nodes. this class also contains failedLinks field, which
  * represents a set of failed nodes that are found while processing the range
  * query.
  * <p>
  * this class also manages (partial) results returned from child nodes (
- * {@link #rqRet}).
+ * rqRet).
  * 
  * @author k-abe
  */
@@ -73,20 +73,6 @@ public class RQMessage<E extends Endpoint> extends SGRequestMessage<E> {
     /** intermediate nodes along with query path */
     List<String> trace;
 
-    /**
-     * create an instance of RQMessage used for a root node.
-     * <p>
-     * this instance is used only for creating child RQMessage and never receive
-     * any reply message.
-     * 
-     * @param sgmf
-     * @param subRanges
-     * @param qid
-     * @param query
-     * @param expire
-     * @param scalableReturn
-     * @return an instance of RQMessage
-     */
     public static <E extends Endpoint> RQMessage<E> newRQMessage4Root(
             SGMessagingFramework<E> sgmf, Collection<Range<DdllKey>> subRanges,
             QueryId qid, Object query, int expire, TransOptions opts) {
@@ -117,7 +103,7 @@ public class RQMessage<E extends Endpoint> extends SGRequestMessage<E> {
      * @param subRanges set of query ranges
      * @param qid QueryId to uniquely distinguish this message
      * @param query an object sent to all the nodes within the query ranges
-     * @param expire ?
+     * @param expire expiration time.
      * @param hops a hop count from the root node
      */
     private RQMessage(SGMessagingFramework<E> sgmf, boolean isRoot,
@@ -140,7 +126,7 @@ public class RQMessage<E extends Endpoint> extends SGRequestMessage<E> {
     }
 
     /**
-     * create an instance of RQMessage whose {@link #subRanges} is replaced.
+     * create an instance of RQMessage whose subRange is replaced.
      * 
      * @param newSubRanges new subranges to be replaced to
      * @return an instance of RQMessage

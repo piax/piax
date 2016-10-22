@@ -29,9 +29,9 @@ public class Near implements Destination {
     int k;
     
     /**
-     * @param x
-     * @param y
-     * @param k
+     * @param x the x coordinate.
+     * @param y the y coordinate.
+     * @param k the k parameter of top-K.
      */
     public Near(double x, double y, int k) {
         this.x = x;

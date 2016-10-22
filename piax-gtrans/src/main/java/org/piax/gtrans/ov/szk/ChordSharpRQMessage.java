@@ -53,11 +53,11 @@ public class ChordSharpRQMessage extends RQMessage {
      * this instance is used only for creating child RQMessage and never receive
      * any reply message.
      * 
-     * @param msgframe
-     * @param subRanges
-     * @param qid
-     * @param query
-     * @param opts
+     * @param msgframe the messaging framework
+     * @param subRanges the subranges.
+     * @param qid the query id.
+     * @param query the query object.
+     * @param opts the transport options.
      * @return an instance of RQMessage
      */
     public static RQMessage newRQMessage4Root(MessagingFramework msgframe,

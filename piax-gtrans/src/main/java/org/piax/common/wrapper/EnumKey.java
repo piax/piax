@@ -20,7 +20,7 @@ public class EnumKey<K extends Enum<K>> extends WrappedComparableKeyImpl<K> {
     private static final long serialVersionUID = 1L;
 
     /**
-     * @param key
+     * @param key the key
      */
     public EnumKey(K key) {
         super(key);

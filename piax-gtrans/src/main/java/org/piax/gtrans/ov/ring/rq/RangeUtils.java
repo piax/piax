@@ -39,11 +39,11 @@ public class RangeUtils {
      *     [a--------------b)
      *                      [--ret---)
      *     
-     * @param <K>
-     * @param r
-     * @param a
-     * @param b
-     * @return
+     * @param <K> the type of comparable.
+     * @param r the range.
+     * @param a the left side key.
+     * @param b the right side key.
+     * @return the retained range.
      */
     public static <K extends Comparable<K>> CircularRange<K> retainRange(
             CircularRange<K> r, K a, K b) {
@@ -79,11 +79,11 @@ public class RangeUtils {
      *     [a--------------b)
      *           [---ret----)
      *
-     * @param <K>
-     * @param r
-     * @param a
-     * @param b
-     * @return
+     * @param <K> the type of comparable.
+     * @param r the range.
+     * @param a the left side key.
+     * @param b the right side key.
+     * @return the removed range.
      */
     public static <K extends Comparable<K>> Range<K> removedRange(Range<K> r, K a, K b) {
         if (r.contains(a) && keyComp.compare(a, r.from) != 0) {

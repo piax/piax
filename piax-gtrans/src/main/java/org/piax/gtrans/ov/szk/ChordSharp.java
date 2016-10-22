@@ -587,10 +587,11 @@ public class ChordSharp<E extends Endpoint> extends RQManager<E> implements
      * ただし，closest predecesorが自ノードになる場合で，自ノードのsuccessorの方が
      * keyに近い場合(=ftlistにsuccessorが含まれない場合)，successorを返す．
      * 
-     * @param key
-     * @param goodNodes
-     * @param allNodes 
-     * @return
+     * @param key the key
+     * @param goodNodes the good nodes
+     * @param allNodes the all nodes.
+     * @param maybeFailed the nodes that may be failed.
+     * @return the closest predecessor.
      */
     protected Link getClosestPredecessor(DdllKey key,
             List<List<Link>> goodNodes, List<List<Link>> allNodes,
@@ -729,9 +730,10 @@ public class ChordSharp<E extends Endpoint> extends RQManager<E> implements
      * 各 range を subRange に分割し，それぞれ担当ノードを割り当てる．
      * 各ノード毎に割り当てたSubRangeのリストのMapを返す．
      * 
-     * @param msg
+     * @param msg the message for range query.
      * @param closeRanges   List of {[predecessor, n), [n, successor}},
      *                      where n is myself.
+     * @return a map of id and subranges.
      */
     protected StrictMap<Id, List<SubRange>> assignDelegates(RQMessage msg,
             List<SubRange[]> closeRanges) {

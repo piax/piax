@@ -5,15 +5,16 @@
   <parent>
     <groupId>org.piax</groupId>
     <artifactId>piax</artifactId>
-    <version>3.1.0</version>
+    <version>3.2-SNAPSHOT</version>
   </parent>
   <groupId>org.piax</groupId>
   <artifactId>piax-gtrans-dtn</artifactId>
-  <version>3.1.0</version>
-  <name>piax-gtrans-dtn</name>
-  <url>http://maven.apache.org</url>
+  <version>3.2-SNAPSHOT</version>
+  <name>PIAX GTrans DTN extension</name>
+  <url>http://www.piax.org</url>
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <maven.deploy.skip>true</maven.deploy.skip>
   </properties>
   <dependencies>
     <dependency>
@@ -31,7 +32,7 @@
     <dependency>
       <groupId>org.piax</groupId>
       <artifactId>piax-gtrans</artifactId>
-      <version>3.1.0</version>
+      <version>3.2-SNAPSHOT</version>
     </dependency>
   </dependencies>
   <build>

@@ -99,14 +99,13 @@ public class KeyRanges<K extends ComparableKey<?>> implements
         }
     }
     
-    /**
-     * keyがこのRangesに含まれるときにtrueを返す。
+     /**
+     * Returns true if a key is within this Range.
      * <p>
-     * keyの型がKではなく、Comparable<?>になっているのは、Set<E>におけるcontainsがObject型を
-     * とるのと同様の理由で、引数にワイルドカードを持つ型を対応させるため。
+     * Comparable wildcard type key is specified.
      * 
-     * @param key Rangesに含まれるかどうかを調べるkey
-     * @return keyがこのRangesに含まれるときはtrue
+     * @param k the target key.
+     * @return true if the key is within this range.
      */
     public boolean contains(ComparableKey<?> k) {
         if (key != null) {

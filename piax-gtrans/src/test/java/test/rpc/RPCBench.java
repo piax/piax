@@ -80,9 +80,6 @@ public class RPCBench extends Util {
      }
      
 
-    /**
-     * @param args
-     */
     public static <E extends PeerLocator> void main(String[] args) {
         Net ntype = Net.EMU;//.UDP;
         printf("- start -%n");

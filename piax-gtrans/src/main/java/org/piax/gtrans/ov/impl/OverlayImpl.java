@@ -59,9 +59,10 @@ public abstract class OverlayImpl<D extends Destination, K extends Key> extends
     final DCLTranslator parser = new DCLTranslator();
 
     /**
-     * @param peerId
-     * @param transId
-     * @throws IdConflictException
+     * @param peer the peer object.
+     * @param transId the id of the transport.
+     * @param lowerTrans the lower transport.
+     * @throws IdConflictException thrown when the id is conflicted.
      */
     public OverlayImpl(Peer peer, TransportId transId, Transport<?> lowerTrans)
             throws IdConflictException {

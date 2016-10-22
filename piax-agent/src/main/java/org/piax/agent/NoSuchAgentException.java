@@ -40,7 +40,7 @@ public class NoSuchAgentException extends AgentException {
     }
 
     /**
-     * @param message
+     * @param message the message.
      */
     public NoSuchAgentException(String message) {
         super(message);

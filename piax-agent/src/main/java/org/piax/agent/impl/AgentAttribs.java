@@ -47,10 +47,10 @@ public class AgentAttribs extends RowData {
 
     /**
      * 
-     * @param table
-     * @param agId
-     * @throws IllegalStateException
-     * @throws IdConflictException
+     * @param table the attribute table.
+     * @param agId the agent id.
+     * @throws IllegalStateException an exception of illegal state.
+     * @throws IdConflictException an exception occurs when the agent id conflicts.
      */
     public AgentAttribs(AttributeTable table, AgentId agId)
             throws IllegalStateException, IdConflictException {

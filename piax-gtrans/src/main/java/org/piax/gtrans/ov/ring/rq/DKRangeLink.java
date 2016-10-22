@@ -15,10 +15,6 @@ import org.piax.common.subspace.Range;
 import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.gtrans.ov.ddll.Link;
 
-/**
- * DdllKeyRange with a Link
- *
- */
 public class DKRangeLink extends DdllKeyRange {
     final Link link;
 
