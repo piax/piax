@@ -433,7 +433,7 @@ public class SGNode<E extends Endpoint> implements NodeObserver {
      * 完全に挿入処理が終わっていない状態でも呼び出される可能性があることに注意すること．
      *
      * @param key キー
-     * @param accurate
+     * @param accurate accurate or not.
      * @return 最も近いLinkを表すBestLinkのインスタンス．
      *         まだ経路表の準備ができていない，もしくは自ノードが削除済みの場合は null を返す．
      */
@@ -610,10 +610,10 @@ public class SGNode<E extends Endpoint> implements NodeObserver {
      * 指定した level に関連する{@link SGNodeInfo}を返す．
      * <p>
      * メンバシップベクタの上位ビットが同一であるノードを検索するために
-     * {@link #findMatchingNode(Link, int)} からRPCで呼ばれる．
+     * {@link #findMatchingNode} からRPCで呼ばれる．
      * <p>
      * 自ノードも findMatchingNode実行中の場合，いままでにトラバースしたノード数
-     * {@link #traversed} が大きい側が勝つ．自ノードが負けた場合，findMatchingNode
+     * traversed が大きい側が勝つ．自ノードが負けた場合，findMatchingNode
      * を実行中のスレッドに通知する．
      * <p>
      * 返り値の SGNodeInfo には以下の情報が格納される．
@@ -915,9 +915,10 @@ public class SGNode<E extends Endpoint> implements NodeObserver {
      * failedLink が故障しているものとして修復する．
      * また，failedLink の情報を右ノードに伝搬する．
      * 
-     * @param failedLink
-     * @param failedLinks
-     * @param rLimit
+     * @param failedLink the failed link.
+     * @param failedLinks the failed links.
+     * @param parentMsg the parent message.
+     * @param failedRanges the failed ranges. 
      */
     void fixLeftLinks(Link failedLink, Collection<Link> failedLinks,
             RQMessage<E> parentMsg, Collection<Range<DdllKey>> failedRanges) {
@@ -965,9 +966,9 @@ public class SGNode<E extends Endpoint> implements NodeObserver {
      * failedLink が故障しているものとして修復する．
      * また，failedLink の情報を右ノードに伝搬する．
      * 
-     * @param failedLink
-     * @param failedLinks
-     * @param rLimit
+     * @param failedLink the failed link.
+     * @param failedLinks the failed links.
+     * @param rLimit the limit of key.
      */
     void fixAndPropagateRight(Link failedLink, Collection<Link> failedLinks,
             DdllKey rLimit) {

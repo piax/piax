@@ -14,12 +14,13 @@ package org.piax.gtrans.ov.ring.rq;
 import java.util.Collection;
 
 import org.piax.gtrans.FutureQueue;
+import org.piax.gtrans.TransOptions;
 
 /**
  * a class for accessing the details of a range query result.
- * See {@link RQManager#scalableRangeQueryPro(Collection, Object, int, boolean)}
+ * See {@link RQManager#scalableRangeQueryPro(Collection, Object, TransOptions)}
  * 
- * @param <V>
+ * @param <V> a type for range query results.
  */
 public class RQResults<V> {
     protected final RQReturn rqRet;

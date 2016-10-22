@@ -27,11 +27,11 @@ public interface RQAlgorithm {
     /**
      * create a (subclass of) RQMessage for new range query instance.
      * 
-     * @param sgmf
-     * @param subRanges
-     * @param qid
-     * @param query
-     * @param opts
+     * @param sgmf messaging framework
+     * @param subRanges the subranges.
+     * @param qid the query id.
+     * @param query the query object.
+     * @param opts the transport options.
      * @return  subclass of RQMessage
      */
     RQMessage newRQMessage4Root(MessagingFramework sgmf,
@@ -60,8 +60,8 @@ public interface RQAlgorithm {
      * @param msg           query message
      * @param closeRanges   List of {[predecessor, n), [n, successor}},
      *                      where n is myself.
-     * @param rvals
-     * @return 
+     * @param rvals the list to store the results.
+     * @return the map of id and subranges.
      */
     StrictMap<Id, List<SubRange>> assignDelegates(RQMessage msg,
             List<SubRange[]> closeRanges,
@@ -70,7 +70,7 @@ public interface RQAlgorithm {
     /**
      * resolve (fill-in) range query results that are locally available.
      * 
-     * @param msg       query message
+     * @param msg       the query message.
      * @param list      list of subranges that are locally available.
      * @param rvals     list to store the results
      */

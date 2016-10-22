@@ -134,6 +134,9 @@ public class BaseTransportMgr implements LocatorStatusObserver {
 
     /**
      * Remove the specified PeerLocator
+     * @param myLocator the locator.
+     * @param <E> the type of peer locator.
+     * @return the removed transport.
      */
     @SuppressWarnings("unchecked")
     public <E extends PeerLocator> Transport<E> removeBaseTransport(E myLocator) {
@@ -188,7 +191,8 @@ public class BaseTransportMgr implements LocatorStatusObserver {
      * 指定されたmyLocatorに対応するBaseTransportを返す。
      * 存在しない場合は、nullが返る。
      * 
-     * @param myLocator PeerLocatorオブジェクト
+     * @param localLocator PeerLocatorオブジェクト
+     * @param <E> the type of peer locator.
      * @return myLocatorと対応するBaseTransport、存在しない場合はnull
      */
     @SuppressWarnings("unchecked")

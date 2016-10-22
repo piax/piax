@@ -23,7 +23,7 @@ public class IdConflictException extends Exception {
     }
 
     /**
-     * @param message
+     * @param message the message string.
      */
     public IdConflictException(String message) {
         super(message);

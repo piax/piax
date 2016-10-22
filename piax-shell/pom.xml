@@ -10,10 +10,11 @@
   <groupId>org.piax</groupId>
   <artifactId>piax-shell</artifactId>
   <version>3.1.0</version>
-  <name>piax-shell</name>
-  <url>http://maven.apache.org</url>
+  <name>PIAX Shell</name>
+  <url>http://www.piax.org</url>
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <maven.deploy.skip>true</maven.deploy.skip>
   </properties>
   <dependencies>
     <dependency>

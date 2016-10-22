@@ -114,9 +114,6 @@ public class SocketCheck {
      *  (ping2) isReachable=true, reply from 192.168.64.106: time=30ms
      */
     
-    /**
-     * @param args
-     */
     public static void main(String[] args) throws Exception {
 //        checkUdpBufferSize();
 //        checkTcpBufferSize();

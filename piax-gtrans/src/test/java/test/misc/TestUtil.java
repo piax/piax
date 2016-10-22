@@ -62,9 +62,6 @@ public class TestUtil {
 
     static void foo() {}
     
-    /**
-     * @param args
-     */
     public static void main(String[] args) throws Exception {
         /*
          * ByteUtilのテスト

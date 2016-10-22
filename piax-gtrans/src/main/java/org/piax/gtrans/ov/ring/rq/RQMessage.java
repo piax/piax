@@ -100,16 +100,14 @@ public abstract class RQMessage extends RequestMessage {
      * 
      * @param msgframe the MessagingFramework instance managing this message
      * @param isRoot true if this instance is used at the root node
-     * @param isDirectReturn true if reply messages should be directly sent to
-     *            the root node
      * @param replyTo the node that the reply message for this message should be
      *            sent to
      * @param replyId the ID to distinguish queries at the replyTo node
      * @param subRanges set of query ranges
      * @param qid QueryId to uniquely distinguish this message
      * @param query an object sent to all the nodes within the query ranges
-     * @param timeout ?
      * @param hops a hop count from the root node
+     * @param opts the transport options.
      */
     protected RQMessage(MessagingFramework msgframe, boolean isRoot,
             Endpoint replyTo, int replyId, Collection<SubRange> subRanges,
@@ -145,7 +143,6 @@ public abstract class RQMessage extends RequestMessage {
      * this method is used at intermediate nodes.
      * 
      * @param newSubRange new subrange for the child RQMessage
-     * @param newIsRoot   true if you want a root message
      * @return a instance of child RQMessage
      */
     public RQMessage newChildInstance(Collection<SubRange> newSubRange) {

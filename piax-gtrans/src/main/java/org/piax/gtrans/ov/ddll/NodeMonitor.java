@@ -225,8 +225,8 @@ public class NodeMonitor {
         /**
          * unregister a DdllKey to be monitored.
          * 
-         * @param key
-         * @param listener
+         * @param key the key.
+         * @param listener the listener.
          */
         synchronized void remove(DdllKey key, Node listener) {
             Set<NodeAndPeriod> listeners = keylisteners.get(key);

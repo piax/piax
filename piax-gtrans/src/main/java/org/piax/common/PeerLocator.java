@@ -62,7 +62,9 @@ public abstract class PeerLocator implements Endpoint {
      * このピアlocatorを使った通信をサポートするRawTransportを生成する。
      * rawListenerにはRawTransportが受信したバイト列を受け取る上位層のオブジェクトを指定する。
      * 
+     * @param peerId the peerId of the peer object.
      * @return このピアlocatorを使った通信をサポートするRawTransport
+     * @throws IOException an exception that occurs when there is I/O error. 
      */
     public abstract RawTransport<? extends PeerLocator> newRawTransport(PeerId peerId)
             throws IOException;

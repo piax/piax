@@ -52,12 +52,9 @@ public abstract class RequestMessage implements Serializable {
     /**
      * create a RequestMessage instance.
      * 
-     * @param msgframe
+     * @param msgframe the messaging framework.
      * @param isRoot
      *            indicate whether this message is
-     * @param isDirectReturn
-     *            true if the reply for this message is directly sent to
-     *            the root node.
      * @param replyTo
      *            if non-null, reply is sent to this node. otherwise, reply
      *            is sent to the sender node.
@@ -145,20 +142,20 @@ public abstract class RequestMessage implements Serializable {
      * an ACK message is automatically sent to the sender node and
      * {@link #execute(RingManager)} is called at the destination node.
      * <p>
-     * when we receive a reply message, {@link #onReceivingReply(RingManager,
-     * ReplyMessage)} is called.  (note that when {@link #isDirectReturn}
+     * when we receive a reply message, {@link #onReceivingReply(ReplyMessage) onReceivingReply} is called.
+     *   (note that when isDirectReturn
      * == true, we do not receive any reply message in non-root nodes).
      * <p>
      * if we do not receive an ACK message
      * within {@link MessagingFramework#ACK_TIMEOUT_THRES},
-     * {@link #onResponseTimeout(RingManager)} is called. 
+     * {@link #onResponseTimeout()} is called. 
      * <p>
      * Note:
-     * the message is stored in {@link MessagingFramework#msgStore}
+     * the message is stored in MessagingFramework#msgStore
      * for handling ACK and reply messages.
      * <p> 
      * the message is removed when (1) ACK is received (if
-     * {@link #isDirectReturn}==true), or (2) a reply message is received
+     * isDirectReturn==true), or (2) a reply message is received
      * (otherwise).
      * 
      * @param dst   destination node
@@ -252,8 +249,9 @@ public abstract class RequestMessage implements Serializable {
      * ack or reply message is received for this RequestMessage.
      * stop fast retransmission and dispose if possible.
      * 
-     * note that {@link org.piax.gtrans.chordsharp.ChordSharpRQMessage}
+     * note that {@link org.piax.gtrans.ov.szk.ChordSharpRQMessage}
      * overrides this method.
+     * @param resp the response message.
      */
     protected void responseReceived(ResponseMessage resp) {
         logger.debug("responseReceived: acked: msgId={}", msgId);
@@ -329,7 +327,6 @@ public abstract class RequestMessage implements Serializable {
      * this method is called when a reply message is received at the sender
      * node.
      * 
-     * @param sg    an instance of Ring
      * @param reply the reply message
      * @return true if this instance is no longer required at the sender
      *              node.

@@ -6,9 +6,6 @@ import org.piax.util.UniqId;
 
 public class TestUniqId {
 
-    /**
-     * @param args
-     */
     public static void main(String[] args) throws Exception {
         UniqId id1 = new UniqId("01234567");
         UniqId id2 = new UniqId("81234566");

@@ -80,8 +80,9 @@ public abstract class TransportImpl<D extends Destination> implements Transport<
     /**
      * 指定されたtransport IDを持つTransportオブジェクトを生成する。
      * 
-     * @param peerId このTransportオブジェクトを保持するpeerのpeer ID
+     * @param peer このTransportオブジェクトを保持するpeer
      * @param transId transport ID
+     * @param lowerTrans the transport.
      * @throws IdConflictException transport IDがすでに存在する場合
      */
     protected TransportImpl(Peer peer, TransportId transId, Transport<?> lowerTrans)
@@ -107,7 +108,7 @@ public abstract class TransportImpl<D extends Destination> implements Transport<
     /**
      * RawTransportのように、transport IDを持たないTransportオブジェクトを生成する。
      * 
-     * @param peerId このTransportオブジェクトを保持するpeerのpeer ID
+     * @param peer このTransportオブジェクトを保持するpeer.
      */
     protected TransportImpl(Peer peer) {
         this.peer = peer;

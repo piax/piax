@@ -23,7 +23,7 @@ public class NoSuchOverlayException extends Exception {
     }
 
     /**
-     * @param message
+     * @param message the message string.
      */
     public NoSuchOverlayException(String message) {
         super(message);

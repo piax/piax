@@ -126,15 +126,6 @@ public class NestedMessage implements Serializable {
         this(sender, receiver, srcPeerId, src, 0, null, inner);
     }
     
-    /**
-     * @param sender
-     * @param receiver
-     * @param srcPeerId
-     * @param src
-     * @param channelNo
-     * @param option
-     * @param inner
-     */
     public NestedMessage(ObjectId sender, ObjectId receiver, PeerId srcPeerId,
             Endpoint src, int channelNo, Object option, Object inner) {
         this.sender = sender;

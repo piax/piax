@@ -145,7 +145,7 @@ public class AgentHomeImpl implements AgentHome, OverlayListener<Destination, Ke
     
     /**
      * CalleeIdを返す。
-     * @throws NoSuchAgentException 
+     * @throws NoSuchAgentException an exception occurs if no such agent
      */
     public CalleeId getCalleeId(AgentId agentId) throws NoSuchAgentException {
            return new CalleeId(agentId, rpc.getEndpoint(),
@@ -267,10 +267,6 @@ public class AgentHomeImpl implements AgentHome, OverlayListener<Destination, Ke
     /**
      * Agent ID指定のCommPortを生成する。
      * 
-     * @param agId Agent ID
-     * @param port CommPortを指定するためのport（番号）
-     * @param receiver 受信処理メソッド定義オブジェクト
-     * @return Agent ID指定のCommPort
      */
 //    public CommPort newCommPort(AgentId agId, CommPortReceiver receiver) 
 //    throws MagicNumberConflictException {

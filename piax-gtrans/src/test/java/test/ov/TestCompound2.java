@@ -27,7 +27,6 @@ import org.piax.gtrans.ov.sg.MSkipGraph;
  * LLNetとLLNetの間でCompoundOverlayのテストを行う
  * 
  * @author     Mikio Yoshida
- * @version
  */
 public class TestCompound2 extends Common {
 
@@ -39,9 +38,6 @@ public class TestCompound2 extends Common {
         Overlay<D, K> ov2;
     }
 
-    /**
-     * @param args
-     */
     public static void main(String[] args) throws IOException, IdConflictException {
         Net ntype = Net.UDP;
         int numPeer = 20;

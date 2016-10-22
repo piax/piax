@@ -17,7 +17,7 @@ import org.piax.gtrans.ov.ddll.DdllKey;
 
 /**
  * DdllKeyRange with a RemoteValue
- * @param <V>
+ * @param <V> the range value.
  */
 public class DKRangeRValue<V> extends DdllKeyRange {
     final RemoteValue<V> value;

@@ -846,7 +846,7 @@ public class Node {
      *   if ((s  ̸= in ∧ s  ̸= lwait) ∨ r  ̸= rcur) then send SetRNak() to q
      * else send SetRAck(rnum) to q; r, rnum, ref := rnew, rnewnum, ref + incr fi
      * 
-     * <pre>
+     * </pre>
      * 
      * @param sender    the sender of this SetR message
      * @param reqNo     request number
@@ -1407,7 +1407,7 @@ public class Node {
      * called from {@link NodeMonitor.NodeMon#ping()} when a node failure is
      * detected.
      * 
-     * @param failedLink
+     * @param failedLinks the failed links.
      */
     void onNodeFailure(final Collection<Link> failedLinks) {
         protoLock.readLock().lock();
@@ -1432,7 +1432,7 @@ public class Node {
     /**
      * start fixing a single failed link.
      * 
-     * @param failed
+     * @param failed the failed link.
      * @param force     true if you want to check the left node even if it is
      *                  not equals to `failed'.
      */
@@ -1447,7 +1447,7 @@ public class Node {
     /**
      * start fixing set of failed links.
      * 
-     * @param failedLinks
+     * @param failedLinks the failed links.
      */
     public void startFix(final Collection<Link> failedLinks) {
         startfix(failedLinks, null, false);
@@ -1461,8 +1461,8 @@ public class Node {
      * start fixing `failedLinks'. `payload' is piggy-backed by SetR message if
      * it is non-null.
      * 
-     * @param failedLinks
-     * @param payload
+     * @param failedLinks the failed links.
+     * @param payload the payload object.
      * @param force     true if you want to check the left node even if it is
      *                  not contained in `failedLinks'.
      */

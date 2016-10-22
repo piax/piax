@@ -25,9 +25,9 @@ public class ReceivedMessage {
     Object msg;
 
     /**
-     * @param sender
-     * @param src
-     * @param msg
+     * @param sender the object id of the sender.
+     * @param src the source endpoint.
+     * @param msg the message object.
      */
     public ReceivedMessage(ObjectId sender, Endpoint src, Object msg) {
         this.sender = sender;

@@ -42,6 +42,7 @@ public class RQReplyMessage extends ReplyMessage {
      *            more reply message will be sent
      * @param paths message delivery paths
      * @param hops max hop count observed by this node (maybe)
+     * @param unavailableKeys unavailable keys.
      */
     public RQReplyMessage(RingManager<?> manager, RQMessage req,
             Collection<DKRangeRValue<?>> vals, boolean isFinal,

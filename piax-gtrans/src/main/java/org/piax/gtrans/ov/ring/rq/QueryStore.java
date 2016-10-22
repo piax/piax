@@ -45,8 +45,9 @@ public class QueryStore {
 	}
 	
 	/**
-	 * @param qid
-	 * @return
+	 * Get the remote value object corresponds to the query id.
+	 * @param qid the query id.
+	 * @return remote value.
 	 */
 	public RemoteValue<?> get(QueryId qid) {
 		QueryStoreEntry entry = store.get(qid);
@@ -56,8 +57,9 @@ public class QueryStore {
 	}
 	
 	/**
-	 * @param qid
-	 * @param rval
+	 * Store the remote value object.
+	 * @param qid the query id
+	 * @param rval the remote value.
 	 */
 	public void put(QueryId qid, RemoteValue<?> rval) {
 		store.put(qid, new QueryStoreEntry(qid, rval));
@@ -65,7 +67,8 @@ public class QueryStore {
 	}
 	
 	/**
-	 * @param expireTime
+	 * Remove expired remote value.
+	 * @param expireTime the duration of the expiration.
 	 */
 	public void removeExpired(long expireTime) {
 		final long threshold = System.currentTimeMillis() - expireTime;
@@ -80,21 +83,24 @@ public class QueryStore {
 	}
 	
 	/**
-	 * @return
+     * Returns the number of stored remote values.
+	 * @return the number of stored remote values.
 	 */
 	public int getStoredCount() {
 		return storedCount;
 	}
 	
 	/**
-	 * @return
+     * Returns the number of expired remote values.
+	 * @return the number of expired remote values.
 	 */
 	public int getExpiredCount() {
 		return expiredCount;
 	}
 	
 	/**
-	 * @return
+     * Returns the number of read remote values.
+	 * @return the read count.
 	 */
 	public int getReadCount() {
 		return readCount;

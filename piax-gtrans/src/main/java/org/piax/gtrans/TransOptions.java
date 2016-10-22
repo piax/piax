@@ -68,7 +68,7 @@ public class TransOptions implements Serializable {
 	}
 	
 	/**
-	 * @param timeout
+	 * @param timeout the timeout value in sec.
 	 */
 	public TransOptions(long timeout) {
 		// default is aggregate (scalable)
@@ -76,30 +76,30 @@ public class TransOptions implements Serializable {
 	}
 	
 	/**
-	 * @param type
+	 * @param type the response type.
 	 */
 	public TransOptions(ResponseType type) {
 		this(DEFAULT_TIMEOUT, type);
 	}
 	
 	/**
-	 * @param 
+	 * @param mode the retrans mode.
 	 */
 	public TransOptions(RetransMode mode) {
 		this(DEFAULT_TIMEOUT, DEFAULT_RESPONSE_TYPE, mode);
 	}
 	
 	/**
-	 * @param responseType
-	 * @param retransMode
+	 * @param responseType the response type.
+	 * @param retransMode the retrans mode.
 	 */
 	public TransOptions(ResponseType responseType, RetransMode retransMode) {
 		this(DEFAULT_TIMEOUT, responseType, retransMode, DEFAULT_DELIVERY_MODE);
 	}
 
 	/**
-	 * @param timeout
-	 * @param type
+	 * @param timeout the timeout.
+	 * @param type the response type
 	 */
 	public TransOptions(long timeout, ResponseType type) {
 		 // default is slow
@@ -107,8 +107,8 @@ public class TransOptions implements Serializable {
 	}
 	
 	/**
-	 * @param timeout
-	 * @param mode
+	 * @param timeout the timeout value in sec.
+	 * @param mode the retrans mode.
 	 */
 	public TransOptions(long timeout, RetransMode mode) {
 		 // default is slow
@@ -116,39 +116,39 @@ public class TransOptions implements Serializable {
 	}
 	
 	/**
-	 * @param timeout
-	 * @param type
-	 * @param inspect
+	 * @param timeout the timeout.
+	 * @param type the response type.
+	 * @param inspect true if inspection is needed.
 	 */
 	public TransOptions(long timeout, ResponseType type, boolean inspect) {
 		this(timeout, type, DEFAULT_RETRANS_MODE, DEFAULT_DELIVERY_MODE, inspect);
 	}
 	
 	/**
-	 * @param timeout
-	 * @param responseType
-	 * @param retransMode
+	 * @param timeout the timeout.
+	 * @param responseType the response type.
+	 * @param retransMode the retrans mode.
 	 */
 	public TransOptions(long timeout, ResponseType responseType, RetransMode retransMode) {
 		this(timeout, responseType, retransMode, DEFAULT_DELIVERY_MODE, false);
 	}
 	
 	/**
-	 * @param timeout
-	 * @param responseType
-	 * @param retransMode
-	 * @param deliveryMode
+	 * @param timeout the timeout.
+	 * @param responseType the reponse type.
+	 * @param retransMode the retrans mode.
+	 * @param deliveryMode the delivery mode.
 	 */
 	public TransOptions(long timeout, ResponseType responseType, RetransMode retransMode, DeliveryMode deliveryMode) {
 		this(timeout, responseType, retransMode, deliveryMode, false);
 	}
 	
 	/**
-	 * @param timeout
-	 * @param responseType
-	 * @param retransMode
-	 * @param deliveryMode
-	 * @param inspect
+	 * @param timeout the timeout.
+	 * @param responseType the response type.
+	 * @param retransMode the retrans mode.
+	 * @param deliveryMode the delivery mode.
+	 * @param inspect true if the inspection is needed.
 	 */
 	public TransOptions(long timeout, ResponseType responseType, RetransMode retransMode, DeliveryMode deliveryMode, boolean inspect) {
 		this.timeout = timeout;
@@ -159,7 +159,7 @@ public class TransOptions implements Serializable {
 	}
 
 	/**
-	 * @param opts
+	 * @param opts the transport options.
 	 * @return timeout.
 	 */
 	public static long timeout(TransOptions opts) {
@@ -168,7 +168,7 @@ public class TransOptions implements Serializable {
 	}
 	
 	/**
-	 * @param opts
+	 * @param opts the transport options.
 	 * @return responseType.
 	 */
 	public static ResponseType responseType(TransOptions opts) {
@@ -177,7 +177,7 @@ public class TransOptions implements Serializable {
 	}
 	
 	/**
-	 * @param opts
+	 * @param opts the transport options.
 	 * @return retransMode.
 	 */
 	public static RetransMode retransMode(TransOptions opts) {
@@ -186,7 +186,7 @@ public class TransOptions implements Serializable {
 	}
 	
 	/**
-	 * @param opts
+	 * @param opts the transport options.
 	 * @return deliveryMode.
 	 */
 	public static DeliveryMode deliveryMode(TransOptions opts) {
@@ -195,7 +195,7 @@ public class TransOptions implements Serializable {
 	}
 	
 	/**
-	 * @param opts
+	 * @param opts the transport options.
 	 * @return inspect value.
 	 */
 	public static boolean inspect(TransOptions opts) {

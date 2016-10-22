@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory;
  * Transport Service Discovery （TSD） のためのテンプレートクラス。
  * <p>
  * TSDは、mDNS のプロトコルに従って、近傍のピアとサービス情報の交換を行う仕組みを提供する。
- * サービス情報として、ピアのアドレス情報、つまり <peerId, endpoint> の組を交換することが主な用途であるが、
+ * サービス情報として、ピアのアドレス情報、つまり peerId, endpoint の組を交換することが主な用途であるが、
  * これ以外にも一般のオブジェクトを扱うことができる。
  * <p>
  * このようにTSDは汎用性を持った近傍との情報交換のクラスであるが、交換したいサービス毎にインスタンスを生成
@@ -116,11 +116,11 @@ public abstract class TSD<T> {
     }
 
     /**
-     * ServiceInfo<T>を広告する。
+     * ServiceInfoを広告する。
      * このメソッドは下位層で実装する。
      * 
-     * @param info
-     * @throws IOException
+     * @param info the information to advertise.
+     * @throws IOException an I/O error.
      */
     protected abstract void advertise(ServiceInfo<T> info) throws IOException;
     
@@ -158,8 +158,8 @@ public abstract class TSD<T> {
     /**
      * peerId, receiverの区分で登録されているすべてのlocalServiceを広告する。
      * 
-     * @param peerId
-     * @param receiver
+     * @param peerId the peer id.
+     * @param receiver the object id of the receiver.
      */
     protected void advertiseAll(PeerId peerId, ObjectId receiver) {
         try {
@@ -177,10 +177,10 @@ public abstract class TSD<T> {
     /**
      * peerId, receiverの区分で、discoveryTasksのタイマー登録をする。
      * 
-     * @param peerId
-     * @param receiver
-     * @param delay
-     * @param period
+     * @param peerId the peer id.
+     * @param receiver the object id of the receiver.
+     * @param delay the delay to start execution.
+     * @param period the period to execute.
      */
     public void scheduleDiscovery(PeerId peerId, ObjectId receiver, long delay, long period) {
         DiscoveryTask task = new DiscoveryTask(peerId, receiver);
@@ -193,8 +193,8 @@ public abstract class TSD<T> {
     /**
      * peerId, receiverの区分でセットしたタイマーをキャンセルする。
      * 
-     * @param peerId
-     * @param receiver
+     * @param peerId the peer id.
+     * @param receiver the object id of the receiver.
      */
     public void cancelDiscovery(PeerId peerId, ObjectId receiver) {
         DiscoveryTask task = discoveryTasks.remove(getKey(peerId, receiver));
@@ -203,10 +203,10 @@ public abstract class TSD<T> {
     }
     
     /**
-     * ServiceInfo<T>が発見されたことを通知する。
+     * ServiceInfoが発見されたことを通知する。
      * このメソッドは下位層から呼ばれる。
      * 
-     * @param serv
+     * @param serv the service info.
      */
     protected void found(ServiceInfo<T> serv) {
         for (PeerId p : usingPeers) {
@@ -219,6 +219,8 @@ public abstract class TSD<T> {
     
     /**
      * 削除タイミングをTSDListenerに通知する。
+     * @param peerId the peer id.
+     * @param receiver receiver object id.
      */
     protected void checkDiscarding(PeerId peerId, ObjectId receiver) {
         TSDListener listener = listenersByUpper.get(getKey(peerId, receiver));

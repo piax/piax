@@ -32,44 +32,44 @@ public interface RequestTransport<D extends Destination> extends Transport<D> {
 	*/
     // for application
     /**
-     * 
-     * @param sender
-     * @param receiver
-     * @param dst
-     * @param msg
-     * @param timeout
-     * @return
-     * @throws ProtocolUnsupportedException
-     * @throws IOException
+     * Send a request message. FutureQueue object is returned to access arrived responses.
+     * @param sender the object ID of the sender.
+     * @param receiver the object ID of the receiver.
+     * @param dst the destination.
+     * @param msg the request message.
+     * @param timeout the timeout.
+     * @return the future queue to access responses.
+     * @throws ProtocolUnsupportedException thrown when the protocol is not supported.
+     * @throws IOException thrown when an I/O error occurs.
      */
     FutureQueue<?> request(ObjectId sender, ObjectId receiver, D dst,
             Object msg, int timeout) throws ProtocolUnsupportedException,
             IOException;
     
     /**
-     * 
-     * @param sender
-     * @param receiver
-     * @param dst
-     * @param msg
-     * @param opts
-     * @return
-     * @throws ProtocolUnsupportedException
-     * @throws IOException
+     * Send a request message. FutureQueue object is returned to access arrived responses.
+     * @param sender the object ID of the sender.
+     * @param receiver the object ID of the receiver.
+     * @param dst the destination.
+     * @param msg the request message.
+     * @param opts the options.
+     * @return the future queue to access responses.
+     * @throws ProtocolUnsupportedException thrown when the protocol is not supported.
+     * @throws IOException thrown when an I/O error occurs.
      */
     FutureQueue<?> request(ObjectId sender, ObjectId receiver, D dst,
             Object msg, TransOptions opts) throws ProtocolUnsupportedException,
             IOException;
     
     /**
-     * The constructor with default options.
-     * @param sender
-     * @param receiver
-     * @param dst
-     * @param msg
-     * @return
-     * @throws ProtocolUnsupportedException
-     * @throws IOException
+     * Send a request message. FutureQueue object is returned to access arrived responses.
+     * @param sender the object ID of the sender.
+     * @param receiver the object ID of the receiver.
+     * @param dst the destination.
+     * @param msg the request message.
+     * @return the future queue to access responses.
+     * @throws ProtocolUnsupportedException thrown when the protocol is not supported.
+     * @throws IOException thrown when an I/O error occurs.
      */
     FutureQueue<?> request(ObjectId sender, ObjectId receiver, D dst, Object msg)
     			throws ProtocolUnsupportedException, IOException;
@@ -92,39 +92,39 @@ public interface RequestTransport<D extends Destination> extends Transport<D> {
     
     // for Transport
     /**
-     * 
-     * @param upperTrans
-     * @param dst
-     * @param msg
-     * @param timeout
-     * @return
-     * @throws ProtocolUnsupportedException
-     * @throws IOException
+     * Send a request message. FutureQueue object is returned to access arrived responses.
+     * @param upperTrans the transport ID of the transport.
+     * @param dst the destination.
+     * @param msg the request message.
+     * @param timeout the timeout.
+     * @return the future queue to access responses.
+     * @throws ProtocolUnsupportedException thrown when the protocol is not supported.
+     * @throws IOException thrown when an I/O error occurs.
      */
     FutureQueue<?> request(TransportId upperTrans, D dst, Object msg,
             int timeout) throws ProtocolUnsupportedException, IOException;
     
     /**
-     * 
-     * @param upperTrans
-     * @param dst
-     * @param msg
-     * @param opts
-     * @return
-     * @throws ProtocolUnsupportedException
-     * @throws IOException
+     * Send a request message. FutureQueue object is returned to access arrived responses.
+     * @param upperTrans the transport ID of the transport.
+     * @param dst the destination.
+     * @param msg the request message.
+     * @param opts the options.
+     * @return the future queue to access responses.
+     * @throws ProtocolUnsupportedException thrown when the protocol is not supported.
+     * @throws IOException thrown when an I/O error occurs.
      */
     FutureQueue<?> request(TransportId upperTrans, D dst, Object msg,
             TransOptions opts) throws ProtocolUnsupportedException, IOException;
     
     /**
-     * The constructor with default options.
-     * @param upperTrans
-     * @param dst
-     * @param msg
-     * @return
-     * @throws ProtocolUnsupportedException
-     * @throws IOException
+     * Send a request message. FutureQueue object is returned to access arrived responses.
+     * @param upperTrans the transport ID of the transport.
+     * @param dst the destination.
+     * @param msg the request message.
+     * @return the future queue to access responses.
+     * @throws ProtocolUnsupportedException thrown when the protocol is not supported.
+     * @throws IOException thrown when an I/O error occurs.
      */
     FutureQueue<?> request(TransportId upperTrans, D dst, Object msg) throws ProtocolUnsupportedException, IOException;
 }
