@@ -122,7 +122,7 @@ public class RPCInvoker<T extends RPCIf, E extends Endpoint> implements RPCIf {
     private static final Logger logger = 
             LoggerFactory.getLogger(RPCInvoker.class);
 
-    public static boolean POOL_CHANNEL = true;
+    public static final boolean POOL_CHANNEL = false;
     public static int POOL_CHANNEL_SIZE = 100; // at most 100 channels are pooled.
     public Map<E, ChannelPoolEntry> channelPool;
     // Experimental
@@ -198,6 +198,9 @@ public class RPCInvoker<T extends RPCIf, E extends Endpoint> implements RPCIf {
             this.oneway = oneway;
             this.method = method;
             this.args = args;
+        }
+        public String toString() {
+            return "[method call:" + method + " " + (args == null ? "N/A" : args.length) + " args]"; 
         }
     }
 

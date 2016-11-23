@@ -9,6 +9,7 @@ import java.util.Random;
 import org.piax.common.PeerLocator;
 import org.piax.gtrans.FutureQueue;
 import org.piax.gtrans.RemoteValue;
+import org.piax.gtrans.netty.NettyLocator;
 import org.piax.gtrans.raw.emu.EmuLocator;
 import org.piax.gtrans.raw.tcp.TcpLocator;
 import org.piax.gtrans.raw.udp.UdpLocator;
@@ -43,7 +44,7 @@ public class Util {
     }
 
     public enum Net {
-        EMU, UDP, TCP
+        EMU, UDP, TCP, NETTY
     }
 
     @SuppressWarnings("unchecked")
@@ -58,6 +59,9 @@ public class Util {
             break;
         case TCP:
             loc = new TcpLocator(new InetSocketAddress(host, port));
+            break;
+        case NETTY:
+            loc = new NettyLocator(new InetSocketAddress(host, port));
             break;
         default:
             loc = null;

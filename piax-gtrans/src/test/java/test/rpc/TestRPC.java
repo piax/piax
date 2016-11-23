@@ -279,7 +279,7 @@ public class TestRPC extends Util {
      */
     @BeforeClass
     public static void setup() {
-        Net ntype = Net.TCP;
+        Net ntype = Net.NETTY;
         logger.debug("- start -%n");
         logger.debug("- locator type: %s%n", ntype);
 
