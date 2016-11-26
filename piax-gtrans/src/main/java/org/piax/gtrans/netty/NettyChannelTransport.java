@@ -3,32 +3,16 @@ package org.piax.gtrans.netty;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInitializer;
-import io.netty.channel.ChannelOption;
-import io.netty.channel.ChannelPipeline;
 import io.netty.channel.EventLoopGroup;
-import io.netty.channel.nio.NioEventLoopGroup;
-import io.netty.channel.socket.SocketChannel;
-import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.handler.codec.serialization.ClassResolvers;
-import io.netty.handler.codec.serialization.ObjectDecoder;
-import io.netty.handler.codec.serialization.ObjectEncoder;
-import io.netty.handler.logging.LogLevel;
-import io.netty.handler.logging.LoggingHandler;
-import io.netty.handler.ssl.SslContext;
-import io.netty.handler.ssl.SslContextBuilder;
-import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
-import io.netty.handler.ssl.util.SelfSignedCertificate;
+import io.netty.channel.group.ChannelGroup;
+import io.netty.channel.group.DefaultChannelGroup;
+import io.netty.util.concurrent.GlobalEventExecutor;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.security.cert.CertificateException;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import javax.net.ssl.SSLException;
 
 import org.piax.common.ObjectId;
 import org.piax.common.PeerId;
@@ -43,12 +27,15 @@ import org.piax.gtrans.ReceivedMessage;
 import org.piax.gtrans.TransportListener;
 import org.piax.gtrans.impl.ChannelTransportImpl;
 import org.piax.gtrans.netty.NettyRawChannel.Stat;
+import org.piax.gtrans.netty.bootstrap.SslBootstrap;
+import org.piax.gtrans.netty.bootstrap.TcpBootstrap;
+import org.piax.gtrans.netty.bootstrap.NettyBootstrap;
+import org.piax.gtrans.netty.bootstrap.UdtBootstrap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> implements ChannelTransport<NettyLocator> {
 
-    static final boolean SSL = true;
     EventLoopGroup bossGroup;
     EventLoopGroup serverGroup;
     EventLoopGroup clientGroup;
@@ -63,6 +50,11 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
     final Random rand = new Random(System.currentTimeMillis());
     private static final Logger logger = LoggerFactory.getLogger(NettyChannelTransport.class.getName());
     boolean isRunning = false;
+    final ChannelGroup schannels =
+            new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
+    final ChannelGroup cchannels =
+            new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
+    NettyBootstrap bs;
     
     AtomicInteger seq;
 
@@ -74,75 +66,33 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
             NettyLocator peerLocator) throws IdConflictException, IOException {
         super(peer, transId, null, true);
         this.locator = peerLocator;
-
-        final SslContext sslCtx;
-        final NettyChannelTransport trans = this;
-        
         this.peerId = peerId;
         seq = new AtomicInteger(0);// sequence number (ID of the channel)
-        if (SSL) {
-            SelfSignedCertificate ssc = null;
-            try {
-                ssc = new SelfSignedCertificate();
-            } catch (CertificateException e) {
-                e.printStackTrace();
-            }
-            if (ssc != null) {
-                sslCtx = SslContextBuilder.forServer(ssc.certificate(), ssc.privateKey()).build();
-            }
-            else {
-                sslCtx = null;
-            }
-        } else {
-            sslCtx = null;
-        }
-        bossGroup = new NioEventLoopGroup(1);
-        serverGroup = new NioEventLoopGroup(10);
-        clientGroup = new NioEventLoopGroup(10);
+//        bossGroup = new NioEventLoopGroup(1);
+//        serverGroup = new NioEventLoopGroup(10);
+//        clientGroup = new NioEventLoopGroup(10);
 
-        ServerBootstrap b = new ServerBootstrap();
-        b.group(bossGroup, serverGroup)
-        .channel(NioServerSocketChannel.class)
-        .option(ChannelOption.AUTO_READ, true)
-        .handler(new LoggingHandler(LogLevel.INFO))
-        .childHandler(new ChannelInitializer<SocketChannel>() {
-            @Override
-            public void initChannel(SocketChannel ch) throws Exception {
-                ChannelPipeline p = ch.pipeline();
-                
-                if (sslCtx != null) {
-                    p.addLast(sslCtx.newHandler(ch.alloc()));
-                }
-                p.addLast(//new DefaultEventExecutorGroup(100),
-                        new ObjectEncoder(),
-                        new ObjectDecoder(ClassResolvers.cacheDisabled(null)),
-                        new NettyInboundHandler(trans));
-            }
-        });
+        switch(peerLocator.getType()){
+        case TCP:
+            bs = new TcpBootstrap();
+            break;
+        case SSL:
+            bs = new SslBootstrap(locator.getHost(), locator.getPort());
+            break;
+        case UDT:
+            bs = new UdtBootstrap();
+            break;
+        default:
+            throw new ProtocolUnsupportedException("not implemented yet.");
+        }
+
+        bossGroup = bs.getParentEventLoopGroup();
+        serverGroup = bs.getChildEventLoopGroup();
+        clientGroup = bs.getClientEventLoopGroup();
+        
+        ServerBootstrap b = bs.getServerBootstrap(this);
         b.bind(new InetSocketAddress(peerLocator.getHost(), peerLocator.getPort()));//.syncUninterruptibly();
         logger.debug("bound " + peerLocator);
-        // wait for inbound active;
-/*        synchronized(this) {
-            try {
-                this.wait();
-            } catch (InterruptedException e) {
-            }
-        }*/
-        
-        
-        // Bind and start to accept incoming connections.
-      /*  Thread server = new Thread("netty-server:" + peerId) {
-            public void run() {
-                try {
-                    b.bind(peerLocator.getPort()).sync();//.channel()
-//                            .closeFuture().sync();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }
-        };
-        server.start();
-*/
         isRunning = true;
     }
 
@@ -150,9 +100,11 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
     public void fin() {
         logger.debug("running fin.");
         isRunning = false;
-        for (NettyRawChannel raw : raws.values()) {
+/*        for (NettyRawChannel raw : raws.values()) {
             raw.close();
-        }
+        }*/
+        cchannels.close().awaitUninterruptibly();
+        schannels.close().awaitUninterruptibly();
         bossGroup.shutdownGracefully();
         serverGroup.shutdownGracefully();
         clientGroup.shutdownGracefully();
@@ -166,7 +118,6 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
             throw new IOException("Getting new raw channel failed (maybe peer down).");
         }
         // generate a new channel
-        //NettyChannel ch = new NettyChannel(seq.incrementAndGet(), true, sender, receiver, true, raw, this);
         logger.debug("oneway send to {} from {} msg={}", dst, locator, msg);
         NettyMessage nmsg = new NettyMessage(receiver, raw.getLocal(), raw.getPeerId(), msg, false, false, 0);
         raw.send(nmsg);
@@ -223,7 +174,7 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
                     try {
                         synchronized(cached) {
                             cached.wait(CHANNEL_ESTABLISH_TIMEOUT);
-                            logger.debug("waiting for RUN state. current:" + cached.getStat());
+                            logger.info("waiting for RUN state. current:" + cached.getStat());
                         }
                     } catch (InterruptedException e) {
                     }
@@ -233,62 +184,16 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
                     return cached;
                 }
                 else {
-                    logger.debug("getRawChannelAsClient: illegal state: " + cached.getStat());
+                    logger.info("getRawChannelAsClient: illegal state: " + cached.getStat());
                     cached.close();
                 }
             }
-
-            // sender obj and receiver obj are ignored.
-            final SslContext sslCtx;
-            SslContext ssl;
-            if (SSL) {
-                try {
-                    ssl = SslContextBuilder.forClient()
-                            .trustManager(InsecureTrustManagerFactory.INSTANCE)
-                            .build();
-                } catch (SSLException e) {
-                    ssl = null;
-                }
-                sslCtx = ssl;
-            } else {
-                sslCtx = null;
-            }
-            Bootstrap b = new Bootstrap();
-            final NettyChannelTransport self = this;
             raw = new NettyRawChannel(dst, this);
-            b.group(clientGroup).channel(NioSocketChannel.class)
-            .handler(new ChannelInitializer<SocketChannel>() {
-                @Override
-                public void initChannel(SocketChannel sch)
-                        throws Exception {
-                    ChannelPipeline p = sch.pipeline();
-                    if (sslCtx != null) {
-                        p.addLast(sslCtx.newHandler(sch.alloc(),
-                                dst.getHost(), dst.getPort()));
-                    }
-                    p.addLast(
-                            //new DefaultEventExecutorGroup(100),
-                            new ObjectEncoder(),
-                            new ObjectDecoder(ClassResolvers
-                                    .cacheDisabled(null)),
-                            new NettyOutboundHandler(raw, self));
-                }
-            });
-            b.connect(dst.getHost(), dst.getPort());//.syncUninterruptibly();//.awaitUninterruptibly();
-            // Start the connection attempt.
-            /*Thread client = new Thread("netty-client:" + peerId) {
-                public void run() {
-                    try {
-                        b.connect(dst.getHost(), dst.getPort()).sync();
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                }
-            };
-            // .channel().closeFuture().sync();
-            client.start();*/
+            Bootstrap b = bs.getBootstrap(raw, this); 
+            b.connect(dst.getHost(), dst.getPort());
         }
         while (raw.getStat() == Stat.INIT || raw.getStat() == Stat.WAIT || raw.getStat() == Stat.DENIED) {
+            logger.debug("Stat={}", raw.getStat());
             try {
                 synchronized(raw) {
                     raw.wait(CHANNEL_ESTABLISH_TIMEOUT);
@@ -307,6 +212,7 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
 
     void outboundActive(NettyRawChannel raw, ChannelHandlerContext ctx) {
         logger.debug("outbound active: " + ctx.channel().remoteAddress());
+        cchannels.add(ctx.channel());
         int attemptRand = rand.nextInt();
         // is this valid only for tcp channel?
         InetSocketAddress sa = (InetSocketAddress)ctx.channel().remoteAddress();
@@ -335,12 +241,10 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
             ctx.close();
         }
     }
-    
+
     void inboundActive(ChannelHandlerContext ctx) {
-//        synchronized(this) {
-//            this.notify();
         logger.debug("inbound active: " + ctx.channel().remoteAddress());
-        //}
+        schannels.add(ctx.channel());
     }
 
     void inboundInactive(ChannelHandlerContext ctx) {
@@ -350,9 +254,9 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
             this.deleteRaw(raw);
         }
     }
-    
+
     static final int CHANNEL_ESTABLISH_TIMEOUT = 10000; 
-    
+
     void inboundReceive(ChannelHandlerContext ctx, Object msg) {
         if (msg instanceof AttemptMessage) {
             AttemptMessage attempt = (AttemptMessage) msg;
@@ -369,7 +273,6 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
                             raw.setContext(ctx);
                             ctx.writeAndFlush(new AttemptMessage(
                                     AttemptType.ACK, locator, null));
-                            logger.debug("loopback ack");
                         }
                     } else if (raw != null && raw.attempt != null) {
                         synchronized (raw) {
@@ -433,7 +336,7 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
                         synchronized (raws) {
                             NettyRawChannel raw = getRaw(nmsg.getLocator());
                             if (raw == null || raw.getStat() != Stat.RUN) {
-                                logger.debug(
+                                logger.info(
                                         "receive in illegal state from {} (channel not running): throwing it away.",
                                         nmsg.getLocator());
                             } else {
@@ -567,13 +470,5 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
             putChannel(ch);
         }
         return ch;
-/*        synchronized(channels) {
-            NettyChannel ch = getChannel(dst, receiver);
-            if (ch == null) {
-                ch = new NettyChannel(sender, receiver, true, raw, this);
-                putChannel(ch);
-            }
-            return ch;
-        }*/
     }
 }

@@ -16,6 +16,7 @@ import org.piax.common.subspace.LowerUpper;
 import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.Peer;
+import org.piax.gtrans.netty.NettyLocator;
 import org.piax.gtrans.ov.Overlay;
 import org.piax.gtrans.ov.sg.MSkipGraph;
 import org.piax.gtrans.ov.szk.Suzaku;
@@ -44,7 +45,7 @@ public class TestOnDHT {
 	}
     
     public static void printf(String f, Object... args) {
-        logger.debug(f, args);
+        logger.debug(String.format(f, args));
     }
     
     public static void sleep(int i) {
@@ -55,7 +56,7 @@ public class TestOnDHT {
     }
 
     static void printDHT() {
-        logger.debug("%n** print DHT repo%n");
+        logger.debug("\n** print DHT repo\n");
         for (int i = 0; i < numPeer; i++) {
             printf(" * DHT repository status on %s, %s", dhts[i].sg.getPeerId(),
                     dhts[i]);
@@ -66,7 +67,7 @@ public class TestOnDHT {
     static DHT[] dhts = new DHT[numPeer];
     
     enum L {
-    		UDP,TCP,EMU
+    		UDP,TCP,EMU,NETTY
     };
     
     @Test
@@ -81,9 +82,14 @@ public class TestOnDHT {
     
     @Test
     public void DHTOnSuzakuOnTcpTest() throws Exception {
-    		DHTRun(false, L.TCP);
+            DHTRun(false, L.TCP);
     }
-    
+
+    @Test
+    public void DHTOnSuzakuOnNettyTest() throws Exception {
+            DHTRun(false, L.NETTY);
+    }
+
     @Test
     public void DHTOnSkipGraphOnEmuTest() throws Exception {
     		DHTRun(true, L.EMU);
@@ -118,9 +124,12 @@ public class TestOnDHT {
             try {
             		PeerLocator l = null;
             		switch(loc) {
+            		case NETTY:
+                        l = new NettyLocator(new InetSocketAddress("localhost", 20000 + i));
+                        break;
             		case TCP:
-            			l = new TcpLocator(new InetSocketAddress("localhost", 20000 + i));
-            			break;
+                        l = new TcpLocator(new InetSocketAddress("localhost", 20000 + i));
+                        break;
             		case UDP:
             			l = new UdpLocator(new InetSocketAddress("localhost", 20000 + i));
             		case EMU:

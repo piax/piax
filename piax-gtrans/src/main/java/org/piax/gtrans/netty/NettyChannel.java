@@ -23,7 +23,7 @@ public class NettyChannel implements Channel<NettyLocator> {
     final int id;
     final boolean isSenderChannel;
     private static final Logger logger = LoggerFactory.getLogger(NettyChannel.class.getName());
-    
+
     public NettyChannel(int channelNo, boolean isSenderChannel, ObjectId localObjectId, ObjectId remoteObjectId, boolean isCreator, NettyRawChannel raw, NettyChannelTransport trans) {
         this.id = channelNo;
         this.isSenderChannel = isSenderChannel;
@@ -37,7 +37,6 @@ public class NettyChannel implements Channel<NettyLocator> {
    
     @Override
     public void close() {
-        // we do not close the channel here in order to reuse it.
         trans.deleteChannel(this);
     }
 
@@ -97,12 +96,6 @@ public class NettyChannel implements Channel<NettyLocator> {
         logger.debug("ch {}{} send {} from {} to {}", getChannelNo(), isSenderChannel(), msg, trans.locator, getRemote());
         raw.send(nmsg);
     }
-    /*
-    public void send(Object msg, boolean isChannelSend) throws IOException {
-        NettyMessage nmsg = new NettyMessage(remoteObjectId, raw.getLocal(), raw.getPeerId(), msg, isChannelSend,
-                isSenderChannel(), getChannelNo());
-        raw.send(nmsg);
-    }*/
 
     private static final Object EOF = new Object();
     protected void putReceiveQueue(Object msg) {
@@ -118,7 +111,6 @@ public class NettyChannel implements Channel<NettyLocator> {
     }
 
     public Object receive() {
-//        System.out.println(rcvQueue.hashCode() + " receiving!");
         Object msg = rcvQueue.poll();
         logger.debug("ch {} received {} on {} thread={}", getChannelNo(), msg, trans.locator, Thread.currentThread());
         return msg;
@@ -126,7 +118,6 @@ public class NettyChannel implements Channel<NettyLocator> {
 
     public Object receive(int timeout) throws NetworkTimeoutException {
         try {
-            //System.out.println(rcvQueue.hashCode() + " receiving");
             Object msg = rcvQueue.poll(timeout, TimeUnit.MILLISECONDS);
             logger.debug("ch received(with timeout) {} on {} thread={}", msg, this, Thread.currentThread());
             if (msg == EOF) {
@@ -141,10 +132,9 @@ public class NettyChannel implements Channel<NettyLocator> {
             return null;
         }
     }
-    
+
     public String toString() {
         return getRemote().toString() + ":" + getLocalObjectId()+":id=" + getChannelNo() + isSenderChannel();
     }
-    
 
 }

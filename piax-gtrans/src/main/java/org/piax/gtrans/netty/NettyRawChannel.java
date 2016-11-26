@@ -28,7 +28,7 @@ public class NettyRawChannel implements Channel<NettyLocator> {
         DEFUNCT
     }
     Stat stat;
-    
+
     public NettyRawChannel(NettyLocator remote, NettyChannelTransport mother) {
         this.remote = remote;
         this.mother = mother;
