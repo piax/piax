@@ -18,18 +18,41 @@ public class NettyLocator extends PeerLocator {
     String host;
     int port;
     
-    TYPE DEFAULT_TYPE=TYPE.SSL; 
+    static public String DEFAULT_TYPE="tcp"; 
     
     public NettyLocator(InetSocketAddress addr) {
-        this.type = DEFAULT_TYPE; 
+        this.type = parseType(DEFAULT_TYPE); 
         this.host = addr.getHostName();
         this.port = addr.getPort();
     }
     
     public NettyLocator(String host, int port) {
-        this.type = DEFAULT_TYPE;
+        this.type = parseType(DEFAULT_TYPE);
         this.host = host;
         this.port = port;
+    }
+    
+    public TYPE parseType(String str) {
+        TYPE t;
+        if (str.equals("tcp")) {
+            t=TYPE.TCP;
+        }
+        else if (str.equals("ssl")) {
+            t=TYPE.SSL;
+        }
+        else if (str.equals("ws")) {
+            t =TYPE.WS;
+        }
+        else if (str.equals("wss")) {
+            t =TYPE.WSS;
+        }
+        else if (str.equals("udt")) {
+            t = TYPE.UDT;
+        }
+        else {
+            t = TYPE.TCP; // fallback.
+        }
+        return t;
     }
     
     public NettyLocator(String spec) throws ProtocolUnsupportedException {
@@ -42,21 +65,7 @@ public class NettyLocator extends PeerLocator {
         if (specs.length != 3) {
             throw new ProtocolUnsupportedException("netty specification is not supported:" + spec);
         }
-        if (specs[0].equals("tcp")) {
-            type=TYPE.TCP;
-        }
-        else if (specs[0].equals("ssl")) {
-            type=TYPE.SSL;
-        }
-        else if (specs[0].equals("ws")) {
-            type =TYPE.WS;
-        }
-        else if (specs[0].equals("wss")) {
-            type =TYPE.WSS;
-        }
-        else if (specs[0].equals("udt")) {
-            type = TYPE.UDT;
-        }
+        this.type = parseType(specs[0]);
         this.host = specs[1];
         this.port = Integer.parseInt(specs[2]);
     }

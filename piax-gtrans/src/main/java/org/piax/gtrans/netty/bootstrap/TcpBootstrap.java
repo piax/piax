@@ -81,8 +81,8 @@ public class TcpBootstrap implements NettyBootstrap {
         b.group(parentGroup, childGroup)
         .channel(NioServerSocketChannel.class)
         .option(ChannelOption.AUTO_READ, true);
-        b.handler(new LoggingHandler(LogLevel.INFO))
-        .childHandler(getChannelInboundInitializer(trans));
+        //b.handler(new LoggingHandler(LogLevel.INFO))
+        b.childHandler(getChannelInboundInitializer(trans));
         return b;
     }
 

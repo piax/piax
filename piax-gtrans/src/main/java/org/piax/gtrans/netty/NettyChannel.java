@@ -16,6 +16,7 @@ public class NettyChannel implements Channel<NettyLocator> {
 
     final ObjectId localObjectId;
     final ObjectId remoteObjectId;
+    final NettyLocator channelInitiator;
     final NettyRawChannel raw;
     final boolean isCreator;
     final NettyChannelTransport trans;
@@ -24,9 +25,12 @@ public class NettyChannel implements Channel<NettyLocator> {
     final boolean isSenderChannel;
     private static final Logger logger = LoggerFactory.getLogger(NettyChannel.class.getName());
 
-    public NettyChannel(int channelNo, boolean isSenderChannel, ObjectId localObjectId, ObjectId remoteObjectId, boolean isCreator, NettyRawChannel raw, NettyChannelTransport trans) {
+    public NettyChannel(int channelNo, boolean isSenderChannel, NettyLocator channelInitiator, ObjectId localObjectId, ObjectId remoteObjectId, boolean isCreator, NettyRawChannel raw, NettyChannelTransport trans) {
         this.id = channelNo;
+        
+        logger.debug("isCreatorSide={}, {}={}?", isSenderChannel, channelInitiator, trans.locator);
         this.isSenderChannel = isSenderChannel;
+        this.channelInitiator = channelInitiator;
         this.localObjectId = localObjectId;
         this.remoteObjectId = remoteObjectId;
         this.isCreator = isCreator;
@@ -82,18 +86,24 @@ public class NettyChannel implements Channel<NettyLocator> {
 
     @Override
     public boolean isCreatorSide() {
-        return isSenderChannel;
+        logger.debug("{}={}?",channelInitiator, trans.locator);
+        return channelInitiator.equals(trans.locator);
+        //return isSenderChannel;
     }
     
     public boolean isSenderChannel() {
         return isSenderChannel;
     }
+    
+    public NettyLocator getChannelInitiator() {
+        return channelInitiator;
+    }
 
     @Override
     public void send(Object msg) throws IOException {
-        NettyMessage nmsg = new NettyMessage(remoteObjectId, raw.getLocal(), raw.getPeerId(), msg, true,
+        NettyMessage nmsg = new NettyMessage(remoteObjectId, raw.getLocal(), getChannelInitiator(), raw.getPeerId(), msg, true,
                 isSenderChannel(), getChannelNo());
-        logger.debug("ch {}{} send {} from {} to {}", getChannelNo(), isSenderChannel(), msg, trans.locator, getRemote());
+        logger.debug("ch {}{}{} send {} from {} to {}", getChannelNo(), isSenderChannel(), getChannelInitiator(), msg, trans.locator, getRemote());
         raw.send(nmsg);
     }
 
@@ -134,7 +144,7 @@ public class NettyChannel implements Channel<NettyLocator> {
     }
 
     public String toString() {
-        return getRemote().toString() + ":" + getLocalObjectId()+":id=" + getChannelNo() + isSenderChannel();
+        return getRemote().toString() + ":" + getLocalObjectId()+":" + getChannelNo();
     }
 
 }

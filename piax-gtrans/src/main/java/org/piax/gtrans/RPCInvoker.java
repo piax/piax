@@ -836,7 +836,7 @@ public class RPCInvoker<T extends RPCIf, E extends Endpoint> implements RPCIf {
                     throw new RPCException("RPC return message is null");
                 }
                 if (!(r instanceof ReturnValue<?>)) {
-                    throw new RPCException("RPC return message is not ReturnValue");
+                    throw new RPCException("RPC return message is not ReturnValue:" + r);
                 }
                 return (ReturnValue<?>)r;
             }
