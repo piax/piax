@@ -133,7 +133,7 @@
             </property>
           </systemProperties>
           <includes>
-           <!-- <include>**/TestRPC.java</include> -->
+            <include>**/TestRPC.java</include>
             <include>**/TestTransport.java</include>
             <include>**/TestOverlay.java</include>
           </includes>
