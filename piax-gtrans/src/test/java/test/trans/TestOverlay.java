@@ -44,6 +44,7 @@ import org.piax.gtrans.ov.flood.SimpleFlooding;
 import org.piax.gtrans.ov.llnet.LLNet;
 import org.piax.gtrans.ov.sg.MSkipGraph;
 import org.piax.gtrans.ov.szk.Suzaku;
+import org.piax.gtrans.raw.tcp.TcpLocator;
 import org.piax.util.KeyComparator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -1303,7 +1304,7 @@ public class TestOverlay {
 
     @Test
     public void SuzakuRoutingTableTest() throws Exception {
-        int numOfPeers = 50;
+        int numOfPeers = 32;
         // get peers
         PeerLocator loc = null;
         Suzaku<Destination, ComparableKey<?>> trs[] = new Suzaku[numOfPeers];
@@ -1379,7 +1380,7 @@ public class TestOverlay {
     
     @Test
     public void MSGRoutingTableTest() throws Exception {
-        int numOfPeers = 50;
+        int numOfPeers = 32;
         // get peers
         PeerLocator loc = null;
         MSkipGraph<Destination, ComparableKey<?>> trs[] = new MSkipGraph[numOfPeers];
