@@ -154,6 +154,6 @@ public class NettyRawChannel implements Channel<NettyLocator> {
     
     @Override
     public String toString() {
-        return "(RAW local=" + getLocal() + "remote=" + getRemote() + ")";
+        return "(RAW local=" + getLocal() + ",remote=" + getRemote() + ")";
     }
 }

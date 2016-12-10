@@ -119,7 +119,7 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
         }
         // generate a new channel
         logger.debug("oneway send to {} from {} msg={}", dst, locator, msg);
-        NettyMessage nmsg = new NettyMessage(receiver, raw.getLocal(), null, raw.getPeerId(), msg, false, false, 0);
+        NettyMessage nmsg = new NettyMessage(receiver, raw.getLocal(), null, raw.getPeerId(), msg, false, 0);
         raw.send(nmsg);
     }
     
@@ -128,7 +128,7 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
         channels.put("" + ch.getChannelNo() + channelInitiator, ch);
     }
     
-    NettyChannel getChannel(int channelNo, boolean isSenderChannel, NettyLocator channelInitiator) {
+    NettyChannel getChannel(int channelNo, NettyLocator channelInitiator) {
         logger.debug("" + channelNo + channelInitiator + " on " + locator);
         return channels.get("" + channelNo + channelInitiator);
     }
@@ -331,7 +331,7 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
             if (nmsg.isChannelSend()) {
                 NettyChannel ch = null;
                 synchronized (channels) {
-                    ch = getChannel(nmsg.channelNo(), !nmsg.isSenderChannel(), nmsg.getChannelInitiator());
+                    ch = getChannel(nmsg.channelNo(), nmsg.getChannelInitiator());
                     if (ch == null) {
                         synchronized (raws) {
                             NettyRawChannel raw = getRaw(nmsg.getSourceLocator());
@@ -343,7 +343,6 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
                                 // channel is created on the first message
                                 // arrival.
                                 ch = new NettyChannel(nmsg.channelNo(),
-                                        !nmsg.isSenderChannel(),
                                         nmsg.getChannelInitiator(),
                                         nmsg.getObjectId(), nmsg.getObjectId(),
                                         false, raw, this);
@@ -412,11 +411,11 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
             NettyChannel ch;
             synchronized (channels) {
                 // get a channel that has remote as the nmsg.source. 
-                ch = getChannel(nmsg.channelNo(), !nmsg.isSenderChannel(), nmsg.getChannelInitiator());
+                ch = getChannel(nmsg.channelNo(), nmsg.getChannelInitiator());
                 logger.debug("got stored ch=" + ch + " for msg: " + nmsg.getMsg());
                 if (ch == null) {
                     // not assumed status.
-                    ch = new NettyChannel(nmsg.channelNo(), !nmsg.isSenderChannel(),
+                    ch = new NettyChannel(nmsg.channelNo(),
                             nmsg.getChannelInitiator(),
                             nmsg.getObjectId(),
                             nmsg.getObjectId(), false, raw, this);
@@ -469,7 +468,7 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
         }
         NettyChannel ch;
         synchronized(channels) {
-            ch = new NettyChannel(seq.incrementAndGet(), true, locator, sender, receiver, true, raw, this);
+            ch = new NettyChannel(seq.incrementAndGet(), locator, sender, receiver, true, raw, this);
             putChannel(locator, ch);
         }
         return ch;

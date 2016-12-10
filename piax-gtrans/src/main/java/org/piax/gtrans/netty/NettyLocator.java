@@ -56,18 +56,22 @@ public class NettyLocator extends PeerLocator {
     }
     
     public NettyLocator(String spec) throws ProtocolUnsupportedException {
-        // "tcp:localhost:12367"
-        // "ssl:localhost:12367"
-        // "ws:localhost:12367"
-        // "wss:localhost:12367"
-        // "udt:localhost:12367"
+        // "netty:tcp:localhost:12367"
+        // "netty:tcp:localhost:12367"
+        // "netty:ssl:localhost:12367"
+        // "netty:ws:localhost:12367"
+        // "netty:wss:localhost:12367"
+        // "netty:udt:localhost:12367"
         String specs[] = spec.split(":");
-        if (specs.length != 3) {
+        if (specs.length != 4) {
             throw new ProtocolUnsupportedException("netty specification is not supported:" + spec);
         }
-        this.type = parseType(specs[0]);
-        this.host = specs[1];
-        this.port = Integer.parseInt(specs[2]);
+        if (!specs[0].equals("netty")) {
+            throw new ProtocolUnsupportedException("illegal use of constructor:");
+        }
+        this.type = parseType(specs[1]);
+        this.host = specs[2];
+        this.port = Integer.parseInt(specs[3]);
     }
     
     public String getHost() {

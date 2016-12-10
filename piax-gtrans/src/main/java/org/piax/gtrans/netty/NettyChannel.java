@@ -22,14 +22,12 @@ public class NettyChannel implements Channel<NettyLocator> {
     final NettyChannelTransport trans;
     private final BlockingQueue<Object> rcvQueue;
     final int id;
-    final boolean isSenderChannel;
+    //final boolean isSenderChannel;
     private static final Logger logger = LoggerFactory.getLogger(NettyChannel.class.getName());
 
-    public NettyChannel(int channelNo, boolean isSenderChannel, NettyLocator channelInitiator, ObjectId localObjectId, ObjectId remoteObjectId, boolean isCreator, NettyRawChannel raw, NettyChannelTransport trans) {
+    public NettyChannel(int channelNo, NettyLocator channelInitiator, ObjectId localObjectId, ObjectId remoteObjectId, boolean isCreator, NettyRawChannel raw, NettyChannelTransport trans) {
         this.id = channelNo;
         
-        logger.debug("isCreatorSide={}, {}={}?", isSenderChannel, channelInitiator, trans.locator);
-        this.isSenderChannel = isSenderChannel;
         this.channelInitiator = channelInitiator;
         this.localObjectId = localObjectId;
         this.remoteObjectId = remoteObjectId;
@@ -90,11 +88,11 @@ public class NettyChannel implements Channel<NettyLocator> {
         return channelInitiator.equals(trans.locator);
         //return isSenderChannel;
     }
-    
+/*    
     public boolean isSenderChannel() {
         return isSenderChannel;
     }
-    
+  */  
     public NettyLocator getChannelInitiator() {
         return channelInitiator;
     }
@@ -102,8 +100,8 @@ public class NettyChannel implements Channel<NettyLocator> {
     @Override
     public void send(Object msg) throws IOException {
         NettyMessage nmsg = new NettyMessage(remoteObjectId, raw.getLocal(), getChannelInitiator(), raw.getPeerId(), msg, true,
-                isSenderChannel(), getChannelNo());
-        logger.debug("ch {}{}{} send {} from {} to {}", getChannelNo(), isSenderChannel(), getChannelInitiator(), msg, trans.locator, getRemote());
+                getChannelNo());
+        logger.debug("ch {}{} send {} from {} to {}", getChannelNo(), getChannelInitiator(), msg, trans.locator, getRemote());
         raw.send(nmsg);
     }
 
