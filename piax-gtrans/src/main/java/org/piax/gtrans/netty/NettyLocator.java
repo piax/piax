@@ -20,18 +20,22 @@ public class NettyLocator extends PeerLocator {
     
     static public String DEFAULT_TYPE="tcp"; 
     
+    public NettyLocator() {
+        // XXX should define default value;
+    }
+    
     public NettyLocator(InetSocketAddress addr) {
         this.type = parseType(DEFAULT_TYPE); 
         this.host = addr.getHostName();
         this.port = addr.getPort();
     }
-    
+
     public NettyLocator(String host, int port) {
         this.type = parseType(DEFAULT_TYPE);
         this.host = host;
         this.port = port;
     }
-    
+
     public TYPE parseType(String str) {
         TYPE t;
         if (str.equals("tcp")) {
@@ -54,7 +58,7 @@ public class NettyLocator extends PeerLocator {
         }
         return t;
     }
-    
+
     public NettyLocator(String spec) throws ProtocolUnsupportedException {
         // "netty:tcp:localhost:12367"
         // "netty:tcp:localhost:12367"
@@ -73,11 +77,11 @@ public class NettyLocator extends PeerLocator {
         this.host = specs[2];
         this.port = Integer.parseInt(specs[3]);
     }
-    
+
     public String getHost() {
         return host;
     }
-    
+
     @Override
     public boolean equals(Object o) {
         if (o instanceof NettyLocator) {
@@ -86,22 +90,21 @@ public class NettyLocator extends PeerLocator {
         }
         return false;
     }
-    
+
     public TYPE getType() {
         return type;
     }
-    
+
     public int getPort() {
         return port;
     }
-    
+
     // This class does not create raw transport.
     private static final long serialVersionUID = -2778097890346547201L;
     @Override
     public void serialize(ByteBuffer bb) {
     }
-    
-    
+
     @Override
     public RawTransport<NettyLocator> newRawTransport(PeerId peerId)
             throws IOException {

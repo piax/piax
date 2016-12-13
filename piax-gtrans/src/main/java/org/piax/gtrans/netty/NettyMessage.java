@@ -14,7 +14,6 @@ public class NettyMessage implements Serializable {
     private final Object msg;
     private final boolean isChannelSend; // true if it is channel
     private final int channelNo; // the channel number 
-    
 
     public NettyMessage(ObjectId upper, NettyLocator locator, NettyLocator channelInitiator,
             PeerId peerId, Object msg, 
@@ -27,29 +26,35 @@ public class NettyMessage implements Serializable {
         this.isChannelSend = isChannelSend;
         this.channelNo = channelNo;
     }
+
     public ObjectId getObjectId() {
         return sender;
     }
+
     public NettyLocator getSourceLocator() {
         return srcLocator;
     }
+
     public NettyLocator getChannelInitiator() {
         return channelInitiator;
     }
+
     public PeerId getPeerId() {
         return peerId;
     }
+
     public Object getMsg() {
         return msg;
     }
+
     public boolean isChannelSend() {
         return isChannelSend;
     }
+
     public int channelNo() {
         return channelNo;
     }
-    
-    
+
     public String toString() {
         return "locator=" + srcLocator + ",objectId=" + sender + "msg=" + msg;
     }

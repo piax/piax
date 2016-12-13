@@ -14,12 +14,15 @@ class AttemptMessage implements Serializable {
         this.source = source;
         this.arg = arg;
     }
+
     public AttemptType getType() {
         return type;
     }
+
     public Object getArg() {
         return arg;
     }
+
     public NettyLocator getSource() {
         return source;
     }

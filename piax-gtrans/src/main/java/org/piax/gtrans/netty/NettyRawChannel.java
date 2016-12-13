@@ -18,8 +18,9 @@ public class NettyRawChannel implements Channel<NettyLocator> {
     private final NettyLocator remote;
     private final NettyChannelTransport mother;
     private static final Logger logger = LoggerFactory.getLogger(NettyRawChannel.class.getName());
-    boolean isActive = false;
     Integer attempt = null;
+    long lastUse;
+    boolean isCreatorSide; // true if the raw channel is generated as a client.
     enum Stat {
         INIT,
         WAIT,
@@ -35,20 +36,41 @@ public class NettyRawChannel implements Channel<NettyLocator> {
         this.attempt = null;
         this.stat = Stat.INIT;
         this.ctx = null;
+        isCreatorSide = false;
+        lastUse = System.currentTimeMillis();
+    }
+    
+    public NettyRawChannel(NettyLocator remote, NettyChannelTransport mother, boolean isCreatorSide) {
+        this.remote = remote;
+        this.mother = mother;
+        this.attempt = null;
+        this.stat = Stat.INIT;
+        this.ctx = null;
+        this.isCreatorSide = isCreatorSide;
+        lastUse = System.currentTimeMillis();
     }
 
     public PeerId getPeerId() {
         return mother.getPeerId();
     }
+    
+    public void touch() {
+        lastUse = System.currentTimeMillis();
+    }
 
     @Override
     public void close() {
-        ctx.close();
+        synchronized(mother.raws) {
+            mother.raws.remove(getRemote());
+            setStat(Stat.DEFUNCT);
+            ctx.close();//.syncUninterruptibly();
+        }
     }
 
     @Override
     public boolean isClosed() {
-        return !ctx.channel().isOpen();
+        //return !ctx.channel().isOpen();
+        return getStat() == Stat.DEFUNCT;
     }
 
     @Override
@@ -88,7 +110,7 @@ public class NettyRawChannel implements Channel<NettyLocator> {
 
     @Override
     public boolean isCreatorSide() {
-        return false; // always false
+        return isCreatorSide;
     }
 
     public ChannelHandlerContext getContext() {
@@ -129,6 +151,7 @@ public class NettyRawChannel implements Channel<NettyLocator> {
 
     @Override
     public void send(Object msg) throws IOException {
+        touch();
         // object is supposed to be a NettyMessage
         logger.debug("sending {} from {} to {}", ((NettyMessage)msg).getMsg(), getLocal(), getRemote());
         if (stat == Stat.RUN && ctx.channel().isOpen()) {
@@ -151,9 +174,9 @@ public class NettyRawChannel implements Channel<NettyLocator> {
         // never reached.
         return null;
     }
-    
+
     @Override
     public String toString() {
-        return "(RAW local=" + getLocal() + ",remote=" + getRemote() + ")";
+        return "(RAW: stat=" + getStat() + " local=" + getLocal() + ",remote=" + getRemote() + ",lastUse=" + lastUse + ")";
     }
 }

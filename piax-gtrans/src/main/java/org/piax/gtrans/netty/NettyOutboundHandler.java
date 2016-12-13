@@ -31,7 +31,7 @@ public class NettyOutboundHandler extends ChannelInboundHandlerAdapter {
     public void channelReadComplete(ChannelHandlerContext ctx) {
         ctx.flush();
     }
-    
+
     @Override
     public void channelInactive(ChannelHandlerContext ctx) {
         // this handler is a client-side handler.

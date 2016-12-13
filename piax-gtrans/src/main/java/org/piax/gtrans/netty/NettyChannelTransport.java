@@ -10,9 +10,11 @@ import io.netty.util.concurrent.GlobalEventExecutor;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import org.piax.common.ObjectId;
 import org.piax.common.PeerId;
@@ -27,9 +29,9 @@ import org.piax.gtrans.ReceivedMessage;
 import org.piax.gtrans.TransportListener;
 import org.piax.gtrans.impl.ChannelTransportImpl;
 import org.piax.gtrans.netty.NettyRawChannel.Stat;
+import org.piax.gtrans.netty.bootstrap.NettyBootstrap;
 import org.piax.gtrans.netty.bootstrap.SslBootstrap;
 import org.piax.gtrans.netty.bootstrap.TcpBootstrap;
-import org.piax.gtrans.netty.bootstrap.NettyBootstrap;
 import org.piax.gtrans.netty.bootstrap.UdtBootstrap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,8 +57,8 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
     final ChannelGroup cchannels =
             new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
     NettyBootstrap bs;
-    
     AtomicInteger seq;
+    final public int RAW_POOL_SIZE = 10;
 
     enum AttemptType {
         ATTEMPT, ACK, NACK 
@@ -68,10 +70,6 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
         this.locator = peerLocator;
         this.peerId = peerId;
         seq = new AtomicInteger(0);// sequence number (ID of the channel)
-//        bossGroup = new NioEventLoopGroup(1);
-//        serverGroup = new NioEventLoopGroup(10);
-//        clientGroup = new NioEventLoopGroup(10);
-
         switch(peerLocator.getType()){
         case TCP:
             bs = new TcpBootstrap();
@@ -100,9 +98,6 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
     public void fin() {
         logger.debug("running fin.");
         isRunning = false;
-/*        for (NettyRawChannel raw : raws.values()) {
-            raw.close();
-        }*/
         cchannels.close().awaitUninterruptibly();
         schannels.close().awaitUninterruptibly();
         bossGroup.shutdownGracefully();
@@ -120,36 +115,53 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
         // generate a new channel
         logger.debug("oneway send to {} from {} msg={}", dst, locator, msg);
         NettyMessage nmsg = new NettyMessage(receiver, raw.getLocal(), null, raw.getPeerId(), msg, false, 0);
+        raw.touch();
         raw.send(nmsg);
     }
-    
+
     void putChannel(NettyLocator channelInitiator, NettyChannel ch) {
         logger.debug("" + ch.getChannelNo() + channelInitiator + "->" + ch + " on " + locator);
         channels.put("" + ch.getChannelNo() + channelInitiator, ch);
     }
-    
+
     NettyChannel getChannel(int channelNo, NettyLocator channelInitiator) {
         logger.debug("" + channelNo + channelInitiator + " on " + locator);
         return channels.get("" + channelNo + channelInitiator);
     }
-    
+
     void deleteChannel(NettyChannel ch) {
         channels.remove("" + ch.getChannelNo() + ch.getRemote(), ch);
     }
-    
+
     // package local
     void putRaw(NettyLocator locator, NettyRawChannel ch) {
         raws.put(locator.toString(), ch);
     }
-    
+
     NettyRawChannel getRaw(NettyLocator locator) {
         return raws.get(locator.toString());
     }
-    
+
     void deleteRaw(NettyRawChannel raw) {
         raws.remove(raw.getRemote().toString(), raw);
     }
-    
+
+    public List<NettyRawChannel> getCreatedRawChannels() {
+        return raws.values().stream()
+                .filter(x -> x.isCreatorSide())
+                 // If the last use is close to current time, it is located at the top of the list
+                .sorted((x, y) ->{return (int)(y.lastUse - x.lastUse);})
+                .collect(Collectors.toList());
+    }
+
+    public List<NettyLocator> getRawChannelLocators() {
+        return raws.values().stream()
+                .sorted((x, y) ->{return (int)(y.lastUse - x.lastUse);})
+                .map(x -> {return x.isClosed() ? null : x.getRemote();})
+                .filter(x -> x != null)
+                .collect(Collectors.toList());
+    }
+
     NettyRawChannel getRawByContext(ChannelHandlerContext ctx) {
         NettyRawChannel ret = null;
         for (NettyRawChannel raw : raws.values()) {
@@ -174,7 +186,7 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
                     try {
                         synchronized(cached) {
                             cached.wait(CHANNEL_ESTABLISH_TIMEOUT);
-                            logger.info("waiting for RUN state. current:" + cached.getStat());
+                            logger.info("waiting for RUN/DEFUNCT state. current:" + cached.getStat());
                         }
                     } catch (InterruptedException e) {
                     }
@@ -184,16 +196,23 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
                     return cached;
                 }
                 else {
-                    logger.info("getRawChannelAsClient: illegal state: " + cached.getStat());
-                    cached.close();
+                    // DEFUNCT. Try a new connection.
                 }
             }
-            raw = new NettyRawChannel(dst, this);
+            int count = 0;
+            for (NettyRawChannel r : getCreatedRawChannels()) {
+                // in order of least recently used. 
+                if (RAW_POOL_SIZE - 1 <= count) {
+                    // logger.info("closing {}, curtime={}", r, System.currentTimeMillis());
+                    r.close(); // should close gracefully.
+                }
+                count++;
+            }
+            raw = new NettyRawChannel(dst, this, true);
             Bootstrap b = bs.getBootstrap(raw, this); 
             b.connect(dst.getHost(), dst.getPort());
         }
-        while (raw.getStat() == Stat.INIT || raw.getStat() == Stat.WAIT || raw.getStat() == Stat.DENIED) {
-            logger.debug("Stat={}", raw.getStat());
+        while (raw.getStat() == Stat.INIT || raw.getStat() == Stat.WAIT) {
             try {
                 synchronized(raw) {
                     raw.wait(CHANNEL_ESTABLISH_TIMEOUT);
@@ -205,9 +224,26 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
             logger.debug("created raw channel become available=" + raw);
             return raw;
         }
-        logger.debug("getRawChannelAsClient: illegal state: " + raw.getStat());
-        raw.close();
-        throw new IOException("Channel establish failed.");
+        else {
+            // not accepted other side yet...
+            while (raw.getStat() == Stat.DENIED) {
+                try {
+                    synchronized(raw) {
+                        raw.wait(CHANNEL_ESTABLISH_TIMEOUT);
+                    }
+                }
+                catch (InterruptedException e) {
+                }
+            }
+            // accepted other side. 
+            if (raw.getStat() == Stat.RUN) {
+                return raw;
+            }
+            // the channel was established but was closed 
+            logger.warn("getRawChannelAsClient: illegal state: " + raw.getStat());
+            //raw.close();
+            throw new IOException("Channel establish failed.");
+        }
     }
 
     void outboundActive(NettyRawChannel raw, ChannelHandlerContext ctx) {
@@ -223,7 +259,9 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
             synchronized (raw) {
                 raw.setAttempt(attemptRand);
                 raw.setContext(ctx);
-                raw.setStat(Stat.WAIT);
+                if (raw.getStat() == Stat.INIT) {
+                    raw.setStat(Stat.WAIT);
+                }
             }
             putRaw(dst, raw);
         }
@@ -236,6 +274,7 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
         synchronized(raws) {
             NettyRawChannel raw = getRawByContext(ctx);
             if (raw != null) {
+                raw.setStat(Stat.DEFUNCT);
                 this.deleteRaw(raw);
             }
             ctx.close();
@@ -251,8 +290,12 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
         logger.debug("inbound inactive: " + ctx.channel().remoteAddress());
         synchronized(raws) {
             NettyRawChannel raw = getRawByContext(ctx);
-            this.deleteRaw(raw);
+            if (raw != null) {
+                raw.setStat(Stat.DEFUNCT);
+                this.deleteRaw(raw);
+            }
         }
+        ctx.close();
     }
 
     static final int CHANNEL_ESTABLISH_TIMEOUT = 10000; 
@@ -267,6 +310,7 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
                 synchronized (raws) {
                     NettyRawChannel raw = getRaw(attempt.getSource());
                     if (raw != null && locator.equals(attempt.getSource())) {
+                        raw.touch();
                         // loop back.
                         synchronized (raw) {
                             raw.setStat(Stat.RUN);
@@ -275,29 +319,24 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
                                     AttemptType.ACK, locator, null));
                         }
                     } else if (raw != null && raw.attempt != null) {
+                        raw.touch();
                         synchronized (raw) {
-                            // this side wins
+                            // this side won
                             if (raw.attempt > (int) attempt.getArg()) {
-                                try {// wait for ACK for outbound attempt.
-                                    while (raw.getStat() == Stat.WAIT) {
-                                        raw.wait(CHANNEL_ESTABLISH_TIMEOUT);
-                                    }
-                                } catch (InterruptedException e) {
-                                }
+                                logger.info("attempt won on " + raw);
                                 ctx.writeAndFlush(new AttemptMessage(
                                         AttemptType.NACK, locator, null));
+                                
+                                
                             } else { // opposite side wins.
+                                logger.info("attempt lose on " + raw);
                                 ctx.writeAndFlush(new AttemptMessage(
                                         AttemptType.ACK, locator, null));
-                                // not received NACK yet.
-                                try {
-                                    while (raw.getStat() == Stat.WAIT) {
-                                        // wait for NACK for outbound
-                                        // attempt...no need?
-                                        raw.wait(CHANNEL_ESTABLISH_TIMEOUT);
-                                    }
-                                } catch (InterruptedException e) {
-                                    e.printStackTrace();
+                                if (raw.getStat() == Stat.DENIED) {
+                                    // if NACK is already received, it goes to RUN state.
+                                    raw.setContext(ctx);
+                                    raw.setStat(Stat.RUN);
+                                    raw.notifyAll();
                                 }
                             }
                         } // synchronized raw
@@ -309,11 +348,11 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
                         // accept attempt.
                         raw.setStat(Stat.RUN);
                         raw.setContext(ctx);
-                        putRaw(attempt.getSource(), raw);
                         logger.debug("set run stat for raw from source="
                                 + attempt.getSource());
                         ctx.writeAndFlush(new AttemptMessage(AttemptType.ACK,
                                 locator, null));
+                        putRaw(attempt.getSource(), raw);
                     }
                 } // synchronized raws
                 break;
@@ -336,8 +375,10 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
                         synchronized (raws) {
                             NettyRawChannel raw = getRaw(nmsg.getSourceLocator());
                             if (raw == null || raw.getStat() != Stat.RUN) {
+                                // might receive message in WAIT state.
                                 logger.info(
-                                        "receive in illegal state from {} (channel not running): throwing it away.",
+                                        "receive in illegal state {} from {} (channel not running): throwing it away.",
+                                        raw == null ? "null" : raw.getStat(),
                                         nmsg.getSourceLocator());
                             } else {
                                 // channel is created on the first message
@@ -355,6 +396,7 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
                     }
                 }
                 if (ch != null) {
+                    ch.raw.touch();
                     messageReceived(ch, nmsg);
                 }
             } else {
@@ -383,6 +425,9 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
                 break;
             case NACK:
                 // there should be a attempt thread on this peer.
+                logger.info("NACK received on {}", raw);
+                // the connection is not needed anymore.
+                ctx.close();
                 synchronized(raws) {
 //                    NettyRawChannel raw = getRaw(resp.getSource());
                     synchronized(raw) {
@@ -392,10 +437,11 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
                             break;
                         case WAIT:
                             raw.setStat(Stat.DENIED);
+                            raw.setContext(null); // not valid context.
                             raw.notifyAll();
                             break;
                         default:
-                            logger.debug("illegal state: " + raw.getStat());
+                            logger.debug("illegal raw state {}" + raw);
                             // retry?
                             break;
                         }
@@ -451,12 +497,12 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
             }
         }
     }
-    
+
     @Override
     public NettyLocator getEndpoint() {
         return locator;
     }
-    
+
     @Override
     public Channel<NettyLocator> newChannel(ObjectId sender, ObjectId receiver,
             NettyLocator dst, boolean isDuplex, int timeout)

@@ -14,6 +14,4 @@ public interface NettyBootstrap {
     
     ServerBootstrap getServerBootstrap(NettyChannelTransport trans);
     Bootstrap getBootstrap(NettyRawChannel raw, NettyChannelTransport trans);
-//    ChannelInitializer<?> getChannelInboundInitializer(NettyChannelTransport trans);
-//    ChannelInitializer<?> getChannelOutboundInitializer(NettyRawChannel raw, NettyChannelTransport trans);
 }

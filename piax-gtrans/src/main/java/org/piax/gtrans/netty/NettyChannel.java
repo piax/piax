@@ -17,17 +17,15 @@ public class NettyChannel implements Channel<NettyLocator> {
     final ObjectId localObjectId;
     final ObjectId remoteObjectId;
     final NettyLocator channelInitiator;
-    final NettyRawChannel raw;
+    NettyRawChannel raw;
     final boolean isCreator;
     final NettyChannelTransport trans;
     private final BlockingQueue<Object> rcvQueue;
     final int id;
-    //final boolean isSenderChannel;
     private static final Logger logger = LoggerFactory.getLogger(NettyChannel.class.getName());
 
     public NettyChannel(int channelNo, NettyLocator channelInitiator, ObjectId localObjectId, ObjectId remoteObjectId, boolean isCreator, NettyRawChannel raw, NettyChannelTransport trans) {
         this.id = channelNo;
-        
         this.channelInitiator = channelInitiator;
         this.localObjectId = localObjectId;
         this.remoteObjectId = remoteObjectId;
@@ -36,7 +34,7 @@ public class NettyChannel implements Channel<NettyLocator> {
         this.trans = trans;
         rcvQueue = new LinkedBlockingQueue<Object>();
     }
-   
+
     @Override
     public void close() {
         trans.deleteChannel(this);
@@ -86,13 +84,8 @@ public class NettyChannel implements Channel<NettyLocator> {
     public boolean isCreatorSide() {
         logger.debug("{}={}?",channelInitiator, trans.locator);
         return channelInitiator.equals(trans.locator);
-        //return isSenderChannel;
     }
-/*    
-    public boolean isSenderChannel() {
-        return isSenderChannel;
-    }
-  */  
+
     public NettyLocator getChannelInitiator() {
         return channelInitiator;
     }
@@ -101,8 +94,17 @@ public class NettyChannel implements Channel<NettyLocator> {
     public void send(Object msg) throws IOException {
         NettyMessage nmsg = new NettyMessage(remoteObjectId, raw.getLocal(), getChannelInitiator(), raw.getPeerId(), msg, true,
                 getChannelNo());
-        logger.debug("ch {}{} send {} from {} to {}", getChannelNo(), getChannelInitiator(), msg, trans.locator, getRemote());
-        raw.send(nmsg);
+        if (!raw.isClosed()) {
+            logger.debug("ch {}{} send {} from {} to {}", getChannelNo(), getChannelInitiator(), msg, trans.locator, getRemote());
+        }
+        else { // re-create the raw channel.
+            raw = trans.getRawCreateAsClient(getRemote());
+        }
+        // returns null if transport is finished.
+        if (raw != null) {
+            raw.send(nmsg);
+        }
+
     }
 
     private static final Object EOF = new Object();

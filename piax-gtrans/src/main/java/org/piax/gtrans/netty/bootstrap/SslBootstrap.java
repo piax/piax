@@ -33,7 +33,7 @@ public class SslBootstrap implements NettyBootstrap {
 //    private static final Logger logger = LoggerFactory.getLogger(NettySslTransport.class.getName());
     String host;
     int port;
-    
+
     EventLoopGroup parentGroup;
     EventLoopGroup childGroup;
     EventLoopGroup clientGroup;
@@ -119,7 +119,7 @@ public class SslBootstrap implements NettyBootstrap {
             }
         };
     }
-    
+
     @Override
     public ServerBootstrap getServerBootstrap(NettyChannelTransport trans) {
         ServerBootstrap b = new ServerBootstrap();

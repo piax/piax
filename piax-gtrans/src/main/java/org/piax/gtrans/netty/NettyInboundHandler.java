@@ -8,12 +8,12 @@ public class NettyInboundHandler extends ChannelInboundHandlerAdapter {
     public NettyInboundHandler(NettyChannelTransport trans) {
         this.trans = trans;
     }
-    
+
     @Override
     public void channelActive(ChannelHandlerContext ctx) {
         trans.inboundActive(ctx);
     }
-    
+
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) {
         trans.getPeer().execute(() -> {
@@ -23,9 +23,8 @@ public class NettyInboundHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelReadComplete(ChannelHandlerContext ctx) {
-        //ctx.flush();
     }
-    
+
     @Override
     public void channelInactive(ChannelHandlerContext ctx) {
         trans.inboundInactive(ctx);
@@ -33,7 +32,6 @@ public class NettyInboundHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-//        cause.printStackTrace();
         ctx.close();
     }
 }

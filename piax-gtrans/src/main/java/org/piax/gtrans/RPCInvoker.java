@@ -966,12 +966,15 @@ public class RPCInvoker<T extends RPCIf, E extends Endpoint> implements RPCIf {
             // case of call sync
             try {
                 ReturnValue<?> ret = receiveSync(mc);
+                // try sending return value though the channel is closed.
+                ch.send(ret);
+                /*
                 if (ch.isClosed()) {
                     logger.info("channel already closed on the return of \"{}\" method",
                             mc.method);
                 } else {
                     ch.send(ret);
-                }
+                }*/
             } catch (ClosedChannelException e) {
                 logger.warn("", e);
                 logger.info("closed channel exception occured to reply to \"{}\", args={}", mc.method, mc.args);
