@@ -61,7 +61,8 @@ public class NettyRawChannel implements Channel<NettyLocator> {
     @Override
     public void close() {
         synchronized(mother.raws) {
-            mother.raws.remove(getRemote());
+            //mother.raws.remove(getRemote());
+            mother.deleteRaw(this);
             setStat(Stat.DEFUNCT);
             ctx.close();//.syncUninterruptibly();
         }
@@ -159,7 +160,7 @@ public class NettyRawChannel implements Channel<NettyLocator> {
             logger.debug("sent {} from {} to {}", ((NettyMessage)msg).getMsg(), getLocal(), getRemote());
         }
         else {
-            new IOException("the sending channel is already closed.");
+            new IOException("the sending channel is closed.");
         }
     }
 

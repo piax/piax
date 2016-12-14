@@ -9,6 +9,7 @@ import org.piax.common.ObjectId;
 import org.piax.common.TransportId;
 import org.piax.gtrans.Channel;
 import org.piax.gtrans.NetworkTimeoutException;
+import org.piax.gtrans.netty.nat.NettyNATLocator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -92,14 +93,25 @@ public class NettyChannel implements Channel<NettyLocator> {
 
     @Override
     public void send(Object msg) throws IOException {
-        NettyMessage nmsg = new NettyMessage(remoteObjectId, raw.getLocal(), getChannelInitiator(), raw.getPeerId(), msg, true,
-                getChannelNo());
         if (!raw.isClosed()) {
             logger.debug("ch {}{} send {} from {} to {}", getChannelNo(), getChannelInitiator(), msg, trans.locator, getRemote());
         }
         else { // re-create the raw channel.
             raw = trans.getRawCreateAsClient(getRemote());
         }
+        NettyLocator src = raw.getLocal();
+        if (NettyChannelTransport.NAT_SUPPORT) {
+            if (src instanceof NettyNATLocator) {
+                logger.debug("on {}, update from {}", raw, src);
+                ((NettyNATLocator)src).updateRawChannelLocators(trans);
+                logger.debug("updated to {}", src);
+            }
+            if (raw.getRemote() instanceof NettyNATLocator) {
+                logger.debug("on {}, send to {}", raw, raw.getRemote());
+            }
+        }
+        NettyMessage nmsg = new NettyMessage(remoteObjectId, src, raw.getRemote(), getChannelInitiator(), raw.getPeerId(), msg, true,
+                getChannelNo());
         // returns null if transport is finished.
         if (raw != null) {
             raw.send(nmsg);

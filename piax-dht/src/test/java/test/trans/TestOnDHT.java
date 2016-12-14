@@ -17,7 +17,9 @@ import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.Peer;
 import org.piax.gtrans.netty.NettyLocator;
+import org.piax.gtrans.netty.nat.NettyNATLocator;
 import org.piax.gtrans.ov.Overlay;
+import org.piax.gtrans.ov.ddll.NodeMonitor;
 import org.piax.gtrans.ov.sg.MSkipGraph;
 import org.piax.gtrans.ov.szk.Suzaku;
 import org.piax.gtrans.raw.emu.EmuLocator;
@@ -107,6 +109,7 @@ public class TestOnDHT {
     
     public void DHTRun(boolean useSG, L loc) throws Exception {
         StatusRepo.ON_MEMORY = true;
+        NodeMonitor.PING_TIMEOUT = 50000;
         Peer[] peers = new Peer[numPeer];
         @SuppressWarnings("unchecked")
         Overlay<LowerUpper, HashId>[] ovs = new Overlay[numPeer];
@@ -125,7 +128,12 @@ public class TestOnDHT {
             		PeerLocator l = null;
             		switch(loc) {
             		case NETTY:
-                        l = new NettyLocator(new InetSocketAddress("localhost", 20000 + i));
+                        if (i % 10 == 1) {
+                            l = new NettyNATLocator(new InetSocketAddress("localhost", 20000 + i)); 
+                        }
+                        else {
+                            l = new NettyLocator(new InetSocketAddress("localhost", 20000 + i));
+                        }
                         break;
             		case TCP:
                         l = new TcpLocator(new InetSocketAddress("localhost", 20000 + i));

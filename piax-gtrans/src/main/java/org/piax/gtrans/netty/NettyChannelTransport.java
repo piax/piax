@@ -6,6 +6,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.DefaultChannelGroup;
+import io.netty.util.AttributeKey;
 import io.netty.util.concurrent.GlobalEventExecutor;
 
 import java.io.IOException;
@@ -33,6 +34,7 @@ import org.piax.gtrans.netty.bootstrap.NettyBootstrap;
 import org.piax.gtrans.netty.bootstrap.SslBootstrap;
 import org.piax.gtrans.netty.bootstrap.TcpBootstrap;
 import org.piax.gtrans.netty.bootstrap.UdtBootstrap;
+import org.piax.gtrans.netty.nat.NettyNATLocator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,10 +61,14 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
     NettyBootstrap bs;
     AtomicInteger seq;
     final public int RAW_POOL_SIZE = 10;
+    
+    public AttributeKey<String> rawKey = AttributeKey.valueOf("rawKey");
 
     enum AttemptType {
         ATTEMPT, ACK, NACK 
     }
+    
+    static boolean NAT_SUPPORT = true;
 
     public NettyChannelTransport(Peer peer, TransportId transId, PeerId peerId,
             NettyLocator peerLocator) throws IdConflictException, IOException {
@@ -87,10 +93,13 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
         bossGroup = bs.getParentEventLoopGroup();
         serverGroup = bs.getChildEventLoopGroup();
         clientGroup = bs.getClientEventLoopGroup();
-        
-        ServerBootstrap b = bs.getServerBootstrap(this);
-        b.bind(new InetSocketAddress(peerLocator.getHost(), peerLocator.getPort()));//.syncUninterruptibly();
-        logger.debug("bound " + peerLocator);
+        if (NAT_SUPPORT && peerLocator instanceof NettyNATLocator) {
+        }
+        else {
+            ServerBootstrap b = bs.getServerBootstrap(this);
+            b.bind(new InetSocketAddress(peerLocator.getHost(), peerLocator.getPort()));//.syncUninterruptibly();
+            logger.debug("bound " + peerLocator);
+        }
         isRunning = true;
     }
 
@@ -104,6 +113,17 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
         serverGroup.shutdownGracefully();
         clientGroup.shutdownGracefully();
     }
+    
+    private NettyRawChannel findExistingRawChannel(List<NettyLocator> list) {
+        NettyRawChannel ret = null;
+        for (NettyLocator l : list) {
+            ret = getRaw(l);
+            if (ret != null) {
+                break;
+            }
+        }
+        return ret;
+    }
 
     @Override
     public void send(ObjectId sender, ObjectId receiver, NettyLocator dst,
@@ -114,36 +134,46 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
         }
         // generate a new channel
         logger.debug("oneway send to {} from {} msg={}", dst, locator, msg);
-        NettyMessage nmsg = new NettyMessage(receiver, raw.getLocal(), null, raw.getPeerId(), msg, false, 0);
+        NettyLocator src = raw.getLocal();
+        if (NAT_SUPPORT) {
+            if (src instanceof NettyNATLocator) {
+                ((NettyNATLocator)src).updateRawChannelLocators(this);
+            }
+        }
+        NettyMessage nmsg = new NettyMessage(receiver, src, dst, null, raw.getPeerId(), msg, false, 0);
         raw.touch();
         raw.send(nmsg);
     }
 
     void putChannel(NettyLocator channelInitiator, NettyChannel ch) {
-        logger.debug("" + ch.getChannelNo() + channelInitiator + "->" + ch + " on " + locator);
-        channels.put("" + ch.getChannelNo() + channelInitiator, ch);
+        logger.debug("" + ch.getChannelNo() + channelInitiator.getKeyString() + "->" + ch + " on " + locator);
+        channels.put("" + ch.getChannelNo() + channelInitiator.getKeyString(), ch);
     }
 
     NettyChannel getChannel(int channelNo, NettyLocator channelInitiator) {
-        logger.debug("" + channelNo + channelInitiator + " on " + locator);
-        return channels.get("" + channelNo + channelInitiator);
+        logger.debug("" + channelNo + channelInitiator.getKeyString() + " on " + locator);
+        return channels.get("" + channelNo + channelInitiator.getKeyString());
     }
 
     void deleteChannel(NettyChannel ch) {
-        channels.remove("" + ch.getChannelNo() + ch.getRemote(), ch);
+        channels.remove("" + ch.getChannelNo() + ch.channelInitiator.getKeyString(), ch);
     }
 
     // package local
     void putRaw(NettyLocator locator, NettyRawChannel ch) {
-        raws.put(locator.toString(), ch);
+        raws.put(locator.getKeyString(), ch);
     }
 
     NettyRawChannel getRaw(NettyLocator locator) {
-        return raws.get(locator.toString());
+        return raws.get(locator.getKeyString());
     }
 
     void deleteRaw(NettyRawChannel raw) {
-        raws.remove(raw.getRemote().toString(), raw);
+        raws.remove(raw.getRemote().getKeyString(), raw);
+    }
+    
+    void deleteRaw(String key) {
+        raws.remove(key);
     }
 
     public List<NettyRawChannel> getCreatedRawChannels() {
@@ -161,7 +191,7 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
                 .filter(x -> x != null)
                 .collect(Collectors.toList());
     }
-
+/*
     NettyRawChannel getRawByContext(ChannelHandlerContext ctx) {
         NettyRawChannel ret = null;
         for (NettyRawChannel raw : raws.values()) {
@@ -175,8 +205,37 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
         }
         return ret;
     }
-
+*/
     NettyRawChannel getRawCreateAsClient(NettyLocator dst) throws IOException {
+        NettyRawChannel raw = null;
+        if (NAT_SUPPORT) {
+            if (dst instanceof NettyNATLocator) {
+                raw = getRaw(dst);
+                if (raw != null) {
+                    logger.info("existing rawchannel for {} is {} on {}", dst, raw, locator);
+                }
+                else {
+                    List<NettyLocator> list = ((NettyNATLocator) dst).getRawChannelLocators();
+                    raw = findExistingRawChannel(list);
+                    if (raw == null) { // no exiting channel. contact latest peer.
+                        int pos = (int)(Math.random() * list.size());
+                        raw = getRawCreateAsClient0(list.get(pos));
+                        logger.debug("created rawchannel for {} is {} on {}", dst, raw, locator);
+                    }
+                    else {
+                        logger.info("forward to rawchannel for {} is {} on {}", dst, raw, locator);
+                    }
+                }
+            }
+        }
+        
+        if (raw == null) {
+            raw = getRawCreateAsClient0(dst);
+        }
+        return raw;
+    }
+
+    NettyRawChannel getRawCreateAsClient0(NettyLocator dst) throws IOException {
         if (!isRunning) return null;
         final NettyRawChannel raw;
         synchronized (raws) {
@@ -201,7 +260,7 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
             }
             int count = 0;
             for (NettyRawChannel r : getCreatedRawChannels()) {
-                // in order of least recently used. 
+                // in order of most recently used. 
                 if (RAW_POOL_SIZE - 1 <= count) {
                     // logger.info("closing {}, curtime={}", r, System.currentTimeMillis());
                     r.close(); // should close gracefully.
@@ -248,6 +307,7 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
 
     void outboundActive(NettyRawChannel raw, ChannelHandlerContext ctx) {
         logger.debug("outbound active: " + ctx.channel().remoteAddress());
+        ctx.channel().attr(rawKey).set(raw.getRemote().getKeyString());
         cchannels.add(ctx.channel());
         int attemptRand = rand.nextInt();
         // is this valid only for tcp channel?
@@ -271,14 +331,18 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
 
     void outboundInactive(ChannelHandlerContext ctx) {
         logger.debug("outbound inactive: " + ctx.channel().remoteAddress());
+        String key = ctx.channel().attr(rawKey).get();
+        //logger.info("outbound raw key: " + key);
+        deleteRaw(key);
+        /*
         synchronized(raws) {
             NettyRawChannel raw = getRawByContext(ctx);
             if (raw != null) {
                 raw.setStat(Stat.DEFUNCT);
                 this.deleteRaw(raw);
             }
-            ctx.close();
-        }
+        }*/
+        ctx.close();
     }
 
     void inboundActive(ChannelHandlerContext ctx) {
@@ -288,6 +352,13 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
 
     void inboundInactive(ChannelHandlerContext ctx) {
         logger.debug("inbound inactive: " + ctx.channel().remoteAddress());
+        String key = ctx.channel().attr(rawKey).get();
+        //logger.info("inbound raw key : {} on {}", key, ctx.channel().localAddress());
+        // Sometimes, the key is null.
+        if (key != null) {
+            deleteRaw(key);
+        }
+        /*
         synchronized(raws) {
             NettyRawChannel raw = getRawByContext(ctx);
             if (raw != null) {
@@ -295,10 +366,39 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
                 this.deleteRaw(raw);
             }
         }
+        */
         ctx.close();
     }
 
     static final int CHANNEL_ESTABLISH_TIMEOUT = 10000; 
+
+    boolean forwardNATMessage(NettyMessage nmsg) {
+        NettyLocator dst = nmsg.getDestinationLocator();
+        if (locator.equals(dst)) {
+            return false; // go to receive process.
+        }
+        if (dst instanceof NettyNATLocator) {
+            logger.info("NAT forwarding from {} to {} on {}", nmsg.getSourceLocator(), dst, locator);
+            try {
+                NettyRawChannel raw = getRawCreateAsClient(dst);
+                raw.touch();
+                raw.send(nmsg);
+            } catch (IOException e) {
+                logger.info("Exception occured: " + e.getMessage());
+            }
+            return true;
+        }
+        return false;
+    }
+    
+    void updateNATLocators(NettyNATLocator locator) {
+        for (NettyRawChannel raw : raws.values()) {
+            NettyLocator r = raw.getRemote();
+            if (r instanceof NettyNATLocator) {
+                ((NettyNATLocator)r).updateRawChannelLocators(locator);
+            }
+        }
+    }
 
     void inboundReceive(ChannelHandlerContext ctx, Object msg) {
         if (msg instanceof AttemptMessage) {
@@ -310,9 +410,9 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
                 synchronized (raws) {
                     NettyRawChannel raw = getRaw(attempt.getSource());
                     if (raw != null && locator.equals(attempt.getSource())) {
-                        raw.touch();
                         // loop back.
                         synchronized (raw) {
+                            raw.touch();
                             raw.setStat(Stat.RUN);
                             raw.setContext(ctx);
                             ctx.writeAndFlush(new AttemptMessage(
@@ -345,6 +445,7 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
                     else {
                         // cache not found. just accept it.
                         raw = new NettyRawChannel(attempt.getSource(), this);
+                        ctx.channel().attr(rawKey).set(raw.getRemote().getKeyString());
                         // accept attempt.
                         raw.setStat(Stat.RUN);
                         raw.setContext(ctx);
@@ -367,7 +468,16 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
             NettyMessage nmsg = (NettyMessage) msg;
             logger.debug("inbound received msg: " + nmsg.getMsg() + " on " + locator
                     + " from " + nmsg.getSourceLocator());
-            if (nmsg.isChannelSend()) {
+            if (NAT_SUPPORT) {
+                NettyLocator src = nmsg.getSourceLocator();
+                if (src instanceof NettyNATLocator) {
+                    updateNATLocators((NettyNATLocator)src);
+                }
+                if (forwardNATMessage(nmsg)) {
+                    return;
+                }
+            }
+            if (nmsg.isChannelSend()){ 
                 NettyChannel ch = null;
                 synchronized (channels) {
                     ch = getChannel(nmsg.channelNo(), nmsg.getChannelInitiator());
@@ -453,24 +563,33 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
         else if (msg instanceof NettyMessage) {
             NettyMessage nmsg = (NettyMessage) msg;
             logger.debug("outbound received msg: " + nmsg.getMsg() + " on " + locator + " from " + nmsg.getSourceLocator());
-            if (nmsg.isChannelSend()) {
-            NettyChannel ch;
-            synchronized (channels) {
-                // get a channel that has remote as the nmsg.source. 
-                ch = getChannel(nmsg.channelNo(), nmsg.getChannelInitiator());
-                logger.debug("got stored ch=" + ch + " for msg: " + nmsg.getMsg());
-                if (ch == null) {
-                    // not assumed status.
-                    ch = new NettyChannel(nmsg.channelNo(),
-                            nmsg.getChannelInitiator(),
-                            nmsg.getObjectId(),
-                            nmsg.getObjectId(), false, raw, this);
-                    putChannel(nmsg.getChannelInitiator(), ch);
+            if (NAT_SUPPORT) {
+                NettyLocator src = nmsg.getSourceLocator();
+                if (src instanceof NettyNATLocator) {
+                    updateNATLocators((NettyNATLocator)src);
+                }
+                if (forwardNATMessage(nmsg)) {
+                    return;
                 }
             }
-            if (ch != null) {
-                messageReceived(ch, nmsg);
-            }
+            if (nmsg.isChannelSend()) {
+                NettyChannel ch;
+                synchronized (channels) {
+                    // get a channel that has remote as the nmsg.source. 
+                    ch = getChannel(nmsg.channelNo(), nmsg.getChannelInitiator());
+                    logger.debug("got stored ch=" + ch + " for msg: " + nmsg.getMsg());
+                    if (ch == null) {
+                        // not assumed status.
+                        ch = new NettyChannel(nmsg.channelNo(),
+                                nmsg.getChannelInitiator(),
+                                nmsg.getObjectId(),
+                                nmsg.getObjectId(), false, raw, this);
+                        putChannel(nmsg.getChannelInitiator(), ch);
+                    }
+                }
+                if (ch != null) {
+                    messageReceived(ch, nmsg);
+                }
             }
             else {
                 logger.debug("received oneway msg={}", msg);

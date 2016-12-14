@@ -11,7 +11,7 @@ import org.piax.gtrans.raw.RawTransport;
 
 public class NettyLocator extends PeerLocator {
     
-    enum TYPE {
+    protected enum TYPE {
         TCP, SSL, WS, WSS, UDT
     };
     TYPE type;
@@ -109,6 +109,10 @@ public class NettyLocator extends PeerLocator {
     public RawTransport<NettyLocator> newRawTransport(PeerId peerId)
             throws IOException {
         return null;
+    }
+    
+    public String getKeyString() {
+        return type + ":" + toString();
     }
 
     @Override

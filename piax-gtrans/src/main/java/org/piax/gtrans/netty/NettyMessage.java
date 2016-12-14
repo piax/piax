@@ -8,6 +8,7 @@ import org.piax.common.PeerId;
 public class NettyMessage implements Serializable {
     private static final long serialVersionUID = -5499407890598183414L;
     private final NettyLocator srcLocator;
+    private final NettyLocator dstLocator;
     private final NettyLocator channelInitiator;
     private final ObjectId sender;
     private final PeerId peerId;
@@ -15,11 +16,12 @@ public class NettyMessage implements Serializable {
     private final boolean isChannelSend; // true if it is channel
     private final int channelNo; // the channel number 
 
-    public NettyMessage(ObjectId upper, NettyLocator locator, NettyLocator channelInitiator,
+    public NettyMessage(ObjectId upper, NettyLocator src, NettyLocator dst, NettyLocator channelInitiator,
             PeerId peerId, Object msg, 
             boolean isChannelSend, int channelNo) {
         this.sender = upper;
-        this.srcLocator = locator;
+        this.srcLocator = src;
+        this.dstLocator = dst;
         this.channelInitiator = channelInitiator;
         this.peerId = peerId;
         this.msg = msg;
@@ -33,6 +35,10 @@ public class NettyMessage implements Serializable {
 
     public NettyLocator getSourceLocator() {
         return srcLocator;
+    }
+    
+    public NettyLocator getDestinationLocator() {
+        return dstLocator;
     }
 
     public NettyLocator getChannelInitiator() {
