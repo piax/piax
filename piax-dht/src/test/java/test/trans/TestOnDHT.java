@@ -16,9 +16,11 @@ import org.piax.common.subspace.LowerUpper;
 import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.Peer;
+import org.piax.gtrans.netty.NettyChannelTransport;
 import org.piax.gtrans.netty.NettyLocator;
 import org.piax.gtrans.netty.nat.NettyNATLocator;
 import org.piax.gtrans.ov.Overlay;
+import org.piax.gtrans.ov.ddll.Link;
 import org.piax.gtrans.ov.ddll.NodeMonitor;
 import org.piax.gtrans.ov.sg.MSkipGraph;
 import org.piax.gtrans.ov.szk.Suzaku;
@@ -128,7 +130,7 @@ public class TestOnDHT {
             		PeerLocator l = null;
             		switch(loc) {
             		case NETTY:
-                        if (i % 10 == 1) {
+                        if (i % 10 == 1 || i % 10 == 2 || i % 10 == 3) {
                             l = new NettyNATLocator(new InetSocketAddress("localhost", 20000 + i)); 
                         }
                         else {
@@ -187,10 +189,30 @@ public class TestOnDHT {
 
         printf("%n** get (%d)%n", n);
         stime = System.currentTimeMillis();
+/*        for (int i = 0; i < numPeer; i++) {
+            ((NettyChannelTransport)ovs[i].getBaseTransport()).forwardCount = 0;
+        }*/
         for (int i = 0; i < n; i++) {
             String get = (String) dht.get("hoge" + i);
             assertTrue("GET failed", (get != null && get.equals("hage" + i)));
         }
+        /*
+        for (int i = 0; i < numPeer; i++) {
+            System.out.println("Rights");
+            Comparable key = ovs[i].getKeys().toArray(new Comparable[0])[0];
+            for (int j = 0; j < ((Suzaku)ovs[i]).getHeight(key); j++) {
+                for (Link l : ((Suzaku)ovs[i]).getRights(key, j)) {
+                    System.out.println(ovs[i].getEndpoint() + "["+ j + "] : " + l.addr);
+                }
+            }
+            System.out.println("Lefts");
+            for (int j = 0; j < ((Suzaku)ovs[i]).getHeight(key); j++) {
+                for (Link l : ((Suzaku)ovs[i]).getLefts(key, j)) {
+                    System.out.println(ovs[i].getEndpoint() + "["+ j + "] : " + l.addr);
+                }
+            }
+                System.out.println(ovs[i].getEndpoint() + " : " + ovs[i].getBaseTransport().getEndpoint() + ": " +((NettyChannelTransport)ovs[i].getBaseTransport()).forwardCount);// + "," + ((NettyChannelTransport)ovs[i].getBaseTransport()).nMgr);
+        }*/
         etime = System.currentTimeMillis();
         printf("=> took %d msec%n", (etime-stime));
 
@@ -198,10 +220,12 @@ public class TestOnDHT {
 
         sleep(200);
         printf("%n** fin%n");
-        for (int i = 0; i < numPeer; i++) {
+        for (int i = 1; i < numPeer; i++) {
             dhts[i].fin();
             ovs[i].leave();
         }
+        dhts[0].fin();
+        ovs[0].leave();
         sleep(200);
         for (int i = 0; i < numPeer; i++) {
             peers[i].fin();

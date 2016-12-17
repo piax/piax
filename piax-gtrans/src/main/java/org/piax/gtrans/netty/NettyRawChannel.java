@@ -9,6 +9,7 @@ import org.piax.common.PeerId;
 import org.piax.common.TransportId;
 import org.piax.gtrans.Channel;
 import org.piax.gtrans.NetworkTimeoutException;
+import org.piax.gtrans.netty.nat.NettyNATLocator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,6 +22,8 @@ public class NettyRawChannel implements Channel<NettyLocator> {
     Integer attempt = null;
     long lastUse;
     boolean isCreatorSide; // true if the raw channel is generated as a client.
+    int priority; // 1 or 0; 
+    
     enum Stat {
         INIT,
         WAIT,
@@ -38,6 +41,7 @@ public class NettyRawChannel implements Channel<NettyLocator> {
         this.ctx = null;
         isCreatorSide = false;
         lastUse = System.currentTimeMillis();
+        priority = 0;
     }
     
     public NettyRawChannel(NettyLocator remote, NettyChannelTransport mother, boolean isCreatorSide) {
@@ -48,6 +52,11 @@ public class NettyRawChannel implements Channel<NettyLocator> {
         this.ctx = null;
         this.isCreatorSide = isCreatorSide;
         lastUse = System.currentTimeMillis();
+        priority = 0;
+    }
+    
+    public void setPriority(int p) {
+        priority = p;
     }
 
     public PeerId getPeerId() {
@@ -153,6 +162,12 @@ public class NettyRawChannel implements Channel<NettyLocator> {
     @Override
     public void send(Object msg) throws IOException {
         touch();
+        if (mother.NAT_SUPPORT) {
+            // just for count
+            if (getRemote() instanceof NettyNATLocator) {
+                mother.forwardCount++;
+            }
+        }
         // object is supposed to be a NettyMessage
         logger.debug("sending {} from {} to {}", ((NettyMessage)msg).getMsg(), getLocal(), getRemote());
         if (stat == Stat.RUN && ctx.channel().isOpen()) {
