@@ -18,6 +18,7 @@ public class NettyChannel implements Channel<NettyLocator> {
     final ObjectId localObjectId;
     final ObjectId remoteObjectId;
     final NettyLocator channelInitiator;
+    final NettyLocator dst;
     NettyRawChannel raw;
     final boolean isCreator;
     final NettyChannelTransport trans;
@@ -25,9 +26,12 @@ public class NettyChannel implements Channel<NettyLocator> {
     final int id;
     private static final Logger logger = LoggerFactory.getLogger(NettyChannel.class.getName());
 
-    public NettyChannel(int channelNo, NettyLocator channelInitiator, ObjectId localObjectId, ObjectId remoteObjectId, boolean isCreator, NettyRawChannel raw, NettyChannelTransport trans) {
+    public NettyChannel(int channelNo, NettyLocator channelInitiator,
+            NettyLocator destination,
+            ObjectId localObjectId, ObjectId remoteObjectId, boolean isCreator, NettyRawChannel raw, NettyChannelTransport trans) {
         this.id = channelNo;
         this.channelInitiator = channelInitiator;
+        this.dst = destination;
         this.localObjectId = localObjectId;
         this.remoteObjectId = remoteObjectId;
         this.isCreator = isCreator;
@@ -58,7 +62,8 @@ public class NettyChannel implements Channel<NettyLocator> {
 
     @Override
     public NettyLocator getLocal() {
-        return raw.getLocal();
+        return trans.locator;
+      //return raw.getLocal();
     }
 
     @Override
@@ -68,7 +73,8 @@ public class NettyChannel implements Channel<NettyLocator> {
 
     @Override
     public NettyLocator getRemote() {
-        return raw.getRemote();
+        return dst;
+        //return raw.getRemote();
     }
 
     @Override
@@ -97,6 +103,7 @@ public class NettyChannel implements Channel<NettyLocator> {
             logger.debug("ch {}{} send {} from {} to {}", getChannelNo(), getChannelInitiator(), msg, trans.locator, getRemote());
         }
         else { // re-create the raw channel.
+            logger.debug("re-creating the raw channel for {}", getRemote());
             raw = trans.getRawCreateAsClient(getRemote());
         }
         NettyLocator src = raw.getLocal();
@@ -106,11 +113,15 @@ public class NettyChannel implements Channel<NettyLocator> {
                 ((NettyNATLocator)src).updateRawChannelLocators(trans);
                 logger.debug("updated to {}", src);
             }
-            if (raw.getRemote() instanceof NettyNATLocator) {
-                logger.debug("on {}, send to {}", raw, raw.getRemote());
-            }
+            //if (raw.getRemote() instanceof NettyNATLocator) {
+                logger.debug("on {}, send to {}, channel.remote={}", raw, raw.getRemote(), getRemote());
+            //}
         }
-        NettyMessage nmsg = new NettyMessage(remoteObjectId, src, raw.getRemote(), getChannelInitiator(), raw.getPeerId(), msg, true,
+
+        NettyMessage nmsg = new NettyMessage(remoteObjectId, src,
+                // raw.getRemote() does not work on NAT.
+                dst,
+                getChannelInitiator(), raw.getPeerId(), msg, true,
                 getChannelNo());
         // returns null if transport is finished.
         if (raw != null) {
