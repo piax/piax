@@ -165,6 +165,7 @@ public class NettyRawChannel implements Channel<NettyLocator> {
         if (mother.NAT_SUPPORT) {
             // just for count
             if (getRemote() instanceof NettyNATLocator) {
+                logger.debug("forwarding {} on {} to {}", ((NettyMessage)msg).getMsg(), getLocal(), ((NettyMessage)msg).getDestinationLocator());
                 mother.forwardCount++;
             }
         }

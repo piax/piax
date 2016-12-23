@@ -64,7 +64,7 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
     public NATLocatorManager nMgr; 
     NettyBootstrap bs;
     AtomicInteger seq;
-    final public int RAW_POOL_SIZE = 7;
+    final public int RAW_POOL_SIZE = 10;
     
     public AttributeKey<String> rawKey = AttributeKey.valueOf("rawKey");
 
@@ -151,12 +151,6 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
         // generate a new channel
         logger.debug("oneway send to {} from {} msg={}", dst, locator, msg);
         NettyLocator src = raw.getLocal();
-        if (NAT_SUPPORT) {
-            // just for count
-            if (raw.getRemote() instanceof NettyNATLocator) {
-                forwardCount++;
-            }
-        }
         NettyMessage nmsg = new NettyMessage(receiver, src, dst, null, raw.getPeerId(), msg, false, 0);
         raw.touch();
         raw.send(nmsg);
@@ -424,7 +418,7 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
         if (locator.equals(dst)) {
             return false; // go to receive process.
         }
-        if (dst instanceof NettyNATLocator) {
+        if (dst instanceof NettyNATLocator || !dst.equals(locator)) {
             if (nmsg.getHops() == NAT_FORWARD_HOPS_LIMIT) {
                 logger.warn("Exceeded forward hops to {} on {}.", dst, locator);
                 return true;
