@@ -24,6 +24,7 @@ public class NettyChannel implements Channel<NettyLocator> {
     final NettyChannelTransport trans;
     private final BlockingQueue<Object> rcvQueue;
     final int id;
+    boolean isClosed;
     private static final Logger logger = LoggerFactory.getLogger(NettyChannel.class.getName());
 
     public NettyChannel(int channelNo, NettyLocator channelInitiator,
@@ -37,17 +38,26 @@ public class NettyChannel implements Channel<NettyLocator> {
         this.isCreator = isCreator;
         this.raw = raw;
         this.trans = trans;
+        this.isClosed = false;
         rcvQueue = new LinkedBlockingQueue<Object>();
     }
 
     @Override
     public void close() {
+        try {
+            send(null);
+        } catch (IOException e) {
+            logger.warn("Exception occured while closing channel to {}.", dst);
+        }
+        // XXX need to wait for other side to close?
         trans.deleteChannel(this);
+        isClosed = true;
     }
 
     @Override
     public boolean isClosed() {
-        return raw.isClosed();
+        //return raw.isClosed();
+        return isClosed;
     }
 
     @Override
@@ -146,6 +156,12 @@ public class NettyChannel implements Channel<NettyLocator> {
     public Object receive() {
         Object msg = rcvQueue.poll();
         logger.debug("ch {} received {} on {} thread={}", getChannelNo(), msg, trans.locator, Thread.currentThread());
+        if (msg == EOF) {
+            logger.debug("ch {} received EOF on {}", getChannelNo(), msg, trans.locator);
+            isClosed = true;
+            trans.deleteChannel(this);
+            return null;
+        }
         return msg;
     }
 
@@ -154,6 +170,9 @@ public class NettyChannel implements Channel<NettyLocator> {
             Object msg = rcvQueue.poll(timeout, TimeUnit.MILLISECONDS);
             logger.debug("ch received(with timeout) {} on {} thread={}", msg, this, Thread.currentThread());
             if (msg == EOF) {
+                logger.debug("ch {} received EOF on {}", getChannelNo(), msg, trans.locator);
+                isClosed = true;
+                trans.deleteChannel(this);
                 return null;
             }
             if (msg == null) {

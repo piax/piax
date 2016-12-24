@@ -162,7 +162,7 @@ public class NettyRawChannel implements Channel<NettyLocator> {
     @Override
     public void send(Object msg) throws IOException {
         touch();
-        if (mother.NAT_SUPPORT) {
+        if (NettyChannelTransport.NAT_SUPPORT) {
             // just for count
             if (getRemote() instanceof NettyNATLocator) {
                 logger.debug("forwarding {} on {} to {}", ((NettyMessage)msg).getMsg(), getLocal(), ((NettyMessage)msg).getDestinationLocator());

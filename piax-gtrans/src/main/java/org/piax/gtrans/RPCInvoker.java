@@ -950,12 +950,12 @@ public class RPCInvoker<T extends RPCIf, E extends Endpoint> implements RPCIf {
         }
         Object obj = ch.receive();
         if (obj == null) {
-            logger.info("null message received");
-        		return;
+            logger.debug("null message received (which means the channel is closed by other side)");
+            return;
         }
-        	if (!(obj instanceof MethodCall)) {
-        		logger.info("Maybe the reply is received after the caller-channel is closed");
-        		return;
+        if (!(obj instanceof MethodCall)) {
+            logger.info("Maybe the reply is received after the caller-channel is closed");
+            return;
         }
         MethodCall mc = (MethodCall) obj;
         srcPeerId.set(mc.srcPeerId);

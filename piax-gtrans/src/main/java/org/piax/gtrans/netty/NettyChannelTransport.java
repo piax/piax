@@ -542,6 +542,10 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
                         }
                     }
                     else {
+                        // If closed, throw the received message away.
+                        if (ch.isClosed()) {
+                            return;
+                        }
                         logger.debug("response for call from inbound on {} received.", ch);
                     }
                 }
