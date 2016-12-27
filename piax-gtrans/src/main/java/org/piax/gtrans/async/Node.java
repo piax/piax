@@ -1,5 +1,7 @@
 package org.piax.gtrans.async;
 
+import org.piax.gtrans.ov.ddll.DdllKey;
+
 public class Node implements Comparable<Node> {
     public static enum NodeMode {
         /** not inserted */
@@ -15,22 +17,27 @@ public class Node implements Comparable<Node> {
     // postでlatencyとして指定すると，ネットワーク遅延時間後にイベントが実行される
     public final static long NETWORK_LATENCY = -1L;
 
-    public final int id;
+    public DdllKey key;
     public final int latency;
 
-    public Node(int latency, int id) {
-        this.id = id;
+    public Node(DdllKey ddllkey, int latency) {
+        this.key = ddllkey;
         this.latency = latency;
     }
-    
+
+    @Override
+    public String toString() {
+        return "N" + key;
+    }
+
     public String toStringDetail() {
-        return "[" + id + "]"; 
+        return toString();
         //topStrategy.toStringDetail();
     }
 
     @Override
     public int compareTo(Node o) {
-        return id - o.id;
+        return key.compareTo(o.key);
     }
 
     public int latency(Node receiver) {
@@ -44,56 +51,35 @@ public class Node implements Comparable<Node> {
     }
 
     // x in (y, z]
-    public static boolean isIn(int x, int y, int z) {
+    public static boolean isIn(DdllKey x, DdllKey y, DdllKey z) {
         return isOrdered(y, false, x, z, true);
-        /*if (y == z) {
-            return true;
-        } else if (y < z) {
-            return y < x && x <= z;
-        } else {
-            return y < x || x <= z;
-        }*/
     }
 
     // x in [y, z)
-    public static boolean isIn2(int x, int y, int z) {
+    public static boolean isIn2(DdllKey x, DdllKey y, DdllKey z) {
         return isOrdered(y, true, x, z, false);
-        /*if (y == z) {
-            return true;
-        } else if (y <= z) {
-            return y <= x && x < z;
-        } else {
-            return y <= x || x < z;
-        }*/
     }
 
     // x in (y, z)
-    public static boolean isIn3(int x, int y, int z) {
+    public static boolean isIn3(DdllKey x, DdllKey y, DdllKey z) {
         return isOrdered(y, false, x, z, false);
-        /*if (y == z) {
-            return true;
-        } else if (y <= z) {
-            return y < x && x < z;
-        } else {
-            return y < x || x < z;
-        }*/
     }
 
-    public static boolean isOrdered(int a, int b, int c) {
-        if (a <= b && b <= c) {
+    public static boolean isOrdered(DdllKey a, DdllKey b, DdllKey c) {
+        if (a.compareTo(b) <= 0 && b.compareTo(c) <= 0) {
             return true;
         }
-        if (b <= c && c <= a) {
+        if (b.compareTo(c) <= 0 && c.compareTo(a) <= 0) {
             return true;
         }
-        if (c <= a && a <= b) {
+        if (c.compareTo(a) <= 0 && a.compareTo(b) <= 0) {
             return true;
         }
         return false;
     }
 
-    public static boolean isOrdered(int from, boolean fromInclusive,
-            int val, int to, boolean toInclusive) {
+    public static boolean isOrdered(DdllKey from, boolean fromInclusive,
+            DdllKey val, DdllKey to, boolean toInclusive) {
         if (from == to && (fromInclusive ^ toInclusive)) {
             return true;
         }

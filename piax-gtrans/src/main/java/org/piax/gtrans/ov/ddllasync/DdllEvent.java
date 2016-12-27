@@ -9,6 +9,7 @@ import org.piax.gtrans.async.EventHandler;
 import org.piax.gtrans.async.Node;
 import org.piax.gtrans.async.Node.NodeEventCallback;
 import org.piax.gtrans.async.NodeImpl;
+import org.piax.gtrans.ov.ddll.DdllKey;
 
 public abstract class DdllEvent {
     public static class SetR extends Event {
@@ -101,12 +102,12 @@ public abstract class DdllEvent {
     }
 
     public static class PropagateNeighbors extends Event {
-        int src;
+        DdllKey src;
         Set<Node> propset;
-        int limit;
+        DdllKey limit;
 
-        public PropagateNeighbors(Node receiver, int src, Set<Node> propset,
-                int limit) {
+        public PropagateNeighbors(Node receiver, DdllKey src, Set<Node> propset,
+                DdllKey limit) {
             super("PropagateNeighbors", receiver);
             this.src = src;
             this.propset = propset;

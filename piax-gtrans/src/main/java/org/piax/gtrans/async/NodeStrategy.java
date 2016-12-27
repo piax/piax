@@ -6,6 +6,7 @@ import java.util.List;
 import org.piax.gtrans.async.Event.Lookup;
 import org.piax.gtrans.async.Event.LookupDone;
 import org.piax.gtrans.async.Node.NodeEventCallback;
+import org.piax.gtrans.ov.ddll.DdllKey;
 
 public abstract class NodeStrategy {
     protected NodeImpl n;
@@ -44,8 +45,8 @@ public abstract class NodeStrategy {
         return Arrays.asList(a);
     }
 
-    public boolean isResponsible(int key) {
-        return Node.isIn2(key, n.id, getSuccessor().id);
+    public boolean isResponsible(DdllKey key) {
+        return Node.isIn2(key, n.key, getSuccessor().key);
     }
 
     public abstract String toStringDetail();

@@ -8,9 +8,9 @@ import org.piax.gtrans.async.Event.Lookup;
 import org.piax.gtrans.async.Event.LookupDone;
 import org.piax.gtrans.async.Event.ScheduleEvent;
 import org.piax.gtrans.async.Sim.LookupStat;
+import org.piax.gtrans.ov.ddll.DdllKey;
 
 public class NodeImpl extends Node implements NodeListener {
-    public static EventDispatcher dispatcher = new EventDispatcher();
     public long insertionStartTime = -1L;
     public long insertionEndTime;
 
@@ -23,8 +23,8 @@ public class NodeImpl extends Node implements NodeListener {
     private LinkChangeEventCallback predChange;
     private LinkChangeEventCallback succChange;
 
-    public NodeImpl(NodeStrategy topStrategy, int latency, int id) {
-        super(latency, id);
+    public NodeImpl(DdllKey ddllkey, NodeStrategy topStrategy, int latency) {
+        super(ddllkey, latency);
         this.topStrategy = topStrategy;
         this.baseStrategy = topStrategy;
         topStrategy.setupNode(this);
@@ -42,15 +42,15 @@ public class NodeImpl extends Node implements NodeListener {
         this.succChange = succChange;
     }
 
-    @Override
-    public String toString() {
-        return "N" + id;
-    }
-
     public static void verbose(String s) {
         if (Sim.verbose) {
             System.out.println(s);
         }
+    }
+
+    @Override
+    public String toStringDetail() {
+        return this.baseStrategy.toStringDetail();
     }
 
     public void setPred(Node newPred) {
@@ -68,7 +68,6 @@ public class NodeImpl extends Node implements NodeListener {
             this.succChange.run(old, newSucc);
         }
     }
-
 
     /**
      * post a event
@@ -188,7 +187,7 @@ public class NodeImpl extends Node implements NodeListener {
         this.mode = NodeMode.INSERTING;
         this.introducer = introducer;
         this.joinCallback = callback;
-        Event ev = new Lookup(introducer, id, this, (LookupDone results) -> {
+        Event ev = new Lookup(introducer, key, this, (LookupDone results) -> {
             topStrategy.joinAfterLookup(results);
         });
         post(ev);
@@ -222,12 +221,12 @@ public class NodeImpl extends Node implements NodeListener {
      * @param key
      * @param stat
      */
-    public void lookup(int key, LookupStat stat) {
+    public void lookup(DdllKey key, LookupStat stat) {
         System.out.println(this + " lookup " + key);
-        long start = dispatcher.getVTime();
+        long start = EventDispatcher.getVTime();
         post(new Lookup(this, key, this, (LookupDone done) -> {
-            if (done.req.id != done.pred.id) {
-                System.out.println("Lookup error: req.id=" + done.req.id + ", " + done.pred.id);
+            if (done.req.key.compareTo(done.pred.key) != 0) {
+                System.out.println("Lookup error: req.key=" + done.req.key + ", " + done.pred.key);
                 System.out.println(done.pred.toStringDetail());
                 //dispatcher.dump();
                 stat.lookupFailure.addSample(1);
@@ -241,7 +240,7 @@ public class NodeImpl extends Node implements NodeListener {
             int nfails = done.routeWithFailed.size() - done.route.size();
             //stat.failedNodes.addSample(nfails);
             stat.failedNodes.addSample(nfails > 0 ? 1 : 0);
-            long end = dispatcher.getVTime();
+            long end = EventDispatcher.getVTime();
             long elapsed = (int)(end - start);
             stat.time.addSample((double)elapsed);
             if (nfails > 0) {
@@ -258,11 +257,11 @@ public class NodeImpl extends Node implements NodeListener {
         }));
     }
 
-    public NodeAndIndex getClosestPredecessor(int key) {
+    public NodeAndIndex getClosestPredecessor(DdllKey key) {
         Comparator<NodeAndIndex> comp = (NodeAndIndex a, NodeAndIndex b) -> {
             // aの方がkeyに近ければ正の数，bの方がkeyに近ければ負の数を返す
-            int ax = a.node.id - key;
-            int bx = b.node.id - key;
+            int ax = a.node.key.compareTo(key);
+            int bx = b.node.key.compareTo(key);
             if (ax == bx) {
                 return 0;
             } else if (ax == 0) {

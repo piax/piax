@@ -16,9 +16,11 @@ import org.piax.gtrans.async.Option.BooleanOption;
 import org.piax.gtrans.async.Option.DoubleOption;
 import org.piax.gtrans.async.Option.EnumOption;
 import org.piax.gtrans.async.Option.IntegerOption;
+import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.gtrans.ov.ddllasync.DdllStrategy;
 import org.piax.gtrans.ov.ddllasync.DdllStrategy.DdllNodeFactory;
 import org.piax.util.MersenneTwister;
+import org.piax.util.UniqId;
 
 import ocu.p2p.stat.Stat;
 import ocu.p2p.stat.StatSet;
@@ -193,12 +195,14 @@ public class Sim {
         return (long)(sec * 1000 / NetworkParams.LATENCY_FACTOR);
     }
 
-    private NodeImpl createNode(NodeFactory factory, int id) {
-        return factory.createNode(NetworkParams.HALFWAY_DELAY, id);
+    private NodeImpl createNode(NodeFactory factory, int key) {
+        return createNode(factory, key, NetworkParams.HALFWAY_DELAY);
     }
 
-    private NodeImpl createNode(NodeFactory factory, int latency, int id) {
-        return factory.createNode(latency, id);
+    private NodeImpl createNode(NodeFactory factory, int key, int latency) {
+        UniqId p = new UniqId("P");
+        DdllKey k = new DdllKey(key, p, "", null); 
+        return factory.createNode(k, latency);
     }
 
     private void simpleTest(NodeFactory factory) {
@@ -220,8 +224,8 @@ public class Sim {
         EventDispatcher.nmsgs = 0;
         System.out.println("*****************************");
         LookupStat s = new LookupStat();
-        a.lookup(z.id, s); 
-        a.lookup(b.id, s); 
+        a.lookup(z.key, s); 
+        a.lookup(b.key, s); 
         EventDispatcher.run(nodes);
         s.hops.printBasicStat("hops", 0);
         dump(nodes);
@@ -322,7 +326,7 @@ public class Sim {
         LookupStat s = new LookupStat();
         for (int i = 0; i < 100; i++) {
             int r = rand.nextInt(nodes.length);
-            nodes[i % nodes.length].lookup(nodes[r].id, s);
+            nodes[i % nodes.length].lookup(nodes[r].key, s);
         }
         EventDispatcher.run(nodes);
         s.hops.printBasicStat("hops", N);
@@ -381,7 +385,7 @@ public class Sim {
             dest = rand.nextInt(nodes.length);
         } while (nodes[dest].mode != NodeMode.INSERTED
                 || (ignTo != null && ignTo[dest]));
-        nodes[from].lookup(nodes[dest].id, s);
+        nodes[from].lookup(nodes[dest].key, s);
     }
 
     Runnable lookupTestFull(NodeImpl[] nodes, int start, int end, LookupStat s) {
@@ -391,7 +395,7 @@ public class Sim {
                 if (nodes[from].mode != NodeMode.INSERTED) continue;
                 for (int to = start; to < end; to++) {
                     if (nodes[to].mode != NodeMode.INSERTED) continue;
-                    nodes[from].lookup(nodes[to].id, s);
+                    nodes[from].lookup(nodes[to].key, s);
                 }
             }
         };
@@ -917,7 +921,7 @@ public class Sim {
                         EventDispatcher.sched(t, () -> {
                             for (int j = 0; j < num; j++) {
                                 LookupStat stat = alls[i0].getLookupStat(j);
-                                nodes[CENTER].lookup(nodes[j].id, stat);
+                                nodes[CENTER].lookup(nodes[j].key, stat);
                             }
                         });
                     }

@@ -26,6 +26,7 @@ import java.util.concurrent.ConcurrentSkipListSet;
 import org.piax.gtrans.async.Node;
 import org.piax.gtrans.async.NodeImpl;
 import org.piax.gtrans.async.Option.IntegerOption;
+import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.gtrans.ov.ddllasync.DdllEvent.PropagateNeighbors;
 
 /**
@@ -71,7 +72,7 @@ public class NeighborSet {
             new IntegerOption(4, "-ddll-neighbor-size");
     final int capacity;
     final private Node me;
-    final private int key;
+    final private DdllKey key;
     //final private NodeManager manager;
     //private static KeyComparator keyComp = KeyComparator.getInstance();
     // 最後に送った右ノード
@@ -90,20 +91,20 @@ public class NeighborSet {
     class LinkComparator implements Comparator<Node>, Serializable {
         // o1 の方が前に来るならば負の数を返す．
         public int compare(Node o1, Node o2) {
-            int c = o2.id - o1.id;
+            int c = o2.key.compareTo(o1.key);
             if (c == 0) {
                 return 0;
             }
-            if (o1.id < key) {
+            if (o1.key.compareTo(key) < 0) {
                 // o1 < key
-                if (o2.id < key) {
+                if (o2.key.compareTo(key) < 0) {
                     // o1 < key && o2 < key
                     return c;
                 }
                 // o1 < key < o2
                 return -1;  // o1の方が前
             }
-            if (o2.id < key) {
+            if (o2.key.compareTo(key) < 0) {
                 // o2 < key < o1
                 return +1;  // o2の方が前
             }
@@ -113,7 +114,7 @@ public class NeighborSet {
 
     NeighborSet(Node me, int capacity) {
         this.me = me;
-        this.key = me.id;
+        this.key = me.key;
         this.capacity = capacity;
     }
 
@@ -197,8 +198,8 @@ public class NeighborSet {
      * @param right     次に転送する右ノード
      * @param limit     限界
      */
-    synchronized void receiveNeighbors(int src, Set<Node> newset,
-            Node right, int limit) {
+    synchronized void receiveNeighbors(DdllKey src, Set<Node> newset,
+            Node right, DdllKey limit) {
         set(newset);
         sendRight(src, right, limit);
     }
@@ -211,8 +212,8 @@ public class NeighborSet {
      * @param right     右ノード
      * @param limit     送信する限界キー．
      */
-    synchronized void sendRight(int src, Node right, int limit) {
-        if (Node.isOrdered(key, limit, right.id)) {
+    synchronized void sendRight(DdllKey src, Node right, DdllKey limit) {
+        if (Node.isOrdered(key, limit, right.key)) {
             //logger.debug("right node {} reached to the limit {}", right, limit);
             return;
         }
@@ -258,7 +259,7 @@ public class NeighborSet {
         //ns.addAll(leftNbrSet);
         // copy my neighbor set except links between me and my right node
         for (Node t : leftNbrSet) {
-            if (!Node.isOrdered(me.id, t.id, right.id)) {
+            if (!Node.isOrdered(me.key, t.key, right.key)) {
                 ns.add(t);
             }
         }

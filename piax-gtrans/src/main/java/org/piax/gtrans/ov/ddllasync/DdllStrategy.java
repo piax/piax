@@ -17,6 +17,7 @@ import org.piax.gtrans.async.NodeStrategy;
 import org.piax.gtrans.async.Option.EnumOption;
 import org.piax.gtrans.async.Option.IntegerOption;
 import org.piax.gtrans.async.Sim;
+import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.gtrans.ov.ddllasync.DdllEvent.Ping;
 import org.piax.gtrans.ov.ddllasync.DdllEvent.Pong;
 import org.piax.gtrans.ov.ddllasync.DdllEvent.PropagateNeighbors;
@@ -28,8 +29,8 @@ import org.piax.gtrans.ov.ddllasync.DdllEvent.SetRNak;
 public class DdllStrategy extends NodeStrategy {
     public static class DdllNodeFactory extends NodeFactory {
         @Override
-        public NodeImpl createNode(int latency, int id) {
-            return new NodeImpl(new DdllStrategy(), latency, id);
+        public NodeImpl createNode(DdllKey key, int latency) {
+            return new NodeImpl(key, new DdllStrategy(), latency);
         }
 
         @Override
@@ -86,8 +87,8 @@ public class DdllStrategy extends NodeStrategy {
 
     @Override
     public String toStringDetail() {
-        return "N" + n.id + "(succ=" + (n.succ != null ? n.succ.id : "null")
-                + ", pred=" + (n.pred != null ? n.pred.id : "null")
+        return "N" + n.key + "(succ=" + (n.succ != null ? n.succ.key : "null")
+                + ", pred=" + (n.pred != null ? n.pred.key : "null")
                 + ", status=" + status + ", lseq=" + lseq + ", rseq=" + rseq
                 + ", nbrs=" + leftNbrs + ")";
     }
@@ -143,7 +144,7 @@ public class DdllStrategy extends NodeStrategy {
     }
     
     public void handleLookup(Lookup l) {
-        if (isResponsible(l.id)) {
+        if (isResponsible(l.key)) {
             n.post(new LookupDone(l, n, n.succ));
         } else {
             n.forward(n.succ, l);
@@ -158,7 +159,7 @@ public class DdllStrategy extends NodeStrategy {
             } else {
                 EventDispatcher.addCounter("SetR:mismatch");
                 // ME ----- U ----  ME.R
-                if (Node.isIn(msg.rNew.id, n.id, n.succ.id)) {
+                if (Node.isIn(msg.rNew.key, n.key, n.succ.key)) {
                     n.post(new SetRNak(msg.origin, n, n.succ, msg));
                 } else {
                     // ME ----- ME.R ----  U
@@ -283,12 +284,12 @@ public class DdllStrategy extends NodeStrategy {
             // 自ノードが4とする．
             // [3]を挿入する場合，4がSetL受信．この場合のlimitは2 (lPrev=2, lNew=3)
             // [3]を削除する場合，4がSetL受信．この場合のlimitも2 (lPrev=3, lNew=2)
-            if (Node.isOrdered(prevL.id, msg.lNew.id, n.id)) {
+            if (Node.isOrdered(prevL.key, msg.lNew.key, n.key)) {
                 // this SetL is sent for inserting a node (lNew)
-                leftNbrs.sendRight(n.id, getSuccessor(), prevL.id);
+                leftNbrs.sendRight(n.key, getSuccessor(), prevL.key);
             } else {
                 // this SetL is sent for deleting a node (prevL)
-                leftNbrs.sendRight(n.id, getSuccessor(), getPredecessor().id);
+                leftNbrs.sendRight(n.key, getSuccessor(), getPredecessor().key);
             }
         }
     }

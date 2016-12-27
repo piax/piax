@@ -3,6 +3,8 @@ package org.piax.gtrans.async;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.piax.gtrans.ov.ddll.DdllKey;
+
 /**
  * base class of any event
  */
@@ -138,16 +140,16 @@ public abstract class Event implements Comparable<Event> {
     }
 
     public static class Lookup extends RequestEvent<Lookup, LookupDone> {
-        public int id;
+        public DdllKey key;
         public Node src;
         public int index;
         public boolean getFTEntry;
         public StringBuilder trace;
 
-        public Lookup(Node receiver, int id, Node src,
+        public Lookup(Node receiver, DdllKey key, Node src,
                 EventHandler<LookupDone> after) {
             super(receiver, after);
-            this.id = id;
+            this.key = key;
             this.src = src;
             //System.out.println("LookupEvent: src=" + src + ", evid="+ this.getEventId());
         }
@@ -159,7 +161,7 @@ public abstract class Event implements Comparable<Event> {
 
         @Override
         public String toStringMessage() {
-            return "Lookup(id=" + id + ", src=" + src + ", index=" + index
+            return "Lookup(key=" + key + ", src=" + src + ", index=" + index
                     + ", getFTEnt=" + getFTEntry + ")"; 
         }
     }
