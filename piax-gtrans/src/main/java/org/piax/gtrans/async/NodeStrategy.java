@@ -9,10 +9,10 @@ import org.piax.gtrans.async.Node.NodeEventCallback;
 import org.piax.gtrans.ov.ddll.DdllKey;
 
 public abstract class NodeStrategy {
-    protected NodeImpl n;
+    protected LocalNode n;
     protected NodeListener listener;
 
-    public void setupNode(NodeImpl node) {
+    public void setupNode(LocalNode node) {
         this.n = node;
     }
 

@@ -1,18 +1,21 @@
 package org.piax.gtrans.ov.ddllasync;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Set;
 
+import org.piax.gtrans.ChannelTransport;
+import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.async.Event;
 import org.piax.gtrans.async.Event.Lookup;
 import org.piax.gtrans.async.Event.LookupDone;
 import org.piax.gtrans.async.EventDispatcher;
+import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.async.NetworkParams;
 import org.piax.gtrans.async.Node;
 import org.piax.gtrans.async.Node.NodeEventCallback;
 import org.piax.gtrans.async.Node.NodeMode;
 import org.piax.gtrans.async.NodeFactory;
-import org.piax.gtrans.async.NodeImpl;
 import org.piax.gtrans.async.NodeStrategy;
 import org.piax.gtrans.async.Option.EnumOption;
 import org.piax.gtrans.async.Option.IntegerOption;
@@ -29,8 +32,9 @@ import org.piax.gtrans.ov.ddllasync.DdllEvent.SetRNak;
 public class DdllStrategy extends NodeStrategy {
     public static class DdllNodeFactory extends NodeFactory {
         @Override
-        public NodeImpl createNode(DdllKey key, int latency) {
-            return new NodeImpl(key, new DdllStrategy(), latency);
+        public LocalNode createNode(ChannelTransport<?> trans, DdllKey key,
+                int latency) throws IOException, IdConflictException {
+            return new LocalNode(trans, key, new DdllStrategy(), latency);
         }
 
         @Override
@@ -80,7 +84,7 @@ public class DdllStrategy extends NodeStrategy {
     }
 
     @Override
-    public void setupNode(NodeImpl node) {
+    public void setupNode(LocalNode node) {
         super.setupNode(node);
         this.leftNbrs = new NeighborSet(node);
     }
@@ -218,7 +222,7 @@ public class DdllStrategy extends NodeStrategy {
             joinMsgs += 2; // SetR and SetRNak
             status = DdllStatus.OUT;
             // retry!
-            NodeImpl.verbose("receive SetRNak: join retry, pred=" + msg.pred
+            LocalNode.verbose("receive SetRNak: join retry, pred=" + msg.pred
                     + ", succ=" + msg.succ);
             if (setrnakmode.value() == SetRNakMode.SETRNAK_OPT2) {
                 // DDLL with optimization2
@@ -316,7 +320,7 @@ public class DdllStrategy extends NodeStrategy {
     }
 
     private Node getLiveNeighbor(boolean isLeftward) {
-        NodeImpl[] nodes = EventDispatcher.getNodes();
+        LocalNode[] nodes = EventDispatcher.getNodes();
         int i = Arrays.binarySearch(nodes, n);
         if (i < 0) {
             throw new Error("should not happen");
@@ -324,7 +328,7 @@ public class DdllStrategy extends NodeStrategy {
         int delta = isLeftward ? nodes.length - 1 : 1;
         i = (i + delta) % nodes.length;
         for (; nodes[i] != n; i = (i + delta) % nodes.length) {
-            NodeImpl x = nodes[i];
+            LocalNode x = nodes[i];
             DdllStrategy ds = (DdllStrategy) x.baseStrategy;
             if (x.mode != NodeMode.FAILED && (ds.status == DdllStatus.IN
                     || ds.status == DdllStatus.DEL)) {

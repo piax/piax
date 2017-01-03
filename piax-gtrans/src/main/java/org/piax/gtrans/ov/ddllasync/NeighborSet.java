@@ -24,7 +24,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
 
 import org.piax.gtrans.async.Node;
-import org.piax.gtrans.async.NodeImpl;
+import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.async.Option.IntegerOption;
 import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.gtrans.ov.ddllasync.DdllEvent.PropagateNeighbors;
@@ -241,7 +241,7 @@ public class NeighborSet {
         } catch (RPCException e) {
             //logger.info("", e);
         }*/
-        ((NodeImpl)me).post(new PropagateNeighbors(right, src, propset, limit));
+        ((LocalNode)me).post(new PropagateNeighbors(right, src, propset, limit));
         prevRight = right;
         prevset = propset;
     }

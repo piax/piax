@@ -1,5 +1,8 @@
 package org.piax.gtrans.async;
 
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -8,7 +11,9 @@ import org.piax.gtrans.ov.ddll.DdllKey;
 /**
  * base class of any event
  */
-public abstract class Event implements Comparable<Event> {
+public abstract class Event implements Comparable<Event>, Serializable {
+    private static final long serialVersionUID = 6144568542654208895L;
+
     private static int count = 0; 
 
     public String type;
@@ -18,10 +23,12 @@ public abstract class Event implements Comparable<Event> {
 
     public long vtime;
     private final int serial;
+    
+    private final int eventId = System.identityHashCode(this);
 
     public long delay;
-    public Runnable timeout;    // run at sender node
-    public Runnable error;      // run at sender node
+    transient public Runnable timeout;    // run at sender node
+    transient public Runnable error;      // run at sender node
     public List<Node> route = new ArrayList<>();
     public List<Node> routeWithFailed = new ArrayList<>();
     public Event(Node receiver) {
@@ -54,16 +61,16 @@ public abstract class Event implements Comparable<Event> {
 
     @Override
     public String toString() {
-        return "[" + toStringMessage() + " from " + origin + " to "
+        return "[" + "vt=" + vtime + ", " + toStringMessage() + " from " + origin + " to "
                 + receiver + "]";
     }
 
     public int getEventId() {
-        return System.identityHashCode(this);
+        return eventId;
     }
     
-    public NodeImpl getNodeImpl() {
-        return (NodeImpl)this.receiver;
+    public LocalNode getNodeImpl() {
+        return (LocalNode)this.receiver;
     }
 
     public NodeStrategy getBaseStrategy() {
@@ -72,6 +79,10 @@ public abstract class Event implements Comparable<Event> {
 
     public int hops() {
         return route.size() - 1;
+    }
+    
+    public void beforeSendHook() {
+        // empty
     }
 
     public abstract void run();
@@ -108,10 +119,16 @@ public abstract class Event implements Comparable<Event> {
      */
     public static abstract class RequestEvent<T extends RequestEvent<T, U>,
             U extends ReplyEvent<T, U>> extends Event {
-        final EventHandler<U> after;
+        final transient EventHandler<U> after;
         public RequestEvent(Node receiver, EventHandler<U> after) {
             super(receiver);
             this.after = after;
+        }
+
+        @Override
+        public void beforeSendHook() {
+            assert(EventDispatcher.lookupRequestEvent(this.getEventId()) == null);
+            EventDispatcher.registerRequestEvent(this);
         }
     }
 
@@ -123,10 +140,12 @@ public abstract class Event implements Comparable<Event> {
      */
     public static abstract class ReplyEvent<T extends RequestEvent<T, U>, 
         U extends ReplyEvent<T, U>> extends Event {
-        public final T req;
+        public transient /*final*/T req;
+        private final int reqEventId;
         public ReplyEvent(T req) {
             super(req.origin);
             this.req = req;
+            this.reqEventId = req.getEventId();
             this.route.addAll(req.route);
             this.route.remove(this.route.size() - 1);
             this.routeWithFailed.addAll(req.routeWithFailed);
@@ -136,6 +155,15 @@ public abstract class Event implements Comparable<Event> {
         @Override
         public void run() {
             req.after.handle((U)this);
+        }
+
+        private void readObject(ObjectInputStream stream) throws IOException,
+            ClassNotFoundException {
+            stream.defaultReadObject();
+            RequestEvent<?, ?> r = EventDispatcher.lookupRequestEvent(reqEventId);
+            assert r != null;
+            this.req = (T)r;
+            assert this.req.after != null;
         }
     }
 
@@ -156,7 +184,7 @@ public abstract class Event implements Comparable<Event> {
 
         @Override
         public void run() {
-            ((NodeImpl)receiver).handleLookup(this);
+            ((LocalNode)receiver).handleLookup(this);
         }
 
         @Override

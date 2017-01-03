@@ -1,5 +1,7 @@
 package org.piax.gtrans.async;
 
+import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -11,6 +13,11 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.LongStream;
 
+import org.piax.common.PeerId;
+import org.piax.common.PeerLocator;
+import org.piax.gtrans.ChannelTransport;
+import org.piax.gtrans.IdConflictException;
+import org.piax.gtrans.Peer;
 import org.piax.gtrans.async.Node.NodeMode;
 import org.piax.gtrans.async.Option.BooleanOption;
 import org.piax.gtrans.async.Option.DoubleOption;
@@ -19,6 +26,10 @@ import org.piax.gtrans.async.Option.IntegerOption;
 import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.gtrans.ov.ddllasync.DdllStrategy;
 import org.piax.gtrans.ov.ddllasync.DdllStrategy.DdllNodeFactory;
+import org.piax.gtrans.ov.suzakuasync.SuzakuStrategy.SuzakuNodeFactory;
+import org.piax.gtrans.raw.emu.EmuLocator;
+import org.piax.gtrans.raw.tcp.TcpLocator;
+import org.piax.gtrans.raw.udp.UdpLocator;
 import org.piax.util.MersenneTwister;
 import org.piax.util.UniqId;
 
@@ -32,10 +43,10 @@ public class Sim {
     }
     public enum Algorithm {
         //AtomicRing(() -> new AtomicRingNodeFactory()), 
-        DDLL(() -> new DdllNodeFactory());
-        //SUZAKU(() -> new SuzakuNodeFactory(1)), 
-        //SUZAKU2(() -> new SuzakuNodeFactory(2)), 
-        //SUZAKU3(() -> new SuzakuNodeFactory(3)), 
+        DDLL(() -> new DdllNodeFactory()),
+        SUZAKU(() -> new SuzakuNodeFactory(1)), 
+        SUZAKU2(() -> new SuzakuNodeFactory(2)), 
+        SUZAKU3(() -> new SuzakuNodeFactory(3)); 
         //SKIPGRAPH(() -> new SkipGraphNodeFactory());
         public GetFactory method;
         private Algorithm(GetFactory method) {
@@ -78,7 +89,7 @@ public class Sim {
     
     @FunctionalInterface
     public interface InsertMethod {
-        void insert(Sim sim, NodeImpl[] nodes, int from, int to,
+        void insert(Sim sim, LocalNode[] nodes, int from, int to,
                 long delay1, long delay2, Runnable after);
     }
     public enum InsertOrder {
@@ -109,6 +120,7 @@ public class Sim {
             val -> {Sim.verbose = val;});
     public static EnumOption<Algorithm> algorithm
         = new EnumOption<>(Algorithm.class, Algorithm.DDLL, "-algorithm");
+    public static BooleanOption netOpt = new BooleanOption(false, "-net");
     public static EnumOption<ExpType> exptype
         = new EnumOption<>(ExpType.class, ExpType.CONCURRENTJOIN, "-type");
     public static Random rand;
@@ -135,6 +147,7 @@ public class Sim {
 
     public static void main(String[] args) {
         // force load to initialize Options
+        EventDispatcher.load();
         //SuzakuStrategy.load();
         DdllStrategy.load();
         //AtomicRingStrategy.load();
@@ -159,6 +172,7 @@ public class Sim {
         System.out.println();
         // start simulation
         new Sim().sim(algorithm.value(), exptype.value());
+        System.exit(0);
     }
 
     private void sim(Algorithm algorithm, ExpType exptype) {
@@ -166,19 +180,19 @@ public class Sim {
         exptype.method.run(this, factory);
     }
 
-    public static void dump(NodeImpl start) {
+    public static void dump(LocalNode start) {
         System.out.println("node dump:");
-        NodeImpl x = start;
+        LocalNode x = start;
         while (true) {
             System.out.println(x.toStringDetail());
-            x = (NodeImpl)x.succ;
+            x = (LocalNode)x.succ;
             if (x == start) {
                 break;
             }
         }
     }
 
-    public static void dump(NodeImpl[] nodes) {
+    public static void dump(LocalNode[] nodes) {
         System.out.println("node dump:");
         int c = 0;
         for (int i = 0; i < nodes.length; i++) {
@@ -195,40 +209,74 @@ public class Sim {
         return (long)(sec * 1000 / NetworkParams.LATENCY_FACTOR);
     }
 
-    private NodeImpl createNode(NodeFactory factory, int key) {
+    private LocalNode createNode(NodeFactory factory, int key) {
         return createNode(factory, key, NetworkParams.HALFWAY_DELAY);
     }
 
-    private NodeImpl createNode(NodeFactory factory, int key, int latency) {
-        UniqId p = new UniqId("P");
-        DdllKey k = new DdllKey(key, p, "", null); 
-        return factory.createNode(k, latency);
+    private LocalNode createNode(NodeFactory factory, int key, int latency) {
+        if (netOpt.value()) {
+            Peer peer = Peer.getInstance(new PeerId("P" + key));
+            DdllKey k = new DdllKey(key, new UniqId(peer.getPeerId()), "", null);
+            PeerLocator loc = newLocator("emu", key);
+            ChannelTransport<?> trans;
+            try {
+                trans = peer.newBaseChannelTransport(loc);
+                return factory.createNode(trans, k, latency);
+            } catch (IOException | IdConflictException e) {
+                throw new Error("something wrong!", e);
+            }
+        } else {
+            UniqId p = new UniqId("P");
+            DdllKey k = new DdllKey(key, p, "", null);
+            try {
+                return factory.createNode(null, k, latency);
+            } catch (IOException | IdConflictException e) {
+                throw new Error("something wrong!", e);
+            }
+        }
+    }
+
+    static PeerLocator newLocator(String locatorType, int vport) {
+        PeerLocator peerLocator;
+        if (locatorType.equals("emu")) {
+            peerLocator = new EmuLocator(vport);
+        } else if (locatorType.equals("udp")) {
+            peerLocator = new UdpLocator(
+                    new InetSocketAddress("localhost", 10000 + vport));
+        } else {
+            peerLocator = new TcpLocator(
+                    new InetSocketAddress("localhost", 10000 + vport));
+        }
+        return peerLocator;
     }
 
     private void simpleTest(NodeFactory factory) {
-        NodeImpl a = createNode(factory, NetworkParams.HALFWAY_DELAY, 0);
+        LocalNode a = createNode(factory, 0, NetworkParams.HALFWAY_DELAY);
         a.initInitialNode();
-        NodeImpl z = createNode(factory, NetworkParams.HALFWAY_DELAY*2, 100);
-        NodeImpl b = createNode(factory, NetworkParams.HALFWAY_DELAY*4, 10);
-        z.joinUsingIntroducer(a, node -> System.out.println(node + " joined"));
+        LocalNode b = createNode(factory, 10, NetworkParams.HALFWAY_DELAY);
+        LocalNode z = createNode(factory, 100, NetworkParams.HALFWAY_DELAY);
         b.joinUsingIntroducer(a, node -> System.out.println(node + " joined"));
+        EventDispatcher.sched(1000, () -> {
+            z.joinUsingIntroducer(a, node -> System.out.println(node + " joined"));
+        });
         /*Node c = createNode(cons, 20);
         c.join0(a);
         Node d = createNode(cons, 30);
         d.join0(a);*/
         //NodeImpl[] nodes = new NodeImpl[]{a, z, b, c, d};
-        NodeImpl[] nodes = new NodeImpl[] { a, z, b };
+        LocalNode[] nodes = new LocalNode[] { a, z, b };
         Arrays.sort(nodes);
-        dump(nodes);
+        //dump(nodes);
         EventDispatcher.run(nodes);
-        EventDispatcher.nmsgs = 0;
-        System.out.println("*****************************");
-        LookupStat s = new LookupStat();
-        a.lookup(z.key, s); 
-        a.lookup(b.key, s); 
-        EventDispatcher.run(nodes);
-        s.hops.printBasicStat("hops", 0);
-        dump(nodes);
+        EventDispatcher.dump();
+        //EventDispatcher.nmsgs = 0;
+        //System.out.println("*****************************");
+        //LookupStat s = new LookupStat();
+        //a.lookup(z.key, s); 
+        //a.lookup(b.key, s); 
+        //EventDispatcher.run(nodes);
+        //s.hops.printBasicStat("hops", 0);
+        //dump(nodes);
         /*System.out.println(a.toStringDetail());
         System.out.println(b.toStringDetail());
         System.out.println(z.toStringDetail());*/
@@ -244,14 +292,14 @@ public class Sim {
      * @param delay2
      * @param after
      */
-    private void insertSeqLR(NodeImpl[] nodes, int from, int to, 
+    private void insertSeqLR(LocalNode[] nodes, int from, int to, 
             long delay1, long delay2, Runnable after) {
         List<Integer> order = new ArrayList<>();
         IntStream.range(from,  to).forEachOrdered(order::add);
         insertSeq(nodes, order, 0, delay1, delay2, after); 
     }
 
-    private void insertSeqRL(NodeImpl[] nodes, int from, int to,
+    private void insertSeqRL(LocalNode[] nodes, int from, int to,
             long delay1, long delay2, Runnable after) {
         List<Integer> order = new ArrayList<>();
         IntStream.range(from,  to).forEachOrdered(order::add);
@@ -259,7 +307,7 @@ public class Sim {
         insertSeq(nodes, order, 0, delay1, delay2, after); 
     }
 
-    private void insertRandom(NodeImpl[] nodes, int from, int to, long delay1,
+    private void insertRandom(LocalNode[] nodes, int from, int to, long delay1,
             long delay2, Runnable after) {
         List<Integer> order = new ArrayList<>();
         IntStream.range(from,  to).forEach(order::add);
@@ -282,9 +330,9 @@ public class Sim {
      * @param afterDelay
      * @param after
      */
-    private void insertSeq(NodeImpl[] nodes, List<Integer> order, int index,
+    private void insertSeq(LocalNode[] nodes, List<Integer> order, int index,
             long initialDelay, long afterDelay, Runnable after) {
-        NodeImpl introducer = nodes[0];
+        LocalNode introducer = nodes[0];
         nodes[order.get(index)].joinLater(introducer, initialDelay, node -> {
             cNode++;
             if (index + 1 < order.size()) {
@@ -303,9 +351,9 @@ public class Sim {
 
     private void insertSeqTest(NodeFactory factory) {
         int N = 16;
-        NodeImpl[] nodes = new NodeImpl[N];
+        LocalNode[] nodes = new LocalNode[N];
         for (int i = 0; i < nodes.length; i++) {
-            nodes[i] = createNode(factory, NetworkParams.HALFWAY_DELAY, i * 10);
+            nodes[i] = createNode(factory, i * 10, NetworkParams.HALFWAY_DELAY);
         }
         nodes[0].initInitialNode();
         insOrder.value().method.insert(this, nodes, 1, nodes.length, 0, 0,  null);
@@ -337,7 +385,7 @@ public class Sim {
     }
 
     final static int NQUERY = 2000;
-    Runnable lookupTest(NodeImpl[] nodes, LookupStat s) {
+    Runnable lookupTest(LocalNode[] nodes, LookupStat s) {
         return () -> {
             System.out.println("start lookupTest: " + EventDispatcher.getVTime());
             for (int i = 0; i < NQUERY; i++) {
@@ -346,7 +394,7 @@ public class Sim {
         };
     }
     
-    private void distLookupTest(NodeImpl[] nodes, LookupStat s, long tFrom,
+    private void distLookupTest(LocalNode[] nodes, LookupStat s, long tFrom,
             int tWidth) {
         distLookupTest(nodes, s, tFrom, tWidth, null);
     }
@@ -359,12 +407,12 @@ public class Sim {
      * @param tFrom
      * @param tWidth
      */
-    private void distLookupTest(NodeImpl[] nodes, LookupStat s, long tFrom,
+    private void distLookupTest(LocalNode[] nodes, LookupStat s, long tFrom,
             int tWidth, boolean[] ignore) {
         distLookupTest(nodes, s, tFrom, tWidth, ignore, ignore, NQUERY);
     }
 
-    private void distLookupTest(NodeImpl[] nodes, LookupStat s, long tFrom,
+    private void distLookupTest(LocalNode[] nodes, LookupStat s, long tFrom,
             int tWidth, boolean[] ignFrom, boolean[] ignTo, int nquery) {
         for (int i = 0; i < nquery; i++) {
             long t = tFrom + rand.nextInt(tWidth);
@@ -374,7 +422,7 @@ public class Sim {
         }
     }
 
-    private void lookup1(NodeImpl[] nodes, LookupStat s,
+    private void lookup1(LocalNode[] nodes, LookupStat s,
             boolean[] ignFrom, boolean[] ignTo) {
         int from, dest;
         do {
@@ -388,7 +436,7 @@ public class Sim {
         nodes[from].lookup(nodes[dest].key, s);
     }
 
-    Runnable lookupTestFull(NodeImpl[] nodes, int start, int end, LookupStat s) {
+    Runnable lookupTestFull(LocalNode[] nodes, int start, int end, LookupStat s) {
         return () -> {
             System.out.println("start lookupTest: " + EventDispatcher.getVTime());
             for (int from = start; from < end; from++) {
@@ -403,22 +451,22 @@ public class Sim {
 
     private void insertFailLookupTest(NodeFactory factory,
             InsertOrder insOrder, boolean doFail) {
-        int num = 256;   // 全ノード数
+        int num = 8;   // 全ノード数
         int initial = num;  // 最初に挿入するノード数
         // 後で挿入するノード数
         int later = num - initial;
         // 後で故障/削除するノード数 (doFail == true のときのみ使用)
         int nFail= 16;
         assert !doFail || nFail <= num;
-        NodeImpl[] nodes = new NodeImpl[num];
+        LocalNode[] nodes = new LocalNode[num];
         for (int i = 0; i < nodes.length; i++) {
-            nodes[i] = createNode(factory, NetworkParams.HALFWAY_DELAY, i * 10);
+            nodes[i] = createNode(factory, i * 10, NetworkParams.HALFWAY_DELAY);
         }
 
         // 30秒ごとに検索
         long T = convertSecondsToVTime(30);
         // T 毎に LOOKUP_TIMES 回，lookupTest を実行
-        int LOOKUP_TIMES = 100;
+        int LOOKUP_TIMES = 1;
         AllLookupStats all = new AllLookupStats();
         StatSet msgset = new StatSet();
         StatSet symset = new StatSet();
@@ -518,9 +566,9 @@ public class Sim {
         int num = 256;   // 全ノード数
         int delStart = 32; // 削除開始ノード (inclusive)
         int delEnd = 96; // 削除終了ノード (exclusive)
-        NodeImpl[] nodes = new NodeImpl[num];
+        LocalNode[] nodes = new LocalNode[num];
         for (int i = 0; i < nodes.length; i++) {
-            nodes[i] = createNode(factory, NetworkParams.HALFWAY_DELAY, i * 10);
+            nodes[i] = createNode(factory, i * 10, NetworkParams.HALFWAY_DELAY);
         }
         // 検索の周期
         long T = convertSecondsToVTime(10);
@@ -620,11 +668,11 @@ public class Sim {
         int initial = 256;  // 最初に挿入するノード数
         int nLater = 10;      // 後から追加するノード数
         int num = initial + nLater;   // 全ノード数
-        NodeImpl[] allNodes = new NodeImpl[num];
+        LocalNode[] allNodes = new LocalNode[num];
         for (int i = 0; i < allNodes.length; i++) {
             allNodes[i] = createNode(factory, NetworkParams.HALFWAY_DELAY, i * 10);
         }
-        List<NodeImpl> aNodes = new ArrayList<NodeImpl>();
+        List<LocalNode> aNodes = new ArrayList<LocalNode>();
         for (int i = 0; i < nLater; i++) {
             int j = Sim.rand.nextInt(num);
             if (j == 0 || aNodes.contains(allNodes[j])) {
@@ -636,7 +684,7 @@ public class Sim {
         System.out.println("aNodes = " + aNodes);
         List<Node> iNodes = Arrays.asList(allNodes).stream().filter(
                 (Node x) -> !aNodes.contains(x)).collect(Collectors.toList());
-        NodeImpl[] nodes = iNodes.toArray(new NodeImpl[0]);
+        LocalNode[] nodes = iNodes.toArray(new LocalNode[0]);
 
         EventDispatcher.reset();
         nodes[0].initInitialNode();
@@ -644,14 +692,14 @@ public class Sim {
         System.out.println("*****************************");
 
         for (int j = 0; j < nLater; j++) {
-            NodeImpl x = aNodes.get(j);
+            LocalNode x = aNodes.get(j);
             EventDispatcher.sched(timing, () -> {
                 x.joinLater(nodes[0], 0, null);
             });
         }
         EventDispatcher.run(nodes, timing + convertSecondsToVTime(10));
         for (int j = 0; j < nLater; j++) {
-            NodeImpl x = aNodes.get(j);
+            LocalNode x = aNodes.get(j);
             stat.addSample(x.getMessages4Join());
         }
     }
@@ -673,11 +721,11 @@ public class Sim {
         int initial = 200;
         // 後で挿入するノード数
         int diff = 100;
-        NodeImpl[] nodes = new NodeImpl[num];
+        LocalNode[] nodes = new LocalNode[num];
         for (int i = 0; i < nodes.length; i++) {
-            nodes[i] = createNode(factory, NetworkParams.HALFWAY_DELAY, i * 10);
+            nodes[i] = createNode(factory, i * 10, NetworkParams.HALFWAY_DELAY);
         }
-        NodeImpl introducer = nodes[0];
+        LocalNode introducer = nodes[0];
         introducer.initInitialNode();
 
         // 乱数で選択した initial 個のノードを挿入
@@ -759,9 +807,9 @@ public class Sim {
         final int NEND = 5000; // 最大ノード数 +1 
         final long DELTA = 10*1000L;
         //int M = ((NEND - NSTART) / STEP);
-        NodeImpl[] nodes = new NodeImpl[NEND];
+        LocalNode[] nodes = new LocalNode[NEND];
         for (int i = 0; i < nodes.length; i++) {
-            nodes[i] = createNode(factory, NetworkParams.HALFWAY_DELAY, i * 10);
+            nodes[i] = createNode(factory, i * 10, NetworkParams.HALFWAY_DELAY);
         }
         nodes[0].initInitialNode();
         List<Integer> order = new ArrayList<>();
@@ -806,10 +854,10 @@ public class Sim {
     private void insertDelete(NodeFactory factory) {
         // 全ノード数
         int num = 256;
-        NodeImpl[] nodes = new NodeImpl[num];
+        LocalNode[] nodes = new LocalNode[num];
         boolean[] graceful = new boolean[num];
         for (int i = 0; i < nodes.length; i++) {
-            nodes[i] = createNode(factory, NetworkParams.HALFWAY_DELAY, i * 10);
+            nodes[i] = createNode(factory, i * 10, NetworkParams.HALFWAY_DELAY);
             graceful[i]= rand.nextDouble() > failRate.value();
         }
         nodes[0].initInitialNode();
@@ -819,12 +867,12 @@ public class Sim {
             s = (long)(rand.nextDouble() * 100 * T);
             double dur = exponentialDist(1.0/(aveLifeTime.value()));
             e = s + (long)dur;
-            NodeImpl x = nodes[i];
+            LocalNode x = nodes[i];
             int j = i;
             System.out.println(x + ": " + s + " to " + e + (
                     graceful[i] ? " graceful" : " ungraceful"));
             EventDispatcher.sched(s, () -> {
-                x.joinUsingIntroducer(nodes[0], (NodeImpl y) -> {
+                x.joinUsingIntroducer(nodes[0], (LocalNode y) -> {
                     cNode++;
                     iNode++;
                     EventDispatcher.sched((long)dur, () -> {
@@ -897,13 +945,13 @@ public class Sim {
     private void hopsByDistance(NodeFactory factory) {
         // 全ノード数
         int num = 128;      // 最初に挿入するノード数
-        NodeImpl[] nodes = new NodeImpl[num];
+        LocalNode[] nodes = new LocalNode[num];
         for (int i = 0; i < nodes.length; i++) {
-            nodes[i] = createNode(factory, NetworkParams.HALFWAY_DELAY, i * 10);
+            nodes[i] = createNode(factory, i * 10, NetworkParams.HALFWAY_DELAY);
         }
         nodes[0].initInitialNode();
         int CENTER = num / 2;
-        NodeImpl[] nodes2 = new NodeImpl[num];
+        LocalNode[] nodes2 = new LocalNode[num];
         for (int i = 0; i < num - 1; i++) {
             int j = i < CENTER ? i : i + 1;
             nodes2[i] = nodes[j];
@@ -913,7 +961,7 @@ public class Sim {
         int LOOKUP_TIMES = 41;
         AllLookupStats[] alls = new AllLookupStats[LOOKUP_TIMES];
         insOrder.value().method.insert(this, nodes2, 1, num - 1, 0, 0,
-                () -> nodes[CENTER].joinLater(nodes[0], 0, (NodeImpl x) -> {
+                () -> nodes[CENTER].joinLater(nodes[0], 0, (LocalNode x) -> {
                     for (int i = 0; i < LOOKUP_TIMES; i++) {
                         alls[i] = new AllLookupStats();
                         long t = i * T;
@@ -1003,9 +1051,9 @@ public class Sim {
             LookupStat s) {
         long T = 1000*1000;
         EventDispatcher.reset();
-        NodeImpl[] nodes = new NodeImpl[num];
+        LocalNode[] nodes = new LocalNode[num];
         for (int i = 0; i < nodes.length; i++) {
-            nodes[i] = createNode(factory, NetworkParams.HALFWAY_DELAY, i * 10);
+            nodes[i] = createNode(factory, i * 10, NetworkParams.HALFWAY_DELAY);
         }
         nodes[0].initInitialNode();
         // num = 8
@@ -1094,7 +1142,7 @@ public class Sim {
         iset.add(MINID);
         iset.add(MAXID);
         int nSlowNodes = (int) (n * slowNodeRatio.value());
-        NodeImpl[] nodes = new NodeImpl[n];
+        LocalNode[] nodes = new LocalNode[n];
         for (int i = 0; i < n; i++) {
             int r;
             do {
@@ -1103,16 +1151,16 @@ public class Sim {
             iset.add(r);
             if (i < nSlowNodes) {
                 // narrow band node
-                nodes[i] = createNode(factory, 200, r);
+                nodes[i] = createNode(factory, r, 200);
             } else {
                 // broad band node
-                nodes[i] = createNode(factory, 50, r);
+                nodes[i] = createNode(factory, r, 50);
             }
         }
         if (n == 0) {
             insert.addSample(0);    // fake
         } else {
-            NodeImpl introducer = nodes[0];//createNode(factory, MINID);
+            LocalNode introducer = nodes[0];//createNode(factory, MINID);
             introducer.initInitialNode();
             for (int i = 1; i < n; i++) {
                 nodes[i].joinUsingIntroducer(introducer, node -> {
@@ -1227,15 +1275,15 @@ public class Sim {
         tstats.printBasicStat("time:" + name);
     }
 
-    public static boolean isFinished(NodeImpl[] sortedNodes) {
-        NodeImpl x = null;
+    public static boolean isFinished(LocalNode[] sortedNodes) {
+        LocalNode x = null;
         boolean rc = true;
         //System.out.println("start");
         for (int i = 0; i < sortedNodes.length; i++) {
             if (x == null) {
                 x = sortedNodes[i];
             } else {
-                NodeImpl y = sortedNodes[i];
+                LocalNode y = sortedNodes[i];
                 if (x.succ != y) {
                     rc = false;
                     //System.out.println("  " + i + ": " + y.toStringDetail());
@@ -1262,7 +1310,7 @@ public class Sim {
      * @param nodes
      * @param s
      */
-    public void symmetricDegree(NodeImpl[] nodes, Stat s) {
+    public void symmetricDegree(LocalNode[] nodes, Stat s) {
 //        for (int i = 0; i < nodes.length; i++) {
 //            NodeImpl n = nodes[i];
 //            if (n.mode == NodeMode.INSERTED
@@ -1284,7 +1332,7 @@ public class Sim {
      * @param nodes
      * @param s
      */
-    public void collectMessageCounts(NodeImpl[] nodes, Stat s) {
+    public void collectMessageCounts(LocalNode[] nodes, Stat s) {
         int c = EventDispatcher.getCounter("GetFTEntEvent");
         s.addSample(c);
     }

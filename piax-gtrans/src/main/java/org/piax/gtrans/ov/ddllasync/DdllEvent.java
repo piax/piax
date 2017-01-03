@@ -8,7 +8,7 @@ import org.piax.gtrans.async.Event.RequestEvent;
 import org.piax.gtrans.async.EventHandler;
 import org.piax.gtrans.async.Node;
 import org.piax.gtrans.async.Node.NodeEventCallback;
-import org.piax.gtrans.async.NodeImpl;
+import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.ov.ddll.DdllKey;
 
 public abstract class DdllEvent {
@@ -91,7 +91,7 @@ public abstract class DdllEvent {
         }
         @Override
         public void run() {
-            ((NodeImpl)receiver).post(new Pong(origin, this));
+            ((LocalNode)receiver).post(new Pong(origin, this));
         }
     }
 

@@ -3,32 +3,105 @@ package org.piax.gtrans.async;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.PriorityQueue;
+import java.util.concurrent.PriorityBlockingQueue;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.piax.gtrans.async.Event.Lookup;
+import org.piax.gtrans.async.Event.RequestEvent;
 import org.piax.gtrans.async.Event.ScheduleEvent;
 import org.piax.gtrans.async.Node.NodeMode;
+import org.piax.gtrans.async.Option.BooleanOption;
 
 public class EventDispatcher {
+    // run in real-time
+    public static BooleanOption realtime = new BooleanOption(false, "-realtime");
+
     static long vtime = 0;
     public static int nmsgs = 0;
     public static int DEFAULT_MAX_TIME = 200 * 1000;
-
-    static NodeImpl[] nodes;
-    static PriorityQueue<Event> timeq = new PriorityQueue<>();
+    static LocalNode[] nodes;
+    static ReentrantLock lock = new ReentrantLock();
+    static Condition cond = lock.newCondition();
+    static PriorityBlockingQueue<Event> timeq = new PriorityBlockingQueue<>();
     static Map<String, Count> counter = new HashMap<String, Count>();
+    private static Map<Integer, RequestEvent<?, ?>> requestMap =
+            new HashMap<>();
 
     public static class Count {
         int count;
     }
 
+    public static void load() {
+    }
+
+    public static void registerRequestEvent(RequestEvent<?, ?> ev) {
+        //System.out.println("register request, id=" + ev.getEventId() + ", " + ev);
+        requestMap.put(ev.getEventId(), ev);
+    }
+
+    public static RequestEvent<?, ?> lookupRequestEvent(int id) {
+        RequestEvent<?, ?> ev = requestMap.remove(id);
+        //System.out.println("lookup request, id=" + id + ", " + ev);
+        return ev;
+    }
+
     public static void enqueue(Event ev) {
-        ev.vtime = getVTime() + ev.delay;
-        timeq.add(ev);
+        if (!realtime.value()) {
+            timeq.add(ev);
+        } else {
+            lock.lock();
+            timeq.add(ev);
+            cond.signal();
+            lock.unlock();
+        }
+        System.out.println("enqueued: " + ev);
+    }
+
+    public static Event dequeue() {
+        Event ev;
+        if (!realtime.value()) {
+            try {
+                ev = timeq.poll(2000, TimeUnit.MILLISECONDS);
+            } catch (InterruptedException e) {
+                throw new Error(e);
+            }
+            return ev;
+        }
+        // real-time version
+        lock.lock();
+        final int GRACE = 2000;
+        try {
+            while (true) {
+                ev = timeq.peek();
+                long rem = GRACE;
+                if (ev != null) {
+                    rem = ev.vtime - getVTime();
+                    if (rem <= 0) {
+                        Event ev0 = timeq.poll();
+                        assert ev == ev0;
+                        return ev;
+                    }
+                }
+                try {
+                    boolean rc = cond.await(rem, TimeUnit.MILLISECONDS);
+                    if (!rc && rem == GRACE) {
+                        return null;
+                    }
+                } catch (InterruptedException e) {
+                    throw new Error(e);
+                }
+            }
+        } finally {
+            lock.unlock();
+        }
     }
 
     public static void sched(long delay, Runnable run) {
-        enqueue(new ScheduleEvent(null, delay, run));
+        Event ev = new ScheduleEvent(null, delay, run);
+        ev.vtime = getVTime() + delay;
+        enqueue(ev);
     }
 
     public static void reset() {
@@ -42,7 +115,11 @@ public class EventDispatcher {
     }
 
     public static long getVTime() {
-        return vtime;
+        if (realtime.value()) {
+            return System.currentTimeMillis();
+        } else {
+            return vtime;
+        }
     }
 
     @Override
@@ -80,33 +157,35 @@ public class EventDispatcher {
         Sim.dump(nodes);
     }
 
-    public static NodeImpl[] getNodes() {
+    public static LocalNode[] getNodes() {
         return nodes;
     }
 
-    public static void run(NodeImpl[] nodes) {
+    public static void run(LocalNode[] nodes) {
         run(nodes, DEFAULT_MAX_TIME);
     }
 
-    public static void run(NodeImpl[] nodes, long maxTime) {
+    public static void run(LocalNode[] nodes, long maxTime) {
         EventDispatcher.nodes = nodes;
         boolean isChord = false; //(nodes.length > 0
         // && nodes[0].baseStrategy instanceof ChordStrategy);
+        long limit = getVTime() + maxTime;
         while (true) {
             if (isChord && Sim.isFinished(nodes)) {
                 return;
             }
-            if (vtime > maxTime) {
-                System.out.println("*** execution time over: "
-                        + vtime + " > " + maxTime);
+            if (getVTime() > limit) {
+                System.out.println(
+                        "*** execution time over: " + getVTime() + " > " + limit);
                 return;
             }
-            Event ev = timeq.poll();
+            Event ev = dequeue();
             if (ev == null) {
-                System.out.println("No more event: time=" + vtime + ", " + nmsgs + " messages");
+                System.out.println("No more event: time=" + vtime + ", " + nmsgs
+                        + " messages");
                 return;
             }
-            if (vtime < ev.vtime) {
+            if (!realtime.value() && vtime < ev.vtime) {
                 vtime = ev.vtime;
             }
             if (ev.sender != ev.receiver) {
@@ -127,12 +206,23 @@ public class EventDispatcher {
                 }
                 //System.out.println("so far:" + ev.route);
             }
-            NodeImpl receiver = (NodeImpl)ev.receiver;
+            LocalNode receiver = null;
+            if (ev.receiver != null) {
+                if (ev.receiver instanceof LocalNode) {
+                    receiver = (LocalNode) ev.receiver;
+                } else {
+                    Node ins = Node.getInstance(ev.receiver.key);
+                    assert ins != null;
+                    receiver = (LocalNode) ins;
+                    ev.receiver = (LocalNode) ins;
+                }
+            }
             if (receiver != null) {
                 addToRoute(ev.routeWithFailed, receiver);
             }
             if (receiver != null && receiver.mode == NodeMode.GRACE) {
-                System.out.println(receiver + ": received in grace period: " + ev);
+                System.out.println(
+                        receiver + ": received in grace period: " + ev);
                 if (ev instanceof Lookup) {
                     //post(new LookupError((Lookup)ev, "grace"));
                     addToRoute(ev.route, receiver);
@@ -141,7 +231,7 @@ public class EventDispatcher {
                     receiver.post(new ScheduleEvent(ev.sender,
                             NetworkParams.ONEWAY_DELAY, ev.timeout));
                 }
-            } else if (receiver != null && (receiver.mode == NodeMode.FAILED 
+            } else if (receiver != null && (receiver.mode == NodeMode.FAILED
                     || receiver.mode == NodeMode.DELETED)) {
                 System.out.println("message received by failed node: " + ev);
                 if (ev.timeout != null) {
@@ -157,8 +247,9 @@ public class EventDispatcher {
     }
 
     private static void addToRoute(List<Node> route, Node next) {
-        if (route.isEmpty() || route.get(route.size() - 1) != next) { 
+        if (route.isEmpty() || route.get(route.size() - 1) != next) {
             route.add(next);
         }
     }
+
 }

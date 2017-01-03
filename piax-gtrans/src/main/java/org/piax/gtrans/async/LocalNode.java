@@ -1,16 +1,24 @@
 package org.piax.gtrans.async;
 
+import java.io.IOException;
+import java.io.ObjectStreamException;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
+import org.piax.gtrans.ChannelTransport;
+import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.async.Event.Lookup;
 import org.piax.gtrans.async.Event.LookupDone;
 import org.piax.gtrans.async.Event.ScheduleEvent;
+import org.piax.gtrans.async.EventSender.EventSenderNet;
+import org.piax.gtrans.async.EventSender.EventSenderSim;
 import org.piax.gtrans.async.Sim.LookupStat;
 import org.piax.gtrans.ov.ddll.DdllKey;
 
-public class NodeImpl extends Node implements NodeListener {
+public class LocalNode extends Node implements NodeListener {
+    final EventSender sender;
+    
     public long insertionStartTime = -1L;
     public long insertionEndTime;
 
@@ -23,14 +31,35 @@ public class NodeImpl extends Node implements NodeListener {
     private LinkChangeEventCallback predChange;
     private LinkChangeEventCallback succChange;
 
-    public NodeImpl(DdllKey ddllkey, NodeStrategy topStrategy, int latency) {
-        super(ddllkey, latency);
+    public LocalNode(ChannelTransport<?> trans, DdllKey ddllkey,
+            NodeStrategy topStrategy, int latency) throws IdConflictException, IOException {
+        super(ddllkey, trans == null ? null : trans.getEndpoint(), latency);
+        if (trans == null) {
+            this.sender = EventSenderSim.getInstance();
+        } else {
+            try {
+                this.sender = new EventSenderNet(trans);
+            } catch (IdConflictException | IOException e) {
+                throw e;
+            }
+        }
         this.topStrategy = topStrategy;
         this.baseStrategy = topStrategy;
         topStrategy.setupNode(this);
         topStrategy.setupListener(this);
     }
     
+    /**
+     * replace this instance with corresponding Node object on serialization.
+     * 
+     * @return
+     * @throws ObjectStreamException
+     */
+    private Object writeReplace() {
+        Node repl = new Node(this.key, this.addr, this.latency);
+        return repl;
+    }
+
     public void setBaseStrategy(NodeStrategy strategy) {
         this.baseStrategy = strategy;
         strategy.setupNode(this);
@@ -87,12 +116,15 @@ public class NodeImpl extends Node implements NodeListener {
             ev.delay = latency(ev.receiver);
         }
         ev.timeout = timeout;
-        EventDispatcher.enqueue(ev);
+        //EventDispatcher.enqueue(ev);
+        ev.vtime = EventDispatcher.getVTime() + ev.delay;
+        sender.send(ev);
         if (Sim.verbose) {
             System.out.println(this + "|send event " + ev + ", (arrive at T"
                     + ev.vtime + ")");
         }
     }
+
     /**
      * post an Event to a node
      * @param dest
@@ -114,14 +146,13 @@ public class NodeImpl extends Node implements NodeListener {
         if (ev.delay == Node.NETWORK_LATENCY) {
             ev.delay = latency(dest);
         }
-        EventDispatcher.enqueue(ev);
+        ev.receiver = dest;
         if (Sim.verbose) {
             System.out.println(this + "|forward to " + dest + ", " + ev
                     + ", (arrive at T" + ev.vtime + ")");
         }
-        ev.receiver = dest;
+        sender.forward(ev);
     }
-
 
     long getVTime() {
         return EventDispatcher.getVTime();
@@ -164,7 +195,7 @@ public class NodeImpl extends Node implements NodeListener {
         joinUsingIntroducer(introducer, this.joinCallback);
     }
 
-    public void joinLater(NodeImpl introducer, long delay, NodeEventCallback callback) {
+    public void joinLater(LocalNode introducer, long delay, NodeEventCallback callback) {
         mode = NodeMode.TO_BE_INSERTED;
         if (delay == 0) {
             joinUsingIntroducer(introducer, callback);
