@@ -352,7 +352,7 @@ public class LocalNode extends Node {
             return rc;
         };*/
         List<NodeAndIndex> nodes = topStrategy.getAllLinks2();
-        Collections.sort(nodes, comp);
+        //Collections.sort(nodes, comp);
         //System.out.println("nodes = " + nodes);
         Optional<NodeAndIndex> n = nodes.stream().max(comp);
         //System.out.println("key = " + key);

@@ -328,7 +328,7 @@ public class DdllStrategy extends NodeStrategy {
     }
 
     private Node getLiveNeighbor(boolean isLeftward) {
-        LocalNode[] nodes = EventDispatcher.getNodes();
+        LocalNode[] nodes = Sim.getNodes();
         int i = Arrays.binarySearch(nodes, n);
         if (i < 0) {
             throw new Error("should not happen");

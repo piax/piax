@@ -20,33 +20,19 @@ public class EventDispatcher {
     // run in real-time
     public static BooleanOption realtime = new BooleanOption(false, "-realtime");
 
-    static long vtime = 0;
+    private static long vtime = 0;
     public static int nmsgs = 0;
     public static int DEFAULT_MAX_TIME = 200 * 1000;
-    static LocalNode[] nodes;
     static ReentrantLock lock = new ReentrantLock();
     static Condition cond = lock.newCondition();
     static PriorityQueue<Event> timeq = new PriorityQueue<>();
     static Map<String, Count> counter = new HashMap<String, Count>();
-    private static Map<Integer, RequestEvent<?, ?>> requestMap =
-            new HashMap<>();
 
     public static class Count {
         int count;
     }
 
     public static void load() {
-    }
-
-    public static void registerRequestEvent(RequestEvent<?, ?> ev) {
-        //System.out.println("register request, id=" + ev.getEventId() + ", " + ev);
-        requestMap.put(ev.getEventId(), ev);
-    }
-
-    public static RequestEvent<?, ?> lookupRequestEvent(int id) {
-        RequestEvent<?, ?> ev = requestMap.remove(id);
-        //System.out.println("lookup request, id=" + id + ", " + ev);
-        return ev;
     }
 
     public static void enqueue(Event ev) {
@@ -162,27 +148,13 @@ public class EventDispatcher {
         return cnt.count;
     }
 
-    public static void dump() {
-        Sim.dump(nodes);
+    public static void run() {
+        run(DEFAULT_MAX_TIME);
     }
 
-    public static LocalNode[] getNodes() {
-        return nodes;
-    }
-
-    public static void run(LocalNode[] nodes) {
-        run(nodes, DEFAULT_MAX_TIME);
-    }
-
-    public static void run(LocalNode[] nodes, long maxTime) {
-        EventDispatcher.nodes = nodes;
-        boolean isChord = false; //(nodes.length > 0
-        // && nodes[0].baseStrategy instanceof ChordStrategy);
+    public static void run(long maxTime) {
         long limit = getVTime() + maxTime;
         while (true) {
-            if (isChord && Sim.isFinished(nodes)) {
-                return;
-            }
             if (getVTime() > limit) {
                 System.out.println(
                         "*** execution time over: " + getVTime() + " > " + limit);
@@ -237,11 +209,9 @@ public class EventDispatcher {
                     addToRoute(ev.route, receiver);
                     ev.beforeRunHook();
                     ev.run();
-                } else if (ev instanceof RequestEvent /*ev.timeout != null*/) {
+                } else if (ev instanceof RequestEvent) {
                     receiver.post(new ErrorEvent((RequestEvent<?, ?>)ev, 
                             new GraceStateException()));
-                    /*receiver.post(new ScheduleEvent(ev.sender,
-                            NetworkParams.ONEWAY_DELAY, ev.timeout));*/
                 }
             } else if (receiver != null && (receiver.mode == NodeMode.FAILED
                     || receiver.mode == NodeMode.DELETED)) {

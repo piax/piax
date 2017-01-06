@@ -4,10 +4,12 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
-import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.gtrans.async.EventException.TimeoutException;
+import org.piax.gtrans.ov.ddll.DdllKey;
 
 /**
  * base class of any event
@@ -128,6 +130,8 @@ public abstract class Event implements Comparable<Event>, Serializable {
      */
     public static abstract class RequestEvent<T extends RequestEvent<T, U>,
             U extends ReplyEvent<T, U>> extends Event {
+        private static Map<Integer, RequestEvent<?, ?>> requestMap =
+                new HashMap<>();
         final transient EventHandler<U> after;
         transient ScheduleEvent timeoutEvent; 
         public RequestEvent(Node receiver, EventHandler<U> after) {
@@ -137,12 +141,22 @@ public abstract class Event implements Comparable<Event>, Serializable {
 
         @Override
         public void beforeSendHook() {
-            assert(EventDispatcher.lookupRequestEvent(this.getEventId()) == null);
-            EventDispatcher.registerRequestEvent(this);
+            assert(lookupRequestEvent(this.getEventId()) == null);
+            registerRequestEvent(this);
             this.timeoutEvent = EventDispatcher.sched(NetworkParams.NETWORK_TIMEOUT,
                     () -> {
                         this.failureCallback.run(new TimeoutException());
                     });
+        }
+
+        private static void registerRequestEvent(RequestEvent<?, ?> ev) {
+            requestMap.put(ev.getEventId(), ev);
+        }
+
+        public static RequestEvent<?, ?> lookupRequestEvent(int id) {
+            RequestEvent<?, ?> ev = requestMap.remove(id);
+            //System.out.println("lookup request, id=" + id + ", " + ev);
+            return ev;
         }
     }
 
@@ -183,7 +197,7 @@ public abstract class Event implements Comparable<Event>, Serializable {
         private void readObject(ObjectInputStream stream) throws IOException,
             ClassNotFoundException {
             stream.defaultReadObject();
-            RequestEvent<?, ?> r = EventDispatcher.lookupRequestEvent(reqEventId);
+            RequestEvent<?, ?> r = RequestEvent.lookupRequestEvent(reqEventId);
             assert r != null;
             this.req = (T)r;
             assert this.req.after != null;

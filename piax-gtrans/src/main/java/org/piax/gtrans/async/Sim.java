@@ -117,6 +117,8 @@ public class Sim {
                 System.exit(0);
             }
         });
+
+    public static LocalNode[] nodes;
     public static boolean verbose = false;
     public static BooleanOption verbOpt = new BooleanOption(false, "-verbose",
             val -> {Sim.verbose = val;});
@@ -180,6 +182,20 @@ public class Sim {
     private void sim(Algorithm algorithm, ExpType exptype) {
         NodeFactory factory = algorithm.method.getFactory();
         exptype.method.run(this, factory);
+    }
+
+    private static void startSim(LocalNode[] nodes, long duration) {
+        Sim.nodes = nodes;
+        EventDispatcher.run(duration);
+    }
+
+    private static void startSim(LocalNode[] nodes) {
+        Sim.nodes = nodes;
+        EventDispatcher.run();
+    }
+
+    public static LocalNode[] getNodes() {
+        return nodes;
     }
 
     public static void dump(LocalNode start) {
@@ -278,13 +294,13 @@ public class Sim {
         //NodeImpl[] nodes = new NodeImpl[]{a, z, b, c, d};
         LocalNode[] nodes = new LocalNode[] { a, z, b };
         Arrays.sort(nodes);
-        EventDispatcher.run(nodes, 10000);
+        startSim(nodes, 10000);
         //EventDispatcher.nmsgs = 0;
         //System.out.println("*****************************");
         //LookupStat s = new LookupStat();
         //a.lookup(z.key, s); 
         //a.lookup(b.key, s); 
-        //EventDispatcher.run(nodes);
+        //startSim(nodes);
         //s.hops.printBasicStat("hops", 0);
         //dump(nodes);
     }
@@ -366,7 +382,7 @@ public class Sim {
         insOrder.value().method.insert(this, nodes, 1, nodes.length, 0, 0, null);
         Arrays.sort(nodes);
         dump(nodes);
-        EventDispatcher.run(nodes, 5000);
+        startSim(nodes, 5000);
         EventDispatcher.nmsgs = 0;
         System.out.println("*****************************");
         dump(nodes);
@@ -535,7 +551,7 @@ public class Sim {
                     });//);
         }
 
-        EventDispatcher.run(nodes, T * LOOKUP_TIMES + convertSecondsToVTime(4*60));
+        startSim(nodes, T * LOOKUP_TIMES + convertSecondsToVTime(4*60));
         System.out.println("*****************************");
         dump(nodes);
         System.out.println("*****************************");
@@ -620,7 +636,7 @@ public class Sim {
             doLookup.run();
         });
         System.out.println("*****************************");
-        EventDispatcher.run(nodes, DELTIME * 2);
+        startSim(nodes, DELTIME * 2);
         System.out.println("*****************************");
         dump(nodes);
         System.out.println("*****************************");
@@ -688,7 +704,7 @@ public class Sim {
                 x.joinLater(nodes[0], 0, null);
             });
         }
-        EventDispatcher.run(nodes, timing + convertSecondsToVTime(10));
+        startSim(nodes, timing + convertSecondsToVTime(10));
         for (int j = 0; j < nLater; j++) {
             LocalNode x = aNodes.get(j);
             stat.addSample(x.getMessages4Join());
@@ -773,7 +789,7 @@ public class Sim {
             EventDispatcher.sched(t, () -> symmetricDegree(nodes, as));
         }
 
-        EventDispatcher.run(nodes, T * LOOKUP_TIMES);
+        startSim(nodes, T * LOOKUP_TIMES);
         System.out.println("*****************************");
         dump(nodes);
         System.out.println("*****************************");
@@ -822,8 +838,8 @@ public class Sim {
             LookupStat s = all.getLookupStat(n);
             EventDispatcher.sched(t, lookupTest(nodes, s));
         }
-        //EventDispatcher.run(nodes, (M + 1) * 10 * T);
-        EventDispatcher.run(nodes, DELTA * (NEND + 1));
+        //startSim(nodes, (M + 1) * 10 * T);
+        startSim(nodes, DELTA * (NEND + 1));
 
         // collect msg counts
         StatSet msgs = new StatSet();
@@ -905,7 +921,7 @@ public class Sim {
                 dump(nodes);
             });
         }
-        EventDispatcher.run(nodes, T * LOOKUP_TIMES);
+        startSim(nodes, T * LOOKUP_TIMES);
         LookupStat unified = new LookupStat();
         for (int i = 1; i < LOOKUP_TIMES; i++) {
             LookupStat s = all.getLookupStat(i);
@@ -966,7 +982,7 @@ public class Sim {
                     }
                 }));
 
-        EventDispatcher.run(nodes, T * (LOOKUP_TIMES + 10));
+        startSim(nodes, T * (LOOKUP_TIMES + 10));
         System.out.println("*****************************");
         dump(nodes);
         System.out.println("*****************************");
@@ -1060,7 +1076,7 @@ public class Sim {
                 });
         //EventDispatcher.sched(999*T, () -> dump(nodes));
         //EventDispatcher.sched(1000*T, lookupTestFull(nodes, 0, r, s));
-        EventDispatcher.run(nodes, 2000*T);
+        startSim(nodes, 2000*T);
     }
 
     private void specificOrder(NodeFactory factory) {
@@ -1162,14 +1178,14 @@ public class Sim {
         Arrays.sort(nodes);
         dump(nodes);
         long start = EventDispatcher.getVTime();
-        EventDispatcher.run(nodes);
+        startSim(nodes);
         long end = EventDispatcher.getVTime();
         System.out.println("start = " + start + ", end = " + end
                 + ", elapsed = " + (end - start));
         System.out.println("#msg = " + EventDispatcher.nmsgs);
         time.addSample(end - start);
         msg.addSample(EventDispatcher.nmsgs);
-        if (!isFinished(nodes)) {
+        if (!isFinished()) {
             System.err.println("Inconsisntent!");
         }
         //dump(a);
@@ -1266,7 +1282,8 @@ public class Sim {
         tstats.printBasicStat("time:" + name);
     }
 
-    public static boolean isFinished(LocalNode[] sortedNodes) {
+    public static boolean isFinished() {
+        LocalNode[] sortedNodes = getNodes();
         LocalNode x = null;
         boolean rc = true;
         //System.out.println("start");
