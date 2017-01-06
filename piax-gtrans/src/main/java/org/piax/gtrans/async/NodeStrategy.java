@@ -5,23 +5,13 @@ import java.util.List;
 
 import org.piax.gtrans.async.Event.Lookup;
 import org.piax.gtrans.async.Event.LookupDone;
-import org.piax.gtrans.async.Node.NodeEventCallback;
 import org.piax.gtrans.ov.ddll.DdllKey;
 
 public abstract class NodeStrategy {
     protected LocalNode n;
-    protected NodeListener listener;
 
     public void setupNode(LocalNode node) {
         this.n = node;
-    }
-
-    public void setupListener(NodeListener listener) {
-        this.listener = listener;
-    }
-
-    public NodeListener getListener() {
-        return listener;
     }
 
     public Node getPredecessor() {
@@ -53,9 +43,10 @@ public abstract class NodeStrategy {
 
     public abstract void initInitialNode();
 
-    public abstract void joinAfterLookup(LookupDone lookupDone);
+    public abstract void joinAfterLookup(LookupDone lookupDone,
+            SuccessCallback success, FailureCallback failure);
 
-    public void leave(NodeEventCallback callback) {
+    public void leave(SuccessCallback callback) {
         throw new UnsupportedOperationException("leave is not supported");
     }
 

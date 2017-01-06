@@ -15,6 +15,7 @@ import java.util.stream.LongStream;
 
 import org.piax.common.PeerId;
 import org.piax.common.PeerLocator;
+import org.piax.common.TransportId;
 import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.Peer;
@@ -26,6 +27,7 @@ import org.piax.gtrans.async.Option.IntegerOption;
 import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.gtrans.ov.ddllasync.DdllStrategy;
 import org.piax.gtrans.ov.ddllasync.DdllStrategy.DdllNodeFactory;
+import org.piax.gtrans.ov.suzakuasync.SuzakuStrategy;
 import org.piax.gtrans.ov.suzakuasync.SuzakuStrategy.SuzakuNodeFactory;
 import org.piax.gtrans.raw.emu.EmuLocator;
 import org.piax.gtrans.raw.tcp.TcpLocator;
@@ -67,7 +69,7 @@ public class Sim {
         RETRANSTIME((sim, factory) -> sim.retransTest(factory)),
         MIXLATENCY((sim, factory) -> sim.mixedLatencyTest(factory)),
         SIMPLE((sim, factory) -> sim.simpleTest(factory)),
-        SIMPLESEQ((sim, factory) -> sim.insertSeqTest(factory)),
+        INSERTSEQ((sim, factory) -> sim.insertSeqTest(factory)),
         INSERTLOOKUP((sim, factory) -> sim.insertFailLookupTest(factory,
                 insOrder.value(), false)),
         INSERTFAILLOOKUP((sim, factory) -> sim.insertFailLookupTest(factory,
@@ -148,7 +150,7 @@ public class Sim {
     public static void main(String[] args) {
         // force load to initialize Options
         EventDispatcher.load();
-        //SuzakuStrategy.load();
+        SuzakuStrategy.load();
         DdllStrategy.load();
         //AtomicRingStrategy.load();
         //NetworkParams.load();
@@ -206,7 +208,11 @@ public class Sim {
     }
     
     public static long convertSecondsToVTime(int sec) {
-        return (long)(sec * 1000 / NetworkParams.LATENCY_FACTOR);
+        if (EventDispatcher.realtime.value()) {
+            return (long)(sec * 1000);
+        } else {
+            return (long)(sec * 1000 / NetworkParams.LATENCY_FACTOR);
+        }
     }
 
     private LocalNode createNode(NodeFactory factory, int key) {
@@ -214,6 +220,7 @@ public class Sim {
     }
 
     private LocalNode createNode(NodeFactory factory, int key, int latency) {
+        TransportId transId = new TransportId("SimTrans");
         if (netOpt.value()) {
             Peer peer = Peer.getInstance(new PeerId("P" + key));
             DdllKey k = new DdllKey(key, new UniqId(peer.getPeerId()), "", null);
@@ -221,7 +228,7 @@ public class Sim {
             ChannelTransport<?> trans;
             try {
                 trans = peer.newBaseChannelTransport(loc);
-                return factory.createNode(trans, k, latency);
+                return factory.createNode(transId, trans, k, latency);
             } catch (IOException | IdConflictException e) {
                 throw new Error("something wrong!", e);
             }
@@ -229,7 +236,7 @@ public class Sim {
             UniqId p = new UniqId("P");
             DdllKey k = new DdllKey(key, p, "", null);
             try {
-                return factory.createNode(null, k, latency);
+                return factory.createNode(null, null, k, latency);
             } catch (IOException | IdConflictException e) {
                 throw new Error("something wrong!", e);
             }
@@ -255,10 +262,15 @@ public class Sim {
         a.initInitialNode();
         LocalNode b = createNode(factory, 10, NetworkParams.HALFWAY_DELAY);
         LocalNode z = createNode(factory, 100, NetworkParams.HALFWAY_DELAY);
-        b.joinUsingIntroducer(a, node -> System.out.println(node + " joined"));
-        EventDispatcher.sched(1000, () -> {
-            z.joinUsingIntroducer(a, node -> System.out.println(node + " joined"));
-        });
+        b.joinUsingIntroducer(a, node -> System.out.println(node + " joined!"),
+                exc -> {
+                    System.out.println("Node b join failed!");
+                });
+        z.joinUsingIntroducer(a, node -> System.out.println(node + " joined"),
+                exc -> {
+                    System.out.println("Node z join failed");
+                });
+        
         /*Node c = createNode(cons, 20);
         c.join0(a);
         Node d = createNode(cons, 30);
@@ -266,9 +278,7 @@ public class Sim {
         //NodeImpl[] nodes = new NodeImpl[]{a, z, b, c, d};
         LocalNode[] nodes = new LocalNode[] { a, z, b };
         Arrays.sort(nodes);
-        //dump(nodes);
-        EventDispatcher.run(nodes);
-        EventDispatcher.dump();
+        EventDispatcher.run(nodes, 10000);
         //EventDispatcher.nmsgs = 0;
         //System.out.println("*****************************");
         //LookupStat s = new LookupStat();
@@ -277,9 +287,6 @@ public class Sim {
         //EventDispatcher.run(nodes);
         //s.hops.printBasicStat("hops", 0);
         //dump(nodes);
-        /*System.out.println(a.toStringDetail());
-        System.out.println(b.toStringDetail());
-        System.out.println(z.toStringDetail());*/
     }
 
     /**
@@ -356,35 +363,19 @@ public class Sim {
             nodes[i] = createNode(factory, i * 10, NetworkParams.HALFWAY_DELAY);
         }
         nodes[0].initInitialNode();
-        insOrder.value().method.insert(this, nodes, 1, nodes.length, 0, 0,  null);
-
+        insOrder.value().method.insert(this, nodes, 1, nodes.length, 0, 0, null);
         Arrays.sort(nodes);
         dump(nodes);
-        EventDispatcher.run(nodes);
+        EventDispatcher.run(nodes, 5000);
         EventDispatcher.nmsgs = 0;
         System.out.println("*****************************");
         dump(nodes);
         System.out.println("*****************************");
         EventDispatcher.dumpMessageCounters();
-        
         System.out.println("*****************************");
-
-        // Lookup Test
-        EventDispatcher.reset();
-        LookupStat s = new LookupStat();
-        for (int i = 0; i < 100; i++) {
-            int r = rand.nextInt(nodes.length);
-            nodes[i % nodes.length].lookup(nodes[r].key, s);
-        }
-        EventDispatcher.run(nodes);
-        s.hops.printBasicStat("hops", N);
-
-        /*Arrays.asList(nodes).stream().forEach(n -> {
-            System.out.println(n.getInsertionTime());
-        });*/
     }
 
-    final static int NQUERY = 2000;
+    final static int NQUERY = 10;//2000;
     Runnable lookupTest(LocalNode[] nodes, LookupStat s) {
         return () -> {
             System.out.println("start lookupTest: " + EventDispatcher.getVTime());
@@ -466,7 +457,7 @@ public class Sim {
         // 30秒ごとに検索
         long T = convertSecondsToVTime(30);
         // T 毎に LOOKUP_TIMES 回，lookupTest を実行
-        int LOOKUP_TIMES = 1;
+        int LOOKUP_TIMES = 2;
         AllLookupStats all = new AllLookupStats();
         StatSet msgset = new StatSet();
         StatSet symset = new StatSet();

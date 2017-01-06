@@ -2,43 +2,48 @@ package org.piax.gtrans.async;
 
 import java.io.IOException;
 import java.io.ObjectStreamException;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
+import org.piax.common.Endpoint;
+import org.piax.common.TransportId;
 import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.IdConflictException;
+import org.piax.gtrans.RPCException;
 import org.piax.gtrans.async.Event.Lookup;
 import org.piax.gtrans.async.Event.LookupDone;
-import org.piax.gtrans.async.Event.ScheduleEvent;
+import org.piax.gtrans.async.EventException.RPCEventException;
 import org.piax.gtrans.async.EventSender.EventSenderNet;
 import org.piax.gtrans.async.EventSender.EventSenderSim;
+import org.piax.gtrans.async.ObjectLatch.WrappedException;
 import org.piax.gtrans.async.Sim.LookupStat;
 import org.piax.gtrans.ov.ddll.DdllKey;
+import org.piax.gtrans.ov.ring.UnavailableException;
 
-public class LocalNode extends Node implements NodeListener {
-    final EventSender sender;
-    
+public class LocalNode extends Node {
     public long insertionStartTime = -1L;
     public long insertionEndTime;
 
+    final EventSender sender;
     public Node introducer;
     public Node succ, pred;
     public NodeMode mode = NodeMode.OUT;
     public NodeStrategy baseStrategy;
     public final NodeStrategy topStrategy;
-    private NodeEventCallback joinCallback;
     private LinkChangeEventCallback predChange;
     private LinkChangeEventCallback succChange;
 
-    public LocalNode(ChannelTransport<?> trans, DdllKey ddllkey,
-            NodeStrategy topStrategy, int latency) throws IdConflictException, IOException {
+    public LocalNode(TransportId transId, ChannelTransport<?> trans, 
+            DdllKey ddllkey, NodeStrategy topStrategy, int latency)
+                    throws IdConflictException, IOException {
         super(ddllkey, trans == null ? null : trans.getEndpoint(), latency);
         if (trans == null) {
             this.sender = EventSenderSim.getInstance();
         } else {
             try {
-                this.sender = new EventSenderNet(trans);
+                this.sender = new EventSenderNet(transId, trans);
             } catch (IdConflictException | IOException e) {
                 throw e;
             }
@@ -46,7 +51,6 @@ public class LocalNode extends Node implements NodeListener {
         this.topStrategy = topStrategy;
         this.baseStrategy = topStrategy;
         topStrategy.setupNode(this);
-        topStrategy.setupListener(this);
     }
     
     /**
@@ -79,7 +83,7 @@ public class LocalNode extends Node implements NodeListener {
 
     @Override
     public String toStringDetail() {
-        return this.baseStrategy.toStringDetail();
+        return this.topStrategy.toStringDetail();
     }
 
     public void setPred(Node newPred) {
@@ -106,7 +110,7 @@ public class LocalNode extends Node implements NodeListener {
         post(ev, null);
     }
 
-    public void post(Event ev, Runnable timeout) {
+    public void post(Event ev, FailureCallback failure) {
         ev.sender = ev.origin = this;
         ev.route.add(this);
         if (ev.routeWithFailed.size() == 0) {
@@ -115,13 +119,17 @@ public class LocalNode extends Node implements NodeListener {
         if (ev.delay == Node.NETWORK_LATENCY) {
             ev.delay = latency(ev.receiver);
         }
-        ev.timeout = timeout;
-        //EventDispatcher.enqueue(ev);
+        ev.failureCallback = failure;
         ev.vtime = EventDispatcher.getVTime() + ev.delay;
-        sender.send(ev);
         if (Sim.verbose) {
             System.out.println(this + "|send event " + ev + ", (arrive at T"
                     + ev.vtime + ")");
+        }
+        try {
+            sender.send(ev);
+        } catch (RPCException e) {
+            verbose(this + " got exception: " + e);
+            failure.run(new RPCEventException(e));
         }
     }
 
@@ -131,18 +139,13 @@ public class LocalNode extends Node implements NodeListener {
      * @param ev
      */
     public void forward(Node dest, Event ev) {
-        this.forward(dest, ev, null, null);
+        this.forward(dest, ev, null);
     }
 
-    public void forward(Node dest, Event ev, Runnable timeout) {
-        this.forward(dest, ev, timeout, null);
-    }
-
-    public void forward(Node dest, Event ev, Runnable timeout, Runnable error) {
+    public void forward(Node dest, Event ev, FailureCallback failure) {
         assert ev.origin != null;
         ev.sender = this;
-        ev.timeout = timeout;
-        ev.error = error; // overwrite!
+        ev.failureCallback = failure;
         if (ev.delay == Node.NETWORK_LATENCY) {
             ev.delay = latency(dest);
         }
@@ -151,20 +154,16 @@ public class LocalNode extends Node implements NodeListener {
             System.out.println(this + "|forward to " + dest + ", " + ev
                     + ", (arrive at T" + ev.vtime + ")");
         }
-        sender.forward(ev);
+        try {
+            sender.forward(ev);
+        } catch (RPCException e) {
+            verbose(this + " got exception: " + e);
+            failure.run(new RPCEventException(e));
+        }
     }
 
     long getVTime() {
         return EventDispatcher.getVTime();
-    }
-
-    @Override
-    public void nodeInserted() {
-        insertionEndTime = getVTime();
-        mode = NodeMode.INSERTED;
-        if (this.joinCallback != null) {
-            this.joinCallback.run(this);
-        }
     }
 
     public long getInsertionTime() {
@@ -178,6 +177,40 @@ public class LocalNode extends Node implements NodeListener {
         return topStrategy.getMessages4Join();
     }
 
+    /*
+     * Compatible Methods
+     */
+    /**
+     * insert a key into a ring.
+     * 
+     * @param introducer 既に挿入済みのノード
+     * @return 成功したらtrue
+     * @throws UnavailableException introducerにkeyが存在しない
+     * @throws IOException introducerとの通信でエラー or insertion failure
+     */
+    protected boolean addKey(Endpoint introducer) throws IOException {
+        Node temp = Node.getTemporaryInstance(introducer);
+        ObjectLatch<Boolean> latch = new ObjectLatch<>(1);
+        joinUsingIntroducer(temp,
+                node -> latch.set(true), 
+                e -> latch.setException(e));
+        try {
+            return latch.getOrException();
+        } catch (InterruptedException e) {
+            throw new IOException(e);
+        } catch (WrappedException e) {
+            throw new IOException(e.getCause());
+        }
+    }
+    
+    protected boolean removeKey() {
+        return true;
+    }
+    /*
+     * Compatible Methods End
+     */
+
+    
     /**
      * insert an initial node
      */
@@ -191,19 +224,30 @@ public class LocalNode extends Node implements NodeListener {
      * locate the node position and insert
      * @param introducer
      */
-    public void joinUsingIntroducer(Node introducer) {
-        joinUsingIntroducer(introducer, this.joinCallback);
+    public void joinLater(LocalNode introducer, long delay,
+            SuccessCallback callback) {
+        joinLater(introducer, delay, callback, (exc) -> {
+            throw new Error("joinLater got exception", exc);
+        });
     }
-
-    public void joinLater(LocalNode introducer, long delay, NodeEventCallback callback) {
+    
+    public void joinLater(LocalNode introducer, long delay,
+            SuccessCallback callback, FailureCallback eh) {
         mode = NodeMode.TO_BE_INSERTED;
         if (delay == 0) {
-            joinUsingIntroducer(introducer, callback);
+            joinUsingIntroducer(introducer, callback, eh);
         } else {
-            post(new ScheduleEvent(this, delay, () -> {
-                joinUsingIntroducer(introducer, callback);
-            }));
+            EventDispatcher.sched(delay, () -> {
+                this.joinUsingIntroducer(introducer, callback, eh);
+            });
         }
+    }
+
+    public void joinUsingIntroducer(Node introducer,
+            SuccessCallback callback) {
+        joinUsingIntroducer(introducer, callback, exc -> {
+            throw new Error("joinUsingIntroducer got exception", exc);
+        });
     }
 
     /**
@@ -211,24 +255,28 @@ public class LocalNode extends Node implements NodeListener {
      * @param introducer
      * @param callback  a callback that is called after join succeeds
      */
-    public void joinUsingIntroducer(Node introducer, NodeEventCallback callback) {
+    public void joinUsingIntroducer(Node introducer, SuccessCallback cb,
+            FailureCallback eh) {
         if (insertionStartTime == -1) {
             insertionStartTime = getVTime();
         }
         this.mode = NodeMode.INSERTING;
         this.introducer = introducer;
-        this.joinCallback = callback;
         Event ev = new Lookup(introducer, key, this, (LookupDone results) -> {
-            topStrategy.joinAfterLookup(results);
+            topStrategy.joinAfterLookup(results, (node) -> {
+                insertionEndTime = getVTime();
+                mode = NodeMode.INSERTED;
+                cb.run(this);
+            }, eh);
         });
-        post(ev);
+        post(ev, eh);
     }
 
     public void leave() {
         leave(null);
     }
 
-    public void leave(NodeEventCallback callback) {
+    public void leave(SuccessCallback callback) {
         System.out.println("Node " + this + " leaves");
         topStrategy.leave(callback);
     }
@@ -291,21 +339,12 @@ public class LocalNode extends Node implements NodeListener {
     public NodeAndIndex getClosestPredecessor(DdllKey key) {
         Comparator<NodeAndIndex> comp = (NodeAndIndex a, NodeAndIndex b) -> {
             // aの方がkeyに近ければ正の数，bの方がkeyに近ければ負の数を返す
-            int ax = a.node.key.compareTo(key);
-            int bx = b.node.key.compareTo(key);
-            if (ax == bx) {
-                return 0;
-            } else if (ax == 0) {
-                return +1;
-            } else if (bx == 0) {
-                return -1;
-            } else if (Integer.signum(ax) == Integer.signum(bx)) {
-                return ax - bx;
-            } else if (ax > 0) {
-                return -1;
-            } else {
+            // [a, key, b) -> plus
+            // [b, key, a) -> minus
+            if (Node.isOrdered(a.node.key, true, key, b.node.key, false)) {
                 return +1;
             }
+            return -1;
         };
         /*Comparator<Node> compx = (Node a, Node b) -> {
             int rc = comp.compare(a, b);
@@ -313,7 +352,7 @@ public class LocalNode extends Node implements NodeListener {
             return rc;
         };*/
         List<NodeAndIndex> nodes = topStrategy.getAllLinks2();
-        //Collections.sort(nodes, comp);
+        Collections.sort(nodes, comp);
         //System.out.println("nodes = " + nodes);
         Optional<NodeAndIndex> n = nodes.stream().max(comp);
         //System.out.println("key = " + key);

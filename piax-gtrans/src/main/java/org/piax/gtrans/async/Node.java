@@ -40,11 +40,15 @@ public class Node implements Comparable<Node>, Serializable {
         return instances.get(ddllkey);
     }
 
+    public static Node getTemporaryInstance(Endpoint ep) {
+        return new Node(null, ep, 0);
+    }
+
     protected Node(DdllKey ddllkey, Endpoint ep, int latency) {
         this.key = ddllkey;
         this.addr = ep;
         this.latency = latency;
-        if (instances.get(ddllkey) == null) {
+        if (ddllkey != null && !instances.containsKey(ddllkey)) {
             instances.put(ddllkey, this);
         }
     }
@@ -132,10 +136,6 @@ public class Node implements Comparable<Node>, Serializable {
         return rc;
     }
 
-    @FunctionalInterface
-    public static interface NodeEventCallback {
-        public void run(LocalNode n);
-    }
     @FunctionalInterface
     public static interface LinkChangeEventCallback {
         public void run(Node prev, Node now);

@@ -3,14 +3,16 @@ package org.piax.gtrans.async;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.PriorityBlockingQueue;
+import java.util.PriorityQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
+import org.piax.gtrans.async.Event.ErrorEvent;
 import org.piax.gtrans.async.Event.Lookup;
 import org.piax.gtrans.async.Event.RequestEvent;
 import org.piax.gtrans.async.Event.ScheduleEvent;
+import org.piax.gtrans.async.EventException.GraceStateException;
 import org.piax.gtrans.async.Node.NodeMode;
 import org.piax.gtrans.async.Option.BooleanOption;
 
@@ -24,7 +26,7 @@ public class EventDispatcher {
     static LocalNode[] nodes;
     static ReentrantLock lock = new ReentrantLock();
     static Condition cond = lock.newCondition();
-    static PriorityBlockingQueue<Event> timeq = new PriorityBlockingQueue<>();
+    static PriorityQueue<Event> timeq = new PriorityQueue<>();
     static Map<String, Count> counter = new HashMap<String, Count>();
     private static Map<Integer, RequestEvent<?, ?>> requestMap =
             new HashMap<>();
@@ -56,20 +58,15 @@ public class EventDispatcher {
             cond.signal();
             lock.unlock();
         }
-        System.out.println("enqueued: " + ev);
+        //System.out.println("enqueued: " + ev);
     }
 
     public static Event dequeue() {
-        Event ev;
         if (!realtime.value()) {
-            try {
-                ev = timeq.poll(2000, TimeUnit.MILLISECONDS);
-            } catch (InterruptedException e) {
-                throw new Error(e);
-            }
-            return ev;
+            return timeq.poll();
         }
         // real-time version
+        Event ev;
         lock.lock();
         final int GRACE = 2000;
         try {
@@ -84,6 +81,7 @@ public class EventDispatcher {
                         return ev;
                     }
                 }
+                //System.out.println("Queue: " + timeq);
                 try {
                     boolean rc = cond.await(rem, TimeUnit.MILLISECONDS);
                     if (!rc && rem == GRACE) {
@@ -98,10 +96,21 @@ public class EventDispatcher {
         }
     }
 
-    public static void sched(long delay, Runnable run) {
-        Event ev = new ScheduleEvent(null, delay, run);
+    public static void cancelEvent(Event ev) {
+        if (!realtime.value()) {
+            timeq.remove(ev);
+        } else {
+            lock.lock();
+            timeq.remove(ev);
+            lock.unlock();
+        }
+    }
+
+    public static ScheduleEvent sched(long delay, Runnable run) {
+        ScheduleEvent ev = new ScheduleEvent(null, delay, run);
         ev.vtime = getVTime() + delay;
         enqueue(ev);
+        return ev;
     }
 
     public static void reset() {
@@ -226,21 +235,20 @@ public class EventDispatcher {
                 if (ev instanceof Lookup) {
                     //post(new LookupError((Lookup)ev, "grace"));
                     addToRoute(ev.route, receiver);
+                    ev.beforeRunHook();
                     ev.run();
-                } else if (ev.timeout != null) {
-                    receiver.post(new ScheduleEvent(ev.sender,
-                            NetworkParams.ONEWAY_DELAY, ev.timeout));
+                } else if (ev instanceof RequestEvent /*ev.timeout != null*/) {
+                    receiver.post(new ErrorEvent((RequestEvent<?, ?>)ev, 
+                            new GraceStateException()));
+                    /*receiver.post(new ScheduleEvent(ev.sender,
+                            NetworkParams.ONEWAY_DELAY, ev.timeout));*/
                 }
             } else if (receiver != null && (receiver.mode == NodeMode.FAILED
                     || receiver.mode == NodeMode.DELETED)) {
                 System.out.println("message received by failed node: " + ev);
-                if (ev.timeout != null) {
-                    receiver.post(new ScheduleEvent(ev.sender,
-                            NetworkParams.NETWORK_TIMEOUT - ev.delay,
-                            ev.timeout));
-                }
             } else {
                 addToRoute(ev.route, receiver);
+                ev.beforeRunHook();
                 ev.run();
             }
         }

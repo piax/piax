@@ -9,23 +9,24 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.piax.common.TransportId;
 import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.IdConflictException;
+import org.piax.gtrans.async.FailureCallback;
 import org.piax.gtrans.async.Event.Lookup;
 import org.piax.gtrans.async.Event.LookupDone;
 import org.piax.gtrans.async.EventDispatcher;
 import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.async.NetworkParams;
 import org.piax.gtrans.async.Node;
-import org.piax.gtrans.async.Node.NodeEventCallback;
 import org.piax.gtrans.async.Node.NodeMode;
 import org.piax.gtrans.async.NodeAndIndex;
 import org.piax.gtrans.async.NodeFactory;
-import org.piax.gtrans.async.NodeListener;
 import org.piax.gtrans.async.NodeStrategy;
 import org.piax.gtrans.async.Option.BooleanOption;
 import org.piax.gtrans.async.Option.IntegerOption;
 import org.piax.gtrans.async.Sim;
+import org.piax.gtrans.async.SuccessCallback;
 import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.gtrans.ov.ddllasync.DdllStrategy;
 import org.piax.gtrans.ov.ring.rq.FlexibleArray;
@@ -37,7 +38,7 @@ import org.piax.gtrans.ov.suzakuasync.SuzakuEvent.GetFTEntEvent;
 import org.piax.gtrans.ov.suzakuasync.SuzakuEvent.GetFTEntReplyEvent;
 import org.piax.gtrans.ov.suzakuasync.SuzakuEvent.RemoveReversePointerEvent;
 
-public class SuzakuStrategy extends NodeStrategy implements NodeListener {
+public class SuzakuStrategy extends NodeStrategy {
     public static class SuzakuNodeFactory extends NodeFactory {
         public SuzakuNodeFactory(int type) {
             switch (type) {
@@ -78,14 +79,13 @@ public class SuzakuStrategy extends NodeStrategy implements NodeListener {
             }
         }
         @Override
-        public LocalNode createNode(ChannelTransport<?> trans, DdllKey key,
-                int latency) throws IdConflictException, IOException {
+        public LocalNode createNode(TransportId transId,
+                ChannelTransport<?> trans, DdllKey key, int latency)
+                        throws IdConflictException, IOException {
             NodeStrategy base = new DdllStrategy();
             SuzakuStrategy szk = new SuzakuStrategy(base);
-            LocalNode n = new LocalNode(trans, key, szk, latency);
+            LocalNode n = new LocalNode(transId, trans, key, szk, latency);
             base.setupNode(n);
-            base.setupListener(szk);
-            szk.setupListener(n);
             n.setBaseStrategy(base);
             szk.setupLinkChangeListener(n);
             return n;
@@ -192,23 +192,28 @@ public class SuzakuStrategy extends NodeStrategy implements NodeListener {
         forwardUpdateCount = 1;
         scheduleFTUpdate(true);
     }
-    
+
     @Override
-    public void joinAfterLookup(LookupDone lookupDone) {
+    public void joinAfterLookup(LookupDone lookupDone, SuccessCallback cb,
+            FailureCallback eh) {
         System.out.println("JoinAfterLookup: " + lookupDone.route); 
         System.out.println("JoinAfterLookup: " + lookupDone.hops());
+        System.out.println("JOIN " + n.key + " between " + lookupDone.pred + " and " + lookupDone.succ);
+        assert Node.isOrdered(lookupDone.pred.key, n.key, lookupDone.succ.key);
         joinMsgs += lookupDone.hops();
         base.joinAfterLookup(lookupDone, (node) -> {
             // 右ノードが変更された契機でリバースポインタの不要なエントリを削除
             SuzakuStrategy szk = (SuzakuStrategy)node.topStrategy;
             szk.sanitizeRevPtrs();
-        });
+            nodeInserted();
+            cb.run(node);
+        }, eh);
     }
 
     @Override
-    public void leave(NodeEventCallback callback) {
+    public void leave(SuccessCallback callback) {
         LocalNode.verbose("leave " + n);
-        NodeEventCallback job;
+        SuccessCallback job;
         if (NOTIFY_WITH_REVERSE_POINTER.value()) {
             job = (node) -> {
                 // このラムダ式は，SetRを受信したノードで動作することに注意!
@@ -367,7 +372,7 @@ public class SuzakuStrategy extends NodeStrategy implements NodeListener {
             NodeAndIndex next = n.getClosestPredecessor(l.key);
             // successorがfailしていると，next.node == n になる
             if (next == null || next.node == n) {
-                System.out.println(n + ": handleLookup! " + l.getEventId() + " " + next);
+                System.out.println(n + ": handleLookup! key=" + l.key + ", evid=" + l.getEventId() + ", next=" + next + ", " + toStringDetail());
                 //System.out.println(n.toStringDetail());
                 if (l.getFTEntry) {
                     FTEntry ent = getFingerTableEntryForRemote(false,
@@ -387,7 +392,7 @@ public class SuzakuStrategy extends NodeStrategy implements NodeListener {
                         || ent.nbrs.length < SUCCESSOR_LIST_SIZE;
             }
             System.out.println("T=" + EventDispatcher.getVTime() + ": " + n + ": handleLookup " + l.getEventId() + " " + next);
-            n.forward(next.node, l, () -> {
+            n.forward(next.node, l, (exc) -> {
                 /* [相手ノード障害時]
                  * - 障害ノード集合に追加
                  * - getClosestPredecessorからやりなおす．
@@ -411,9 +416,6 @@ public class SuzakuStrategy extends NodeStrategy implements NodeListener {
                     DdllStrategy.fix(next.node);
                 }
                 failedNodes.add(next.node);
-                handleLookup(l, nRetry + 1);
-            }, () -> {
-                // error!
                 handleLookup(l, nRetry + 1);
             });
         }
@@ -466,7 +468,6 @@ public class SuzakuStrategy extends NodeStrategy implements NodeListener {
         return buf.toString();
     }
 
-    @Override
     public void nodeInserted() {
         joinMsgs += base.getMessages4Join();    // add messages consumed in DDLL 
         if (COPY_FINGERTABLES) {
@@ -492,7 +493,6 @@ public class SuzakuStrategy extends NodeStrategy implements NodeListener {
         } else {
             initialFTUpdate();
         }
-        listener.nodeInserted();
     }
 
     /**
@@ -997,7 +997,7 @@ public class SuzakuStrategy extends NodeStrategy implements NodeListener {
                 }
             }
             updateNext(p, isBackward, nextEnt2, nextEntX);
-        }), () -> {
+        }), (exc) -> {
             System.out.println(n + ": getFingerTable0: TIMEOUT on " + baseNode);
             /* なんちゃって修復 */
             if (baseNode == n.succ || baseNode == n.pred) {

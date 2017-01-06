@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.piax.gtrans.ov.ddll.DdllKey;
+import org.piax.gtrans.async.EventException.TimeoutException;
 
 /**
  * base class of any event
@@ -27,8 +28,7 @@ public abstract class Event implements Comparable<Event>, Serializable {
     private final int eventId = System.identityHashCode(this);
 
     public long delay;
-    transient public Runnable timeout;    // run at sender node
-    transient public Runnable error;      // run at sender node
+    transient public FailureCallback failureCallback;    // run at sender node
     public List<Node> route = new ArrayList<>();
     public List<Node> routeWithFailed = new ArrayList<>();
     public Event(Node receiver) {
@@ -61,8 +61,9 @@ public abstract class Event implements Comparable<Event>, Serializable {
 
     @Override
     public String toString() {
-        return "[" + "vt=" + vtime + ", " + toStringMessage() + " from " + origin + " to "
-                + receiver + "]";
+        long rem = vtime - EventDispatcher.getVTime();
+        return "[" + "vt=" + vtime + "(rem=" + rem + "), " + toStringMessage()
+            + " from " + origin + " to " + receiver + "]";
     }
 
     public int getEventId() {
@@ -82,6 +83,10 @@ public abstract class Event implements Comparable<Event>, Serializable {
     }
     
     public void beforeSendHook() {
+        // empty
+    }
+
+    public void beforeRunHook() {
         // empty
     }
 
@@ -109,6 +114,10 @@ public abstract class Event implements Comparable<Event>, Serializable {
         public void run() {
             after.run();
         }
+        @Override
+        public String toString() {
+            return "ScheduleEvent";
+        }
     }
 
     /**
@@ -120,6 +129,7 @@ public abstract class Event implements Comparable<Event>, Serializable {
     public static abstract class RequestEvent<T extends RequestEvent<T, U>,
             U extends ReplyEvent<T, U>> extends Event {
         final transient EventHandler<U> after;
+        transient ScheduleEvent timeoutEvent; 
         public RequestEvent(Node receiver, EventHandler<U> after) {
             super(receiver);
             this.after = after;
@@ -129,6 +139,10 @@ public abstract class Event implements Comparable<Event>, Serializable {
         public void beforeSendHook() {
             assert(EventDispatcher.lookupRequestEvent(this.getEventId()) == null);
             EventDispatcher.registerRequestEvent(this);
+            this.timeoutEvent = EventDispatcher.sched(NetworkParams.NETWORK_TIMEOUT,
+                    () -> {
+                        this.failureCallback.run(new TimeoutException());
+                    });
         }
     }
 
@@ -151,12 +165,21 @@ public abstract class Event implements Comparable<Event>, Serializable {
             this.routeWithFailed.addAll(req.routeWithFailed);
         }
 
+        @Override
+        public void beforeRunHook() {
+            if (req.timeoutEvent != null) {
+                EventDispatcher.cancelEvent(req.timeoutEvent);
+                req.timeoutEvent = null;
+            }
+        }
+
         @SuppressWarnings("unchecked")
         @Override
         public void run() {
             req.after.handle((U)this);
         }
 
+        @SuppressWarnings("unchecked")
         private void readObject(ObjectInputStream stream) throws IOException,
             ClassNotFoundException {
             stream.defaultReadObject();
@@ -198,33 +221,28 @@ public abstract class Event implements Comparable<Event>, Serializable {
         public Node pred;
         public Node succ;
 
-        public LookupDone(Lookup req, Node succ) {
-            this(req, null, succ);
-        }
-
         public LookupDone(Lookup req, Node pred, Node succ) {
             super(req);
             this.pred = pred;
             this.succ = succ;
+            assert Node.isOrdered(pred.key, true, req.key, succ.key, false);
         }
     }
+    
+    public static class ErrorEvent extends ReplyEvent {
+        final public EventException reason;
 
-    public static class LookupError extends Event {
-        final public Lookup req;
-        final public String reason;
-
-        public LookupError(Lookup req, String reason) {
-            super(req.origin);
-            this.req = req;
+        public ErrorEvent(RequestEvent req, EventException reason) {
+            super(req);
             this.reason = reason;
         }
         @Override
         public void run() {
-            System.out.println("LookupError!");
-            if (req.error != null) {
-                Runnable e = req.error;
-                req.error = null;
-                e.run();
+            System.out.println("ErrorEvent");
+            if (req.failureCallback != null) {
+                FailureCallback h = req.failureCallback;
+                req.failureCallback = null;
+                h.run(reason);
             }
         }
         @Override

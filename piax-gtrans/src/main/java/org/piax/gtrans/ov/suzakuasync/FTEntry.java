@@ -11,6 +11,7 @@
  */
 package org.piax.gtrans.ov.suzakuasync;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -20,7 +21,7 @@ import org.piax.gtrans.async.Node;
 /**
  * an entry of a finger table
  */
-public class FTEntry implements Cloneable {
+public class FTEntry implements Cloneable, Serializable {
     private Node link;
     protected Node[] nbrs;
 

@@ -6,63 +6,69 @@ import org.piax.gtrans.async.Event;
 import org.piax.gtrans.async.Event.ReplyEvent;
 import org.piax.gtrans.async.Event.RequestEvent;
 import org.piax.gtrans.async.EventHandler;
-import org.piax.gtrans.async.Node;
-import org.piax.gtrans.async.Node.NodeEventCallback;
 import org.piax.gtrans.async.LocalNode;
+import org.piax.gtrans.async.Node;
+import org.piax.gtrans.async.SuccessCallback;
 import org.piax.gtrans.ov.ddll.DdllKey;
 
 public abstract class DdllEvent {
-    public static class SetR extends Event {
+    public static class SetR extends RequestEvent<SetR, SetRAckNak> {
         Node rNew, rCur;
         int rnewseq;
-        NodeEventCallback job;
+        transient SuccessCallback successCallback;
 
         public SetR(Node receiver, Node rNew, Node rCur, int newrseq,
-                NodeEventCallback job) {
-            super(receiver);
+                SuccessCallback job) {
+            super(receiver, (SetRAckNak reply) -> {
+                reply.handle();
+            });
             this.rNew = rNew;
             this.rCur = rCur;
             this.rnewseq = newrseq;
-            this.job = job;
+            this.successCallback = job;
         }
 
         @Override
         public void run() {
-            //((DdllNode) receiver.).setr(this);
             ((DdllStrategy) getBaseStrategy()).setr(this);
         }
     }
 
-    public static class SetRAck extends Event {
+    public static abstract class SetRAckNak extends ReplyEvent<SetR, SetRAckNak> {
+        public SetRAckNak(SetR request) {
+            super(request);
+        }
+        public abstract void handle();
+    }
+
+    public static class SetRAck extends SetRAckNak {
         int rnewnum;
         Set<Node> nbrs;
 
-        public SetRAck(Node q, int rnewnum, Set<Node> nbrs) {
-            super(q);
+        public SetRAck(SetR request, int rnewnum, Set<Node> nbrs) {
+            super(request);
             this.rnewnum = rnewnum;
             this.nbrs = nbrs;
         }
 
         @Override
-        public void run() {
+        public void handle() {
             ((DdllStrategy) getBaseStrategy()).setrack(this, nbrs);
         }
     }
 
-    public static class SetRNak extends Event {
+    public static class SetRNak extends SetRAckNak {
         Node pred; // hint
         Node succ; // hint
-        SetR setr; // for retry
 
-        public SetRNak(Node receiver, Node pred, Node succ, SetR setr) {
-            super(receiver);
+        public SetRNak(SetR request, Node pred, Node succ) {
+            super(request);
             this.pred = pred;
             this.succ = succ;
-            this.setr = setr;
         }
 
         @Override
-        public void run() {
+        public void handle() {
             ((DdllStrategy) getBaseStrategy()).setrnak(this);
         }
     }

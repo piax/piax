@@ -4,8 +4,10 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Set;
 
+import org.piax.common.TransportId;
 import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.IdConflictException;
+import org.piax.gtrans.async.FailureCallback;
 import org.piax.gtrans.async.Event;
 import org.piax.gtrans.async.Event.Lookup;
 import org.piax.gtrans.async.Event.LookupDone;
@@ -13,13 +15,13 @@ import org.piax.gtrans.async.EventDispatcher;
 import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.async.NetworkParams;
 import org.piax.gtrans.async.Node;
-import org.piax.gtrans.async.Node.NodeEventCallback;
 import org.piax.gtrans.async.Node.NodeMode;
 import org.piax.gtrans.async.NodeFactory;
 import org.piax.gtrans.async.NodeStrategy;
 import org.piax.gtrans.async.Option.EnumOption;
 import org.piax.gtrans.async.Option.IntegerOption;
 import org.piax.gtrans.async.Sim;
+import org.piax.gtrans.async.SuccessCallback;
 import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.gtrans.ov.ddllasync.DdllEvent.Ping;
 import org.piax.gtrans.ov.ddllasync.DdllEvent.Pong;
@@ -32,9 +34,11 @@ import org.piax.gtrans.ov.ddllasync.DdllEvent.SetRNak;
 public class DdllStrategy extends NodeStrategy {
     public static class DdllNodeFactory extends NodeFactory {
         @Override
-        public LocalNode createNode(ChannelTransport<?> trans, DdllKey key,
-                int latency) throws IOException, IdConflictException {
-            return new LocalNode(trans, key, new DdllStrategy(), latency);
+        public LocalNode createNode(TransportId transId,
+                ChannelTransport<?> trans, DdllKey key, int latency)
+                        throws IOException, IdConflictException {
+            return new LocalNode(transId, trans, key, new DdllStrategy(),
+                    latency);
         }
 
         @Override
@@ -75,7 +79,7 @@ public class DdllStrategy extends NodeStrategy {
     public int joinTime = -1;
     private int joinMsgs = 0;
 
-    private NodeEventCallback leaveCallback;
+    private SuccessCallback leaveCallback;
 
     public static void load() {
     }
@@ -110,37 +114,39 @@ public class DdllStrategy extends NodeStrategy {
     }
 
     @Override
-    public void joinAfterLookup(LookupDone l) {
-        join(l.pred, l.succ, null);
+    public void joinAfterLookup(LookupDone l, SuccessCallback cb,
+            FailureCallback eh) {
+        join(l.pred, l.succ, cb, eh);
     }
 
-    public void joinAfterLookup(LookupDone l, NodeEventCallback job) {
-        join(l.pred, l.succ, job);
+    public void joinAfterLookup(LookupDone l, SuccessCallback job) {
+        join(l.pred, l.succ, job, null);
     }
 
-    public void join(Node pred, Node succ, NodeEventCallback job) {
+    public void join(Node pred, Node succ, SuccessCallback job,
+            FailureCallback eh) {
         n.pred = pred;
         n.succ = succ;
         status = DdllStatus.INS;
         Event ev = new SetR(n.pred, n, n.succ, 0, job);
-        n.post(ev, () -> {
+        n.post(ev, (exc) -> {
             System.out.println(n + ": join: SetRAck/Nak timeout. ");
-            // XXX: we have to return error
+            if (eh != null) eh.run(exc);
             // fix(ev.receiver); // recovery
         });
     }
 
     @Override
-    public void leave(NodeEventCallback callback) {
+    public void leave(SuccessCallback callback) {
         leave(callback, null);
     }
 
-    public void leave(NodeEventCallback callback, NodeEventCallback job) {
+    public void leave(SuccessCallback callback, SuccessCallback job) {
         System.out.println(n + ": leave start");
         status = DdllStatus.DEL;
         this.leaveCallback = callback;
         Event ev = new SetR(n.pred, n.succ, n, rseq + 1, job);
-        n.post(ev, () -> {
+        n.post(ev, (exc) -> {
             System.out.println(n + ": leave: SetRAck/Nak timeout. retry.");
             fix(ev.receiver); // recovery
             leave(callback, job); // and retry!
@@ -159,15 +165,15 @@ public class DdllStrategy extends NodeStrategy {
         if (status != DdllStatus.IN || msg.rCur != n.succ) {
             if (status != DdllStatus.IN && status != DdllStatus.DEL) {
                 EventDispatcher.addCounter("SetR:!IN");
-                n.post(new SetRNak(msg.origin, null, null, msg)); // XXX:
+                n.post(new SetRNak(msg, null, null)); // XXX:
             } else {
                 EventDispatcher.addCounter("SetR:mismatch");
                 // ME ----- U ----  ME.R
                 if (Node.isIn(msg.rNew.key, n.key, n.succ.key)) {
-                    n.post(new SetRNak(msg.origin, n, n.succ, msg));
+                    n.post(new SetRNak(msg, n, n.succ));
                 } else {
                     // ME ----- ME.R ----  U
-                    n.post(new SetRNak(msg.origin, n.succ, msg.rCur, msg));
+                    n.post(new SetRNak(msg, n.succ, msg.rCur));
                 }
             }
         } else {
@@ -186,11 +192,11 @@ public class DdllStrategy extends NodeStrategy {
                 n.post(new SetL(msg.rNew, n, msg.rnewseq, nset));
             }
             leftNbrs.setPrevRightSet(msg.rNew, nset);
-            n.post(new SetRAck(msg.origin, rseq + 1, nset));
+            n.post(new SetRAck(msg, rseq + 1, nset));
             n.setSucc(msg.rNew);
             rseq = msg.rnewseq;
-            if (msg.job != null) {
-                msg.job.run(n);
+            if (msg.successCallback != null) {
+                msg.successCallback.run(n);
             }
         }
     }
@@ -205,7 +211,8 @@ public class DdllStrategy extends NodeStrategy {
             leftNbrs.add(getPredecessor());
             System.out.println(n + ": INSERTED, vtime = " + msg.vtime
                     + ", latency=" + n.latency);
-            listener.nodeInserted();
+            msg.req.successCallback.run(n);
+            //listener.nodeInserted();
             schedulePing();
         } else {
             status = DdllStatus.OUT;
@@ -227,13 +234,13 @@ public class DdllStrategy extends NodeStrategy {
             if (setrnakmode.value() == SetRNakMode.SETRNAK_OPT2) {
                 // DDLL with optimization2
                 if (msg.pred == n.pred) {
-                    join(msg.pred, msg.succ, msg.setr.job);
+                    join(msg.pred, msg.succ, msg.req.successCallback, msg.req.failureCallback);
                 } else {
-                    n.joinUsingIntroducer(msg.pred);
+                    n.joinUsingIntroducer(msg.pred, msg.req.successCallback, msg.req.failureCallback);
                 }
             } else if (setrnakmode.value() == SetRNakMode.SETRNAK_OPT1) {
                 // DDLL with optimization
-                join(msg.pred, msg.succ, msg.setr.job);
+                join(msg.pred, msg.succ, msg.req.successCallback, msg.req.failureCallback);
             } else {
                 // DDLL without optimization
                 int delay = 0;
@@ -250,12 +257,13 @@ public class DdllStrategy extends NodeStrategy {
                     break;
                 }
                 if (delay == 0) {
-                    n.joinUsingIntroducer(n.pred);
+                    n.joinUsingIntroducer(n.pred, msg.req.successCallback, msg.req.failureCallback);
                 } else {
                     //n.post(new DdllJoinLater(n, delay, n.pred));
                     EventDispatcher.sched(delay, () -> {
                         if (status == DdllStatus.OUT) {
-                            n.joinUsingIntroducer(msg.pred);
+                            n.joinUsingIntroducer(msg.pred, msg.req.successCallback,
+                                    msg.req.failureCallback);
                         }
                     });
                 }
@@ -266,7 +274,7 @@ public class DdllStrategy extends NodeStrategy {
             System.out.println("pred: " + getPredecessor().toStringDetail());
             long delay = (long)(NetworkParams.ONEWAY_DELAY * Sim.rand.nextDouble());
             EventDispatcher.sched(delay, () -> {
-                leave(leaveCallback, msg.setr.job);
+                leave(leaveCallback, msg.req.successCallback);
             });
         }
     }
@@ -312,7 +320,7 @@ public class DdllStrategy extends NodeStrategy {
             Node pred = getPredecessor();
             n.post(new Ping(pred, (Pong pong) -> {
                 schedulePing();
-            }), () -> {
+            }), (exc) -> {
                 fix(pred);
                 schedulePing();
             });

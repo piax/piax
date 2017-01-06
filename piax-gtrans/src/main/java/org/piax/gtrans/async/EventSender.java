@@ -7,15 +7,15 @@ import org.piax.common.TransportId;
 import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.GTransConfigValues;
 import org.piax.gtrans.IdConflictException;
+import org.piax.gtrans.RPCException;
 import org.piax.gtrans.RPCIf;
 import org.piax.gtrans.RPCInvoker;
 import org.piax.gtrans.RemoteCallable;
 import org.piax.gtrans.RemoteCallable.Type;
 
 public interface EventSender {
-    void send(Event ev);
-
-    void forward(Event ev);
+    void send(Event ev) throws RPCException;
+    void forward(Event ev) throws RPCException;
 
     public static class EventSenderSim implements EventSender {
         private static EventSenderSim instance = new EventSenderSim();
@@ -40,32 +40,32 @@ public interface EventSender {
 
     public static interface EventReceiverIf extends RPCIf {
         @RemoteCallable(Type.ONEWAY)
-        void recv(Event ev);
+        void recv(Event ev) throws RPCException;
     }
 
-    public static class EventSenderNet
-            extends RPCInvoker<EventReceiverIf, Endpoint>
+    public static class EventSenderNet<E extends Endpoint>
+            extends RPCInvoker<EventReceiverIf, E>
             implements EventSender, EventReceiverIf {
         public static TransportId DEFAULT_TRANSPORT_ID =
                 new TransportId("DdllAsync");
 
-        public EventSenderNet(ChannelTransport<?> trans)
+        public EventSenderNet(TransportId transId, ChannelTransport<E> trans)
                 throws IdConflictException, IOException {
-            super(DEFAULT_TRANSPORT_ID, (ChannelTransport<Endpoint>) trans);
+            super(transId, trans);
         }
 
         @Override
-        public void send(Event ev) {
+        public void send(Event ev) throws RPCException {
             EventReceiverIf stub =
-                    getStub(ev.receiver.addr, GTransConfigValues.rpcTimeout);
+                    getStub((E)ev.receiver.addr, GTransConfigValues.rpcTimeout);
             ev.beforeSendHook();
             stub.recv(ev);
         }
 
         @Override
-        public void forward(Event ev) {
+        public void forward(Event ev) throws RPCException {
             EventReceiverIf stub =
-                    getStub(ev.receiver.addr, GTransConfigValues.rpcTimeout);
+                    getStub((E)ev.receiver.addr, GTransConfigValues.rpcTimeout);
             stub.recv(ev);
         }
 
