@@ -277,11 +277,11 @@ public class Sim {
         a.initInitialNode();
         LocalNode b = createNode(factory, 10, NetworkParams.HALFWAY_DELAY);
         LocalNode z = createNode(factory, 100, NetworkParams.HALFWAY_DELAY);
-        b.joinUsingIntroducer(a, node -> System.out.println(node + " joined!"),
+        b.joinUsingIntroducer(a, () -> System.out.println(b + " joined!"),
                 exc -> {
                     System.out.println("Node b join failed!");
                 });
-        z.joinUsingIntroducer(a, node -> System.out.println(node + " joined"),
+        z.joinUsingIntroducer(a, () -> System.out.println(z + " joined"),
                 exc -> {
                     System.out.println("Node z join failed");
                 });
@@ -355,7 +355,7 @@ public class Sim {
     private void insertSeq(LocalNode[] nodes, List<Integer> order, int index,
             long initialDelay, long afterDelay, Runnable after) {
         LocalNode introducer = nodes[0];
-        nodes[order.get(index)].joinLater(introducer, initialDelay, node -> {
+        nodes[order.get(index)].joinLater(introducer, initialDelay, () -> {
             cNode++;
             if (index + 1 < order.size()) {
                 insertSeq(nodes, order, index + 1, afterDelay, afterDelay, after);
@@ -623,7 +623,7 @@ public class Sim {
                         r = Sim.rand.nextInt(ndel);
                     } while (failed[r]);
                     failed[r] = true; 
-                    nodes[delStart + r].leave(node -> cNode--);
+                    nodes[delStart + r].leave(() -> cNode--);
                 }
             });
         };
@@ -878,16 +878,16 @@ public class Sim {
             System.out.println(x + ": " + s + " to " + e + (
                     graceful[i] ? " graceful" : " ungraceful"));
             EventDispatcher.sched(s, () -> {
-                x.joinUsingIntroducer(nodes[0], (LocalNode y) -> {
+                x.joinUsingIntroducer(nodes[0], () -> {
                     cNode++;
                     iNode++;
                     EventDispatcher.sched((long)dur, () -> {
                         cNode--;
                         dNode++;
                         if (graceful[j]){
-                            y.leave();
+                            x.leave();
                         } else {
-                            y.fail();
+                            x.fail();
                         }
                     });
                 });
@@ -967,7 +967,7 @@ public class Sim {
         int LOOKUP_TIMES = 41;
         AllLookupStats[] alls = new AllLookupStats[LOOKUP_TIMES];
         insOrder.value().method.insert(this, nodes2, 1, num - 1, 0, 0,
-                () -> nodes[CENTER].joinLater(nodes[0], 0, (LocalNode x) -> {
+                () -> nodes[CENTER].joinLater(nodes[0], 0, () -> {
                     for (int i = 0; i < LOOKUP_TIMES; i++) {
                         alls[i] = new AllLookupStats();
                         long t = i * T;
@@ -1170,7 +1170,7 @@ public class Sim {
             introducer.initInitialNode();
             for (int i = 1; i < n; i++) {
                 LocalNode x = nodes[i];
-                x.joinUsingIntroducer(introducer, node -> {
+                x.joinUsingIntroducer(introducer, () -> {
                     insert.addSample(x.getInsertionTime());
                 });
             }

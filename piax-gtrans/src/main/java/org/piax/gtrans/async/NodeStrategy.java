@@ -44,9 +44,9 @@ public abstract class NodeStrategy {
     public abstract void initInitialNode();
 
     public abstract void joinAfterLookup(LookupDone lookupDone,
-            SuccessCallback success, FailureCallback failure);
+            Runnable success, FailureCallback failure);
 
-    public void leave(SuccessCallback callback) {
+    public void leave(Runnable success) {
         throw new UnsupportedOperationException("leave is not supported");
     }
 

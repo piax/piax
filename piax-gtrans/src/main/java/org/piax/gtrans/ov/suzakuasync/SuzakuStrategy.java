@@ -12,10 +12,10 @@ import java.util.stream.Collectors;
 import org.piax.common.TransportId;
 import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.IdConflictException;
-import org.piax.gtrans.async.FailureCallback;
 import org.piax.gtrans.async.Event.Lookup;
 import org.piax.gtrans.async.Event.LookupDone;
 import org.piax.gtrans.async.EventDispatcher;
+import org.piax.gtrans.async.FailureCallback;
 import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.async.NetworkParams;
 import org.piax.gtrans.async.Node;
@@ -26,8 +26,8 @@ import org.piax.gtrans.async.NodeStrategy;
 import org.piax.gtrans.async.Option.BooleanOption;
 import org.piax.gtrans.async.Option.IntegerOption;
 import org.piax.gtrans.async.Sim;
-import org.piax.gtrans.async.SuccessCallback;
 import org.piax.gtrans.ov.ddll.DdllKey;
+import org.piax.gtrans.ov.ddllasync.DdllEvent.SetRJob;
 import org.piax.gtrans.ov.ddllasync.DdllStrategy;
 import org.piax.gtrans.ov.ring.rq.FlexibleArray;
 import org.piax.gtrans.ov.suzakuasync.SuzakuEvent.FTEntRemoveEvent;
@@ -194,26 +194,26 @@ public class SuzakuStrategy extends NodeStrategy {
     }
 
     @Override
-    public void joinAfterLookup(LookupDone lookupDone, SuccessCallback cb,
+    public void joinAfterLookup(LookupDone lookupDone, Runnable cb,
             FailureCallback eh) {
         System.out.println("JoinAfterLookup: " + lookupDone.route); 
         System.out.println("JoinAfterLookup: " + lookupDone.hops());
         System.out.println("JOIN " + n.key + " between " + lookupDone.pred + " and " + lookupDone.succ);
         assert Node.isOrdered(lookupDone.pred.key, n.key, lookupDone.succ.key);
         joinMsgs += lookupDone.hops();
-        base.joinAfterLookup(lookupDone, (node) -> {
+        base.joinAfterLookup(lookupDone, () -> {
             // 右ノードが変更された契機でリバースポインタの不要なエントリを削除
-            SuzakuStrategy szk = (SuzakuStrategy)node.topStrategy;
+            SuzakuStrategy szk = (SuzakuStrategy)n.topStrategy;
             szk.sanitizeRevPtrs();
             nodeInserted();
-            cb.run(node);
+            cb.run();
         }, eh);
     }
 
     @Override
-    public void leave(SuccessCallback callback) {
+    public void leave(Runnable callback) {
         LocalNode.verbose("leave " + n);
-        SuccessCallback job;
+        SetRJob job;
         if (NOTIFY_WITH_REVERSE_POINTER.value()) {
             job = (node) -> {
                 // このラムダ式は，SetRを受信したノードで動作することに注意!
@@ -252,16 +252,15 @@ public class SuzakuStrategy extends NodeStrategy {
         }
         System.out.println(n + ": start DDLL deletion");
         DdllStrategy ddll = (DdllStrategy)base;
-        ddll.leave(node -> {
+        ddll.leave(() -> {
             // SetRAckを受信した場合の処理
-            assert node == n;
             n.mode = NodeMode.GRACE;
             System.out.println(n + ": mode=grace");
             EventDispatcher.sched(NetworkParams.ONEWAY_DELAY, () -> {
                 n.mode = NodeMode.DELETED;
                 System.out.println(n + ": mode=deleted");
                 if (callback != null) {
-                    callback.run(node);
+                    callback.run();
                 }
             });
         }, job /* jobは左ノードでSetRが成功した場合に左ノード上で実行される */);

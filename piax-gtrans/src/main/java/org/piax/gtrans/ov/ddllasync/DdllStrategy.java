@@ -7,11 +7,11 @@ import java.util.Set;
 import org.piax.common.TransportId;
 import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.IdConflictException;
-import org.piax.gtrans.async.FailureCallback;
 import org.piax.gtrans.async.Event;
 import org.piax.gtrans.async.Event.Lookup;
 import org.piax.gtrans.async.Event.LookupDone;
 import org.piax.gtrans.async.EventDispatcher;
+import org.piax.gtrans.async.FailureCallback;
 import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.async.NetworkParams;
 import org.piax.gtrans.async.Node;
@@ -21,7 +21,6 @@ import org.piax.gtrans.async.NodeStrategy;
 import org.piax.gtrans.async.Option.EnumOption;
 import org.piax.gtrans.async.Option.IntegerOption;
 import org.piax.gtrans.async.Sim;
-import org.piax.gtrans.async.SuccessCallback;
 import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.gtrans.ov.ddllasync.DdllEvent.Ping;
 import org.piax.gtrans.ov.ddllasync.DdllEvent.Pong;
@@ -29,6 +28,7 @@ import org.piax.gtrans.ov.ddllasync.DdllEvent.PropagateNeighbors;
 import org.piax.gtrans.ov.ddllasync.DdllEvent.SetL;
 import org.piax.gtrans.ov.ddllasync.DdllEvent.SetR;
 import org.piax.gtrans.ov.ddllasync.DdllEvent.SetRAck;
+import org.piax.gtrans.ov.ddllasync.DdllEvent.SetRJob;
 import org.piax.gtrans.ov.ddllasync.DdllEvent.SetRNak;
 
 public class DdllStrategy extends NodeStrategy {
@@ -79,8 +79,6 @@ public class DdllStrategy extends NodeStrategy {
     public int joinTime = -1;
     private int joinMsgs = 0;
 
-    private SuccessCallback leaveCallback;
-
     public static void load() {
     }
 
@@ -114,13 +112,13 @@ public class DdllStrategy extends NodeStrategy {
     }
 
     @Override
-    public void joinAfterLookup(LookupDone l, SuccessCallback success, 
+    public void joinAfterLookup(LookupDone l, Runnable success, 
             FailureCallback eh) {
         join(l.pred, l.succ, success, eh, null);
     }
 
-    public void join(Node pred, Node succ, SuccessCallback success, 
-            FailureCallback eh, SuccessCallback setRjob) {
+    public void join(Node pred, Node succ, Runnable success, 
+            FailureCallback eh, SetRJob setRjob) {
         n.pred = pred;
         n.succ = succ;
         status = DdllStatus.INS;
@@ -133,19 +131,18 @@ public class DdllStrategy extends NodeStrategy {
     }
 
     @Override
-    public void leave(SuccessCallback callback) {
+    public void leave(Runnable callback) {
         leave(callback, null);
     }
 
-    public void leave(SuccessCallback callback, SuccessCallback setRjob) {
+    public void leave(Runnable success, SetRJob setRjob) {
         System.out.println(n + ": leave start");
         status = DdllStatus.DEL;
-        this.leaveCallback = callback;
-        Event ev = new SetR(n.pred, n.succ, n, rseq + 1, setRjob, callback);
+        Event ev = new SetR(n.pred, n.succ, n, rseq + 1, setRjob, success);
         n.post(ev, (exc) -> {
-            System.out.println(n + ": leave: SetRAck/Nak timeout. retry.");
+            System.out.println(n + ": leave: SetRAck/Nak error. retry, " + exc);
             fix(ev.receiver); // recovery
-            leave(callback, setRjob); // and retry!
+            leave(success, setRjob); // and retry!
         });
     }
     
@@ -207,16 +204,14 @@ public class DdllStrategy extends NodeStrategy {
             leftNbrs.add(getPredecessor());
             System.out.println(n + ": INSERTED, vtime = " + msg.vtime
                     + ", latency=" + n.latency);
-            msg.req.successCallback.run(n);
+            msg.req.success.run();
             //listener.nodeInserted();
             schedulePing();
         } else {
             status = DdllStatus.OUT;
             System.out.println(n + ": DELETED, vtime = " + msg.vtime
                     + ", latency=" + n.latency);
-            if (leaveCallback != null) {
-                leaveCallback.run(n);
-            }
+            msg.req.success.run();
         }
     }
 
@@ -230,15 +225,15 @@ public class DdllStrategy extends NodeStrategy {
             if (setrnakmode.value() == SetRNakMode.SETRNAK_OPT2) {
                 // DDLL with optimization2
                 if (msg.pred == n.pred) {
-                    join(msg.pred, msg.succ, msg.req.successCallback,
+                    join(msg.pred, msg.succ, msg.req.success,
                             msg.req.failureCallback, msg.req.setRJob);
                 } else {
-                    n.joinUsingIntroducer(msg.pred, msg.req.setRJob,
+                    n.joinUsingIntroducer(msg.pred, msg.req.success,
                             msg.req.failureCallback);
                 }
             } else if (setrnakmode.value() == SetRNakMode.SETRNAK_OPT1) {
                 // DDLL with optimization
-                join(msg.pred, msg.succ, msg.req.successCallback,
+                join(msg.pred, msg.succ, msg.req.success,
                         msg.req.failureCallback, msg.req.setRJob);
             } else {
                 // DDLL without optimization
@@ -256,14 +251,14 @@ public class DdllStrategy extends NodeStrategy {
                     break;
                 }
                 if (delay == 0) {
-                    n.joinUsingIntroducer(n.pred, msg.req.successCallback,
+                    n.joinUsingIntroducer(n.pred, msg.req.success,
                             msg.req.failureCallback);
                 } else {
                     //n.post(new DdllJoinLater(n, delay, n.pred));
                     EventDispatcher.sched(delay, () -> {
                         if (status == DdllStatus.OUT) {
                             n.joinUsingIntroducer(msg.pred,
-                                    msg.req.successCallback,
+                                    msg.req.success,
                                     msg.req.failureCallback);
                         }
                     });
@@ -275,7 +270,7 @@ public class DdllStrategy extends NodeStrategy {
             System.out.println("pred: " + getPredecessor().toStringDetail());
             long delay = (long)(NetworkParams.ONEWAY_DELAY * Sim.rand.nextDouble());
             EventDispatcher.sched(delay, () -> {
-                leave(leaveCallback, msg.req.setRJob);
+                leave(msg.req.success, msg.req.setRJob);
             });
         }
     }

@@ -209,7 +209,7 @@ public class LocalNode extends Node {
         Node temp = Node.getTemporaryInstance(introducer);
         ObjectLatch<Boolean> latch = new ObjectLatch<>(1);
         //System.out.println(this + ": joining");
-        joinUsingIntroducer(temp, node -> latch.set(true),
+        joinUsingIntroducer(temp, () -> latch.set(true),
                 e -> latch.setException(e));
         try {
             return latch.getOrException();
@@ -225,7 +225,7 @@ public class LocalNode extends Node {
     public boolean removeKey() throws InterruptedException {
         ObjectLatch<Boolean> latch = new ObjectLatch<>(1);
         System.out.println(this + ": leaving");
-        leave(node -> latch.set(true));
+        leave(() -> latch.set(true));
         try {
             return latch.getOrException();
         } catch (InterruptedException e) {
@@ -256,26 +256,26 @@ public class LocalNode extends Node {
      * @param introducer
      */
     public void joinLater(LocalNode introducer, long delay,
-            SuccessCallback callback) {
+            Runnable callback) {
         joinLater(introducer, delay, callback, (exc) -> {
             throw new Error("joinLater got exception", exc);
         });
     }
 
     public void joinLater(LocalNode introducer, long delay,
-            SuccessCallback callback, FailureCallback eh) {
+            Runnable callback, FailureCallback failure) {
         mode = NodeMode.TO_BE_INSERTED;
         if (delay == 0) {
-            joinUsingIntroducer(introducer, callback, eh);
+            joinUsingIntroducer(introducer, callback, failure);
         } else {
             EventDispatcher.sched(delay, () -> {
-                this.joinUsingIntroducer(introducer, callback, eh);
+                this.joinUsingIntroducer(introducer, callback, failure);
             });
         }
     }
 
-    public void joinUsingIntroducer(Node introducer, SuccessCallback callback) {
-        joinUsingIntroducer(introducer, callback, exc -> {
+    public void joinUsingIntroducer(Node introducer, Runnable success) {
+        joinUsingIntroducer(introducer, success, exc -> {
             throw new Error("joinUsingIntroducer got exception", exc);
         });
     }
@@ -285,7 +285,7 @@ public class LocalNode extends Node {
      * @param introducer
      * @param callback  a callback that is called after join succeeds
      */
-    public void joinUsingIntroducer(Node introducer, SuccessCallback success,
+    public void joinUsingIntroducer(Node introducer, Runnable success,
             FailureCallback failure) {
         if (insertionStartTime == -1) {
             insertionStartTime = getVTime();
@@ -293,10 +293,10 @@ public class LocalNode extends Node {
         this.mode = NodeMode.INSERTING;
         this.introducer = introducer;
         Event ev = new Lookup(introducer, key, this, (LookupDone results) -> {
-            topStrategy.joinAfterLookup(results, (node) -> {
+            topStrategy.joinAfterLookup(results, () -> {
                 insertionEndTime = getVTime();
                 mode = NodeMode.INSERTED;
-                success.run(this);
+                success.run();
             }, failure);
         });
         post(ev, failure);
@@ -306,7 +306,7 @@ public class LocalNode extends Node {
         leave(null);
     }
 
-    public void leave(SuccessCallback callback) {
+    public void leave(Runnable callback) {
         System.out.println("Node " + this + " leaves");
         topStrategy.leave(callback);
     }

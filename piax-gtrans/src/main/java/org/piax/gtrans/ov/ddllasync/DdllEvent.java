@@ -1,5 +1,6 @@
 package org.piax.gtrans.ov.ddllasync;
 
+import java.io.Serializable;
 import java.util.Set;
 
 import org.piax.gtrans.async.Event;
@@ -8,18 +9,21 @@ import org.piax.gtrans.async.Event.RequestEvent;
 import org.piax.gtrans.async.EventHandler;
 import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.async.Node;
-import org.piax.gtrans.async.SuccessCallback;
 import org.piax.gtrans.ov.ddll.DdllKey;
 
 public abstract class DdllEvent {
+    @FunctionalInterface
+    public static interface SetRJob extends Serializable {
+        void run(LocalNode node);
+    }
     public static class SetR extends RequestEvent<SetR, SetRAckNak> {
         Node rNew, rCur;
         int rnewseq;
-        SuccessCallback setRJob;
-        transient SuccessCallback successCallback;
+        SetRJob setRJob;
+        transient Runnable success;
 
         public SetR(Node receiver, Node rNew, Node rCur, int newrseq,
-                SuccessCallback job, SuccessCallback successCallback) {
+                SetRJob job, Runnable success) {
             super(receiver, (SetRAckNak reply) -> {
                 reply.handle();
             });
@@ -27,7 +31,7 @@ public abstract class DdllEvent {
             this.rCur = rCur;
             this.rnewseq = newrseq;
             this.setRJob = job;
-            this.successCallback = successCallback;
+            this.success = success;
         }
 
         @Override
