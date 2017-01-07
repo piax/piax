@@ -505,7 +505,8 @@ public class SuzakuStrategy extends NodeStrategy {
         }
         long delay;
         if (isFirst) {
-            delay = UPDATE_FINGER_PERIOD.value();
+            //delay = UPDATE_FINGER_PERIOD.value();
+            delay = Sim.rand.nextInt(UPDATE_FINGER_PERIOD.value());
         } else {
             delay = UPDATE_FINGER_PERIOD.value();
             //delay = (int)(UPDATE_FINGER_PERIOD * (0.9+Math.random()*.2));

@@ -15,17 +15,19 @@ public abstract class DdllEvent {
     public static class SetR extends RequestEvent<SetR, SetRAckNak> {
         Node rNew, rCur;
         int rnewseq;
+        SuccessCallback setRJob;
         transient SuccessCallback successCallback;
 
         public SetR(Node receiver, Node rNew, Node rCur, int newrseq,
-                SuccessCallback job) {
+                SuccessCallback job, SuccessCallback successCallback) {
             super(receiver, (SetRAckNak reply) -> {
                 reply.handle();
             });
             this.rNew = rNew;
             this.rCur = rCur;
             this.rnewseq = newrseq;
-            this.successCallback = job;
+            this.setRJob = job;
+            this.successCallback = successCallback;
         }
 
         @Override

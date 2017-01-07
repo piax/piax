@@ -19,20 +19,27 @@ import org.piax.gtrans.async.Option.BooleanOption;
 public class EventDispatcher {
     // run in real-time
     public static BooleanOption realtime = new BooleanOption(false, "-realtime");
+    public static boolean REALWORLD = false;
 
     private static long vtime = 0;
     public static int nmsgs = 0;
     public static int DEFAULT_MAX_TIME = 200 * 1000;
-    static ReentrantLock lock = new ReentrantLock();
-    static Condition cond = lock.newCondition();
-    static PriorityQueue<Event> timeq = new PriorityQueue<>();
-    static Map<String, Count> counter = new HashMap<String, Count>();
+    private static ReentrantLock lock = new ReentrantLock();
+    private static Condition cond = lock.newCondition();
+    private static PriorityQueue<Event> timeq = new PriorityQueue<>();
+    private static Map<String, Count> counter = new HashMap<String, Count>();
 
     public static class Count {
         int count;
     }
 
     public static void load() {
+    }
+
+    public static void init() {
+        if (REALWORLD) {
+            startExecutorThread();
+        } // else, call startSimulation() manually
     }
 
     public static void enqueue(Event ev) {
@@ -148,14 +155,30 @@ public class EventDispatcher {
         return cnt.count;
     }
 
-    public static void run() {
-        run(DEFAULT_MAX_TIME);
+    private static Thread thread;
+    public static void startExecutorThread() {
+        synchronized (EventDispatcher.class) {
+            if (thread == null) {
+                realtime.set(true);
+                thread = new Thread(() -> run(0));
+                thread.start();
+            }
+        }
     }
 
-    public static void run(long maxTime) {
-        long limit = getVTime() + maxTime;
+    public static void startSimulation(long duration) {
+        assert thread == null;
+        run(duration);
+    }
+
+    private static void run(long duration) {
+        System.out.println("Event Executor Started");
+        long limit = 0;
+        if (duration != 0) {
+            limit = getVTime() + duration;
+        }
         while (true) {
-            if (getVTime() > limit) {
+            if (limit != 0 && getVTime() > limit) {
                 System.out.println(
                         "*** execution time over: " + getVTime() + " > " + limit);
                 return;
@@ -192,10 +215,16 @@ public class EventDispatcher {
                 if (ev.receiver instanceof LocalNode) {
                     receiver = (LocalNode) ev.receiver;
                 } else {
-                    Node ins = Node.getInstance(ev.receiver.key);
-                    assert ins != null;
-                    receiver = (LocalNode) ins;
-                    ev.receiver = (LocalNode) ins;
+                    LocalNode ln;
+                    if (ev.receiver.key == null) {
+                        // special case
+                        ln = Node.getAnyLocalNode();
+                    } else {
+                        ln = (LocalNode) Node.getInstance(ev.receiver.key);
+                    }
+                    assert ln != null;
+                    receiver = (LocalNode) ln;
+                    ev.receiver = (LocalNode) ln;
                 }
             }
             if (receiver != null) {
@@ -205,7 +234,6 @@ public class EventDispatcher {
                 System.out.println(
                         receiver + ": received in grace period: " + ev);
                 if (ev instanceof Lookup) {
-                    //post(new LookupError((Lookup)ev, "grace"));
                     addToRoute(ev.route, receiver);
                     ev.beforeRunHook();
                     ev.run();
@@ -229,5 +257,4 @@ public class EventDispatcher {
             route.add(next);
         }
     }
-
 }

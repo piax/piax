@@ -64,7 +64,7 @@ public abstract class Event implements Comparable<Event>, Serializable {
     @Override
     public String toString() {
         long rem = vtime - EventDispatcher.getVTime();
-        return "[" + "vt=" + vtime + "(rem=" + rem + "), " + toStringMessage()
+        return "[id=" + getEventId() + ", vt=" + vtime + "(rem=" + rem + "), " + toStringMessage()
             + " from " + origin + " to " + receiver + "]";
     }
 
@@ -141,21 +141,23 @@ public abstract class Event implements Comparable<Event>, Serializable {
 
         @Override
         public void beforeSendHook() {
-            assert(lookupRequestEvent(this.getEventId()) == null);
             registerRequestEvent(this);
             this.timeoutEvent = EventDispatcher.sched(NetworkParams.NETWORK_TIMEOUT,
                     () -> {
                         this.failureCallback.run(new TimeoutException());
                     });
         }
-
-        private static void registerRequestEvent(RequestEvent<?, ?> ev) {
+        
+        /*
+         * handling `requestMap' should be in synchronized block because the
+         * upper layer might be multi-threaded.
+         */
+        private synchronized static void registerRequestEvent(RequestEvent<?, ?> ev) {
             requestMap.put(ev.getEventId(), ev);
         }
 
-        public static RequestEvent<?, ?> lookupRequestEvent(int id) {
+        public synchronized static RequestEvent<?, ?> removeRequestEvent(int id) {
             RequestEvent<?, ?> ev = requestMap.remove(id);
-            //System.out.println("lookup request, id=" + id + ", " + ev);
             return ev;
         }
     }
@@ -197,7 +199,7 @@ public abstract class Event implements Comparable<Event>, Serializable {
         private void readObject(ObjectInputStream stream) throws IOException,
             ClassNotFoundException {
             stream.defaultReadObject();
-            RequestEvent<?, ?> r = RequestEvent.lookupRequestEvent(reqEventId);
+            RequestEvent<?, ?> r = RequestEvent.removeRequestEvent(reqEventId);
             assert r != null;
             this.req = (T)r;
             assert this.req.after != null;

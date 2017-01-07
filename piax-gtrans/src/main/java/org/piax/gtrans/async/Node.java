@@ -4,6 +4,7 @@ import java.io.ObjectStreamException;
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 import org.piax.common.Endpoint;
 import org.piax.gtrans.ov.ddll.DdllKey;
@@ -26,9 +27,11 @@ public class Node implements Comparable<Node>, Serializable {
     public final DdllKey key;
     public final Endpoint addr;
     public final int latency;
-    
+
+    // we have to guard `instances' with synchronized block
     private static Map<DdllKey, Node> instances = new HashMap<>();
-    public static Node getInstance(DdllKey ddllkey, Endpoint ep, int latency) {
+    public static synchronized Node getInstance(DdllKey ddllkey, Endpoint ep,
+            int latency) {
         Node n = instances.get(ddllkey);
         if (n == null) {
             n = new Node(ddllkey, ep, latency);
@@ -36,7 +39,7 @@ public class Node implements Comparable<Node>, Serializable {
         return n;
     }
 
-    public static Node getInstance(DdllKey ddllkey) {
+    public static synchronized Node getInstance(DdllKey ddllkey) {
         return instances.get(ddllkey);
     }
 
@@ -44,12 +47,22 @@ public class Node implements Comparable<Node>, Serializable {
         return new Node(null, ep, 0);
     }
 
+    public static synchronized LocalNode getAnyLocalNode() {
+        Optional<Node> anyNode = instances.values().stream()
+                .filter(v -> (v instanceof LocalNode)
+                        && ((LocalNode)v).mode == NodeMode.INSERTED)
+                .findFirst();
+        return (LocalNode) anyNode.orElse(null);
+    }
+
     protected Node(DdllKey ddllkey, Endpoint ep, int latency) {
         this.key = ddllkey;
         this.addr = ep;
         this.latency = latency;
-        if (ddllkey != null && !instances.containsKey(ddllkey)) {
-            instances.put(ddllkey, this);
+        synchronized (Node.class) {
+            if (ddllkey != null && !instances.containsKey(ddllkey)) {
+                instances.put(ddllkey, this);
+            }
         }
     }
 
@@ -80,6 +93,9 @@ public class Node implements Comparable<Node>, Serializable {
     }
 
     public int latency(Node receiver) {
+        if (EventDispatcher.realtime.value()) {
+            return 0;
+        }
         if (this == receiver) {
             return 0;
         }

@@ -127,7 +127,7 @@ public class Sim {
     public static BooleanOption netOpt = new BooleanOption(false, "-net");
     public static EnumOption<ExpType> exptype
         = new EnumOption<>(ExpType.class, ExpType.CONCURRENTJOIN, "-type");
-    public static Random rand;
+    public static Random rand = new MersenneTwister();
     @SuppressWarnings("unused")
     private static IntegerOption seedOption = new IntegerOption(-1, "-seed", val -> {
         if (val == -1) {
@@ -184,14 +184,13 @@ public class Sim {
         exptype.method.run(this, factory);
     }
 
-    private static void startSim(LocalNode[] nodes, long duration) {
-        Sim.nodes = nodes;
-        EventDispatcher.run(duration);
+    private static void startSim(LocalNode[] nodes) {
+        startSim(nodes, 0);
     }
 
-    private static void startSim(LocalNode[] nodes) {
+    private static void startSim(LocalNode[] nodes, long duration) {
         Sim.nodes = nodes;
-        EventDispatcher.run();
+        EventDispatcher.startSimulation(duration);
     }
 
     public static LocalNode[] getNodes() {
@@ -1170,8 +1169,9 @@ public class Sim {
             LocalNode introducer = nodes[0];//createNode(factory, MINID);
             introducer.initInitialNode();
             for (int i = 1; i < n; i++) {
-                nodes[i].joinUsingIntroducer(introducer, node -> {
-                    insert.addSample(node.getInsertionTime());
+                LocalNode x = nodes[i];
+                x.joinUsingIntroducer(introducer, node -> {
+                    insert.addSample(x.getInsertionTime());
                 });
             }
         }

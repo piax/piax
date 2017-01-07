@@ -2,7 +2,6 @@ package org.piax.gtrans.async;
 
 import java.io.IOException;
 import java.io.ObjectStreamException;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -20,7 +19,7 @@ import org.piax.gtrans.async.EventSender.EventSenderSim;
 import org.piax.gtrans.async.ObjectLatch.WrappedException;
 import org.piax.gtrans.async.Sim.LookupStat;
 import org.piax.gtrans.ov.ddll.DdllKey;
-import org.piax.gtrans.ov.ring.UnavailableException;
+import org.piax.util.UniqId;
 
 public class LocalNode extends Node {
     public long insertionStartTime = -1L;
@@ -35,9 +34,19 @@ public class LocalNode extends Node {
     private LinkChangeEventCallback predChange;
     private LinkChangeEventCallback succChange;
 
-    public LocalNode(TransportId transId, ChannelTransport<?> trans, 
+    public static LocalNode newLocalNode(TransportId transId,
+            ChannelTransport<?> trans, Comparable<?> rawkey,
+            NodeStrategy topStrategy, int latency)
+            throws IdConflictException, IOException {
+        DdllKey ddllkey = new DdllKey(rawkey, new UniqId(trans.getPeerId()));
+        LocalNode node =
+                new LocalNode(transId, trans, ddllkey, topStrategy, latency);
+        return node;
+    }
+
+    public LocalNode(TransportId transId, ChannelTransport<?> trans,
             DdllKey ddllkey, NodeStrategy topStrategy, int latency)
-                    throws IdConflictException, IOException {
+            throws IdConflictException, IOException {
         super(ddllkey, trans == null ? null : trans.getEndpoint(), latency);
         if (trans == null) {
             this.sender = EventSenderSim.getInstance();
@@ -52,7 +61,7 @@ public class LocalNode extends Node {
         this.baseStrategy = topStrategy;
         topStrategy.setupNode(this);
     }
-    
+
     /**
      * replace this instance with corresponding Node object on serialization.
      * 
@@ -122,8 +131,12 @@ public class LocalNode extends Node {
         ev.failureCallback = failure;
         ev.vtime = EventDispatcher.getVTime() + ev.delay;
         if (Sim.verbose) {
-            System.out.println(this + "|send event " + ev + ", (arrive at T"
-                    + ev.vtime + ")");
+            if (ev.delay != 0) {
+                System.out.println(this + "|send event " + ev + ", (arrive at T"
+                        + ev.vtime + ")");
+            } else {
+                System.out.println(this + "|send event " + ev);
+            }
         }
         try {
             sender.send(ev);
@@ -151,8 +164,12 @@ public class LocalNode extends Node {
         }
         ev.receiver = dest;
         if (Sim.verbose) {
-            System.out.println(this + "|forward to " + dest + ", " + ev
-                    + ", (arrive at T" + ev.vtime + ")");
+            if (ev.delay != 0) {
+                System.out.println(this + "|forward to " + dest + ", " + ev
+                        + ", (arrive at T" + ev.vtime + ")");
+            } else {
+                System.out.println(this + "|forward to " + dest + ", " + ev);
+            }
         }
         try {
             sender.forward(ev);
@@ -172,45 +189,59 @@ public class LocalNode extends Node {
         }
         return insertionEndTime - insertionStartTime;
     }
-    
+
     public int getMessages4Join() {
         return topStrategy.getMessages4Join();
     }
 
     /*
-     * Compatible Methods
+     * synchronous interface
      */
     /**
      * insert a key into a ring.
      * 
-     * @param introducer 既に挿入済みのノード
-     * @return 成功したらtrue
-     * @throws UnavailableException introducerにkeyが存在しない
-     * @throws IOException introducerとの通信でエラー or insertion failure
+     * @param introducer a node that has been inserted to the ring.
+     * @return true on success
+     * @throws IOException thrown in communication errors
      */
-    protected boolean addKey(Endpoint introducer) throws IOException {
+    public boolean addKey(Endpoint introducer) throws IOException,
+        InterruptedException {
         Node temp = Node.getTemporaryInstance(introducer);
         ObjectLatch<Boolean> latch = new ObjectLatch<>(1);
-        joinUsingIntroducer(temp,
-                node -> latch.set(true), 
+        //System.out.println(this + ": joining");
+        joinUsingIntroducer(temp, node -> latch.set(true),
                 e -> latch.setException(e));
         try {
             return latch.getOrException();
         } catch (InterruptedException e) {
-            throw new IOException(e);
+            throw e;
         } catch (WrappedException e) {
             throw new IOException(e.getCause());
+        } finally {
+            //System.out.println("join finished");
         }
     }
-    
-    protected boolean removeKey() {
-        return true;
+
+    public boolean removeKey() throws InterruptedException {
+        ObjectLatch<Boolean> latch = new ObjectLatch<>(1);
+        System.out.println(this + ": leaving");
+        leave(node -> latch.set(true));
+        try {
+            return latch.getOrException();
+        } catch (InterruptedException e) {
+            throw e;
+        } catch (WrappedException e) {
+            System.out.println(this + ": leave got " + e);
+            return false;
+        } finally {
+            System.out.println("leave finished");
+        }
     }
+
     /*
-     * Compatible Methods End
+     * asynchronous interface
      */
 
-    
     /**
      * insert an initial node
      */
@@ -230,7 +261,7 @@ public class LocalNode extends Node {
             throw new Error("joinLater got exception", exc);
         });
     }
-    
+
     public void joinLater(LocalNode introducer, long delay,
             SuccessCallback callback, FailureCallback eh) {
         mode = NodeMode.TO_BE_INSERTED;
@@ -243,8 +274,7 @@ public class LocalNode extends Node {
         }
     }
 
-    public void joinUsingIntroducer(Node introducer,
-            SuccessCallback callback) {
+    public void joinUsingIntroducer(Node introducer, SuccessCallback callback) {
         joinUsingIntroducer(introducer, callback, exc -> {
             throw new Error("joinUsingIntroducer got exception", exc);
         });
@@ -255,8 +285,8 @@ public class LocalNode extends Node {
      * @param introducer
      * @param callback  a callback that is called after join succeeds
      */
-    public void joinUsingIntroducer(Node introducer, SuccessCallback cb,
-            FailureCallback eh) {
+    public void joinUsingIntroducer(Node introducer, SuccessCallback success,
+            FailureCallback failure) {
         if (insertionStartTime == -1) {
             insertionStartTime = getVTime();
         }
@@ -266,10 +296,10 @@ public class LocalNode extends Node {
             topStrategy.joinAfterLookup(results, (node) -> {
                 insertionEndTime = getVTime();
                 mode = NodeMode.INSERTED;
-                cb.run(this);
-            }, eh);
+                success.run(this);
+            }, failure);
         });
-        post(ev, eh);
+        post(ev, failure);
     }
 
     public void leave() {
@@ -305,7 +335,8 @@ public class LocalNode extends Node {
         long start = EventDispatcher.getVTime();
         post(new Lookup(this, key, this, (LookupDone done) -> {
             if (done.req.key.compareTo(done.pred.key) != 0) {
-                System.out.println("Lookup error: req.key=" + done.req.key + ", " + done.pred.key);
+                System.out.println("Lookup error: req.key=" + done.req.key
+                        + ", " + done.pred.key);
                 System.out.println(done.pred.toStringDetail());
                 //dispatcher.dump();
                 stat.lookupFailure.addSample(1);
@@ -320,18 +351,16 @@ public class LocalNode extends Node {
             //stat.failedNodes.addSample(nfails);
             stat.failedNodes.addSample(nfails > 0 ? 1 : 0);
             long end = EventDispatcher.getVTime();
-            long elapsed = (int)(end - start);
-            stat.time.addSample((double)elapsed);
+            long elapsed = (int) (end - start);
+            stat.time.addSample((double) elapsed);
             if (nfails > 0) {
-                System.out.println("lookup done!: "
-                        + done.route
-                        + " (" + h + " hops, " + elapsed
-                        + ", actual route=" + done.routeWithFailed
-                        + ", evid=" + done.req.getEventId()
-                        + ")");
+                System.out.println("lookup done!: " + done.route + " (" + h
+                        + " hops, " + elapsed + ", actual route="
+                        + done.routeWithFailed + ", evid="
+                        + done.req.getEventId() + ")");
             } else {
-                System.out.println("lookup done: " + done.route
-                        + " (" + h + " hops, " + elapsed + ")");
+                System.out.println("lookup done: " + done.route + " (" + h
+                        + " hops, " + elapsed + ")");
             }
         }));
     }
