@@ -791,13 +791,18 @@ public class SuzakuStrategy extends NodeStrategy {
      */
     protected FTEntry getFingerTableEntryForRemote(boolean isBackward, int index, int index2) {
         FTEntry ent = getFingerTableEntry(isBackward, index);
+        if (ent == null) {
+            return null;
+        }
+        // clone it because the returned FTEntry will not be copied
+        // in simulations.
+        ent = ent.clone();
         //logger.debug("getFTRemote: {}, {}", index, index2);
         if (index == FingerTable.LOCALINDEX) {
             List<Node> neighbors = getNeighbors();
             ent.setNbrs(neighbors.toArray(new Node[neighbors.size()]));
         }
-        // should clone!
-        return (ent == null ? null : ent.clone());
+        return ent;
     }
 
     void updateFingerTable(boolean isBackward) {
