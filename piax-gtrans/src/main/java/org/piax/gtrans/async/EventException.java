@@ -19,7 +19,15 @@ public class EventException extends Exception {
             super("timeout");
         }
     }
-    public static class GraceStateException extends EventException {
+    public static class RetriableException extends EventException {
+        public RetriableException() {
+            super("retriable exception");
+        }
+        public RetriableException(String info) {
+            super(info);
+        }
+    }
+    public static class GraceStateException extends RetriableException {
         public GraceStateException() {
             super("received in grace state");
         }

@@ -14,6 +14,7 @@ import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.async.Event.Lookup;
 import org.piax.gtrans.async.Event.LookupDone;
+import org.piax.gtrans.async.Event.ScheduleEvent;
 import org.piax.gtrans.async.EventDispatcher;
 import org.piax.gtrans.async.FailureCallback;
 import org.piax.gtrans.async.LocalNode;
@@ -154,6 +155,7 @@ public class SuzakuStrategy extends NodeStrategy {
 
     // 次にfinger tableを更新するレベル (デバッグ用)
     int nextLevel = 0;
+    ScheduleEvent updateSchedEvent;
 
     DdllStrategy base;
 
@@ -194,7 +196,7 @@ public class SuzakuStrategy extends NodeStrategy {
     }
 
     @Override
-    public void joinAfterLookup(LookupDone lookupDone, Runnable cb,
+    public void joinAfterLookup(LookupDone lookupDone, Runnable success,
             FailureCallback eh) {
         System.out.println("JoinAfterLookup: " + lookupDone.route); 
         System.out.println("JoinAfterLookup: " + lookupDone.hops());
@@ -206,7 +208,7 @@ public class SuzakuStrategy extends NodeStrategy {
             SuzakuStrategy szk = (SuzakuStrategy)n.topStrategy;
             szk.sanitizeRevPtrs();
             nodeInserted();
-            cb.run();
+            success.run();
         }, eh);
     }
 
@@ -256,6 +258,11 @@ public class SuzakuStrategy extends NodeStrategy {
             // SetRAckを受信した場合の処理
             n.mode = NodeMode.GRACE;
             System.out.println(n + ": mode=grace");
+            if (updateSchedEvent != null) {
+                System.out.println(n + ": remove schedEvent: " + updateSchedEvent.getEventId());
+                EventDispatcher.cancelEvent(updateSchedEvent);
+                updateSchedEvent = null;
+            }
             EventDispatcher.sched(NetworkParams.ONEWAY_DELAY, () -> {
                 n.mode = NodeMode.DELETED;
                 System.out.println(n + ": mode=deleted");
@@ -510,15 +517,19 @@ public class SuzakuStrategy extends NodeStrategy {
             delay = UPDATE_FINGER_PERIOD.value();
             //delay = (int)(UPDATE_FINGER_PERIOD * (0.9+Math.random()*.2));
         }
-        EventDispatcher.sched(delay, () -> {
+        updateSchedEvent = EventDispatcher.sched(delay, () -> {
+            System.out.println(n + ": updateFT");
             updateFingerTable(false);
         });
+        System.out.println(n + ": add schedEvent: " + updateSchedEvent.getEventId());
+        //new Throwable().printStackTrace();
     }
     
     /**
      * レベル0リング挿入直後のアクティブなfinger table更新処理
      */
     private void initialFTUpdate() {
+        assert ZIGZAG_UPDATE;
         if (ZIGZAG_UPDATE) {
             // FFT->BFT->FFT...の順に更新
             updateFingerTable(false);

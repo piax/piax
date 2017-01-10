@@ -11,6 +11,7 @@ import org.piax.gtrans.async.Event;
 import org.piax.gtrans.async.Event.Lookup;
 import org.piax.gtrans.async.Event.LookupDone;
 import org.piax.gtrans.async.EventDispatcher;
+import org.piax.gtrans.async.EventException.RetriableException;
 import org.piax.gtrans.async.FailureCallback;
 import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.async.NetworkParams;
@@ -140,8 +141,10 @@ public class DdllStrategy extends NodeStrategy {
         status = DdllStatus.DEL;
         Event ev = new SetR(n.pred, n.succ, n, rseq + 1, setRjob, success);
         n.post(ev, (exc) -> {
-            System.out.println(n + ": leave: SetRAck/Nak error. retry, " + exc);
-            fix(ev.receiver); // recovery
+            System.out.println(n + ": leave: SetRAck/Nak error." + exc);
+            if (!(exc instanceof RetriableException)) {
+                fix(ev.receiver); // recovery
+            }
             leave(success, setRjob); // and retry!
         });
     }
@@ -228,8 +231,7 @@ public class DdllStrategy extends NodeStrategy {
                     join(msg.pred, msg.succ, msg.req.success,
                             msg.req.failureCallback, msg.req.setRJob);
                 } else {
-                    n.joinUsingIntroducer(msg.pred, msg.req.success,
-                            msg.req.failureCallback);
+                    msg.req.failureCallback.run(new RetriableException("SetRNak1"));
                 }
             } else if (setrnakmode.value() == SetRNakMode.SETRNAK_OPT1) {
                 // DDLL with optimization
@@ -251,15 +253,12 @@ public class DdllStrategy extends NodeStrategy {
                     break;
                 }
                 if (delay == 0) {
-                    n.joinUsingIntroducer(n.pred, msg.req.success,
-                            msg.req.failureCallback);
+                    msg.req.failureCallback.run(new RetriableException("SetRNak2"));
                 } else {
-                    //n.post(new DdllJoinLater(n, delay, n.pred));
                     EventDispatcher.sched(delay, () -> {
                         if (status == DdllStatus.OUT) {
-                            n.joinUsingIntroducer(msg.pred,
-                                    msg.req.success,
-                                    msg.req.failureCallback);
+                            msg.req.failureCallback.run(
+                                    new RetriableException("SetRNak3"));
                         }
                     });
                 }

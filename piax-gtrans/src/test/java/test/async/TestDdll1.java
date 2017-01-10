@@ -228,8 +228,7 @@ public class TestDdll1 {
             //nodes[i] = LocalNode.newLocalNode(transId, trans, i,
             //        new DdllStrategy(), 0);
             SuzakuNodeFactory factory = new SuzakuNodeFactory(3);
-            DdllKey ddllkey = new DdllKey(i, new UniqId(peers[i].getPeerId()));
-            nodes[i] = factory.createNode(transId, trans, ddllkey, 0);
+            nodes[i] = factory.createNode(transId, trans, i, 0);
         }
 
         Sim.verbose = true;
@@ -308,7 +307,7 @@ public class TestDdll1 {
         waitForExecFin();
         System.out.println("** delete all finished");
         Sim.dump(nodes);
-        sleep(10000);
+        sleep(20000);
         Sim.dump(nodes);
         System.exit(0);
 

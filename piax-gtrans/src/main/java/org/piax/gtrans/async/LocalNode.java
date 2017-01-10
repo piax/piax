@@ -14,6 +14,7 @@ import org.piax.gtrans.RPCException;
 import org.piax.gtrans.async.Event.Lookup;
 import org.piax.gtrans.async.Event.LookupDone;
 import org.piax.gtrans.async.EventException.RPCEventException;
+import org.piax.gtrans.async.EventException.RetriableException;
 import org.piax.gtrans.async.EventSender.EventSenderNet;
 import org.piax.gtrans.async.EventSender.EventSenderSim;
 import org.piax.gtrans.async.ObjectLatch.WrappedException;
@@ -22,6 +23,7 @@ import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.util.UniqId;
 
 public class LocalNode extends Node {
+    public static final int INSERTION_DELETION_RETRY = 10; 
     public long insertionStartTime = -1L;
     public long insertionEndTime;
 
@@ -287,17 +289,38 @@ public class LocalNode extends Node {
      */
     public void joinUsingIntroducer(Node introducer, Runnable success,
             FailureCallback failure) {
+        joinUsingIntroducer(introducer, success, failure,
+                INSERTION_DELETION_RETRY);
+    }
+
+    /**
+     * locate the node position and insert
+     * @param introducer
+     * @param callback  a callback that is called after join succeeds
+     */
+    private void joinUsingIntroducer(Node introducer, Runnable success,
+            FailureCallback failure, int count) {
         if (insertionStartTime == -1) {
             insertionStartTime = getVTime();
         }
         this.mode = NodeMode.INSERTING;
         this.introducer = introducer;
         Event ev = new Lookup(introducer, key, this, (LookupDone results) -> {
-            topStrategy.joinAfterLookup(results, () -> {
-                insertionEndTime = getVTime();
-                mode = NodeMode.INSERTED;
-                success.run();
-            }, failure);
+            topStrategy.joinAfterLookup(results,
+                    () -> {
+                        insertionEndTime = getVTime();
+                        mode = NodeMode.INSERTED;
+                        success.run();
+                    }, (exc) -> {
+                        verbose(this + ": joinAfterLookup failed:" + exc
+                                + ", count=" + count);
+                        if (exc instanceof RetriableException && count > 1) {
+                            joinUsingIntroducer(introducer, success, failure,
+                                    count - 1);
+                        } else {
+                            failure.run(exc);
+                        }
+                    });
         });
         post(ev, failure);
     }
