@@ -215,16 +215,11 @@ public class EventDispatcher {
                 if (ev.receiver instanceof LocalNode) {
                     receiver = (LocalNode) ev.receiver;
                 } else {
-                    LocalNode ln;
-                    if (ev.receiver.key == null) {
-                        // special case
-                        ln = Node.getAnyLocalNode();
-                    } else {
-                        ln = (LocalNode) Node.getInstance(ev.receiver.key);
-                    }
-                    assert ln != null;
-                    receiver = (LocalNode) ln;
-                    ev.receiver = (LocalNode) ln;
+                    assert ev.receiver.key == null;
+                    // special case
+                    receiver = Node.getAnyLocalNode();
+                    assert receiver != null;
+                    ev.receiver = receiver;
                 }
             }
             if (receiver != null) {
