@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.piax.gtrans.async.EventException.TimeoutException;
+import org.piax.gtrans.async.NodeAndIndex.FTEntryIndex;
 import org.piax.gtrans.ov.ddll.DdllKey;
 
 /**
@@ -210,8 +211,9 @@ public abstract class Event implements Comparable<Event>, Serializable {
     public static class Lookup extends RequestEvent<Lookup, LookupDone> {
         public DdllKey key;
         public Node src;
-        public int index;
-        public boolean getFTEntry;
+        // non-null indicates that the sender node is requesting the receiver
+        // node's local FTEntry.  the value itself is used by the sender node.
+        public FTEntryIndex fillInIndex;
         public StringBuilder trace;
 
         public Lookup(Node receiver, DdllKey key, Node src,
@@ -229,8 +231,8 @@ public abstract class Event implements Comparable<Event>, Serializable {
 
         @Override
         public String toStringMessage() {
-            return "Lookup(key=" + key + ", src=" + src + ", index=" + index
-                    + ", getFTEnt=" + getFTEntry + ")"; 
+            return "Lookup(key=" + key + ", src=" + src + ", index="
+                    + fillInIndex +")";
         }
     }
 

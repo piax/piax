@@ -44,6 +44,7 @@ public class EventDispatcher {
 
     public static void enqueue(Event ev) {
         if (!realtime.value()) {
+            assert ev.vtime != 0;
             timeq.add(ev);
         } else {
             lock.lock();

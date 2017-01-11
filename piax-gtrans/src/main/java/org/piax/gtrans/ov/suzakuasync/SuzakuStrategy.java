@@ -22,6 +22,7 @@ import org.piax.gtrans.async.NetworkParams;
 import org.piax.gtrans.async.Node;
 import org.piax.gtrans.async.Node.NodeMode;
 import org.piax.gtrans.async.NodeAndIndex;
+import org.piax.gtrans.async.NodeAndIndex.FTEntryIndex;
 import org.piax.gtrans.async.NodeFactory;
 import org.piax.gtrans.async.NodeStrategy;
 import org.piax.gtrans.async.Option.BooleanOption;
@@ -345,13 +346,6 @@ public class SuzakuStrategy extends NodeStrategy {
 
     @Override
     public void handleLookup(Lookup l) {
-        if (l.getFTEntry) {
-            FTEntry ent = getFingerTableEntryForRemote(false,
-                    FingerTable.LOCALINDEX, 0);
-            System.out.println("handleLookup: "
-                    + n + " sends FTEntUpdateEvent: " + ent);
-            n.post(new FTEntUpdateEvent(l.sender, l.index, ent));
-        }
         handleLookup(l, 0);
     }
 
@@ -372,6 +366,13 @@ public class SuzakuStrategy extends NodeStrategy {
                 System.exit(1);
             }
         }
+        if (l.fillInIndex != null) {
+            FTEntry ent = getFingerTableEntryForRemote(false,
+                    FingerTable.LOCALINDEX, 0);
+            System.out.println("handleLookup: "
+                    + n + " sends FTEntUpdateEvent: " + ent);
+            n.post(new FTEntUpdateEvent(l.sender, l.fillInIndex, ent));
+        }
         if (isResponsible(l.key)) {
             n.post(new LookupDone(l, n, n.succ));
         } else {
@@ -380,22 +381,18 @@ public class SuzakuStrategy extends NodeStrategy {
             if (next == null || next.node == n) {
                 System.out.println(n + ": handleLookup! key=" + l.key + ", evid=" + l.getEventId() + ", next=" + next + ", " + toStringDetail());
                 //System.out.println(n.toStringDetail());
-                if (l.getFTEntry) {
-                    FTEntry ent = getFingerTableEntryForRemote(false,
-                            FingerTable.LOCALINDEX, 0);
-                    n.post(new FTEntUpdateEvent(l.sender, l.index, ent));
-                }
                 n.post(new LookupDone(l, n, n.succ));
                 return;
             }
             assert next.node != n;
-            l.index = next.index;
             l.delay = Node.NETWORK_LATENCY;
-            //l.getFTEntry = nRetry > 0;
             {
-                FTEntry ent = getFTEntry(this, next);
-                l.getFTEntry = ent.nbrs == null
-                        || ent.nbrs.length < SUCCESSOR_LIST_SIZE;
+                FTEntry ent = getFTEntry((SuzakuFTEntryIndex)next.index);
+                if (ent.nbrs == null || ent.nbrs.length < SUCCESSOR_LIST_SIZE) {
+                    l.fillInIndex = next.index;
+                } else {
+                    l.fillInIndex = null;
+                }
             }
             System.out.println("T=" + EventDispatcher.getVTime() + ": " + n + ": handleLookup " + l.getEventId() + " " + next);
             n.forward(next.node, l, (exc) -> {
@@ -407,7 +404,7 @@ public class SuzakuStrategy extends NodeStrategy {
                  * - Level != 0 ならば経路表修復のためのFTEntryを貰う 
                 */
                 //l.faildNodes.add(next.node);
-                FTEntry ent = getFTEntry(this, next);
+                FTEntry ent = getFTEntry((SuzakuFTEntryIndex)next.index);
                 System.out.println("TIMEOUT: " + n + " sent a query to "
                         + next.node.key
                         + ", ftent = " + ent
@@ -429,8 +426,10 @@ public class SuzakuStrategy extends NodeStrategy {
 
     // handles FTEntUpdateEvent
     public void updateFTEntry(FTEntUpdateEvent event) {
-        FingerTable table = event.index < 0 ? backwardTable : forwardTable;
-        table.change(index2ftIndex(event.index), event.ent, true); 
+        SuzakuFTEntryIndex index = (SuzakuFTEntryIndex)event.index; 
+        FingerTable table = index.isBackward ? backwardTable : forwardTable;
+        table.change(index.ftIndex, event.ent, true); 
+
     }
 
     @Override
@@ -574,17 +573,19 @@ public class SuzakuStrategy extends NodeStrategy {
         if (n.mode != NodeMode.INSERTED && n.mode != NodeMode.DELETING) {
             return links;
         }
-        links.add(new NodeAndIndex(getLocalLink(), 0));
+        links.add(new NodeAndIndex(getLocalLink(), new SuzakuFTEntryIndex(false, 0)));
         for (int i = 0; i < getFingerTableSize(); i++) {
             FTEntry ent = getFingerTableEntry(i);
             if (ent != null && ent.getLink() != null) {
-                links.add(new NodeAndIndex(ent.getLink(), ftIndex2Index(i, false)));
+                //links.add(new NodeAndIndex(ent.getLink(), ftIndex2Index(i, false)));
+                links.add(new NodeAndIndex(ent.getLink(), new SuzakuFTEntryIndex(false, i)));
             }
         }
         for (int i = 0; USE_BFT && i < getBackwardFingerTableSize(); i++) {
             FTEntry ent = getBackwardFingerTableEntry(i);
             if (ent != null && ent.getLink() != null) {
-                links.add(new NodeAndIndex(ent.getLink(), ftIndex2Index(i, true)));
+                //links.add(new NodeAndIndex(ent.getLink(), ftIndex2Index(i, true)));
+                links.add(new NodeAndIndex(ent.getLink(), new SuzakuFTEntryIndex(true, i)));
             }
         }
         links = links.stream()
@@ -1299,36 +1300,21 @@ public class SuzakuStrategy extends NodeStrategy {
         return false;
     }
 
-    
-    // from old NodeAndIndex class
-    public static int ftIndex2Index(int ftIndex, boolean isBackward) {
-        if (isBackward) {
-            // -index - 1 = x  ->  index = -x - 1
-            return -ftIndex - 1;
-        } else {
-            // index - 1 = x  ->  index = x + 1
-            return ftIndex + 1;
+    public static class SuzakuFTEntryIndex implements FTEntryIndex {
+        final boolean isBackward;
+        final int ftIndex;
+        public SuzakuFTEntryIndex(boolean isBackward, int ftIndex) {
+            this.isBackward = isBackward;
+            this.ftIndex = ftIndex;
         }
     }
 
-    public static int index2ftIndex(int index) {
-        if (index > 0) {
-            return index - 1;
-        }
-        if (index < 0) {
-            return -index - 1;
-        }
-        return 0;
-    }
-
-    public static FTEntry getFTEntry(SuzakuStrategy strategy,
-            NodeAndIndex ni) {
-        int ftIndex = index2ftIndex(ni.index);
+    private FTEntry getFTEntry(SuzakuFTEntryIndex spec) {
         FTEntry ent;
-        if (ni.index < 0) {
-            ent = strategy.getBackwardFingerTableEntry(ftIndex);
+        if (spec.isBackward) {
+            ent = getBackwardFingerTableEntry(spec.ftIndex);
         } else {
-            ent = strategy.getFingerTableEntry(ftIndex);
+            ent = getFingerTableEntry(spec.ftIndex);
         }
         return ent;
     }

@@ -28,9 +28,9 @@ public abstract class NodeStrategy {
 
     public List<NodeAndIndex> getAllLinks2() {
         NodeAndIndex[] a = {
-                new NodeAndIndex(getSuccessor(), 0),
-                new NodeAndIndex(n, 0),
-                new NodeAndIndex(getPredecessor(), 0)
+                new NodeAndIndex(getSuccessor(), null),
+                new NodeAndIndex(n, null),
+                new NodeAndIndex(getPredecessor(), null)
         };
         return Arrays.asList(a);
     }
@@ -47,12 +47,12 @@ public abstract class NodeStrategy {
             Runnable success, FailureCallback failure);
 
     public void leave(Runnable success) {
-        throw new UnsupportedOperationException("leave is not supported");
+        throw new UnsupportedOperationException("leave is not implemented");
     }
 
     public abstract void handleLookup(Lookup lookup);
 
     public int getMessages4Join() {
-        throw new UnsupportedOperationException("getMessages4Join is not supported");
+        throw new UnsupportedOperationException("getMessages4Join is not implemented");
     }
 }

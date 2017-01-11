@@ -29,12 +29,13 @@ public interface EventSender {
 
         @Override
         public void send(Event ev) {
+            ev.vtime = EventDispatcher.getVTime() + ev.delay; 
             EventDispatcher.enqueue(ev);
         }
 
         @Override
         public void forward(Event ev) {
-            EventDispatcher.enqueue(ev);
+            send(ev);
         }
     }
 
