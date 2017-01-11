@@ -238,7 +238,7 @@ public class TestDdll1 {
         // seedNo番目のnodeはinitial nodeとしてinsertし、安定稼働させる
         System.out
                 .println("node " + seedNo + " is inserted as the initial node");
-        nodes[seedNo].initInitialNode();
+        nodes[seedNo].joinInitialNode();
         seedLoc = nodes[seedNo].addr;
         // 全部insert
         threadPool = Executors.newFixedThreadPool(numThread);

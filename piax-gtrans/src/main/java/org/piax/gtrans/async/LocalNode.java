@@ -181,7 +181,7 @@ public class LocalNode extends Node {
         }
     }
 
-    long getVTime() {
+    private long getVTime() {
         return EventDispatcher.getVTime();
     }
 
@@ -196,9 +196,6 @@ public class LocalNode extends Node {
         return topStrategy.getMessages4Join();
     }
 
-    /*
-     * synchronous interface
-     */
     /**
      * insert a key into a ring.
      * 
@@ -211,7 +208,7 @@ public class LocalNode extends Node {
         Node temp = Node.getTemporaryInstance(introducer);
         ObjectLatch<Boolean> latch = new ObjectLatch<>(1);
         //System.out.println(this + ": joining");
-        joinUsingIntroducer(temp, () -> latch.set(true),
+        joinAsync(temp, () -> latch.set(true),
                 e -> latch.setException(e));
         try {
             return latch.getOrException();
@@ -227,7 +224,7 @@ public class LocalNode extends Node {
     public boolean removeKey() throws InterruptedException {
         ObjectLatch<Boolean> latch = new ObjectLatch<>(1);
         System.out.println(this + ": leaving");
-        leave(() -> latch.set(true));
+        leaveAsync(() -> latch.set(true));
         try {
             return latch.getOrException();
         } catch (InterruptedException e) {
@@ -240,44 +237,17 @@ public class LocalNode extends Node {
         }
     }
 
-    /*
-     * asynchronous interface
-     */
-
     /**
      * insert an initial node
      */
-    public void initInitialNode() {
+    public void joinInitialNode() {
         topStrategy.initInitialNode();
         mode = NodeMode.INSERTED;
         insertionStartTime = insertionEndTime = getVTime();
     }
 
-    /**
-     * locate the node position and insert
-     * @param introducer
-     */
-    public void joinLater(LocalNode introducer, long delay,
-            Runnable callback) {
-        joinLater(introducer, delay, callback, (exc) -> {
-            throw new Error("joinLater got exception", exc);
-        });
-    }
-
-    public void joinLater(LocalNode introducer, long delay,
-            Runnable callback, FailureCallback failure) {
-        mode = NodeMode.TO_BE_INSERTED;
-        if (delay == 0) {
-            joinUsingIntroducer(introducer, callback, failure);
-        } else {
-            EventDispatcher.sched(delay, () -> {
-                this.joinUsingIntroducer(introducer, callback, failure);
-            });
-        }
-    }
-
-    public void joinUsingIntroducer(Node introducer, Runnable success) {
-        joinUsingIntroducer(introducer, success, exc -> {
+    public void joinAsync(Node introducer, Runnable success) {
+        joinAsync(introducer, success, exc -> {
             throw new Error("joinUsingIntroducer got exception", exc);
         });
     }
@@ -285,20 +255,22 @@ public class LocalNode extends Node {
     /**
      * locate the node position and insert
      * @param introducer
-     * @param callback  a callback that is called after join succeeds
+     * @param success  a callback that is called after join succeeds
      */
-    public void joinUsingIntroducer(Node introducer, Runnable success,
+    public void joinAsync(Node introducer, Runnable success,
             FailureCallback failure) {
-        joinUsingIntroducer(introducer, success, failure,
+        joinAsync(introducer, success, failure,
                 INSERTION_DELETION_RETRY);
     }
 
     /**
      * locate the node position and insert
      * @param introducer
-     * @param callback  a callback that is called after join succeeds
+     * @param success  a callback that is called when join succeeds
+     * @param failure  a callback that is called when join fails
+     * @param count    number of remaining retries
      */
-    private void joinUsingIntroducer(Node introducer, Runnable success,
+    private void joinAsync(Node introducer, Runnable success,
             FailureCallback failure, int count) {
         if (insertionStartTime == -1) {
             insertionStartTime = getVTime();
@@ -310,26 +282,28 @@ public class LocalNode extends Node {
                     () -> {
                         insertionEndTime = getVTime();
                         mode = NodeMode.INSERTED;
-                        success.run();
+                        if (success != null) success.run();
                     }, (exc) -> {
                         verbose(this + ": joinAfterLookup failed:" + exc
                                 + ", count=" + count);
+                        mode = NodeMode.OUT;
+                        // reset insertionStartTime ?
                         if (exc instanceof RetriableException && count > 1) {
-                            joinUsingIntroducer(introducer, success, failure,
+                            joinAsync(introducer, success, failure,
                                     count - 1);
                         } else {
-                            failure.run(exc);
+                            if (failure != null) failure.run(exc);
                         }
                     });
         });
         post(ev, failure);
     }
 
-    public void leave() {
-        leave(null);
+    public void leaveAsync() {
+        leaveAsync(null);
     }
 
-    public void leave(Runnable callback) {
+    public void leaveAsync(Runnable callback) {
         System.out.println("Node " + this + " leaves");
         topStrategy.leave(callback);
     }

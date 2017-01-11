@@ -12,7 +12,7 @@ import org.piax.gtrans.ov.ddll.DdllKey;
 public class Node implements Comparable<Node>, Serializable {
     public static enum NodeMode {
         /** not inserted */
-        OUT, TO_BE_INSERTED, INSERTING,
+        OUT, INSERTING,
         /** inserted */
         INSERTED,
         /** deleting */
