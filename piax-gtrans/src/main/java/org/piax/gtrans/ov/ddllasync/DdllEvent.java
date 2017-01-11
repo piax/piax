@@ -10,6 +10,7 @@ import org.piax.gtrans.async.EventHandler;
 import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.async.Node;
 import org.piax.gtrans.ov.ddll.DdllKey;
+import org.piax.gtrans.ov.ddll.LinkNum;
 
 public abstract class DdllEvent {
     @FunctionalInterface
@@ -18,11 +19,11 @@ public abstract class DdllEvent {
     }
     public static class SetR extends RequestEvent<SetR, SetRAckNak> {
         Node rNew, rCur;
-        int rnewseq;
+        LinkNum rnewseq;
         SetRJob setRJob;
         transient Runnable success;
 
-        public SetR(Node receiver, Node rNew, Node rCur, int newrseq,
+        public SetR(Node receiver, Node rNew, Node rCur, LinkNum newrseq,
                 SetRJob job, Runnable success) {
             super(receiver, (SetRAckNak reply) -> {
                 reply.handle();
@@ -48,10 +49,10 @@ public abstract class DdllEvent {
     }
 
     public static class SetRAck extends SetRAckNak {
-        int rnewnum;
+        LinkNum rnewnum;
         Set<Node> nbrs;
 
-        public SetRAck(SetR request, int rnewnum, Set<Node> nbrs) {
+        public SetRAck(SetR request, LinkNum rnewnum, Set<Node> nbrs) {
             super(request);
             this.rnewnum = rnewnum;
             this.nbrs = nbrs;
@@ -81,10 +82,10 @@ public abstract class DdllEvent {
 
     public static class SetL extends Event {
         Node lNew;
-        int seq;
+        LinkNum seq;
         Set<Node> nbrs;
 
-        public SetL(Node receiver, Node lNew, int seq, Set<Node> nbrs) {
+        public SetL(Node receiver, Node lNew, LinkNum seq, Set<Node> nbrs) {
             super(receiver);
             this.lNew = lNew;
             this.seq = seq;

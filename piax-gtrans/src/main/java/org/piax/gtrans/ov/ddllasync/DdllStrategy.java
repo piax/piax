@@ -23,6 +23,7 @@ import org.piax.gtrans.async.Option.EnumOption;
 import org.piax.gtrans.async.Option.IntegerOption;
 import org.piax.gtrans.async.Sim;
 import org.piax.gtrans.ov.ddll.DdllKey;
+import org.piax.gtrans.ov.ddll.LinkNum;
 import org.piax.gtrans.ov.ddllasync.DdllEvent.Ping;
 import org.piax.gtrans.ov.ddllasync.DdllEvent.Pong;
 import org.piax.gtrans.ov.ddllasync.DdllEvent.PropagateNeighbors;
@@ -71,7 +72,7 @@ public class DdllStrategy extends NodeStrategy {
     public static IntegerOption pingPeriod =
             new IntegerOption(0, "-pingperiod");
 
-    int lseq = 0, rseq = 0;
+    LinkNum lseq = new LinkNum(0, 0), rseq = new LinkNum(0, 0);
 
     DdllStatus status = DdllStatus.OUT;
     /** neighbor node set */
@@ -123,7 +124,8 @@ public class DdllStrategy extends NodeStrategy {
         n.pred = pred;
         n.succ = succ;
         status = DdllStatus.INS;
-        Event ev = new SetR(n.pred, n, n.succ, 0, setRjob, success);
+        Event ev = new SetR(n.pred, n, n.succ, new LinkNum(0, 0), setRjob,
+                success);
         n.post(ev, (exc) -> {
             System.out.println(n + ": join: SetRAck/Nak timeout. ");
             if (eh != null) eh.run(exc);
@@ -139,7 +141,7 @@ public class DdllStrategy extends NodeStrategy {
     public void leave(Runnable success, SetRJob setRjob) {
         System.out.println(n + ": leave start");
         status = DdllStatus.DEL;
-        Event ev = new SetR(n.pred, n.succ, n, rseq + 1, setRjob, success);
+        Event ev = new SetR(n.pred, n.succ, n, rseq.next(), setRjob, success);
         n.post(ev, (exc) -> {
             System.out.println(n + ": leave: SetRAck/Nak error." + exc);
             if (!(exc instanceof RetriableException)) {
@@ -183,12 +185,12 @@ public class DdllStrategy extends NodeStrategy {
             Set<Node> nset = leftNbrs.computeNSForRight(msg.rNew);
             if (forInsertion) {
                 Set<Node> nset2 = leftNbrs.computeNSForRight(getSuccessor());
-                n.post(new SetL(n.succ, msg.rNew, rseq + 1, nset2));
+                n.post(new SetL(n.succ, msg.rNew, rseq.next(), nset2));
             } else {
                 n.post(new SetL(msg.rNew, n, msg.rnewseq, nset));
             }
             leftNbrs.setPrevRightSet(msg.rNew, nset);
-            n.post(new SetRAck(msg, rseq + 1, nset));
+            n.post(new SetRAck(msg, rseq.next(), nset));
             n.setSucc(msg.rNew);
             rseq = msg.rnewseq;
             if (msg.setRJob != null) {
@@ -281,7 +283,7 @@ public class DdllStrategy extends NodeStrategy {
     //    }
 
     public void setl(SetL msg) {
-        if (lseq < msg.seq) {
+        if (lseq.compareTo(msg.seq) < 0) {
             Node prevL = getPredecessor();
             n.setPred(msg.lNew);
             lseq = msg.seq;
