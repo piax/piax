@@ -299,12 +299,16 @@ public class LocalNode extends Node {
         post(ev, failure);
     }
 
-    public void leaveAsync() {
+    public void leaveAsync() throws IllegalStateException {
         leaveAsync(null);
     }
 
-    public void leaveAsync(Runnable callback) {
+    public void leaveAsync(Runnable callback) throws IllegalStateException {
         System.out.println("Node " + this + " leaves");
+        if (mode != NodeMode.INSERTED) {
+           throw new IllegalStateException("not inserted");
+        }
+        mode = NodeMode.DELETING;
         topStrategy.leave(callback);
     }
 

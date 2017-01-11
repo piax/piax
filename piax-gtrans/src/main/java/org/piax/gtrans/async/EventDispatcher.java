@@ -218,7 +218,10 @@ public class EventDispatcher {
                     assert ev.receiver.key == null;
                     // special case
                     receiver = Node.getAnyLocalNode();
-                    assert receiver != null;
+                    if (receiver == null) {
+                        System.out.println("No valid LocalNode: " + ev);
+                        continue;
+                    }
                     ev.receiver = receiver;
                 }
             }
