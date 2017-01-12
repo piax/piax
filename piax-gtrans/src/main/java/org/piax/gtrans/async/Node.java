@@ -2,12 +2,12 @@ package org.piax.gtrans.async;
 
 import java.io.ObjectStreamException;
 import java.io.Serializable;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
 import org.piax.common.Endpoint;
 import org.piax.gtrans.ov.ddll.DdllKey;
+import org.piax.util.ConcurrentReferenceHashMap;
 
 public class Node implements Comparable<Node>, Serializable {
     public static enum NodeMode {
@@ -29,7 +29,10 @@ public class Node implements Comparable<Node>, Serializable {
     public final int latency;
 
     // we have to guard `instances' with synchronized block
-    private static Map<DdllKey, Node> instances = new HashMap<>();
+    private static Map<DdllKey, Node> instances
+        = new ConcurrentReferenceHashMap<>(16,
+                ConcurrentReferenceHashMap.ReferenceType.WEAK,
+                ConcurrentReferenceHashMap.ReferenceType.WEAK);
     public static synchronized Node getInstance(DdllKey ddllkey, Endpoint ep,
             int latency) {
         Node n = instances.get(ddllkey);
@@ -156,4 +159,31 @@ public class Node implements Comparable<Node>, Serializable {
     public static interface LinkChangeEventCallback {
         public void run(Node prev, Node now);
     }
+
+    /*public static class Test {
+        Integer key;
+        public Test(Integer key) {
+            this.key = key;
+        }
+        @Override
+        public String toString() {
+            return "key=" + key;
+        }
+    }*/
+
+    /*public static void main(String[] args) {
+        ConcurrentReferenceHashMap<Integer, Test> map =
+                new ConcurrentReferenceHashMap<>(16,
+                        ConcurrentReferenceHashMap.ReferenceType.WEAK, 
+                        ConcurrentReferenceHashMap.ReferenceType.WEAK);
+        Integer k = 100001;
+        Test t = new Test(k);
+        map.put(k, t);
+        System.out.println("map=" + map);
+        System.out.println(map.get(k));
+        t = null;
+        k = null;
+        System.gc(); 
+        System.out.println("map=" + map);
+    }*/
 }
