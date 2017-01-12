@@ -213,43 +213,56 @@ public class SuzakuStrategy extends NodeStrategy {
         }, eh);
     }
 
+    public static class SuzakuSetRJob implements SetRJob {
+        private final Set<Node> reversePointers;
+        private final Node n;
+
+        public SuzakuSetRJob(Node n, Set<Node> revPtrs) {
+            this.n = n;
+            this.reversePointers = revPtrs;
+        }
+
+        @Override
+        public void run(LocalNode node) {
+            // このラムダ式は，SetRを受信したノードで動作することに注意!
+            // node: SetR受信ノード, n: SetR送信ノード
+
+            // 右ノードが変更された契機でリバースポインタの不要なエントリを削除
+            SuzakuStrategy szk = (SuzakuStrategy)node.topStrategy;
+            szk.sanitizeRevPtrs();
+
+            Set<Node> s = reversePointers;
+            System.out.println(node + ": receives revptr ("
+                    + s.size() + ") from " + node.succ + ": " + s);
+            s.remove(n); // ノードnは既に削除済
+            List<Node> neighbors = szk.getNeighbors();
+            neighbors.add(0, node);
+            {
+                // nodeのfinger tableで，nをnodeに置き換える
+                szk.removeFromFingerTable(n, neighbors);
+            }
+            s.forEach(x -> {
+                // x が区間 [node, n] に含まれている場合，不要なエントリなので無視．
+                // (そのような x は削除済みであるため)
+                if (!Node.isOrdered(node.key, x.key, n.key)) {
+                    // change entry: n -> neighbors
+                    node.post(new FTEntRemoveEvent(x, n, neighbors));
+                    szk.addReversePointer(x);
+                } else {
+                    if (DEBUG_REVPTR) {
+                        System.out.println(node + ": filtered " + x);
+                    }
+                }
+            });
+        }
+    }
+
     @Override
     public void leave(Runnable callback) {
         LocalNode.verbose("leave " + n);
         SetRJob job;
         if (NOTIFY_WITH_REVERSE_POINTER.value()) {
-            job = (node) -> {
-                // このラムダ式は，SetRを受信したノードで動作することに注意!
-                // node: SetR受信ノード, n: SetR送信ノード
-
-                // 右ノードが変更された契機でリバースポインタの不要なエントリを削除
-                SuzakuStrategy szk = (SuzakuStrategy)node.topStrategy;
-                szk.sanitizeRevPtrs();
-
-                Set<Node> s = reversePointers;
-                System.out.println(node + ": receives revptr ("
-                        + s.size() + ") from " + node.succ + ": " + s);
-                s.remove(n); // ノードnは既に削除済
-                List<Node> neighbors = szk.getNeighbors();
-                neighbors.add(0, node);
-                {
-                    // nodeのfinger tableで，nをnodeに置き換える
-                    szk.removeFromFingerTable(n, neighbors);
-                }
-                s.forEach(x -> {
-                    // x が区間 [node, n] に含まれている場合，不要なエントリなので無視．
-                    // (そのような x は削除済みであるため)
-                    if (!Node.isOrdered(node.key, x.key, n.key)) {
-                        // change entry: n -> neighbors
-                        node.post(new FTEntRemoveEvent(x, n, neighbors));
-                        szk.addReversePointer(x);
-                    } else {
-                        if (DEBUG_REVPTR) {
-                            System.out.println(node + ": filtered " + x);
-                        }
-                    }
-                });
-            };
+            job = new SuzakuSetRJob(n, reversePointers);
         } else {
             job = null;
         }

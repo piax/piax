@@ -232,8 +232,9 @@ public class TestDdll1 {
         }
 
         Sim.verbose = true;
-        EventDispatcher.startExecutorThread();
         SuzakuStrategy.UPDATE_FINGER_PERIOD.set(10*1000);
+        SuzakuStrategy.NOTIFY_WITH_REVERSE_POINTER.set(true);
+        EventDispatcher.startExecutorThread();
 
         // seedNo番目のnodeはinitial nodeとしてinsertし、安定稼働させる
         System.out
@@ -300,8 +301,9 @@ public class TestDdll1 {
         threadPool = Executors.newFixedThreadPool(numThread);
         System.out.println("** delete all start");
         for (int i = 0; i < nodes.length; i++) {
-            if (i == seedNo)
+            if (i == seedNo) {
                 continue;
+            }
             exec(TType.DELETE, i);
         }
         waitForExecFin();
@@ -309,6 +311,9 @@ public class TestDdll1 {
         Sim.dump(nodes);
         sleep(20000);
         Sim.dump(nodes);
+        for (int i = 0; i < nodes.length; i++) {
+            peers[i].fin();
+        }
         System.exit(0);
 
         // 半分insert
