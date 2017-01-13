@@ -679,19 +679,6 @@ public class SuzakuStrategy extends NodeStrategy {
         return backwardTable.getFingerTableSize();
     }
     
-    public final void rtLockR() {
-    }
-    
-    public final void rtUnlockR() {
-    }
-    
-    public final void rtLockW() {
-    }
-
-    public final void rtUnlockW() {
-    }
-
-    // RPC service
     /**
      * finger table 上で，距離が tk<sup>x</sup> (0 &lt;= t &lt;= 2<sup>y</sup>)
      * 離れたエントリを取得する．結果は 2<sup>y</sup>+1 要素の配列として返す． 
@@ -757,9 +744,7 @@ public class SuzakuStrategy extends NodeStrategy {
         return set;
     }
 
-    // RPC service
     public FTEntry[][] getFingerTable() {
-        rtLockR();
         FTEntry[][] rc = new FTEntry[2][];
         rc[0] = new FTEntry[getFingerTableSize()];
         for (int i = 0; i < getFingerTableSize(); i++) {
@@ -773,7 +758,6 @@ public class SuzakuStrategy extends NodeStrategy {
                 rc[1][i] = ent;
             }
         }
-        rtUnlockR();
         return rc;
     }
 
@@ -820,24 +804,14 @@ public class SuzakuStrategy extends NodeStrategy {
     }
 
     void updateFingerTable(boolean isBackward) {
-        rtLockW();
-        try {
-            if (n.mode == NodeMode.OUT || n.mode == NodeMode.DELETED || updatingFT) {
-                return;
-            }
-            updatingFT = true;
-        } finally {
-            rtUnlockW();
+        if (n.mode == NodeMode.OUT || n.mode == NodeMode.DELETED || updatingFT) {
+            return;
         }
+        updatingFT = true;
         LocalNode.verbose("start finger table update: " + n.key
                 + ", " + EventDispatcher.getVTime());
-        try {
-            updateFingerTable0(0, isBackward, null, null);
-        } finally {
-            rtLockW();
-            updatingFT = false;
-            rtUnlockW();
-        }
+        updateFingerTable0(0, isBackward, null, null);
+        updatingFT = false;
     }
 
     /**
