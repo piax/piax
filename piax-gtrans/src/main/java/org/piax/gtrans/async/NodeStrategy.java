@@ -26,11 +26,9 @@ public abstract class NodeStrategy {
         return n;
     }
 
-    public List<NodeAndIndex> getAllLinks2() {
-        NodeAndIndex[] a = {
-                new NodeAndIndex(getSuccessor(), null),
-                new NodeAndIndex(n, null),
-                new NodeAndIndex(getPredecessor(), null)
+    public List<Node> getAllLinks2() {
+        Node[] a = {
+                getSuccessor(), n, getPredecessor()
         };
         return Arrays.asList(a);
     }

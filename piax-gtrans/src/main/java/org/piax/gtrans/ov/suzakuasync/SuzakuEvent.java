@@ -8,7 +8,6 @@ import org.piax.gtrans.async.Event.RequestEvent;
 import org.piax.gtrans.async.EventHandler;
 import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.async.Node;
-import org.piax.gtrans.async.NodeAndIndex.FTEntryIndex;
 import org.piax.gtrans.async.Sim;
 import org.piax.gtrans.ov.suzakuasync.SuzakuStrategy.FTEntrySet;
 
@@ -97,11 +96,9 @@ public abstract class SuzakuEvent {
      * ・Lookup時にソース側ノードのFTEサイズが規定を下回る場合に補充
      */
     public static class FTEntUpdateEvent extends Event {
-        public final FTEntryIndex index;
         public final FTEntry ent;
-        public FTEntUpdateEvent(Node receiver, FTEntryIndex index, FTEntry ent) {
+        public FTEntUpdateEvent(Node receiver, FTEntry ent) {
             super(receiver);
-            this.index = index;
             this.ent = ent;
         }
         @Override
@@ -111,7 +108,7 @@ public abstract class SuzakuEvent {
         }
         @Override
         public String toStringMessage() {
-            return "FTEntUpdateEvent(index=" + index + ", ent=" + ent + ")";
+            return "FTEntUpdateEvent(ent=" + ent + ")";
         }
     }
 
@@ -148,7 +145,7 @@ public abstract class SuzakuEvent {
         @Override
         public void run() {
             LocalNode r = (LocalNode)receiver;
-            ((SuzakuStrategy)r.topStrategy).removeReversePointer(this.origin);
+            ((SuzakuStrategy)r.topStrategy).table.removeReversePointer(this.origin);
         }
         @Override
         public String toStringMessage() {

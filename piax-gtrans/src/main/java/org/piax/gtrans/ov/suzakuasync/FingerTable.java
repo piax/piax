@@ -11,6 +11,8 @@
  */
 package org.piax.gtrans.ov.suzakuasync;
 
+import java.util.stream.Stream;
+
 import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.ov.ring.rq.FlexibleArray;
 
@@ -33,8 +35,10 @@ public class FingerTable {
     final SuzakuStrategy suzakuStr;
     final FlexibleArray<FTEntry> table;
     final boolean isBackward;
+    final FingerTables tables;
 
-    public FingerTable(LocalNode vnode, boolean isBackward) {
+    FingerTable(FingerTables tables, LocalNode vnode, boolean isBackward) {
+        this.tables = tables;
         this.vnode = vnode;
         this.suzakuStr = (SuzakuStrategy)vnode.topStrategy;
         this.isBackward = isBackward;
@@ -44,29 +48,49 @@ public class FingerTable {
         FTEntry local1 = new FTEntry(vnode);
         // -1th entry is the local node 
         set(LOCALINDEX, local1);
-        FTEntry local2 = new FTEntry(vnode);
+        FTEntry local2 = tables.getFTEntry(vnode);
         // 0th entry is the successor or predecessor
         set(0, local2);
     }
 
     public void set(int index, FTEntry ent) {
+        set(index, ent, true);
+    }
+
+    public void set(int index, FTEntry ent, boolean addtorev) {
+        FTEntry prev = tables.getFTEntry(ent.getLink());
+        prev.updateNbrs(ent);
         table.set(index, ent);
-        if (ent != null) {
-            suzakuStr.addReversePointer(ent.getLink());
+        if (addtorev && ent != null && ent.getLink() != null) {
+            tables.addReversePointer(ent.getLink());
         }
     }
 
     public void change(int index, FTEntry ent, boolean addtorev) {
         FTEntry old = getFTEntry(index);
         //System.out.println(vnode + ": change: index=" + index + ", " + old + " to " + ent);
-        table.set(index, ent);
-        if (addtorev && ent != null && ent.getLink() != null) {
-            suzakuStr.addReversePointer(ent.getLink());
-        }
+        set(index, ent, addtorev);
         if (old != null && ent != null) {
             if (old.getLink() != null && old.getLink() != ent.getLink()) {
                 //System.out.println(vnode + ": ptr changed, index=" + index + " from " + old + " to " + ent);
                 suzakuStr.cleanRemoteRevPtr(old.getLink());
+            }
+        }
+    }
+
+    /**
+     * replace a FTEntry without sending cleanRemoteRevPtr.
+     * 
+     * @param oldEnt
+     * @param newEnt
+     */
+    void replace(FTEntry oldEnt, FTEntry newEnt) {
+        int size = getFingerTableSize();
+        // because level 0 is managed by DDLL, we start iteration from level 1
+        for (int i = 1; i < size; i++) {
+            FTEntry ent = getFTEntry(i);
+            if (ent == oldEnt) {
+                set(i, newEnt, true);
             }
         }
     }
@@ -76,10 +100,7 @@ public class FingerTable {
     }
 
     FTEntry getFTEntry(int index) {
-        FTEntry ent = table.get(index);
-        if (index == LOCALINDEX) {
-            ent.updateLocalEntry(vnode);
-        } else if (index == 0) {
+        if (index == 0) {
             // the successor and predecessor are managed by DDLL
             /*
              * successorはDDLLで管理しているのに対し，
@@ -88,7 +109,13 @@ public class FingerTable {
              * するまでの期間は，successorとsuccessor-listとの間で齟齬が生じる可能性が
              * あることに注意．
              */
-            ent.setLink(isBackward ? vnode.pred : vnode.succ);
+            FTEntry ent = tables.getFTEntry(isBackward ? vnode.pred
+                    : vnode.succ);
+            return ent;
+        }
+        FTEntry ent = table.get(index);
+        if (index == LOCALINDEX) {
+            ent.updateLocalEntry(vnode);
         }
         return ent;
     }

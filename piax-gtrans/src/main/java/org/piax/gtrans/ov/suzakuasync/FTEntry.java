@@ -1,7 +1,7 @@
 /*
  * FTEntry.java - A finger table entry implementation.
  * 
- * Copyright (c) 2015 Kota Abe / PIAX development team
+ * Copyright (c) 2017 Kota Abe / PIAX development team
  *
  * You can redistribute it and/or modify it under either the terms of
  * the AGPLv3 or PIAX binary code license. See the file COPYING
@@ -22,14 +22,10 @@ import org.piax.gtrans.async.Node;
  * an entry of a finger table
  */
 public class FTEntry implements Cloneable, Serializable {
-    private Node link;
-    protected Node[] nbrs;
+    private final Node link;
+    private Node[] nbrs;
 
     protected FTEntry(Node link) {
-        this.setLink(link);
-    }
-
-    public void setLink(Node link) {
         this.link = link;
     }
 
@@ -59,6 +55,11 @@ public class FTEntry implements Cloneable, Serializable {
         // empty
     }
 
+    public void updateNbrs(FTEntry another) {
+        assert this.link == another.link;
+        setNbrs(another.getNbrs());
+    }
+
     public List<Node> allLinks() {
         List<Node> links = new ArrayList<Node>();
         links.add(getLink());
@@ -66,21 +67,6 @@ public class FTEntry implements Cloneable, Serializable {
             links.addAll(Arrays.asList(nbrs));
         }
         return links;
-    }
-
-    public boolean removeHead() {
-        if (nbrs != null && nbrs.length > 0) {
-            setLink(nbrs[0]);
-            nbrs = Arrays.copyOfRange(nbrs, 1, nbrs.length);
-            return true;
-        }
-        setLink(null);
-        return false;
-    }
-
-    public void replace(List<Node> neighbors) {
-        setLink(neighbors.get(0));
-        nbrs = neighbors.subList(1, neighbors.size()).toArray(new Node[0]);
     }
 
     @Override

@@ -14,6 +14,7 @@ package org.piax.gtrans.ov.ring.rq;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Stream;
 
 /**
  * an array without size restriction.
@@ -52,6 +53,10 @@ public class FlexibleArray<T> implements Serializable {
             return null;
         }
         return list.get(actualIndex);
+    }
+
+    public Stream<T> stream() {
+        return list.stream();
     }
 
     public int size() {

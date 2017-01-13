@@ -366,12 +366,12 @@ public class LocalNode extends Node {
         }));
     }
 
-    public NodeAndIndex getClosestPredecessor(DdllKey key) {
-        Comparator<NodeAndIndex> comp = (NodeAndIndex a, NodeAndIndex b) -> {
+    public Node getClosestPredecessor(DdllKey key) {
+        Comparator<Node> comp = (Node a, Node b) -> {
             // aの方がkeyに近ければ正の数，bの方がkeyに近ければ負の数を返す
             // [a, key, b) -> plus
             // [b, key, a) -> minus
-            if (Node.isOrdered(a.node.key, true, key, b.node.key, false)) {
+            if (Node.isOrdered(a.key, true, key, b.key, false)) {
                 return +1;
             }
             return -1;
@@ -381,10 +381,10 @@ public class LocalNode extends Node {
             System.out.println("compare " + a.id + " with " + b.id + " -> " + rc);
             return rc;
         };*/
-        List<NodeAndIndex> nodes = topStrategy.getAllLinks2();
+        List<Node> nodes = topStrategy.getAllLinks2();
         //Collections.sort(nodes, comp);
         //System.out.println("nodes = " + nodes);
-        Optional<NodeAndIndex> n = nodes.stream().max(comp);
+        Optional<Node> n = nodes.stream().max(comp);
         //System.out.println("key = " + key);
         //System.out.println("max = " + n);
         return n.orElse(null);

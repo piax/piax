@@ -64,6 +64,7 @@ public class Node implements Comparable<Node>, Serializable {
         this.latency = latency;
         synchronized (Node.class) {
             if (ddllkey != null && !instances.containsKey(ddllkey)) {
+                // use putIfAbsent ?
                 instances.put(ddllkey, this);
             }
         }
@@ -170,7 +171,7 @@ public class Node implements Comparable<Node>, Serializable {
             return "key=" + key;
         }
     }*/
-
+    
     /*public static void main(String[] args) {
         ConcurrentReferenceHashMap<Integer, Test> map =
                 new ConcurrentReferenceHashMap<>(16,
@@ -185,5 +186,14 @@ public class Node implements Comparable<Node>, Serializable {
         k = null;
         System.gc(); 
         System.out.println("map=" + map);
+    }*/
+    
+    /*public static void main(String[] args) {
+        CompletableFuture<Integer> f = new CompletableFuture<>();
+        f.thenAccept((x) -> {System.out.println("Hey!" + x);}).thenRun(() -> {System.out.println("Fin");});
+        f.exceptionally(exc -> {System.out.println("x"); return 0;});
+        //f.<Integer>handle((x, y) -> {System.out.println("x=" + x + ", y=" + y);return 0;});
+        f.completeExceptionally(new NullPointerException("n!"));
+        System.out.println("hoge");
     }*/
 }
