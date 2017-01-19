@@ -1,25 +1,19 @@
 package org.piax.gtrans.ov.suzakuasync;
 
 import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.async.Node;
-import org.piax.util.ConcurrentReferenceHashMap;
 
 public class FingerTables {
     final FingerTable forward;
     final FingerTable backward;
     Set<Node> reversePointers = new HashSet<>();
     LocalNode n;
-
-    private Map<Node, FTEntry> entMap = new ConcurrentReferenceHashMap<>(
-            16, ConcurrentReferenceHashMap.ReferenceType.WEAK,
-            ConcurrentReferenceHashMap.ReferenceType.WEAK);
 
     public FingerTables(LocalNode n) {
         this.n = n;
@@ -32,27 +26,17 @@ public class FingerTables {
     }
 
     FTEntry getFTEntry(Node node) {
-        FTEntry ent = entMap.get(node);
-        if (ent == null) {
-            ent = new FTEntry(node);
-            entMap.put(node, ent);
-        }
-        return ent;
+        Optional<FTEntry> match = stream()
+                .filter(ent -> ent != null && ent.getLink() == node)
+                .findAny();
+        return match.orElse(null);
     }
 
-    FTEntry getFTEntry(Node node, List<Node> nbrs) {
-        FTEntry ent = entMap.get(node);
-        if (ent == null) {
-            ent = new FTEntry(node);
-            ent.setNbrs(nbrs.toArray(new Node[0]));
-            entMap.put(node, ent);
-        }
-        return ent;
-    }
-
-    void replace(FTEntry ent, FTEntry repl) {
-        forward.replace(ent, repl);
-        backward.replace(ent, repl);
+    void replace(Node node, FTEntry repl) {
+        forward.replace(node, repl);
+        backward.replace(node, repl);
+        System.out.println("FT replaced: " + node + " -> " + repl + "\n"
+                + n.toStringDetail());
     }
 
     Stream<FTEntry> stream() {

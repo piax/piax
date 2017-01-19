@@ -11,9 +11,8 @@
  */
 package org.piax.gtrans.ov.suzakuasync;
 
-import java.util.stream.Stream;
-
 import org.piax.gtrans.async.LocalNode;
+import org.piax.gtrans.async.Node;
 import org.piax.gtrans.ov.ring.rq.FlexibleArray;
 
 /**
@@ -48,7 +47,7 @@ public class FingerTable {
         FTEntry local1 = new FTEntry(vnode);
         // -1th entry is the local node 
         set(LOCALINDEX, local1);
-        FTEntry local2 = tables.getFTEntry(vnode);
+        FTEntry local2 = new FTEntry(vnode);
         // 0th entry is the successor or predecessor
         set(0, local2);
     }
@@ -58,9 +57,8 @@ public class FingerTable {
     }
 
     public void set(int index, FTEntry ent, boolean addtorev) {
-        FTEntry prev = tables.getFTEntry(ent.getLink());
-        prev.updateNbrs(ent);
         table.set(index, ent);
+        // XXX: should replace other entries that points to the same node
         if (addtorev && ent != null && ent.getLink() != null) {
             tables.addReversePointer(ent.getLink());
         }
@@ -84,12 +82,12 @@ public class FingerTable {
      * @param oldEnt
      * @param newEnt
      */
-    void replace(FTEntry oldEnt, FTEntry newEnt) {
+    void replace(Node node, FTEntry newEnt) {
         int size = getFingerTableSize();
         // because level 0 is managed by DDLL, we start iteration from level 1
         for (int i = 1; i < size; i++) {
             FTEntry ent = getFTEntry(i);
-            if (ent == oldEnt) {
+            if (ent != null && ent.getLink() == node) {
                 set(i, newEnt, true);
             }
         }
@@ -100,7 +98,10 @@ public class FingerTable {
     }
 
     FTEntry getFTEntry(int index) {
-        if (index == 0) {
+        FTEntry ent = table.get(index);
+        if (index == LOCALINDEX) {
+            ent.updateLocalEntry(vnode);
+        } else if (index == 0) {
             // the successor and predecessor are managed by DDLL
             /*
              * successorはDDLLで管理しているのに対し，
@@ -109,13 +110,14 @@ public class FingerTable {
              * するまでの期間は，successorとsuccessor-listとの間で齟齬が生じる可能性が
              * あることに注意．
              */
-            FTEntry ent = tables.getFTEntry(isBackward ? vnode.pred
-                    : vnode.succ);
-            return ent;
-        }
-        FTEntry ent = table.get(index);
-        if (index == LOCALINDEX) {
-            ent.updateLocalEntry(vnode);
+            Node latest = isBackward ? vnode.pred : vnode.succ;
+            if (latest == null) {
+                return null;
+            }
+            if (ent.getLink() != latest) {
+                ent = new FTEntry(latest);
+                set(0, ent);
+            }
         }
         return ent;
     }

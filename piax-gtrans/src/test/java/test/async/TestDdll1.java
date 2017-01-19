@@ -203,7 +203,7 @@ public class TestDdll1 {
         }
 
         locatorType = "emu";
-        numNode = 8;
+        numNode = 5;
         if (args.length == 1) {
             numNode = Integer.parseInt(args[0]);
         }
@@ -255,7 +255,7 @@ public class TestDdll1 {
         EventDispatcher.dumpMessageCounters();
         mustBeConsistent();
         //sleep(60000);
-        Sim.dump(nodes);
+        //Sim.dump(nodes);
         //System.exit(0);
 
         if (false) {
@@ -300,7 +300,7 @@ public class TestDdll1 {
         // 全部delete
         threadPool = Executors.newFixedThreadPool(numThread);
         System.out.println("** delete all start");
-        for (int i = 0; i < nodes.length; i++) {
+        for (int i = 0; i < nodes.length - 1; i++) {
             if (i == seedNo) {
                 continue;
             }

@@ -224,12 +224,10 @@ public class SuzakuStrategy extends NodeStrategy {
             System.out.println(node + ": receives revptr ("
                     + s.size() + ") from " + n + ": " + s);
             s.remove(n); // ノードnは既に削除済
+            // nodeのfinger tableで，nをnodeに置き換える
             List<Node> neighbors = szk.getNeighbors();
             neighbors.add(0, node);
-            {
-                // nodeのfinger tableで，nをnodeに置き換える
-                szk.removeFromFingerTable(n, neighbors);
-            }
+            szk.removeFromFingerTable(n, neighbors);
             s.forEach(x -> {
                 // x が区間 [node, n] に含まれている場合，不要なエントリなので無視．
                 // (そのような x は削除済みであるため)
@@ -285,7 +283,6 @@ public class SuzakuStrategy extends NodeStrategy {
     void removeFromFingerTable(Node r, List<Node> neighbors) {
         assert r != n;
         table.removeReversePointer(r);
-        FTEntry ent = table.getFTEntry(r);
         FTEntry repl;
         if (neighbors.get(0) == n) {
             System.out.println(n + ": removeFromFingerTable: self!");
@@ -293,10 +290,9 @@ public class SuzakuStrategy extends NodeStrategy {
             // 代替ノードが自分自身ならば，successorに付け替える．
             repl = getFingerTableEntry(0);
         } else {
-            repl = table.getFTEntry(neighbors.get(0),
-                    neighbors.subList(1, neighbors.size()));
+            repl = getFTEntryFromNbrs(neighbors.toArray(new Node[0]));
         }
-        table.replace(ent, repl);
+        table.replace(r, repl);
     }
 
     @Override
@@ -343,6 +339,11 @@ public class SuzakuStrategy extends NodeStrategy {
             l.delay = Node.NETWORK_LATENCY;
             {
                 FTEntry ent = table.getFTEntry(next);
+                if (ent == null) {
+                    System.out.println("ent == null, next=" + next);
+                    System.out.println(toStringDetail());
+                    assert false;
+                }
                 Node[] nbrs = ent.getNbrs();
                 if (nbrs == null || nbrs.length < SUCCESSOR_LIST_SIZE) {
                     l.fill = true;
@@ -368,8 +369,8 @@ public class SuzakuStrategy extends NodeStrategy {
                         + n.toStringDetail() 
                         + "\n" + next.toStringDetail());
                 if (ent != null && ent.getLink() == next) {
-                    FTEntry repl = getHeadReplacedFTEntry(ent);
-                    table.replace(ent, repl);
+                    FTEntry repl = getFTEntryFromNbrs(ent.getNbrs());
+                    table.replace(next, repl);
                 }
                 /* なんちゃって修復 */
                 if (next == n.succ || next == n.pred) {
@@ -383,9 +384,9 @@ public class SuzakuStrategy extends NodeStrategy {
 
     // handles FTEntUpdateEvent
     public void updateFTEntry(FTEntUpdateEvent event) {
-        FTEntry ent = table.getFTEntry(event.sender);
+        //FTEntry ent = table.getFTEntry(event.sender);
         //table.change(index.ftIndex, event.ent, true);
-        table.replace(ent, event.ent);
+        table.replace(event.sender, event.ent);
     }
 
     @Override
@@ -960,10 +961,10 @@ public class SuzakuStrategy extends NodeStrategy {
             }
             failedNodes.add(baseNode);
             FTEntry repl;
-            if (baseNode == ent.getLink() && (repl = getHeadReplacedFTEntry(ent)) != null) {
+            if (baseNode == ent.getLink() && (repl = getFTEntryFromNbrs(ent.getNbrs())) != null) {
                 // リクエスト送信時からFTEntryが変化していなければ...
                 // we have a backup node
-                table.replace(ent, repl);
+                table.replace(baseNode, repl);
                 updateFingerTable0(p, isBackward, ent, nextEnt2);
             } else {
                 // we have no backup node
@@ -1240,11 +1241,10 @@ public class SuzakuStrategy extends NodeStrategy {
         return false;
     }
 
-    FTEntry getHeadReplacedFTEntry(FTEntry ent) {
-        Node[] nbrs = ent.getNbrs();
+    FTEntry getFTEntryFromNbrs(Node[] nbrs) {
         if (nbrs != null && nbrs.length > 1) {
-            FTEntry rc = table.getFTEntry(nbrs[1], 
-                    Arrays.asList(nbrs).subList(2, nbrs.length));
+            FTEntry rc = new FTEntry(nbrs[0]);
+            rc.setNbrs(Arrays.copyOfRange(nbrs, 1, nbrs.length));
             return rc;
         }
         return null;

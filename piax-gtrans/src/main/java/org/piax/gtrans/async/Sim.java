@@ -413,7 +413,7 @@ public class Sim {
         System.out.println("*****************************");
     }
 
-    final static int NQUERY = 10;//2000;
+    final static int NQUERY = 100;//2000;
     Runnable lookupTest(LocalNode[] nodes, LookupStat s) {
         return () -> {
             System.out.println("start lookupTest: " + EventDispatcher.getVTime());
@@ -480,7 +480,7 @@ public class Sim {
 
     private void insertFailLookupTest(NodeFactory factory,
             InsertOrder insOrder, boolean doFail) {
-        int num = 8;   // 全ノード数
+        int num = 128;   // 全ノード数
         int initial = num;  // 最初に挿入するノード数
         // 後で挿入するノード数
         int later = num - initial;
@@ -495,7 +495,7 @@ public class Sim {
         // 30秒ごとに検索
         long T = convertSecondsToVTime(30);
         // T 毎に LOOKUP_TIMES 回，lookupTest を実行
-        int LOOKUP_TIMES = 2;
+        int LOOKUP_TIMES = 20;
         AllLookupStats all = new AllLookupStats();
         StatSet msgset = new StatSet();
         StatSet symset = new StatSet();
@@ -606,7 +606,7 @@ public class Sim {
         StatSet numStatSet = new StatSet();
         // T 毎に LOOKUP_TIMES 回，lookupTest を実行
         int LOOKUP_TIMES = 20*5;
-        int NQUERY = 10;
+        int NQUERY = 100;
         long DELTIME = convertSecondsToVTime(50 * 60);
         Runnable doLookup = () -> {
             boolean[] ignFrom = new boolean[num];
