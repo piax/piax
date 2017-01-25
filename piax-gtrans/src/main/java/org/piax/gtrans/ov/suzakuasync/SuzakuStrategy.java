@@ -148,8 +148,6 @@ public class SuzakuStrategy extends NodeStrategy {
 
     DdllStrategy base;
 
-    Set<Node> failedNodes = new HashSet<>();
-
     int joinMsgs = 0;
     
     public static void load() {
@@ -290,7 +288,7 @@ public class SuzakuStrategy extends NodeStrategy {
             // 代替ノードが自分自身ならば，successorに付け替える．
             repl = getFingerTableEntry(0);
         } else {
-            repl = getFTEntryFromNbrs(neighbors.toArray(new Node[0]));
+            repl = new FTEntry(neighbors);
         }
         table.replace(r, repl);
     }
@@ -344,12 +342,7 @@ public class SuzakuStrategy extends NodeStrategy {
                     System.out.println(toStringDetail());
                     assert false;
                 }
-                Node[] nbrs = ent.getNbrs();
-                if (nbrs == null || nbrs.length < SUCCESSOR_LIST_SIZE) {
-                    l.fill = true;
-                } else {
-                    l.fill = false;
-                }
+                l.fill = ent.needUpdate();
             }
             System.out.println("T=" + EventDispatcher.getVTime() + ": " + n + ": handleLookup " + l.getEventId() + " " + next);
             n.forward(next, l, (exc) -> {
@@ -360,23 +353,17 @@ public class SuzakuStrategy extends NodeStrategy {
                  * - MessageにはLevelを入れておく
                  * - Level != 0 ならば経路表修復のためのFTEntryを貰う 
                 */
-                //l.faildNodes.add(next.node);
+                table.addSuspectedNode(next);
                 FTEntry ent = table.getFTEntry(next);
                 System.out.println("TIMEOUT: " + n + " sent a query to "
                         + next.key
-                        + ", ftent = " + ent
-                        + ", failedNodes=" + failedNodes + "\n"
+                        + ", ftent = " + ent + "\n"
                         + n.toStringDetail() 
                         + "\n" + next.toStringDetail());
-                if (ent != null && ent.getLink() == next) {
-                    FTEntry repl = getFTEntryFromNbrs(ent.getNbrs());
-                    table.replace(next, repl);
-                }
                 /* なんちゃって修復 */
                 if (next == n.succ || next == n.pred) {
                     DdllStrategy.fix(next);
                 }
-                failedNodes.add(next);
                 handleLookup(l, nRetry + 1);
             });
         }
@@ -541,9 +528,6 @@ public class SuzakuStrategy extends NodeStrategy {
                 links.add(ent.getLink());
             }
         }
-        links = links.stream()
-                .filter((n) -> !failedNodes.contains(n))
-                .collect(Collectors.toList());
         return links;
     }
 
@@ -744,14 +728,17 @@ public class SuzakuStrategy extends NodeStrategy {
         if (ent == null) {
             return null;
         }
-        // clone it because the returned FTEntry will not be copied
-        // in simulations.
-        ent = ent.clone();
-        //logger.debug("getFTRemote: {}, {}", index, index2);
         if (index == FingerTable.LOCALINDEX) {
-            List<Node> neighbors = getNeighbors();
-            ent.setNbrs(neighbors.toArray(new Node[neighbors.size()]));
+            List<Node> nbrs = new ArrayList<>();
+            nbrs.add(ent.getLink());
+            nbrs.addAll(getNeighbors());
+            ent = new FTEntry(nbrs);
+        } else {
+            // clone it because the returned FTEntry will not be copied
+            // in simulations.
+            ent = ent.clone();
         }
+        //logger.debug("getFTRemote: {}, {}", index, index2);
         return ent;
     }
 
@@ -858,8 +845,9 @@ public class SuzakuStrategy extends NodeStrategy {
                 // dis = 当該エントリから Q までの距離
                 int dis = distance - d;
                 if (dis < K) {
-                    e = e.clone();
-                    e.setNbrs(null);
+                    // XXX: THINK!: remove neighbors part
+                    // note that this part is never executed when K=1.
+                    e = new FTEntry(e.getLink());
                 }
                 // 先頭が自ノード，以降は逆順になるようにリストに格納する．
                 // 上の例の場合，gives = {N, C, B, A} となる．
@@ -959,12 +947,9 @@ public class SuzakuStrategy extends NodeStrategy {
             if (baseNode == n.succ || baseNode == n.pred) {
                 DdllStrategy.fix(baseNode);
             }
-            failedNodes.add(baseNode);
-            FTEntry repl;
-            if (baseNode == ent.getLink() && (repl = getFTEntryFromNbrs(ent.getNbrs())) != null) {
-                // リクエスト送信時からFTEntryが変化していなければ...
+            table.addSuspectedNode(baseNode);
+            if (ent.getLink() != null) {
                 // we have a backup node
-                table.replace(baseNode, repl);
                 updateFingerTable0(p, isBackward, ent, nextEnt2);
             } else {
                 // we have no backup node
@@ -1239,15 +1224,6 @@ public class SuzakuStrategy extends NodeStrategy {
             }
         }
         return false;
-    }
-
-    FTEntry getFTEntryFromNbrs(Node[] nbrs) {
-        if (nbrs != null && nbrs.length > 1) {
-            FTEntry rc = new FTEntry(nbrs[0]);
-            rc.setNbrs(Arrays.copyOfRange(nbrs, 1, nbrs.length));
-            return rc;
-        }
-        return null;
     }
 
     /**

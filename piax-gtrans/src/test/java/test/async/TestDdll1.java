@@ -25,15 +25,12 @@ import org.piax.gtrans.async.EventDispatcher;
 import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.async.Sim;
 import org.piax.gtrans.impl.ReceiverThreadPool;
-import org.piax.gtrans.ov.ddll.DdllKey;
-import org.piax.gtrans.ov.ddllasync.DdllStrategy;
 import org.piax.gtrans.ov.suzakuasync.SuzakuStrategy;
 import org.piax.gtrans.ov.suzakuasync.SuzakuStrategy.SuzakuNodeFactory;
 import org.piax.gtrans.raw.emu.EmuLocator;
 import org.piax.gtrans.raw.tcp.TcpLocator;
 import org.piax.gtrans.raw.udp.UdpLocator;
 import org.piax.util.MersenneTwister;
-import org.piax.util.UniqId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -300,7 +297,7 @@ public class TestDdll1 {
         // 全部delete
         threadPool = Executors.newFixedThreadPool(numThread);
         System.out.println("** delete all start");
-        for (int i = 0; i < nodes.length - 1; i++) {
+        for (int i = 0; i < nodes.length; i++) {
             if (i == seedNo) {
                 continue;
             }

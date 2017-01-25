@@ -13,7 +13,6 @@ package org.piax.gtrans.ov.suzakuasync;
 
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import org.piax.gtrans.async.Node;
@@ -22,28 +21,32 @@ import org.piax.gtrans.async.Node;
  * an entry of a finger table
  */
 public class FTEntry implements Cloneable, Serializable {
-    private final Node link;
-    private Node[] nbrs;
+    private List<Node> nodes = new ArrayList<>();
 
-    protected FTEntry(Node link) {
-        this.link = link;
+    protected FTEntry(Node node) {
+        nodes.add(node);
     }
 
-    public void setNbrs(Node[] nbrs) {
-        this.nbrs = nbrs;
+    protected FTEntry(List<Node> nodes) {
+        this.nodes.addAll(nodes);
     }
 
     @Override
     public String toString() {
-        return "[" + getLink() + ", nbrs=" + Arrays.toString(nbrs) + "]";
+        return "[" + getLink() + ", nbrs=" + nodes + "]";
     }
 
+    // XXX: suspectedなノードを考慮!!!
     public Node getLink() {
-        return link;
+        if (nodes.size() > 0) {
+            return nodes.get(0);
+        }
+        return null;
     }
 
-    public Node[] getNbrs() {
-        return nbrs;
+    // XXX:
+    boolean needUpdate() {
+        return (nodes.size() < SuzakuStrategy.SUCCESSOR_LIST_SIZE);
     }
 
     /**
@@ -55,18 +58,8 @@ public class FTEntry implements Cloneable, Serializable {
         // empty
     }
 
-    public void updateNbrs(FTEntry another) {
-        assert this.link == another.link;
-        setNbrs(another.getNbrs());
-    }
-
     public List<Node> allLinks() {
-        List<Node> links = new ArrayList<Node>();
-        links.add(getLink());
-        if (nbrs != null) {
-            links.addAll(Arrays.asList(nbrs));
-        }
-        return links;
+        return nodes;
     }
 
     @Override

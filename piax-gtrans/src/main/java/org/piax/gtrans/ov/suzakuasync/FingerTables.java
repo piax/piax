@@ -13,6 +13,7 @@ public class FingerTables {
     final FingerTable forward;
     final FingerTable backward;
     Set<Node> reversePointers = new HashSet<>();
+    Set<Node> suspectedNodes = new HashSet<>();
     LocalNode n;
 
     public FingerTables(LocalNode n) {
@@ -37,6 +38,14 @@ public class FingerTables {
         backward.replace(node, repl);
         System.out.println("FT replaced: " + node + " -> " + repl + "\n"
                 + n.toStringDetail());
+    }
+
+    void addSuspectedNode(Node node) {
+        suspectedNodes.add(node);
+    }
+    
+    void removeSuspectedNode(Node node) {
+        suspectedNodes.remove(node);
     }
 
     Stream<FTEntry> stream() {
