@@ -127,7 +127,10 @@ public class EventDispatcher {
 
     @Override
     public String toString() {
-        return "Queue:" + timeq;
+        lock.lock();
+        String s = "Queue:" + timeq;
+        lock.unlock();
+        return s;
     }
 
     public static void dumpMessageCounters() {
@@ -234,7 +237,7 @@ public class EventDispatcher {
                         receiver + ": received in grace period: " + ev);
                 if (ev instanceof Lookup) {
                     addToRoute(ev.route, receiver);
-                    ev.beforeRunHook();
+                    ev.beforeRunHook(receiver);
                     ev.run();
                 } else if (ev instanceof RequestEvent) {
                     receiver.post(new ErrorEvent((RequestEvent<?, ?>)ev, 
@@ -245,7 +248,7 @@ public class EventDispatcher {
                 System.out.println("message received by failed node: " + ev);
             } else {
                 addToRoute(ev.route, receiver);
-                ev.beforeRunHook();
+                ev.beforeRunHook(receiver);
                 ev.run();
             }
         }

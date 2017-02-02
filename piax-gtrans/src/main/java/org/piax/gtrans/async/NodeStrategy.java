@@ -49,6 +49,11 @@ public abstract class NodeStrategy {
     }
 
     public abstract void handleLookup(Lookup lookup);
+    
+    public void foundFailedNode(Node node) {
+        System.out.println("FoundFailedNode:" + node);
+        // empty
+    }
 
     public int getMessages4Join() {
         throw new UnsupportedOperationException("getMessages4Join is not implemented");

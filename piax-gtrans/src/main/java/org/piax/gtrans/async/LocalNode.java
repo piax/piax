@@ -3,7 +3,9 @@ package org.piax.gtrans.async;
 import java.io.IOException;
 import java.io.ObjectStreamException;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.piax.common.Endpoint;
@@ -13,6 +15,7 @@ import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.RPCException;
 import org.piax.gtrans.async.Event.Lookup;
 import org.piax.gtrans.async.Event.LookupDone;
+import org.piax.gtrans.async.Event.RequestEvent;
 import org.piax.gtrans.async.EventException.RPCEventException;
 import org.piax.gtrans.async.EventException.RetriableException;
 import org.piax.gtrans.async.EventSender.EventSenderNet;
@@ -35,6 +38,11 @@ public class LocalNode extends Node {
     public final NodeStrategy topStrategy;
     private LinkChangeEventCallback predChange;
     private LinkChangeEventCallback succChange;
+
+    // incomplete requests 
+    Map<Integer, RequestEvent<?, ?>> ongoingRequests = new HashMap<>();
+    // requests that are not ack'ed
+    Map<Integer, RequestEvent<?, ?>> unAckedEvents = new HashMap<>();
 
     public static LocalNode newLocalNode(TransportId transId,
             ChannelTransport<?> trans, Comparable<?> rawkey,
@@ -140,6 +148,7 @@ public class LocalNode extends Node {
                 System.out.println(this + "|send event " + ev);
             }
         }
+        ev.beforeSendHook(this);
         try {
             sender.send(ev);
         } catch (RPCException e) {
@@ -159,6 +168,7 @@ public class LocalNode extends Node {
 
     public void forward(Node dest, Event ev, FailureCallback failure) {
         assert ev.origin != null;
+        ev.beforeForwardHook(this);
         ev.sender = this;
         ev.failureCallback = failure;
         if (ev.delay == Node.NETWORK_LATENCY) {

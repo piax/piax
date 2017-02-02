@@ -98,7 +98,8 @@ public class DdllStrategy extends NodeStrategy {
         return "N" + n.key + "(succ=" + (n.succ != null ? n.succ.key : "null")
                 + ", pred=" + (n.pred != null ? n.pred.key : "null")
                 + ", status=" + status + ", lseq=" + lseq + ", rseq=" + rseq
-                + ", nbrs=" + leftNbrs + ")";
+                + ", nbrs=" + leftNbrs
+                + ")";
     }
 
     public DdllStatus getStatus() {

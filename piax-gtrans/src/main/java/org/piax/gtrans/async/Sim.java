@@ -124,6 +124,8 @@ public class Sim {
             val -> {Sim.verbose = val;});
     public static EnumOption<Algorithm> algorithm
         = new EnumOption<>(Algorithm.class, Algorithm.DDLL, "-algorithm");
+    // use PIAX network as the underlying network
+    // if you turn this option on, also you must turn on "-realtime" option. 
     public static BooleanOption netOpt = new BooleanOption(false, "-net");
     public static EnumOption<ExpType> exptype
         = new EnumOption<>(ExpType.class, ExpType.CONCURRENTJOIN, "-type");
@@ -304,10 +306,10 @@ public class Sim {
                 exc -> {
                     System.out.println("Node b join failed!");
                 });
-        z.joinAsync(a, () -> System.out.println(z + " joined"),
+        /*z.joinAsync(a, () -> System.out.println(z + " joined"),
                 exc -> {
                     System.out.println("Node z join failed");
-                });
+                });*/
         
         /*Node c = createNode(cons, 20);
         c.join0(a);
@@ -316,7 +318,19 @@ public class Sim {
         //NodeImpl[] nodes = new NodeImpl[]{a, z, b, c, d};
         LocalNode[] nodes = new LocalNode[] { a, z, b };
         Arrays.sort(nodes);
-        startSim(nodes, 10000);
+        EventDispatcher.sched(2000, () -> {
+            b.fail();
+            z.joinAsync(a, () -> System.out.println(z + " joined"),
+                    exc -> {
+                        System.out.println("Node z join failed");
+                    });
+            
+        });
+        
+        startSim(nodes, 100000);
+        System.out.println(a.toStringDetail());
+        System.out.println(b.toStringDetail());
+        System.out.println(z.toStringDetail()); 
         //EventDispatcher.nmsgs = 0;
         //System.out.println("*****************************");
         //LookupStat s = new LookupStat();

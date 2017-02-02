@@ -16,7 +16,14 @@ public class EventException extends Exception {
     }
     public static class TimeoutException extends EventException {
         public TimeoutException() {
-            super("timeout");
+            super("Timeout");
+        }
+    }
+    public static class AckTimeoutException extends EventException {
+        Node unresponsive;
+        public AckTimeoutException(Node unresponsive) {
+            super("Ack Timeeout");
+            this.unresponsive = unresponsive;
         }
     }
     public static class RetriableException extends EventException {

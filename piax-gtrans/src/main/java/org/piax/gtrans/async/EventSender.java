@@ -15,6 +15,7 @@ import org.piax.gtrans.RemoteCallable.Type;
 
 public interface EventSender {
     void send(Event ev) throws RPCException;
+
     void forward(Event ev) throws RPCException;
 
     public static class EventSenderSim implements EventSender {
@@ -29,13 +30,16 @@ public interface EventSender {
 
         @Override
         public void send(Event ev) {
-            ev.vtime = EventDispatcher.getVTime() + ev.delay; 
-            EventDispatcher.enqueue(ev);
+            Event copy = ev.clone();
+            copy.vtime = EventDispatcher.getVTime() + ev.delay;
+            EventDispatcher.enqueue(copy);
         }
 
         @Override
         public void forward(Event ev) {
-            send(ev);
+            Event copy = ev.clone();
+            copy.vtime = EventDispatcher.getVTime() + ev.delay;
+            EventDispatcher.enqueue(copy);
         }
     }
 
@@ -48,7 +52,7 @@ public interface EventSender {
             extends RPCInvoker<EventReceiverIf, E>
             implements EventSender, EventReceiverIf {
         public static TransportId DEFAULT_TRANSPORT_ID =
-                new TransportId("DdllAsync");
+                new TransportId("GTEvent");
 
         public EventSenderNet(TransportId transId, ChannelTransport<E> trans)
                 throws IdConflictException, IOException {
@@ -57,16 +61,15 @@ public interface EventSender {
 
         @Override
         public void send(Event ev) throws RPCException {
-            EventReceiverIf stub =
-                    getStub((E)ev.receiver.addr, GTransConfigValues.rpcTimeout);
-            ev.beforeSendHook();
+            EventReceiverIf stub = getStub((E) ev.receiver.addr,
+                    GTransConfigValues.rpcTimeout);
             stub.recv(ev);
         }
 
         @Override
         public void forward(Event ev) throws RPCException {
-            EventReceiverIf stub =
-                    getStub((E)ev.receiver.addr, GTransConfigValues.rpcTimeout);
+            EventReceiverIf stub = getStub((E) ev.receiver.addr,
+                    GTransConfigValues.rpcTimeout);
             stub.recv(ev);
         }
 

@@ -1,12 +1,8 @@
 package org.piax.gtrans.async;
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.piax.gtrans.async.EventException.TimeoutException;
 import org.piax.gtrans.ov.ddll.DdllKey;
@@ -14,12 +10,12 @@ import org.piax.gtrans.ov.ddll.DdllKey;
 /**
  * base class of any event
  */
-public abstract class Event implements Comparable<Event>, Serializable {
+public abstract class Event implements Comparable<Event>, Serializable, Cloneable {
     private static final long serialVersionUID = 6144568542654208895L;
 
     private static int count = 0; 
 
-    public String type;
+    private String type;
     public Node origin;
     public Node sender;
     public Node receiver;
@@ -27,7 +23,7 @@ public abstract class Event implements Comparable<Event>, Serializable {
     public long vtime;
     private final int serial;
     
-    private final int eventId = System.identityHashCode(this);
+    private int eventId = System.identityHashCode(this);
 
     public long delay;
     transient public FailureCallback failureCallback;    // run at sender node
@@ -51,6 +47,16 @@ public abstract class Event implements Comparable<Event>, Serializable {
         this.delay = delay;
         this.type = type;
         this.serial = count++;
+    }
+    
+    @Override
+    protected Event clone() {
+        try {
+            Event copy = (Event) super.clone();
+            return copy;
+        } catch (CloneNotSupportedException e) {
+            throw new Error(e);
+        }
     }
 
     public String getType() {
@@ -83,12 +89,16 @@ public abstract class Event implements Comparable<Event>, Serializable {
     public int hops() {
         return route.size() - 1;
     }
-    
-    public void beforeSendHook() {
+
+    public void beforeSendHook(LocalNode n) {
         // empty
     }
 
-    public void beforeRunHook() {
+    public void beforeForwardHook(LocalNode n) {
+        // empty
+    }
+
+    public void beforeRunHook(LocalNode n) {
         // empty
     }
 
@@ -123,6 +133,39 @@ public abstract class Event implements Comparable<Event>, Serializable {
         }
     }
 
+    public static class AckEvent extends Event {
+        int ackEventId = 0;
+        public AckEvent(RequestEvent<?, ?> req, Node receiver) {
+            super(receiver);
+            if (req.sender == receiver) {
+                // the above condition does not hold when a ReplyEvent 
+                // (subclass of AckEvent) is sent for a RequestEvent
+                // which is indirectly received.
+                this.ackEventId = req.getEventId();
+            }
+        }
+        @Override
+        public void run() {
+            if (ackEventId == 0) {
+                return;
+            }
+            RequestEvent<?, ?> req = RequestEvent.removeNotAckedEvent(
+                    (LocalNode)receiver, ackEventId);
+            if (req == null) {
+                System.out.println("already acked: ackEventId=" + ackEventId);
+                return;
+            }
+            ScheduleEvent ev = req.ackTimeoutEvent;
+            if (ev != null) {
+                EventDispatcher.cancelEvent(ev);
+            }
+        }
+
+        public String toStringMessage() {
+            return getType() + ", ackId=" + ackEventId;
+        }
+    }
+
     /**
      * base class of a request event
      *
@@ -131,34 +174,59 @@ public abstract class Event implements Comparable<Event>, Serializable {
      */
     public static abstract class RequestEvent<T extends RequestEvent<T, U>,
             U extends ReplyEvent<T, U>> extends Event {
-        private static Map<Integer, RequestEvent<?, ?>> requestMap =
-                new HashMap<>();
         final transient EventHandler<U> after;
-        transient ScheduleEvent timeoutEvent; 
+        transient ScheduleEvent replyTimeoutEvent, ackTimeoutEvent; 
         public RequestEvent(Node receiver, EventHandler<U> after) {
             super(receiver);
             this.after = after;
         }
 
         @Override
-        public void beforeSendHook() {
-            registerRequestEvent(this);
-            this.timeoutEvent = EventDispatcher.sched(NetworkParams.NETWORK_TIMEOUT,
+        public void beforeSendHook(LocalNode n) {
+            registerRequestEvent(n, this);
+            this.replyTimeoutEvent = EventDispatcher.sched(NetworkParams.NETWORK_TIMEOUT,
                     () -> {
                         this.failureCallback.run(new TimeoutException());
                     });
+
+            registerNotAckedEvent(n, this);
+            this.ackTimeoutEvent = EventDispatcher.sched(NetworkParams.NETWORK_TIMEOUT,
+                    () -> {
+                        n.topStrategy.foundFailedNode(receiver);
+                    });
         }
-        
+
+        @Override
+        public void beforeForwardHook(LocalNode n) {
+            registerNotAckedEvent(n, this);
+            this.ackTimeoutEvent = EventDispatcher.sched(NetworkParams.NETWORK_TIMEOUT,
+                    () -> {
+                        n.topStrategy.foundFailedNode(receiver);
+                    });
+            // when a request message is forwarded, we send AckEvent to the
+            // sender node.
+            n.post(new AckEvent(this, this.sender));
+        }
+ 
         /*
          * handling `requestMap' should be in synchronized block because the
          * upper layer might be multi-threaded.
          */
-        private synchronized static void registerRequestEvent(RequestEvent<?, ?> ev) {
-            requestMap.put(ev.getEventId(), ev);
+        private synchronized static void registerRequestEvent(LocalNode n, RequestEvent<?, ?> ev) {
+            n.ongoingRequests.put(ev.getEventId(), ev);
         }
 
-        public synchronized static RequestEvent<?, ?> removeRequestEvent(int id) {
-            RequestEvent<?, ?> ev = requestMap.remove(id);
+        public synchronized static RequestEvent<?, ?> removeRequestEvent(LocalNode n, int id) {
+            RequestEvent<?, ?> ev = n.ongoingRequests.remove(id);
+            return ev;
+        }
+
+        private static void registerNotAckedEvent(LocalNode n, RequestEvent<?, ?> ev) {
+            n.unAckedEvents.put(ev.getEventId(), ev);
+        }
+
+        public static RequestEvent<?, ?> removeNotAckedEvent(LocalNode n, int id) {
+            RequestEvent<?, ?> ev = n.unAckedEvents.remove(id);
             return ev;
         }
     }
@@ -170,11 +238,11 @@ public abstract class Event implements Comparable<Event>, Serializable {
      * @param <U> the type of reply event
      */
     public static abstract class ReplyEvent<T extends RequestEvent<T, U>, 
-        U extends ReplyEvent<T, U>> extends Event {
+        U extends ReplyEvent<T, U>> extends AckEvent {
         public transient /*final*/T req;
         private final int reqEventId;
         public ReplyEvent(T req) {
-            super(req.origin);
+            super(req, req.origin);
             this.req = req;
             this.reqEventId = req.getEventId();
             this.route.addAll(req.route);
@@ -183,27 +251,32 @@ public abstract class Event implements Comparable<Event>, Serializable {
         }
 
         @Override
-        public void beforeRunHook() {
-            if (req.timeoutEvent != null) {
-                EventDispatcher.cancelEvent(req.timeoutEvent);
-                req.timeoutEvent = null;
+        public void beforeRunHook(LocalNode n) {
+            // restore transient "req" field
+            RequestEvent<?, ?> r = RequestEvent.removeRequestEvent(n, reqEventId);
+            assert r != null;
+            this.req = (T)r;
+            assert this.req.after != null;
+
+            // remove timeout event
+            if (req.replyTimeoutEvent != null) {
+                EventDispatcher.cancelEvent(req.replyTimeoutEvent);
+                req.replyTimeoutEvent = null;
+            }
+        }
+        
+        @Override
+        public void beforeSendHook(LocalNode n) {
+            if (receiver != req.sender) {
+                n.post(new AckEvent(req, req.sender));
             }
         }
 
         @SuppressWarnings("unchecked")
         @Override
         public void run() {
+            super.run();
             req.after.handle((U)this);
-        }
-
-        @SuppressWarnings("unchecked")
-        private void readObject(ObjectInputStream stream) throws IOException,
-            ClassNotFoundException {
-            stream.defaultReadObject();
-            RequestEvent<?, ?> r = RequestEvent.removeRequestEvent(reqEventId);
-            assert r != null;
-            this.req = (T)r;
-            assert this.req.after != null;
         }
     }
 
@@ -265,7 +338,7 @@ public abstract class Event implements Comparable<Event>, Serializable {
         }
         @Override
         public String toStringMessage() {
-            return "LookupError";
+            return "ErrorEvent";
         }
     }
 }
