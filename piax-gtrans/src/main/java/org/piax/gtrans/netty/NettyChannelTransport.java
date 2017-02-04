@@ -64,7 +64,7 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
     public NATLocatorManager nMgr; 
     NettyBootstrap bs;
     AtomicInteger seq;
-    final public int RAW_POOL_SIZE = 10;
+    final public int RAW_POOL_SIZE = 3;
     
     public AttributeKey<String> rawKey = AttributeKey.valueOf("rawKey");
 
@@ -284,7 +284,7 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
                     try {
                         synchronized(cached) {
                             cached.wait(CHANNEL_ESTABLISH_TIMEOUT);
-                            logger.info("waiting for RUN/DEFUNCT state. current:" + cached.getStat());
+                            logger.info("waiting for RUN/DEFUNCT state src={} dst={} stat={}", locator, dst, cached.getStat());
                         }
                     } catch (InterruptedException e) {
                     }
@@ -339,7 +339,7 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
             }
             // the channel was established but was closed 
             logger.warn("getRawChannelAsClient: illegal state: " + raw.getStat());
-            //raw.close();
+            raw.close();
             throw new IOException("Channel establish failed.");
         }
     }

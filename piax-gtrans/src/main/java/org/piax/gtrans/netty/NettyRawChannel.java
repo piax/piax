@@ -33,6 +33,17 @@ public class NettyRawChannel implements Channel<NettyLocator> {
     }
     Stat stat;
 
+    public NettyRawChannel(NettyChannelTransport mother) {
+        this.remote = null; // loopback
+        this.mother = mother;
+        this.attempt = null;
+        this.stat = Stat.RUN;
+        this.ctx = null;
+        isCreatorSide = false;
+        lastUse = System.currentTimeMillis();
+        priority = 0;
+    }
+    
     public NettyRawChannel(NettyLocator remote, NettyChannelTransport mother) {
         this.remote = remote;
         this.mother = mother;

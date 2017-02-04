@@ -44,12 +44,14 @@ public class NettyChannel implements Channel<NettyLocator> {
 
     @Override
     public void close() {
-        try {
-            send(null);
-        } catch (IOException e) {
-            logger.warn("Exception occured while closing channel to {}.", dst);
+        if (raw.getStat() == NettyRawChannel.Stat.RUN) {
+            try {
+                send(null);
+            } catch (IOException e) {
+                logger.warn("Exception occured while closing channel to {}.", dst);
+            }
+            // XXX need to wait for other side to close?
         }
-        // XXX need to wait for other side to close?
         trans.deleteChannel(this);
         isClosed = true;
     }
@@ -124,12 +126,11 @@ public class NettyChannel implements Channel<NettyLocator> {
                 logger.debug("updated to {}", src);
             }
             //if (raw.getRemote() instanceof NettyNATLocator) {
-                logger.debug("on {}, send to {}, channel.remote={}", raw, raw.getRemote(), getRemote());
+            logger.debug("on {}, send to {}, channel.remote={}", raw, raw.getRemote(), getRemote());
             //}
         }
 
         NettyMessage nmsg = new NettyMessage(remoteObjectId, src,
-                // raw.getRemote() does not work on NAT.
                 dst,
                 getChannelInitiator(), raw.getPeerId(), msg, true,
                 getChannelNo());

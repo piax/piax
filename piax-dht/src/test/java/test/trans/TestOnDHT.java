@@ -93,6 +93,11 @@ public class TestOnDHT {
     public void DHTOnSuzakuOnNettyTest() throws Exception {
             DHTRun(false, L.NETTY);
     }
+    
+    @Test
+    public void DHTOnSkipGraphOnNettyTest() throws Exception {
+        DHTRun(true, L.NETTY);
+    }
 
     @Test
     public void DHTOnSkipGraphOnEmuTest() throws Exception {
@@ -106,7 +111,7 @@ public class TestOnDHT {
     
     @Test
     public void DHTOnSkipGraphOnTcpTest() throws Exception {
-    		DHTRun(true, L.TCP);
+        DHTRun(true, L.TCP);
     }
     
     public void DHTRun(boolean useSG, L loc) throws Exception {
@@ -163,8 +168,7 @@ public class TestOnDHT {
         printf("%n** join%n");
         stime = System.currentTimeMillis();
         for (int i = 0; i < numPeer; i++) {
-            //seedPeerNo = (i % 10) == 0 ? 0 : (i / 10) * 10;
-            //System.out.println("seedPeerNo=" + seedPeerNo);
+            seedPeerNo = (i % 10) == 0 ? 0 : (i / 10) * 10;
             Endpoint seed = ovs[seedPeerNo].getBaseTransport().getEndpoint();
             ovs[i].join(seed);
             printf("%s ", ovs[i].getPeerId());
@@ -193,13 +197,15 @@ public class TestOnDHT {
         printf("%n** get (%d)%n", n);
         stime = System.currentTimeMillis();
         for (int i = 0; i < numPeer; i++) {
-            ((NettyChannelTransport)ovs[i].getBaseTransport()).forwardCount = 0;
+            if (loc == L.NETTY) {
+                ((NettyChannelTransport)ovs[i].getBaseTransport()).forwardCount = 0;
+            }
         }
+        dht = dhts[29];
         for (int i = 0; i < n; i++) {
             String get = (String) dht.get("hoge" + i);
             assertTrue("GET failed", (get != null && get.equals("hage" + i)));
         }
-
         for (int i = 0; i < numPeer; i++) {
             /*System.out.println("Rights");
             Comparable key = ovs[i].getKeys().toArray(new Comparable[0])[0];
@@ -214,13 +220,17 @@ public class TestOnDHT {
                     System.out.println(ovs[i].getEndpoint() + "["+ j + "] : " + l.addr);
                 }
             }
-            System.out.println(ovs[i].getEndpoint() + " : " + ovs[i].getBaseTransport().getEndpoint() + ": " +((NettyChannelTransport)ovs[i].getBaseTransport()).forwardCount);// + "," + ((NettyChannelTransport)ovs[i].getBaseTransport()).nMgr);
             */
+            if (loc == L.NETTY) {
+                if (!(((NettyChannelTransport)ovs[i].getBaseTransport()).getEndpoint() instanceof NettyNATLocator)) {
+                    System.out.println(ovs[i].getEndpoint() + "\t" +((NettyChannelTransport)ovs[i].getBaseTransport()).forwardCount);// + "," + ((NettyChannelTransport)ovs[i].getBaseTransport()).nMgr);
+                }
+            }
         }
         etime = System.currentTimeMillis();
         printf("=> took %d msec%n", (etime-stime));
 
-        printDHT();
+//        printDHT();
 
         sleep(200);
         printf("%n** fin%n");
