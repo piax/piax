@@ -4,12 +4,12 @@
   <modelVersion>4.0.0</modelVersion>
   <parent>
     <groupId>org.piax</groupId>
-    <artifactId>piax</artifactId>
-    <version>3.1.0</version>
+    <artifactId>piax-parent</artifactId>
+    <version>3.2-SNAPSHOT</version>
   </parent>
   <groupId>org.piax</groupId>
   <artifactId>piax-shell</artifactId>
-  <version>3.1.0</version>
+  <version>3.2-SNAPSHOT</version>
   <name>PIAX Shell</name>
   <url>http://www.piax.org</url>
   <properties>
@@ -26,12 +26,12 @@
     <dependency>
       <groupId>org.piax</groupId>
       <artifactId>piax-agent</artifactId>
-      <version>3.1.0</version>
+      <version>3.2-SNAPSHOT</version>
     </dependency>
     <dependency>
       <groupId>org.piax</groupId>
       <artifactId>piax-dht</artifactId>
-      <version>3.1.0</version>
+      <version>3.2-SNAPSHOT</version>
     </dependency>
   </dependencies>
   <build>

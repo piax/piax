@@ -4,12 +4,12 @@
   <modelVersion>4.0.0</modelVersion>
   <parent>
     <groupId>org.piax</groupId>
-    <artifactId>piax</artifactId>
-    <version>3.1.0</version>
+    <artifactId>piax-parent</artifactId>
+    <version>3.2-SNAPSHOT</version>
   </parent>
   <groupId>org.piax</groupId>
   <artifactId>piax-agent</artifactId>
-  <version>3.1.0</version>
+  <version>3.2-SNAPSHOT</version>
   <name>PIAX Agent</name>
   <description>The mobile agent library of PIAX</description>
   <url>http://www.piax.org/</url>
@@ -79,7 +79,7 @@
     <dependency>
       <groupId>org.piax</groupId>
       <artifactId>piax-gtrans</artifactId>
-      <version>3.1.0</version>
+      <version>3.2-SNAPSHOT</version>
     </dependency>
   </dependencies>
   <build>
@@ -166,6 +166,11 @@
     </plugins>
   </build>
   <distributionManagement>
+    <snapshotRepository>
+      <id>sonatype-nexus-snapshots</id>
+      <name>Nexus Snapshot Repository</name>
+      <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
+    </snapshotRepository>
     <repository>
       <id>sonatype-nexus-staging</id>
       <name>Nexus Release Repository</name>
