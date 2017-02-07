@@ -64,7 +64,7 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
     public NATLocatorManager nMgr; 
     NettyBootstrap bs;
     AtomicInteger seq;
-    final public int RAW_POOL_SIZE = 3;
+    final public int RAW_POOL_SIZE = 10;
     
     public AttributeKey<String> rawKey = AttributeKey.valueOf("rawKey");
 
@@ -284,7 +284,6 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
                     try {
                         synchronized(cached) {
                             cached.wait(CHANNEL_ESTABLISH_TIMEOUT);
-                            logger.info("waiting for RUN/DEFUNCT state src={} dst={} stat={}", locator, dst, cached.getStat());
                         }
                     } catch (InterruptedException e) {
                     }
@@ -319,11 +318,9 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
             }
         }
         if (raw.getStat() == Stat.RUN) {
-            logger.debug("created raw channel become available=" + raw);
             return raw;
         }
         else {
-            // not accepted other side yet...
             while (raw.getStat() == Stat.DENIED) {
                 try {
                     synchronized(raw) {
@@ -338,7 +335,7 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
                 return raw;
             }
             // the channel was established but was closed 
-            logger.warn("getRawChannelAsClient: illegal state: " + raw.getStat());
+            logger.error("getRawChannelAsClient: illegal state: " + raw.getStat());
             raw.close();
             throw new IOException("Channel establish failed.");
         }
@@ -456,25 +453,26 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
                                     AttemptType.ACK, locator, null));
                         }
                     } else if (raw != null && raw.attempt != null) {
-                        raw.touch();
                         synchronized (raw) {
+                            raw.touch();
                             // this side won
                             if (raw.attempt > (int) attempt.getArg()) {
-                                logger.info("attempt won on " + raw);
+                                logger.debug("attempt won on " + raw);
                                 ctx.writeAndFlush(new AttemptMessage(
                                         AttemptType.NACK, locator, null));
                                 
                                 
                             } else { // opposite side wins.
-                                logger.info("attempt lose on " + raw);
+                                logger.debug("attempt lose on " + raw);
                                 ctx.writeAndFlush(new AttemptMessage(
                                         AttemptType.ACK, locator, null));
-                                if (raw.getStat() == Stat.DENIED) {
-                                    // if NACK is already received, it goes to RUN state.
+                                //if (raw.getStat() == Stat.DENIED) {
+                                //logger.info("NACK is already received: " + raw);
+                                // if NACK is already received, it goes to RUN state.
                                     raw.setContext(ctx);
                                     raw.setStat(Stat.RUN);
                                     raw.notifyAll();
-                                }
+                                //}
                             }
                         } // synchronized raw
                     }
@@ -579,7 +577,6 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
                 break;
             case NACK:
                 // there should be a attempt thread on this peer.
-                logger.info("NACK received on {}", raw);
                 // the connection is not needed anymore.
                 ctx.close();
                 synchronized(raws) {

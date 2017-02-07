@@ -136,7 +136,7 @@ public class TestOnDHT {
             		PeerLocator l = null;
             		switch(loc) {
             		case NETTY:
-                        if (i % 10 == 1 || i % 10 == 2 || i % 10 == 3 || i % 10 == 4) {
+                        if (i % 10 == 1) {
                             l = new NettyNATLocator(new InetSocketAddress("localhost", 20000 + i)); 
                         }
                         else {
