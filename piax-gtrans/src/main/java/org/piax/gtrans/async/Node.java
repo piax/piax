@@ -17,8 +17,6 @@ public class Node implements Comparable<Node>, Serializable {
         INSERTED,
         /** deleting */
         DELETING, GRACE, DELETED,
-        /** failure */
-        FAILED
     };
 
     // postでlatencyとして指定すると，ネットワーク遅延時間後にイベントが実行される

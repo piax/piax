@@ -7,6 +7,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -15,7 +16,7 @@ import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.async.Event.Lookup;
 import org.piax.gtrans.async.Event.LookupDone;
-import org.piax.gtrans.async.Event.ScheduleEvent;
+import org.piax.gtrans.async.Event.TimerEvent;
 import org.piax.gtrans.async.EventDispatcher;
 import org.piax.gtrans.async.FailureCallback;
 import org.piax.gtrans.async.LocalNode;
@@ -144,7 +145,7 @@ public class SuzakuStrategy extends NodeStrategy {
 
     // 次にfinger tableを更新するレベル (デバッグ用)
     int nextLevel = 0;
-    ScheduleEvent updateSchedEvent;
+    TimerEvent updateSchedEvent;
 
     DdllStrategy base;
 
@@ -360,11 +361,15 @@ public class SuzakuStrategy extends NodeStrategy {
                         + ", ftent = " + ent + "\n"
                         + n.toStringDetail() 
                         + "\n" + next.toStringDetail());
-                /* なんちゃって修復 */
                 if (next == n.succ || next == n.pred) {
-                    DdllStrategy.fix(next);
+                    // XXX: handle next == n.succ correctly
+                    CompletableFuture<Boolean> future = base.checkAndFix();
+                    future.thenRun(() -> {
+                        handleLookup(l, nRetry + 1);
+                    });
+                } else {
+                    handleLookup(l, nRetry + 1);
                 }
-                handleLookup(l, nRetry + 1);
             });
         }
     }
@@ -943,23 +948,30 @@ public class SuzakuStrategy extends NodeStrategy {
             updateNext(p, isBackward, nextEnt2, nextEntX);
         }), (exc) -> {
             System.out.println(n + ": getFingerTable0: TIMEOUT on " + baseNode);
-            /* なんちゃって修復 */
-            if (baseNode == n.succ || baseNode == n.pred) {
-                DdllStrategy.fix(baseNode);
-            }
-            table.addSuspectedNode(baseNode);
-            if (ent.getLink() != null) {
-                // we have a backup node
-                updateFingerTable0(p, isBackward, ent, nextEnt2);
-            } else {
-                // we have no backup node
-                if (p + 1 < tab.getFingerTableSize()) {
-                    System.out.println(n + ": No backup node: " + n + ", p =" + p + ", continue");
-                    updateFingerTable0(p + 1, isBackward, null, null);
+
+            Runnable job = () -> {
+                table.addSuspectedNode(baseNode);
+                if (ent.getLink() != null) {
+                    // we have a backup node
+                    updateFingerTable0(p, isBackward, ent, nextEnt2);
                 } else {
-                    System.out.println(n + ": No backup node: " + n + ", p =" + p + ", no continue");
-                    updateNext(p, isBackward, nextEnt2, null);
+                    // we have no backup node
+                    if (p + 1 < tab.getFingerTableSize()) {
+                        System.out.println(n + ": No backup node: " + n + ", p =" + p + ", continue");
+                        updateFingerTable0(p + 1, isBackward, null, null);
+                    } else {
+                        System.out.println(n + ": No backup node: " + n + ", p =" + p + ", no continue");
+                        updateNext(p, isBackward, nextEnt2, null);
+                    }
                 }
+            };
+            if (baseNode == n.succ || baseNode == n.pred) {
+                // fix and retry
+                // XXX: handle baseNode == n.succ case correctly!
+                CompletableFuture<Boolean> future = base.checkAndFix();
+                future.thenRun(job);
+            } else {
+                job.run();
             }
         });
     }

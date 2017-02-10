@@ -2,11 +2,14 @@ package org.piax.gtrans.async;
 
 import java.io.IOException;
 import java.io.ObjectStreamException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.piax.common.Endpoint;
 import org.piax.common.TransportId;
@@ -34,6 +37,7 @@ public class LocalNode extends Node {
     public Node introducer;
     public Node succ, pred;
     public NodeMode mode = NodeMode.OUT;
+    private boolean isFailed = false;   // for simulation
     public NodeStrategy baseStrategy;
     public final NodeStrategy topStrategy;
     private LinkChangeEventCallback predChange;
@@ -99,6 +103,11 @@ public class LocalNode extends Node {
             System.out.println(s);
         }
     }
+    
+    @Override
+    public String toString() {
+        return super.toString() + (isFailed ? "(failed)" : ""); 
+    }
 
     @Override
     public String toStringDetail() {
@@ -149,11 +158,13 @@ public class LocalNode extends Node {
             }
         }
         ev.beforeSendHook(this);
-        try {
-            sender.send(ev);
-        } catch (RPCException e) {
-            verbose(this + " got exception: " + e);
-            failure.run(new RPCEventException(e));
+        if (!isFailed) {
+            try {
+                sender.send(ev);
+            } catch (RPCException e) {
+                verbose(this + " got exception: " + e);
+                failure.run(new RPCEventException(e));
+            }
         }
     }
 
@@ -183,11 +194,13 @@ public class LocalNode extends Node {
                 System.out.println(this + "|forward to " + dest + ", " + ev);
             }
         }
-        try {
-            sender.forward(ev);
-        } catch (RPCException e) {
-            verbose(this + " got exception: " + e);
-            failure.run(new RPCEventException(e));
+        if (!isFailed()) {
+            try {
+                sender.forward(ev);
+            } catch (RPCException e) {
+                verbose(this + " got exception: " + e);
+                failure.run(new RPCEventException(e));
+            }
         }
     }
 
@@ -258,7 +271,7 @@ public class LocalNode extends Node {
 
     public void joinAsync(Node introducer, Runnable success) {
         joinAsync(introducer, success, exc -> {
-            throw new Error("joinUsingIntroducer got exception", exc);
+            throw new Error("joinAsync: got exception", exc);
         });
     }
 
@@ -323,8 +336,17 @@ public class LocalNode extends Node {
     }
 
     public void fail() {
-        System.out.println("Node " + this + " fails");
-        this.mode = NodeMode.FAILED;
+        System.out.println("*** " + this + " fails");
+        this.isFailed = true;
+    }
+    
+    public void revive() {
+        System.out.println("*** " + this + " revives");
+        this.isFailed = false;
+    }
+
+    public boolean isFailed() {
+        return this.isFailed;
     }
 
     /**
@@ -376,21 +398,8 @@ public class LocalNode extends Node {
         }));
     }
 
-    public Node getClosestPredecessor(DdllKey key) {
-        Comparator<Node> comp = (Node a, Node b) -> {
-            // aの方がkeyに近ければ正の数，bの方がkeyに近ければ負の数を返す
-            // [a, key, b) -> plus
-            // [b, key, a) -> minus
-            if (Node.isOrdered(a.key, true, key, b.key, false)) {
-                return +1;
-            }
-            return -1;
-        };
-        /*Comparator<Node> compx = (Node a, Node b) -> {
-            int rc = comp.compare(a, b);
-            System.out.println("compare " + a.id + " with " + b.id + " -> " + rc);
-            return rc;
-        };*/
+    public Node getClosestPredecessor(DdllKey k) {
+        Comparator<Node> comp = getComparator(k);
         List<Node> nodes = topStrategy.getAllLinks2();
         //Collections.sort(nodes, comp);
         //System.out.println("nodes = " + nodes);
@@ -399,4 +408,58 @@ public class LocalNode extends Node {
         //System.out.println("max = " + n);
         return n.orElse(null);
     }
+
+    private static Comparator<Node> getComparator(DdllKey k) {
+        Comparator<Node> comp = (Node a, Node b) -> {
+            // aの方がkに近ければ正の数，bの方がkeyに近ければ負の数を返す
+            // [a, key, b) -> plus
+            // [b, key, a) -> minus
+            if (Node.isOrdered(a.key, true, k, b.key, false)) {
+                return +1;
+            }
+            return -1;
+        };
+        return comp;
+    }
+
+    /**
+     * 経路表から，範囲 [myKey, k) にキーが含まれるノードを抽出し，kから見てsuccessor
+     * 方向にソートして返す．ただし，myKey は最初のノードとする．
+     * 
+     * <p>myKey = 100, k = 200 の場合，returnするリストは例えば [100, 150]． 
+     * <p>myKey = k = 100 の場合 [100, 200, 300, 0]．
+     * 
+     * @param k
+     * @return
+     */
+    public List<Node> getNodesForFix(DdllKey k) {
+        Comparator<Node> comp = getComparator(k);
+        List<Node> nodes = topStrategy.getAllLinks2();
+        List<Node> cands = nodes.stream()
+                .filter(p -> Node.isOrdered(this.key, true, p.key, k, false))
+                .sorted(comp)
+                .distinct()
+                .collect(Collectors.toCollection(ArrayList::new));
+        if (cands.get(cands.size() - 1) == this) {
+            cands.remove(cands.size() - 1);
+            cands.add(0, this);
+        }
+        return cands;
+    }
+    
+    public static void main(String args[]) {
+        DdllKey k0 = new DdllKey(0, new UniqId("0"));
+        DdllKey k1 = new DdllKey(1, new UniqId("1"));
+        DdllKey k2 = new DdllKey(2, new UniqId("2"));
+        DdllKey k3 = new DdllKey(3, new UniqId("3"));
+        Node n0 = new Node(k0, null, 0);
+        Node n1 = new Node(k1, null, 0);
+        Node n2 = new Node(k2, null, 0);
+        Comparator<Node> comp = LocalNode.getComparator(k1);
+        Node[] nodes = new Node[]{n0, n1, n2};
+        List<Node> x = Arrays.asList(nodes).stream()
+                .sorted(comp).collect(Collectors.toList());
+        System.out.println(x);
+    }
+
 }

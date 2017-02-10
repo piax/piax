@@ -7,11 +7,12 @@ import java.util.PriorityQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Consumer;
 
 import org.piax.gtrans.async.Event.ErrorEvent;
 import org.piax.gtrans.async.Event.Lookup;
 import org.piax.gtrans.async.Event.RequestEvent;
-import org.piax.gtrans.async.Event.ScheduleEvent;
+import org.piax.gtrans.async.Event.TimerEvent;
 import org.piax.gtrans.async.EventException.GraceStateException;
 import org.piax.gtrans.async.Node.NodeMode;
 import org.piax.gtrans.async.Option.BooleanOption;
@@ -100,8 +101,16 @@ public class EventDispatcher {
         }
     }
 
-    public static ScheduleEvent sched(long delay, Runnable run) {
-        ScheduleEvent ev = new ScheduleEvent(null, delay, run);
+    public static TimerEvent sched(long delay, Runnable run) {
+        return sched(delay, 0, ev -> run.run());
+    }
+
+    public static TimerEvent sched(long delay, long period, Runnable run) {
+        return sched(delay, period, ev -> run.run());
+    }
+
+    public static TimerEvent sched(long delay, long period, Consumer<TimerEvent> job) {
+        TimerEvent ev = new TimerEvent(delay, period, job);
         ev.vtime = getVTime() + delay;
         enqueue(ev);
         return ev;
@@ -243,9 +252,9 @@ public class EventDispatcher {
                     receiver.post(new ErrorEvent((RequestEvent<?, ?>)ev, 
                             new GraceStateException()));
                 }
-            } else if (receiver != null && (receiver.mode == NodeMode.FAILED
+            } else if (receiver != null && (receiver.isFailed()
                     || receiver.mode == NodeMode.DELETED)) {
-                System.out.println("message received by failed node: " + ev);
+                System.out.println("message received by deleted or failed node: " + ev);
             } else {
                 addToRoute(ev.route, receiver);
                 ev.beforeRunHook(receiver);

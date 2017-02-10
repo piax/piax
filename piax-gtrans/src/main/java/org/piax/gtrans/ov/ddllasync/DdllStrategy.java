@@ -2,7 +2,10 @@ package org.piax.gtrans.ov.ddllasync;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 
 import org.piax.common.TransportId;
 import org.piax.gtrans.ChannelTransport;
@@ -10,13 +13,13 @@ import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.async.Event;
 import org.piax.gtrans.async.Event.Lookup;
 import org.piax.gtrans.async.Event.LookupDone;
+import org.piax.gtrans.async.Event.TimerEvent;
 import org.piax.gtrans.async.EventDispatcher;
 import org.piax.gtrans.async.EventException.RetriableException;
 import org.piax.gtrans.async.FailureCallback;
 import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.async.NetworkParams;
 import org.piax.gtrans.async.Node;
-import org.piax.gtrans.async.Node.NodeMode;
 import org.piax.gtrans.async.NodeFactory;
 import org.piax.gtrans.async.NodeStrategy;
 import org.piax.gtrans.async.Option.EnumOption;
@@ -24,8 +27,7 @@ import org.piax.gtrans.async.Option.IntegerOption;
 import org.piax.gtrans.async.Sim;
 import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.gtrans.ov.ddll.LinkNum;
-import org.piax.gtrans.ov.ddllasync.DdllEvent.Ping;
-import org.piax.gtrans.ov.ddllasync.DdllEvent.Pong;
+import org.piax.gtrans.ov.ddllasync.DdllEvent.GetCandidates;
 import org.piax.gtrans.ov.ddllasync.DdllEvent.PropagateNeighbors;
 import org.piax.gtrans.ov.ddllasync.DdllEvent.SetL;
 import org.piax.gtrans.ov.ddllasync.DdllEvent.SetR;
@@ -38,7 +40,7 @@ public class DdllStrategy extends NodeStrategy {
         @Override
         public LocalNode createNode(TransportId transId,
                 ChannelTransport<?> trans, DdllKey key, int latency)
-                        throws IOException, IdConflictException {
+                throws IOException, IdConflictException {
             return new LocalNode(transId, trans, key, new DdllStrategy(),
                     latency);
         }
@@ -66,6 +68,10 @@ public class DdllStrategy extends NodeStrategy {
         SETRNAK_NONE, SETRNAK_OPT1, SETRNAK_OPT2
     };
 
+    public enum FixType {
+        NORMAL, LEFTONLY, BOTH
+    }
+
     public static EnumOption<SetRNakMode> setrnakmode = new EnumOption<>(
             SetRNakMode.class, SetRNakMode.SETRNAK_NONE, "-setrnak");
     // pinging is off by default
@@ -73,10 +79,15 @@ public class DdllStrategy extends NodeStrategy {
             new IntegerOption(0, "-pingperiod");
 
     LinkNum lseq = new LinkNum(0, 0), rseq = new LinkNum(0, 0);
-
     DdllStatus status = DdllStatus.OUT;
+
+    CompletableFuture<Boolean> fixCompleteFuture = null;
+
     /** neighbor node set */
     public NeighborSet leftNbrs;
+
+    // TODO: purge entries by timer! 2017/02/09
+    Set<Node> suspectedNodes = new HashSet<>();
 
     public int joinTime = -1;
     private int joinMsgs = 0;
@@ -98,39 +109,37 @@ public class DdllStrategy extends NodeStrategy {
         return "N" + n.key + "(succ=" + (n.succ != null ? n.succ.key : "null")
                 + ", pred=" + (n.pred != null ? n.pred.key : "null")
                 + ", status=" + status + ", lseq=" + lseq + ", rseq=" + rseq
-                + ", nbrs=" + leftNbrs
-                + ")";
-    }
-
-    public DdllStatus getStatus() {
-        return status;
+                + ", nbrs=" + leftNbrs + ")";
     }
 
     @Override
     public void initInitialNode() {
         n.succ = n;
         n.pred = n;
-        status = DdllStatus.IN;
-        schedulePing();
+        setStatus(DdllStatus.IN);
+        schedNextPing();
     }
 
     @Override
-    public void joinAfterLookup(LookupDone l, Runnable success, 
+    public void joinAfterLookup(LookupDone l, Runnable success,
             FailureCallback eh) {
         join(l.pred, l.succ, success, eh, null);
     }
 
-    public void join(Node pred, Node succ, Runnable success, 
-            FailureCallback eh, SetRJob setRjob) {
+    public void join(Node pred, Node succ, Runnable success, FailureCallback eh,
+            SetRJob setRjob) {
+        assert fixCompleteFuture == null;
         n.pred = pred;
         n.succ = succ;
-        status = DdllStatus.INS;
-        Event ev = new SetR(n.pred, n, n.succ, new LinkNum(0, 0), setRjob,
-                success);
+        setStatus(DdllStatus.INS);
+        SetR ev = new SetR(n.pred, DdllStrategy.FixType.NORMAL, n, n.succ,
+                new LinkNum(0, 0), setRjob, success);
         n.post(ev, (exc) -> {
-            System.out.println(n + ": join: SetRAck/Nak timeout. ");
-            if (eh != null) eh.run(exc);
-            // fix(ev.receiver); // recovery
+            System.out.println(n + ": join failed: " + exc);
+            setStatus(DdllStatus.OUT);
+            if (eh != null) {
+                eh.run(exc);
+            }
         });
     }
 
@@ -141,17 +150,46 @@ public class DdllStrategy extends NodeStrategy {
 
     public void leave(Runnable success, SetRJob setRjob) {
         System.out.println(n + ": leave start");
-        status = DdllStatus.DEL;
-        Event ev = new SetR(n.pred, n.succ, n, rseq.next(), setRjob, success);
+        stopPeriodicalPing();
+        if (fixCompleteFuture != null) {
+            System.out.println("but fix() is running");
+            fixCompleteFuture.thenAccept(rc -> {
+                if (rc) {
+                    leave(success, setRjob);
+                } else {
+                    checkAndFix().thenRun(() -> leave(success, setRjob));
+                }
+            });
+            return;
+        }
+        setStatus(DdllStatus.DEL);
+        SetR ev = new SetR(n.pred, FixType.NORMAL, n.succ, n,
+                rseq.next(), setRjob, success);
         n.post(ev, (exc) -> {
-            System.out.println(n + ": leave: SetRAck/Nak error." + exc);
+            System.out.println(n + ": leave failed: " + exc);
             if (!(exc instanceof RetriableException)) {
-                fix(ev.receiver); // recovery
+                setStatus(DdllStatus.IN);
+                CompletableFuture<Boolean> future = checkAndFix();
+                future.thenRun(() -> leave(success, setRjob));
+            } else {
+                leave(success, setRjob); // and retry!
             }
-            leave(success, setRjob); // and retry!
         });
     }
-    
+
+    private void setStatus(DdllStatus newStatus) {
+        if (this.status != newStatus) {
+            this.status = newStatus;
+            if (newStatus == DdllStatus.IN) {
+                //schedNextPing();
+            }
+        }
+    }
+
+    public DdllStatus getStatus() {
+        return status;
+    }
+
     public void handleLookup(Lookup l) {
         if (isResponsible(l.key)) {
             n.post(new LookupDone(l, n, n.succ));
@@ -177,16 +215,24 @@ public class DdllStrategy extends NodeStrategy {
             }
         } else {
             boolean forInsertion = msg.origin == msg.rNew;
-            if (forInsertion) {
+            if (msg.type != FixType.NORMAL) {
+                leftNbrs.removeNode(msg.rCur);
                 leftNbrs.add(msg.rNew);
             } else {
-                leftNbrs.removeNode(msg.rCur);
+                if (forInsertion) {
+                    leftNbrs.add(msg.rNew);
+                } else {
+                    leftNbrs.removeNode(msg.rCur);
+                }
             }
             // compute a neighbor node set to send to the new right node 
             Set<Node> nset = leftNbrs.computeNSForRight(msg.rNew);
             if (forInsertion) {
-                Set<Node> nset2 = leftNbrs.computeNSForRight(getSuccessor());
-                n.post(new SetL(n.succ, msg.rNew, rseq.next(), nset2));
+                if (msg.type != FixType.LEFTONLY) {
+                    Set<Node> nset2 =
+                            leftNbrs.computeNSForRight(getSuccessor());
+                    n.post(new SetL(n.succ, msg.rNew, rseq.next(), nset2));
+                }
             } else {
                 n.post(new SetL(msg.rNew, n, msg.rnewseq, nset));
             }
@@ -200,31 +246,64 @@ public class DdllStrategy extends NodeStrategy {
         }
     }
 
-    public void setrack(SetRAck msg, Set<Node> nbrs) {
-        if (status == DdllStatus.INS) {
+    public void setrack(SetRAck msg) {
+        if (fixCompleteFuture != null) {
+            leftNbrs.set(msg.nbrs);
+            leftNbrs.add(getPredecessor());
+            if (msg.req.type != FixType.LEFTONLY) {
+                rseq = msg.rnewnum;
+            }
+            System.out.println(n + ": fix completed");
+            if (msg.req.success != null) {
+                msg.req.success.run();
+            }
+            CompletableFuture<Boolean> f = fixCompleteFuture;
+            fixCompleteFuture = null;
+            f.complete(true);
+            return;
+        }
+        switch (status) {
+        case INS:
             joinMsgs += 3; // SetR, SetRAck and SetL
-            status = DdllStatus.IN;
+            setStatus(DdllStatus.IN);
+            schedNextPing();
             rseq = msg.rnewnum;
-            leftNbrs.set(nbrs);
+            leftNbrs.set(msg.nbrs);
             // nbrs does not contain the immediate left node
             leftNbrs.add(getPredecessor());
             System.out.println(n + ": INSERTED, vtime = " + msg.vtime
                     + ", latency=" + n.latency);
-            msg.req.success.run();
-            //listener.nodeInserted();
-            schedulePing();
-        } else {
-            status = DdllStatus.OUT;
+            if (msg.req.success != null) {
+                msg.req.success.run();
+            }
+            break;
+        case DEL:
+            setStatus(DdllStatus.OUT);
             System.out.println(n + ": DELETED, vtime = " + msg.vtime
                     + ", latency=" + n.latency);
-            msg.req.success.run();
+            if (msg.req.success != null) {
+                msg.req.success.run();
+            }
+            break;
+        default:
+            System.out.println("SetRAck received while status=" + status);
+            break;
         }
     }
 
     public void setrnak(SetRNak msg) {
+        if (fixCompleteFuture != null) {
+            // fix attempt failed
+            // XXX: not tested
+            CompletableFuture<Boolean> f = fixCompleteFuture;
+            fixCompleteFuture = null;
+            f.complete(false);
+            checkAndFix();
+            return;
+        }
         if (status == DdllStatus.INS) {
             joinMsgs += 2; // SetR and SetRNak
-            status = DdllStatus.OUT;
+            setStatus(DdllStatus.OUT);
             // retry!
             LocalNode.verbose("receive SetRNak: join retry, pred=" + msg.pred
                     + ", succ=" + msg.succ);
@@ -234,7 +313,8 @@ public class DdllStrategy extends NodeStrategy {
                     join(msg.pred, msg.succ, msg.req.success,
                             msg.req.failureCallback, msg.req.setRJob);
                 } else {
-                    msg.req.failureCallback.run(new RetriableException("SetRNak1"));
+                    msg.req.failureCallback
+                            .run(new RetriableException("SetRNak1"));
                 }
             } else if (setrnakmode.value() == SetRNakMode.SETRNAK_OPT1) {
                 // DDLL with optimization
@@ -256,21 +336,23 @@ public class DdllStrategy extends NodeStrategy {
                     break;
                 }
                 if (delay == 0) {
-                    msg.req.failureCallback.run(new RetriableException("SetRNak2"));
+                    msg.req.failureCallback
+                            .run(new RetriableException("SetRNak2"));
                 } else {
                     EventDispatcher.sched(delay, () -> {
                         if (status == DdllStatus.OUT) {
-                            msg.req.failureCallback.run(
-                                    new RetriableException("SetRNak3"));
+                            msg.req.failureCallback
+                                    .run(new RetriableException("SetRNak3"));
                         }
                     });
                 }
             }
         } else if (status == DdllStatus.DEL) {
-            status = DdllStatus.IN;
+            setStatus(DdllStatus.IN);
             System.out.println(n + ": retry deletion:" + this.toStringDetail());
             System.out.println("pred: " + getPredecessor().toStringDetail());
-            long delay = (long)(NetworkParams.ONEWAY_DELAY * Sim.rand.nextDouble());
+            long delay =
+                    (long) (NetworkParams.ONEWAY_DELAY * Sim.rand.nextDouble());
             EventDispatcher.sched(delay, () -> {
                 leave(msg.req.success, msg.req.setRJob);
             });
@@ -308,21 +390,130 @@ public class DdllStrategy extends NodeStrategy {
         leftNbrs.receiveNeighbors(msg.src, msg.propset, getSuccessor(),
                 msg.limit);
     }
-
-    public void schedulePing() {
-        if (pingPeriod.value() == 0
-                || (status != DdllStatus.IN && status != DdllStatus.DEL)) {
+    
+    /*
+     * PINGに関するメモ:
+     * 
+     * SetRメッセージを送信中は，応答が返るまでcompletableFuture f を保持しておく．
+     * SetRを送信する際，f が non null ならば，f が終わるまで待つ．
+     * 
+     * leave(): 
+     * - PINGタイマを停止
+     * - f が non null ならば f が終了するまで待つ．
+     *   - 正常終了(SetRAck)ならば，leave再実行
+     *   - 異常終了ならば，checkAndFix()を実行し，終了したらleave再実行
+     * 
+     * checkAndFix():
+     * - sched(() -> fix())
+     * - fixが終わったら再実行
+     * 
+     * fix():
+     * - f が non null ならばreturn
+     *   (このとき，leaveが実行されているはず)
+     * 
+     */
+    private TimerEvent pingTimerEvent = null;
+    private void schedNextPing() {
+        assert pingTimerEvent == null;
+        if (pingPeriod.value() == 0 || status != DdllStatus.IN) {
             return;
         }
-        EventDispatcher.sched(pingPeriod.value(), () -> {
-            Node pred = getPredecessor();
-            n.post(new Ping(pred, (Pong pong) -> {
-                schedulePing();
-            }), (exc) -> {
-                fix(pred);
-                schedulePing();
-            });
+        pingTimerEvent = EventDispatcher.sched(pingPeriod.value(), () -> {
+            pingTimerEvent = null;
+            checkAndFix()
+                .thenRun(() -> schedNextPing());
         });
+    }
+
+    private void stopPeriodicalPing() {
+        if (pingTimerEvent != null) {
+            pingTimerEvent.cancel();
+            pingTimerEvent = null;
+        }
+    }
+
+    private CompletableFuture<Boolean> fixFuture = null;
+    public CompletableFuture<Boolean> checkAndFix() {
+        if (fixFuture != null) {
+            // we have already doing the job
+            return fixFuture;
+        }
+        fixFuture = getLiveLeft()
+                .thenCompose(nodes -> fix(nodes[0], nodes[1]))
+                .thenApply(rc -> {
+                    fixFuture = null;
+                    return rc;
+                });
+        return fixFuture;
+    }
+
+    private CompletableFuture<Node[]> getLiveLeft() {
+        CompletableFuture<Node[]> future = new CompletableFuture<>();
+        List<Node> cands = n.getNodesForFix(n.key);
+        getLiveLeft(n, n.succ, cands, future);
+        return future;
+    }
+
+    private void getLiveLeft(Node left, Node leftSucc, List<Node> candidates,
+            CompletableFuture<Node[]> future) {
+        Node last = candidates.stream()
+                .filter(q -> !suspectedNodes.contains(q))
+                .reduce((a, b) -> b).orElse(null);
+        System.out.println("left=" + left +", last=" + last + ", susp" + suspectedNodes);
+        if (last == left) {
+            future.complete(new Node[]{left, leftSucc});
+            return;
+        }
+        if (last == null) {
+            last = n;
+        }
+        n.post(new GetCandidates(last, n, r -> {
+            getLiveLeft(r.origin, r.succ, r.candidates, future);
+        }), exc -> {
+            // redo.  because the failed node should have been added to
+            // suspectedNode, it is safe to redo.
+            System.out.println(n + ": getLiveLeft: got " + exc);
+            getLiveLeft(left, leftSucc, candidates, future);
+        });
+    }
+
+    /**
+     * @param left the closest live predecessor
+     * @param leftSucc its successor
+     * @return CompletableFuture
+     */
+    private CompletableFuture<Boolean> fix(Node left, Node leftSucc) {
+        System.out.println(
+                n + ": " + status + ": found " + left + ", " + leftSucc);
+        if (status != DdllStatus.IN) {
+            return CompletableFuture.completedFuture(true);
+        }
+        if (leftSucc == n) {
+            // we have no problem
+            System.out.println("no problem");
+            return CompletableFuture.completedFuture(true);
+        }
+        assert fixCompleteFuture == null;
+        fixCompleteFuture = new CompletableFuture<>();
+        n.setPred(left);
+        lseq = lseq.gnext();
+        DdllStrategy.FixType type;
+        if (left != leftSucc && Node.isOrdered(left.key, true, leftSucc.key, n.key, false)) {
+            System.out.println("seems " + leftSucc + " is dead");
+            type = DdllStrategy.FixType.LEFTONLY;
+        } else {
+            System.out.println("must join between " + left + " and " + leftSucc);
+            type = DdllStrategy.FixType.BOTH;
+            n.setSucc(leftSucc);
+        }
+        Event ev = new SetR(left, type, n, leftSucc, lseq, null, null);
+        n.post(ev, (exc) -> {
+            System.out.println(n + ": fix: SetRAck/Nak error: " + exc);
+            CompletableFuture<Boolean> f = fixCompleteFuture;
+            fixCompleteFuture = null;
+            f.complete(true);
+        });
+        return fixCompleteFuture;
     }
 
     private Node getLiveNeighbor(boolean isLeftward) {
@@ -336,7 +527,7 @@ public class DdllStrategy extends NodeStrategy {
         for (; nodes[i] != n; i = (i + delta) % nodes.length) {
             LocalNode x = nodes[i];
             DdllStrategy ds = (DdllStrategy) x.baseStrategy;
-            if (x.mode != NodeMode.FAILED && (ds.status == DdllStatus.IN
+            if (!x.isFailed() && (ds.status == DdllStatus.IN
                     || ds.status == DdllStatus.DEL)) {
                 return x;
             }
@@ -344,36 +535,10 @@ public class DdllStrategy extends NodeStrategy {
         return null;
     }
 
-    /**
-     * ノード故障からの修復をおこなう．
-     * 
-     * @param failed 故障ノード
-     */
-    public static void fix(Node failed) {
-        throw new UnsupportedOperationException("fix() is not implemented");
-        /*
-        System.out.println("DDLL repair (failed=" + failed + ")");
-        DdllStrategy fstr = ((DdllStrategy)failed.baseStrategy);
-        Node newLeft = fstr.getLiveNeighbor(true);
-        Node newRight = fstr.getLiveNeighbor(false);
-        if (newLeft == null || newRight == null) {
-            System.out.println(failed + ": fix() fails: newLeft="
-                    + newLeft + ", newRight=" + newRight);
-            EventDispatcher.dump();
-            throw new Error(failed + ": fix() fails");
-        }
-        System.out.println(failed + ": fix() between " + newLeft
-                + " and " + newRight);
-        // XXX: なんちゃって修復
-        newLeft.setSucc(newRight);
-        newRight.setPred(newLeft);
-        DdllStrategy leftstr = (DdllStrategy) newLeft.baseStrategy;
-        DdllStrategy rightstr = (DdllStrategy) newRight.baseStrategy;
-        rightstr.lseq++; // XXX: should be (g, s) form
-        leftstr.rseq = rightstr.lseq;
-        */
-        //System.out.println(newLeft.toStringDetail() + "\n"
-        // + newRight.toStringDetail());
+    @Override
+    public void foundFailedNode(Node node) {
+        System.out.println(n + ": foundFailedNode: " + node);
+        suspectedNodes.add(node);
     }
 
     @Override

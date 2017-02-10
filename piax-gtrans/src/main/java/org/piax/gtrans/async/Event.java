@@ -3,6 +3,7 @@ package org.piax.gtrans.async;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 import org.piax.gtrans.async.EventException.TimeoutException;
 import org.piax.gtrans.ov.ddll.DdllKey;
@@ -70,8 +71,18 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
     @Override
     public String toString() {
         long rem = vtime - EventDispatcher.getVTime();
-        return "[id=" + getEventId() + ", vt=" + vtime + "(rem=" + rem + "), " + toStringMessage()
-            + " from " + origin + " to " + receiver + "]";
+        StringBuilder buf = new StringBuilder("[id=" + getEventId()
+            + ", vt=" + vtime
+            + "(rem=" + rem + "), "
+            + toStringMessage());
+        if (origin != null) {
+            buf.append(", orig " + origin);
+        }
+        if (receiver != null) {
+            buf.append(", to " + receiver);
+        }
+        buf.append("]");
+        return buf.toString();
     }
 
     public int getEventId() {
@@ -116,20 +127,40 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
         return 0;
     }
 
-    public static class ScheduleEvent extends Event {
-        Runnable after;
-        public ScheduleEvent(Node receiver, long delay, Runnable after) {
-            super(receiver, delay);
-            this.after = after;
+    public static class TimerEvent extends Event {
+        final Consumer<TimerEvent> job;
+        final long period;
+        private boolean canceled = false;
+        private boolean executed = false;
+        public TimerEvent(long initial, long period, Consumer<TimerEvent> job) {
+            super(null, initial);
+            this.job = job;
+            this.period = period;
         }
         @Override
         public void run() {
-            //System.out.println("run: " + getEventId());
-            after.run();
+            executed = true;
+            try {
+                if (!canceled) {
+                    job.accept(this);
+                }
+            } catch (Throwable e) {
+                System.out.println("TimerTask: got " + e + " while executing job");
+                e.printStackTrace();
+            } finally {
+                if (!canceled && period > 0) {
+                    executed = false;
+                    vtime = EventDispatcher.getVTime() + period;
+                    EventDispatcher.enqueue(this);
+                }
+            }
+            
         }
-        @Override
-        public String toString() {
-            return "ScheduleEvent";
+        public void cancel() {
+            canceled = true;
+        }
+        public boolean isExecuted() {
+            return executed;
         }
     }
 
@@ -155,7 +186,7 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
                 System.out.println("already acked: ackEventId=" + ackEventId);
                 return;
             }
-            ScheduleEvent ev = req.ackTimeoutEvent;
+            TimerEvent ev = req.ackTimeoutEvent;
             if (ev != null) {
                 EventDispatcher.cancelEvent(ev);
             }
@@ -175,7 +206,7 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
     public static abstract class RequestEvent<T extends RequestEvent<T, U>,
             U extends ReplyEvent<T, U>> extends Event {
         final transient EventHandler<U> after;
-        transient ScheduleEvent replyTimeoutEvent, ackTimeoutEvent; 
+        transient TimerEvent replyTimeoutEvent, ackTimeoutEvent; 
         public RequestEvent(Node receiver, EventHandler<U> after) {
             super(receiver);
             this.after = after;
@@ -183,16 +214,21 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
 
         @Override
         public void beforeSendHook(LocalNode n) {
+            // foundFailedNode must be called in prior to failureCallback
+            // because foundFailedNode is used for registering the failed 
+            // node and failureCallback relies on this.
+            registerNotAckedEvent(n, this);
+            this.ackTimeoutEvent = EventDispatcher.sched(NetworkParams.NETWORK_TIMEOUT,
+                    () -> {
+                        if (receiver != n) {
+                            n.topStrategy.foundFailedNode(receiver);
+                        }
+                    });
+
             registerRequestEvent(n, this);
             this.replyTimeoutEvent = EventDispatcher.sched(NetworkParams.NETWORK_TIMEOUT,
                     () -> {
                         this.failureCallback.run(new TimeoutException());
-                    });
-
-            registerNotAckedEvent(n, this);
-            this.ackTimeoutEvent = EventDispatcher.sched(NetworkParams.NETWORK_TIMEOUT,
-                    () -> {
-                        n.topStrategy.foundFailedNode(receiver);
                     });
         }
 
@@ -201,7 +237,9 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
             registerNotAckedEvent(n, this);
             this.ackTimeoutEvent = EventDispatcher.sched(NetworkParams.NETWORK_TIMEOUT,
                     () -> {
-                        n.topStrategy.foundFailedNode(receiver);
+                        if (receiver != n) {
+                            n.topStrategy.foundFailedNode(receiver);
+                        }
                     });
             // when a request message is forwarded, we send AckEvent to the
             // sender node.

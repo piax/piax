@@ -1,6 +1,7 @@
 package org.piax.gtrans.ov.ddllasync;
 
 import java.io.Serializable;
+import java.util.List;
 import java.util.Set;
 
 import org.piax.gtrans.async.Event;
@@ -11,6 +12,7 @@ import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.async.Node;
 import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.gtrans.ov.ddll.LinkNum;
+import org.piax.gtrans.ov.ddllasync.DdllStrategy.FixType;
 
 public abstract class DdllEvent {
     @FunctionalInterface
@@ -18,16 +20,18 @@ public abstract class DdllEvent {
         void run(LocalNode node);
     }
     public static class SetR extends RequestEvent<SetR, SetRAckNak> {
-        Node rNew, rCur;
-        LinkNum rnewseq;
-        SetRJob setRJob;
-        transient Runnable success;
+        final Node rNew, rCur;
+        final LinkNum rnewseq;
+        final FixType type;
+        final SetRJob setRJob;
+        final transient Runnable success;
 
-        public SetR(Node receiver, Node rNew, Node rCur, LinkNum newrseq,
-                SetRJob job, Runnable success) {
+        public SetR(Node receiver, FixType type, Node rNew, Node rCur,
+                LinkNum newrseq, SetRJob job, Runnable success) {
             super(receiver, (SetRAckNak reply) -> {
                 reply.handle();
             });
+            this.type = type;
             this.rNew = rNew;
             this.rCur = rCur;
             this.rnewseq = newrseq;
@@ -45,12 +49,14 @@ public abstract class DdllEvent {
         public SetRAckNak(SetR request) {
             super(request);
         }
+        // because run() is already used (overridden) by ReplyEvent, we have
+        // to use another method here.
         public abstract void handle();
     }
 
     public static class SetRAck extends SetRAckNak {
-        LinkNum rnewnum;
-        Set<Node> nbrs;
+        final LinkNum rnewnum;
+        final Set<Node> nbrs;
 
         public SetRAck(SetR request, LinkNum rnewnum, Set<Node> nbrs) {
             super(request);
@@ -60,7 +66,7 @@ public abstract class DdllEvent {
 
         @Override
         public void handle() {
-            ((DdllStrategy) getBaseStrategy()).setrack(this, nbrs);
+            ((DdllStrategy) getBaseStrategy()).setrack(this);
         }
     }
 
@@ -130,6 +136,32 @@ public abstract class DdllEvent {
         @Override
         public void run() {
             ((DdllStrategy) getBaseStrategy()).propagateNeighbors(this);
+        }
+    }
+    
+    public static class GetCandidates extends RequestEvent<GetCandidates, GetCandidatesResponse> {
+        final Node node;
+        public GetCandidates(Node receiver, Node node, EventHandler<GetCandidatesResponse> after) {
+            super(receiver, after);
+            this.node = node;
+        }
+        @Override
+        public void run() {
+            LocalNode n = getNodeImpl();
+            List<Node> candidates = n.getNodesForFix(node.key);
+            System.out.println("GetFixCandidates: returns " + candidates);
+            n.post(new GetCandidatesResponse(this, candidates, n.succ));
+        }
+    }
+
+    public static class GetCandidatesResponse extends ReplyEvent<GetCandidates, GetCandidatesResponse> {
+        List<Node> candidates;
+        Node succ;
+        public GetCandidatesResponse(GetCandidates req, List<Node> candidates,
+                Node succ) {
+            super(req);
+            this.candidates = candidates;
+            this.succ = succ;
         }
     }
 }
