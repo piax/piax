@@ -74,6 +74,7 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
     
     static boolean NAT_SUPPORT = true;
 
+    
     public NettyChannelTransport(Peer peer, TransportId transId, PeerId peerId,
             NettyLocator peerLocator) throws IdConflictException, IOException {
         super(peer, transId, null, true);
@@ -100,7 +101,8 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
         }
         else {
             ServerBootstrap b = bs.getServerBootstrap(this);
-            b.bind(new InetSocketAddress(peerLocator.getHost(), peerLocator.getPort()));//.syncUninterruptibly();
+            b.bind(new InetSocketAddress(peerLocator.getHost(), peerLocator.getPort())).syncUninterruptibly();
+            
             logger.debug("bound " + peerLocator);
         }
         if (NAT_SUPPORT) {
@@ -614,6 +616,15 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
                     return;
                 }
                 logger.debug("not a NAT message or received for {} on {}", nmsg.getDestinationLocator(), locator);
+            }
+            if (raw.getStat() != Stat.RUN) {
+                // this may happen when the server send a message
+                // immediately after a connection accept.
+                // go to RUN state if there is no explicit close
+                // to allow immediate response.
+                if (raw.getStat() != Stat.DEFUNCT) {
+                    raw.setStat(Stat.RUN);
+                }
             }
             if (nmsg.isChannelSend()) {
                 NettyChannel ch;
