@@ -825,8 +825,7 @@ public class TestOverlay {
         Suzaku<Destination, ComparableKey<?>> trs[] = new Suzaku[numOfPeers];
         Peer peers[] = new Peer[numOfPeers];
         for (int i = 0; i < numOfPeers; i++) {
-            PeerLocator l = new NettyLocator(new InetSocketAddress("localhost",
-                    12367 + i));
+            PeerLocator l = Util.genLocator(net, "localhost", 12367 + i);
             if (loc == null) {
                 loc = l; // remember for seed;
             }
@@ -914,8 +913,7 @@ public class TestOverlay {
         MSkipGraph<Destination, ComparableKey<?>> trs[] = new MSkipGraph[numOfPeers];
         Peer peers[] = new Peer[numOfPeers];
         for (int i = 0; i < numOfPeers; i++) {
-            PeerLocator l = new NettyLocator(new InetSocketAddress("localhost",
-                    12367 + i));
+            PeerLocator l = Util.genLocator(net, "localhost", 12367 + i);
             if (loc == null) {
                 loc = l; // remember for seed;
             }
