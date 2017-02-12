@@ -482,12 +482,14 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
                     else {
                         // cache not found. just accept it.
                         raw = new NettyRawChannel(attempt.getSource(), this);
-                        ctx.channel().attr(rawKey).set(raw.getRemote().getKeyString());
-                        // accept attempt.
-                        raw.setStat(Stat.RUN);
-                        raw.setContext(ctx);
-                        logger.debug("set run stat for raw from source="
-                                + attempt.getSource());
+                        synchronized(raw) {
+                            ctx.channel().attr(rawKey).set(raw.getRemote().getKeyString());
+                            // accept attempt.
+                            raw.setStat(Stat.RUN);
+                            raw.setContext(ctx);
+                            logger.debug("set run stat for raw from source="
+                                    + attempt.getSource());
+                        }
                         ctx.writeAndFlush(new AttemptMessage(AttemptType.ACK,
                                 locator, null));
                         putRaw(attempt.getSource(), raw);
@@ -617,12 +619,12 @@ public class NettyChannelTransport extends ChannelTransportImpl<NettyLocator> im
                 }
                 logger.debug("not a NAT message or received for {} on {}", nmsg.getDestinationLocator(), locator);
             }
-            if (raw.getStat() != Stat.RUN) {
-                // this may happen when the server send a message
-                // immediately after a connection accept.
-                // go to RUN state if there is no explicit close
-                // to allow immediate response.
-                if (raw.getStat() != Stat.DEFUNCT) {
+            synchronized(raw) {
+                if (raw.getStat() != Stat.RUN && raw.getStat() != Stat.DEFUNCT) {
+                    // this may happen when the server send a message
+                    // immediately after a connection accept.
+                    // go to RUN state if there is no explicit close
+                    // to allow immediate response.
                     raw.setStat(Stat.RUN);
                 }
             }

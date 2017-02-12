@@ -3,7 +3,6 @@ package test.trans;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.util.Arrays;
 import java.util.List;
 
@@ -33,7 +32,6 @@ import org.piax.gtrans.ReceivedMessage;
 import org.piax.gtrans.RemoteValue;
 import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.Transport;
-import org.piax.gtrans.netty.NettyLocator;
 import org.piax.gtrans.ov.Overlay;
 import org.piax.gtrans.ov.OverlayListener;
 import org.piax.gtrans.ov.OverlayReceivedMessage;
