@@ -23,9 +23,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-import org.piax.gtrans.GTransConfigValues;
-import org.piax.common.PeerId;
-
 
 /**
  * A future queue for remote return value

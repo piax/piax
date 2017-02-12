@@ -12,10 +12,10 @@ import java.util.concurrent.TimeUnit;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.piax.common.CalleeId;
 import org.piax.common.ObjectId;
 import org.piax.common.PeerId;
 import org.piax.common.PeerLocator;
-import org.piax.common.CalleeId;
 import org.piax.common.TransportId;
 import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.IdConflictException;
@@ -72,6 +72,8 @@ public class TestRPC extends Util {
         @RemoteCallable
         Object returnNull() throws RPCException;;;
         
+        @RemoteCallable
+        int callback(PeerLocator caller);
     }
 
     public static class InvokerApp<E extends PeerLocator> extends RPCInvoker<InvokerAppIf, E>
@@ -177,6 +179,18 @@ public class TestRPC extends Util {
             }
             return r;
         }
+        
+        @Override
+        public int callback(PeerLocator caller) {
+            InvokerAppIf stub = getStub((E)caller);
+            int sum = 0;
+            try {
+                sum = stub.sum(10);
+            } catch (RPCException e) {
+                e.printStackTrace();
+            }
+            return sum + 1; 
+        }
     }
     
     public static class App implements SAppIf {
@@ -263,7 +277,6 @@ public class TestRPC extends Util {
         public int localMethod(int n) {
             return sum(n);
         }
-
     }
     
     static InvokerApp<PeerLocator> invokerApp1;
@@ -279,7 +292,7 @@ public class TestRPC extends Util {
      */
     @BeforeClass
     public static void setup() {
-        Net ntype = Net.TCP;
+        Net ntype = Net.NETTY;//TCP
         logger.debug("- start -%n");
         logger.debug("- locator type: %s%n", ntype);
 
@@ -902,6 +915,12 @@ public class TestRPC extends Util {
         assertNull(r);
         r = resultQueue.take();
         assertEquals("syncRPC",r);
+    }
+    
+    @Test
+    public void callbackTest() {
+        int sum = invokerApp1.getStub(transport2.getEndpoint()).callback((PeerLocator)transport1.getEndpoint());
+        assertEquals(56, sum);
     }
     
     /**

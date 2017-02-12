@@ -5,7 +5,7 @@
   <artifactId>piax-parent</artifactId>
   <packaging>pom</packaging>
   <version>3.2-SNAPSHOT</version>
-  <name>PIAX</name>
+  <name>PIAX Parent</name>
   <description>PIAX - A distributed computing framework</description>
   <url>http://www.piax.org/</url>
   <licenses>
@@ -75,6 +75,30 @@
     <module>piax-dht</module>
     <module>piax-shell</module>
   </modules>
+  <build>
+    <plugins>
+      <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-gpg-plugin</artifactId>
+          <version>1.5</version>
+          <executions>
+            <execution>
+              <id>sign-artifacts</id>
+              <configuration>
+	        <gpgArguments>
+                  <arg>-u</arg>
+                  <arg>steering@piax.org</arg>
+                </gpgArguments>
+              </configuration>
+              <phase>verify</phase>
+              <goals>
+                <goal>sign</goal>
+              </goals>
+            </execution>
+          </executions>
+      </plugin>
+    </plugins>
+  </build>
   <distributionManagement>
     <snapshotRepository>
       <id>sonatype-nexus-snapshots</id>

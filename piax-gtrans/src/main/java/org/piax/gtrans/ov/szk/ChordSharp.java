@@ -139,11 +139,13 @@ public class ChordSharp<E extends Endpoint> extends RQManager<E> implements
             else {
                 e = vnode.backwardTable.getFTEntry(level);
             }
-            ret.add(e.link);
-            if (e.successors != null) {
-                Arrays.stream(e.successors).forEach((link) -> {
-                    ret.add(link);
-                });
+            if (e != null) {
+                ret.add(e.link);
+                if (e.successors != null) {
+                    Arrays.stream(e.successors).forEach((link) -> {
+                        ret.add(link);
+                    });
+                }
             }
             return ret.toArray(new Link[0]);
         }

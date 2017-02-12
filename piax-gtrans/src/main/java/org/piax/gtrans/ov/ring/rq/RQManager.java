@@ -852,7 +852,7 @@ public class RQManager<E extends Endpoint> extends RingManager<E> implements
                     // execQuery() の外で起こる invokeExecQuery() における例外のケース
                     // バグとして扱う．
                     logger.error("forwardQueryLeft: got {}"
-                            + " when calling invokeExecQuery() on ", cause, n);
+                            + " when calling invokeExecQuery() on {}", cause, n);
                     break;
                 }
                 logger.debug("", cause);
@@ -943,6 +943,7 @@ public class RQManager<E extends Endpoint> extends RingManager<E> implements
         try {
             snode = getVNode(rawkey);
             if (snode == null) {
+                logger.warn("vnode for rawkey not exists on {}", this.trans.getEndpoint());
                 throw new NoSuchKeyException(rawkey + ", " + keyHash);
             }
             Node node = snode.getDdllNode();
