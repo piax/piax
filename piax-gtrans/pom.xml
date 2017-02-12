@@ -83,6 +83,18 @@
       <artifactId>slf4j-jdk14</artifactId>
       <version>1.7.21</version>
     </dependency>
+    <!-- https://mvnrepository.com/artifact/io.netty/netty-all -->
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-all</artifactId>
+      <version>4.1.6.Final</version>
+    </dependency>
+    <!-- https://mvnrepository.com/artifact/com.barchart.udt/barchart-udt-bundle -->
+    <dependency>
+      <groupId>com.barchart.udt</groupId>
+      <artifactId>barchart-udt-bundle</artifactId>
+      <version>2.3.0</version>
+    </dependency>
   </dependencies>
   <build>
     <plugins>

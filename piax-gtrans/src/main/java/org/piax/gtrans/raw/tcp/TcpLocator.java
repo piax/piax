@@ -33,6 +33,12 @@ public class TcpLocator extends InetLocator {
         super(addr);
     }
 
+    public TcpLocator(String spec) {
+        super();
+        String specs[] = spec.split(":");
+        addr = new InetSocketAddress(specs[1], Integer.parseInt(specs[2]));
+    }
+
     @Override
     public RawTransport<TcpLocator> newRawTransport(PeerId peerId)
             throws IOException {

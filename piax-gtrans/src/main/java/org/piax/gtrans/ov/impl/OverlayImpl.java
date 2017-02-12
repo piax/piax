@@ -27,7 +27,6 @@ import org.piax.common.Key;
 import org.piax.common.ObjectId;
 import org.piax.common.TransportId;
 import org.piax.common.dcl.DCLTranslator;
-import org.piax.common.dcl.DestinationCondition;
 import org.piax.common.dcl.parser.ParseException;
 import org.piax.gtrans.FutureQueue;
 import org.piax.gtrans.IdConflictException;

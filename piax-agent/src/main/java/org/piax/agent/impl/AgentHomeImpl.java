@@ -229,7 +229,6 @@ public class AgentHomeImpl implements AgentHome, OverlayListener<Destination, Ke
         defaultAgLoaderMgr = new DefaultAgentLoaderMgr(parentAgentLoader, agClassPath);
         loaderPool = new AgentLoaderPool(parentAgentLoader);
         agContainers = new AgentsShelf();
-        
         comb = new CombinedOverlay(Peer.getInstance(peerId), COMBINED_OV_ID);
         comb.setListener(DEFAULT_OBJ_ID, this);
         peerRow = comb.setSuperRow(peerId);

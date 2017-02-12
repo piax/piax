@@ -32,6 +32,12 @@ public class UdpLocator extends InetLocator {
     public UdpLocator(InetSocketAddress addr) {
         super(addr);
     }
+    
+    public UdpLocator(String spec) {
+        super();
+        String specs[] = spec.split(":");
+        addr = new InetSocketAddress(specs[1], Integer.parseInt(specs[2]));
+    }
 
     @Override
     public RawTransport<UdpLocator> newRawTransport(PeerId peerId)

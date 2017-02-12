@@ -23,6 +23,8 @@ import org.piax.gtrans.Peer;
 import org.piax.gtrans.Transport;
 import org.piax.gtrans.base.BaseChannelTransportImpl;
 import org.piax.gtrans.base.BaseDatagramTransport;
+import org.piax.gtrans.netty.NettyChannelTransport;
+import org.piax.gtrans.netty.NettyLocator;
 import org.piax.gtrans.raw.emu.EmuLocator;
 import org.piax.gtrans.raw.lwtcp.LWTcpTransport;
 import org.piax.gtrans.raw.tcp.TcpLocator;
@@ -32,7 +34,7 @@ import org.piax.gtrans.util.FragmentationTransport;
 /**
  * 
  */
-class DefaultBaseTransportGenerator extends BaseTransportGenerator {
+public class DefaultBaseTransportGenerator extends BaseTransportGenerator {
 
     DefaultBaseTransportGenerator(Peer peer) {
         super(peer);
@@ -45,7 +47,9 @@ class DefaultBaseTransportGenerator extends BaseTransportGenerator {
         } else if (loc instanceof UdpLocator) {
             type = "udp"; 
         } else if (loc instanceof TcpLocator) {
-            type = "tcp"; 
+            type = "tcp";
+        } else if (loc instanceof NettyLocator) {
+            type = "netty";
         } else {
             return null;
         }
@@ -79,6 +83,8 @@ class DefaultBaseTransportGenerator extends BaseTransportGenerator {
             trans = new BaseChannelTransportImpl<E>(peer, transId,
                     new LWTcpTransport(peer.getPeerId(), (TcpLocator) loc,
                             linger0Option));
+        } else if (loc instanceof NettyLocator){
+            trans = (ChannelTransport<E>)new NettyChannelTransport(peer, transId, peer.getPeerId(), (NettyLocator)loc);
         } else {
             return null;
         }
