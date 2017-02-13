@@ -3,6 +3,7 @@ package org.piax.gtrans.async;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 import org.piax.gtrans.async.EventException.TimeoutException;
@@ -205,11 +206,11 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
      */
     public static abstract class RequestEvent<T extends RequestEvent<T, U>,
             U extends ReplyEvent<T, U>> extends Event {
-        final transient EventHandler<U> after;
+        final transient CompletableFuture<U> future;
         transient TimerEvent replyTimeoutEvent, ackTimeoutEvent; 
-        public RequestEvent(Node receiver, EventHandler<U> after) {
+        public RequestEvent(Node receiver, CompletableFuture<U> future) {
             super(receiver);
-            this.after = after;
+            this.future = future;
         }
 
         @Override
@@ -294,7 +295,7 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
             RequestEvent<?, ?> r = RequestEvent.removeRequestEvent(n, reqEventId);
             assert r != null;
             this.req = (T)r;
-            assert this.req.after != null;
+            //assert this.req.after != null;
 
             // remove timeout event
             if (req.replyTimeoutEvent != null) {
@@ -314,7 +315,7 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
         @Override
         public void run() {
             super.run();
-            req.after.handle((U)this);
+            req.future.complete((U)this);
         }
     }
 
@@ -327,8 +328,8 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
         public StringBuilder trace;
 
         public Lookup(Node receiver, DdllKey key, Node src,
-                EventHandler<LookupDone> after) {
-            super(receiver, after);
+                CompletableFuture<LookupDone> future) {
+            super(receiver, future);
             this.key = key;
             this.src = src;
             //System.out.println("LookupEvent: src=" + src + ", evid="+ this.getEventId());

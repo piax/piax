@@ -14,6 +14,7 @@ import java.util.stream.Stream;
 import org.piax.common.TransportId;
 import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.IdConflictException;
+import org.piax.gtrans.async.Event;
 import org.piax.gtrans.async.Event.Lookup;
 import org.piax.gtrans.async.Event.LookupDone;
 import org.piax.gtrans.async.Event.TimerEvent;
@@ -440,23 +441,30 @@ public class SuzakuStrategy extends NodeStrategy {
         joinMsgs += base.getMessages4Join();    // add messages consumed in DDLL 
         if (COPY_FINGERTABLES) {
             // copy predecessor's finger table
-            GetFTAllEvent ev = new GetFTAllEvent(n.pred,
-                    (GetFTAllReplyEvent rep) -> {
-                        joinMsgs += 2;
-                        FTEntry[][] fts = rep.ents;
-                        for (int i = 1; i < fts[0].length; i++) {
-                            table.forward.set(i, fts[0][i]);
-                        }
-                        for (int i = 1; USE_BFT && i < fts[1].length; i++) {
-                            table.backward.set(i, fts[1][i]);
-                        }
-                        //System.out.println(n + ": FT copied\n" + n.toStringDetail());
-                        if (ACTIVE_UPDATE_ON_JOIN) {
-                            initialFTUpdate();
-                        } else {
-                            scheduleFTUpdate(true);
-                        }
-                    });
+            CompletableFuture<GetFTAllReplyEvent> future
+                = new CompletableFuture<>();
+            GetFTAllEvent ev = new GetFTAllEvent(n.pred, future);
+            future.handle((rep, exc) -> {
+                if (exc != null) {
+                    System.out.println("getFTAll failed: " + exc);
+                } else {
+                    joinMsgs += 2;
+                    FTEntry[][] fts = rep.ents;
+                    for (int i = 1; i < fts[0].length; i++) {
+                        table.forward.set(i, fts[0][i]);
+                    }
+                    for (int i = 1; USE_BFT && i < fts[1].length; i++) {
+                        table.backward.set(i, fts[1][i]);
+                    }
+                    //System.out.println(n + ": FT copied\n" + n.toStringDetail());
+                    if (ACTIVE_UPDATE_ON_JOIN) {
+                        initialFTUpdate();
+                    } else {
+                        scheduleFTUpdate(true);
+                    }
+                }
+                return false;
+            });
             n.post(ev);
         } else {
             initialFTUpdate();
@@ -911,81 +919,86 @@ public class SuzakuStrategy extends NodeStrategy {
         //     B = 2, p = 3 -> x = 1, y = 1, ents=[0, 1*4^1=4, 2*4^1=8]
         Node baseNode = ent.getLink();
         FingerTable tab = isBackward ? table.backward : table.forward;
-        n.post(new GetFTEntEvent(baseNode, isBackward, x, y, K, gift, gift2, (GetFTEntReplyEvent repl) -> {
-            //System.out.println(n + " receives " + repl + ", index = " + index + "\n" + n.toStringDetail());
-            if (ACTIVE_UPDATE_ON_JOIN && isFirst) {
-                joinMsgs += 2;
-            }
-            FTEntrySet set = repl.ent;
-            FTEntry[] ents = set.ents;
-            // 取得したエントリをfinger tableにセットする
-            // the first entry ents[0] represents the remote node itself.
-            // update the successor list
-            {
-                FTEntry e = ents[0];
-                assert e.getLink() == baseNode;
-                tab.change(index, e, index > 0);
-            }
-            // 先頭以降のエントリの処理
-            assert B == 1;
-            FTEntry nextEntX = null;
-            for (int m = 1; m < ents.length; m++) {
-                FTEntry e = ents[m];
-                if (e != null && e.getLink() == null) {
-                    // 取得したエントリが null の場合
-                    e = getFingerTableEntry(isBackward, index + 1);
-                    System.out.println(n + ": fetched null entry from "
-                            + baseNode + ", use old ent: " + e);
-                    if (e == null || e.getLink() == null) {
+        CompletableFuture<GetFTEntReplyEvent> getResp = new CompletableFuture<>();
+        Event ev = new GetFTEntEvent(baseNode, isBackward, x, y, K, gift, gift2, getResp);
+        getResp.handle((repl, exc) -> {
+            if (exc != null) {
+                System.out.println(n + ": getFingerTable0: TIMEOUT on " + baseNode);
+                Runnable job = () -> {
+                    table.addSuspectedNode(baseNode);
+                    if (ent.getLink() != null) {
+                        // we have a backup node
+                        updateFingerTable0(p, isBackward, ent, nextEnt2);
+                    } else {
+                        // we have no backup node
+                        if (p + 1 < tab.getFingerTableSize()) {
+                            System.out.println(n + ": No backup node: " + n + ", p =" + p + ", continue");
+                            updateFingerTable0(p + 1, isBackward, null, null);
+                        } else {
+                            System.out.println(n + ": No backup node: " + n + ", p =" + p + ", no continue");
+                            updateNext(p, isBackward, nextEnt2, null);
+                        }
+                    }
+                };
+                if (baseNode == n.succ || baseNode == n.pred) {
+                    // fix and retry
+                    // XXX: handle baseNode == n.succ case correctly!
+                    CompletableFuture<Boolean> future = base.checkAndFix();
+                    future.thenRun(job);
+                } else {
+                    job.run();
+                }
+            } else {
+                System.out.println(n + " receives " + repl + ", index = " + index + "\n" + n.toStringDetail());
+                if (ACTIVE_UPDATE_ON_JOIN && isFirst) {
+                    joinMsgs += 2;
+                }
+                FTEntrySet set = repl.ent;
+                FTEntry[] ents = set.ents;
+                // 取得したエントリをfinger tableにセットする
+                // the first entry ents[0] represents the remote node itself.
+                // update the successor list
+                {
+                    FTEntry e = ents[0];
+                    assert e.getLink() == baseNode;
+                    tab.change(index, e, index > 0);
+                }
+                // 先頭以降のエントリの処理
+                assert B == 1;
+                FTEntry nextEntX = null;
+                for (int m = 1; m < ents.length; m++) {
+                    FTEntry e = ents[m];
+                    if (e != null && e.getLink() == null) {
+                        // 取得したエントリが null の場合
+                        e = getFingerTableEntry(isBackward, index + 1);
+                        System.out.println(n + ": fetched null entry from "
+                                + baseNode + ", use old ent: " + e);
+                        if (e == null || e.getLink() == null) {
+                            break;
+                        }
+                    }
+                    if (isCirculated(isBackward, n, baseNode, e)) {
+                        //table.shrink(index + m);
                         break;
                     }
-                }
-                if (isCirculated(isBackward, n, baseNode, e)) {
-                    //table.shrink(index + m);
-                    break;
-                }
-                if (DELAY_ENTRY_UPDATE) {
-                    // 取得したエントリの格納は生存が確認できてから行う
-                    if (m != 1) {
-                        tab.change(index + m, e, true); // XXX: Think!
-                    } else {
-                        nextEntX = e; 
-                    }
-                } else { // Chord# way
-                    // 取得したエントリの格納は今行う
-                    tab.change(index + m, e, true);
-                    nextEntX = e;
-                }
-            }
-            updateNext(p, isBackward, nextEnt2, nextEntX);
-        }), (exc) -> {
-            System.out.println(n + ": getFingerTable0: TIMEOUT on " + baseNode);
-
-            Runnable job = () -> {
-                table.addSuspectedNode(baseNode);
-                if (ent.getLink() != null) {
-                    // we have a backup node
-                    updateFingerTable0(p, isBackward, ent, nextEnt2);
-                } else {
-                    // we have no backup node
-                    if (p + 1 < tab.getFingerTableSize()) {
-                        System.out.println(n + ": No backup node: " + n + ", p =" + p + ", continue");
-                        updateFingerTable0(p + 1, isBackward, null, null);
-                    } else {
-                        System.out.println(n + ": No backup node: " + n + ", p =" + p + ", no continue");
-                        updateNext(p, isBackward, nextEnt2, null);
+                    if (DELAY_ENTRY_UPDATE) {
+                        // 取得したエントリの格納は生存が確認できてから行う
+                        if (m != 1) {
+                            tab.change(index + m, e, true); // XXX: Think!
+                        } else {
+                            nextEntX = e; 
+                        }
+                    } else { // Chord# way
+                        // 取得したエントリの格納は今行う
+                        tab.change(index + m, e, true);
+                        nextEntX = e;
                     }
                 }
-            };
-            if (baseNode == n.succ || baseNode == n.pred) {
-                // fix and retry
-                // XXX: handle baseNode == n.succ case correctly!
-                CompletableFuture<Boolean> future = base.checkAndFix();
-                future.thenRun(job);
-            } else {
-                job.run();
+                updateNext(p, isBackward, nextEnt2, nextEntX);
             }
+            return false;
         });
+        n.post(ev);
     }
 
     /**

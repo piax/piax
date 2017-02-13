@@ -13,6 +13,7 @@ import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.async.Event;
 import org.piax.gtrans.async.Event.Lookup;
 import org.piax.gtrans.async.Event.LookupDone;
+import org.piax.gtrans.async.Event.RequestEvent;
 import org.piax.gtrans.async.Event.TimerEvent;
 import org.piax.gtrans.async.EventDispatcher;
 import org.piax.gtrans.async.EventException;
@@ -28,6 +29,7 @@ import org.piax.gtrans.async.Sim;
 import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.gtrans.ov.ddll.LinkNum;
 import org.piax.gtrans.ov.ddllasync.DdllEvent.GetCandidates;
+import org.piax.gtrans.ov.ddllasync.DdllEvent.GetCandidatesResponse;
 import org.piax.gtrans.ov.ddllasync.DdllEvent.PropagateNeighbors;
 import org.piax.gtrans.ov.ddllasync.DdllEvent.SetL;
 import org.piax.gtrans.ov.ddllasync.DdllEvent.SetR;
@@ -201,9 +203,7 @@ public class DdllStrategy extends NodeStrategy {
             }
             return false;
         });
-        n.post(ev, (exc) -> {
-            future.completeExceptionally(exc);
-        });
+        n.post(ev);
     }
 
     @Override
@@ -264,9 +264,7 @@ public class DdllStrategy extends NodeStrategy {
             }
             return false;
         });
-        n.post(ev, (exc) -> {
-            future.completeExceptionally(exc);
-        });
+        n.post(ev);
     }
 
     private void setStatus(DdllStatus newStatus) {
@@ -458,14 +456,20 @@ public class DdllStrategy extends NodeStrategy {
         if (last == null) {
             last = n;
         }
-        n.post(new GetCandidates(last, n, r -> {
-            getLiveLeft(r.origin, r.succ, r.candidates, future);
-        }), exc -> {
-            // redo.  because the failed node should have been added to
-            // suspectedNode, it is safe to redo.
-            System.out.println(n + ": getLiveLeft: got " + exc);
-            getLiveLeft(left, leftSucc, candidates, future);
+        CompletableFuture<GetCandidatesResponse> getResp = new CompletableFuture<>();
+        RequestEvent<?, ?> ev = new GetCandidates(last, n, getResp);
+        getResp.handle((resp, exc) -> {
+            if (exc != null) {
+                // redo.  because the failed node should have been added to
+                // suspectedNode, it is safe to redo.
+                System.out.println(n + ": getLiveLeft: got " + exc);
+                getLiveLeft(left, leftSucc, candidates, future);
+            } else {
+                getLiveLeft(resp.origin, resp.succ, resp.candidates, future);
+            }
+            return false;
         });
+        n.post(ev);
     }
 
     /**
@@ -518,9 +522,7 @@ public class DdllStrategy extends NodeStrategy {
             }
             return false;
         });
-        n.post(ev, (exc) -> {
-            setracknak.completeExceptionally(exc);
-        });
+        n.post(ev);
         return future;
     }
 }

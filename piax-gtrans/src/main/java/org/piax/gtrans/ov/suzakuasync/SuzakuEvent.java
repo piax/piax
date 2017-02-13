@@ -1,11 +1,11 @@
 package org.piax.gtrans.ov.suzakuasync;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 import org.piax.gtrans.async.Event;
 import org.piax.gtrans.async.Event.ReplyEvent;
 import org.piax.gtrans.async.Event.RequestEvent;
-import org.piax.gtrans.async.EventHandler;
 import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.async.Node;
 import org.piax.gtrans.async.Sim;
@@ -15,8 +15,8 @@ public abstract class SuzakuEvent {
     public static class GetFTAllEvent
         extends RequestEvent<GetFTAllEvent, GetFTAllReplyEvent> {
         public GetFTAllEvent(Node receiver,
-                EventHandler<GetFTAllReplyEvent> after) {
-            super(receiver, after);
+                CompletableFuture<GetFTAllReplyEvent> future) {
+            super(receiver, future);
         }
         @Override
         public void run() {
@@ -47,8 +47,8 @@ public abstract class SuzakuEvent {
         final FTEntry gift2;    // SUZAKU3
         public GetFTEntEvent(Node receiver, boolean isBackward, int x, int y, int k,
                 FTEntrySet given, FTEntry gift2 /* for SUZAKU3 */, 
-                EventHandler<GetFTEntReplyEvent> after) {
-            super(receiver, after);
+                CompletableFuture<GetFTEntReplyEvent> future) {
+            super(receiver, future);
             this.isBackward = isBackward;
             this.x = x;
             this.y = y;

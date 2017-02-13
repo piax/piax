@@ -3,7 +3,6 @@ package org.piax.gtrans.async;
 import java.io.IOException;
 import java.io.ObjectStreamException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -140,6 +139,10 @@ public class LocalNode extends Node {
     }
 
     public void post(Event ev, FailureCallback failure) {
+        if (ev instanceof RequestEvent && failure == null) {
+            RequestEvent<?, ?> req = (RequestEvent<?, ?>)ev;
+            failure = exc -> req.future.completeExceptionally(exc);
+        }
         ev.sender = ev.origin = this;
         ev.route.add(this);
         if (ev.routeWithFailed.size() == 0) {
@@ -286,33 +289,38 @@ public class LocalNode extends Node {
         }
         this.mode = NodeMode.INSERTING;
         this.introducer = introducer;
-        Event ev = new Lookup(introducer, key, this, (LookupDone results) -> {
-            CompletableFuture<Boolean> future = new CompletableFuture<>();
-            topStrategy.joinAfterLookup(results, future);
-            future.handle((rc, exc) -> {
-                if (exc != null) {
-                    verbose(this + ": joinAfterLookup failed:" + exc
-                            + ", count=" + count);
-                    mode = NodeMode.OUT;
-                    // reset insertionStartTime ?
-                    if (exc instanceof RetriableException && count > 1) {
-                        joinAsync(introducer, count - 1, joinFuture);
-                    } else {
-                        joinFuture.completeExceptionally(exc);
+        CompletableFuture<LookupDone> lookupFuture = new CompletableFuture<>();
+        Event ev = new Lookup(introducer, key, this, lookupFuture);
+        lookupFuture.handle((results, exc) -> {
+            if (exc != null) {
+                joinFuture.completeExceptionally(exc);
+            } else {
+                CompletableFuture<Boolean> future = new CompletableFuture<>();
+                topStrategy.joinAfterLookup(results, future);
+                future.handle((rc, exc2) -> {
+                    if (exc2 != null) {
+                        verbose(this + ": joinAfterLookup failed:" + exc2
+                                + ", count=" + count);
+                        mode = NodeMode.OUT;
+                        // reset insertionStartTime ?
+                        if (exc2 instanceof RetriableException && count > 1) {
+                            joinAsync(introducer, count - 1, joinFuture);
+                        } else {
+                            joinFuture.completeExceptionally(exc2);
+                        }
+                        return false;
                     }
+                    if (rc) {
+                        insertionEndTime = getVTime();
+                        mode = NodeMode.INSERTED;
+                    }
+                    joinFuture.complete(rc);
                     return false;
-                }
-                if (rc) {
-                    insertionEndTime = getVTime();
-                    mode = NodeMode.INSERTED;
-                }
-                joinFuture.complete(rc);
-                return false;
-            });
+                });
+            }
+            return false;
         });
-        post(ev, (exc) -> {
-            joinFuture.completeExceptionally(exc);
-        });
+        post(ev);
     }
 
     public CompletableFuture<Boolean> leaveAsync() throws IllegalStateException {
@@ -357,7 +365,13 @@ public class LocalNode extends Node {
     public void lookup(DdllKey key, LookupStat stat) {
         System.out.println(this + " lookup " + key);
         long start = EventDispatcher.getVTime();
-        post(new Lookup(this, key, this, (LookupDone done) -> {
+        CompletableFuture<LookupDone> future = new CompletableFuture<>();
+        Event ev = new Lookup(this, key, this, future);
+        future.handle((done, exc) -> {
+            if (exc != null) {
+                System.out.println("Lookup failed: " + exc);
+                return false;
+            }
             if (done.req.key.compareTo(done.pred.key) != 0) {
                 System.out.println("Lookup error: req.key=" + done.req.key
                         + ", " + done.pred.key);
@@ -386,7 +400,9 @@ public class LocalNode extends Node {
                 System.out.println("lookup done: " + done.route + " (" + h
                         + " hops, " + elapsed + ")");
             }
-        }));
+            return false;
+        });
+        this.post(ev);
     }
 
     public Node getClosestPredecessor(DdllKey k) {

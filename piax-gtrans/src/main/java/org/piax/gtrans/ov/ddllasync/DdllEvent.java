@@ -8,7 +8,6 @@ import java.util.concurrent.CompletableFuture;
 import org.piax.gtrans.async.Event;
 import org.piax.gtrans.async.Event.ReplyEvent;
 import org.piax.gtrans.async.Event.RequestEvent;
-import org.piax.gtrans.async.EventHandler;
 import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.async.Node;
 import org.piax.gtrans.ov.ddll.DdllKey;
@@ -25,19 +24,16 @@ public abstract class DdllEvent {
         final LinkNum rnewseq;
         final SetRType type;
         final SetRJob setRJob;
-        final transient CompletableFuture<SetRAckNak> future;
 
         public SetR(Node receiver, SetRType type, Node rNew, Node rCur,
                 LinkNum newrseq, SetRJob job, CompletableFuture<SetRAckNak> future) {
-            super(receiver, (SetRAckNak reply) -> {
-                reply.req.future.complete(reply);
-            });
+            super(receiver, future);
             this.type = type;
             this.rNew = rNew;
             this.rCur = rCur;
             this.rnewseq = newrseq;
             this.setRJob = job;
-            this.future = future;
+            //this.future = future;
         }
 
         @Override
@@ -92,22 +88,6 @@ public abstract class DdllEvent {
         }
     }
 
-    public static class Ping extends RequestEvent<Ping, Pong> {
-        public Ping(Node receiver, EventHandler<Pong> after) {
-            super(receiver, after);
-        }
-        @Override
-        public void run() {
-            ((LocalNode)receiver).post(new Pong(origin, this));
-        }
-    }
-
-    public static class Pong extends ReplyEvent<Ping, Pong> {
-        public Pong(Node receiver, Ping req) {
-            super(req);
-        }
-    }
-
     public static class PropagateNeighbors extends Event {
         DdllKey src;
         Set<Node> propset;
@@ -129,8 +109,9 @@ public abstract class DdllEvent {
     
     public static class GetCandidates extends RequestEvent<GetCandidates, GetCandidatesResponse> {
         final Node node;
-        public GetCandidates(Node receiver, Node node, EventHandler<GetCandidatesResponse> after) {
-            super(receiver, after);
+        public GetCandidates(Node receiver, Node node,
+                CompletableFuture<GetCandidatesResponse> future) {
+            super(receiver, future);
             this.node = node;
         }
         @Override
