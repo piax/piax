@@ -244,8 +244,9 @@ public class SuzakuStrategy extends NodeStrategy {
     }
 
     @Override
-    public void leave(Runnable callback) {
+    public void leave(CompletableFuture<Boolean> leaveComplete) {
         LocalNode.verbose("leave " + n);
+        // jobはSetRが成功した場合に左ノード上で実行される
         SetRJob job;
         if (NOTIFY_WITH_REVERSE_POINTER.value()) {
             job = new SuzakuSetRJob(n, table.reversePointers);
@@ -254,7 +255,10 @@ public class SuzakuStrategy extends NodeStrategy {
         }
         System.out.println(n + ": start DDLL deletion");
         DdllStrategy ddll = (DdllStrategy)base;
-        ddll.leave(() -> {
+        CompletableFuture<Boolean> future = new CompletableFuture<>();
+        ddll.leave(future, job);
+        future.handle((rc, exc) -> {
+            assert rc;
             // SetRAckを受信した場合の処理
             n.mode = NodeMode.GRACE;
             System.out.println(n + ": mode=grace");
@@ -266,11 +270,10 @@ public class SuzakuStrategy extends NodeStrategy {
             EventDispatcher.sched(NetworkParams.ONEWAY_DELAY, () -> {
                 n.mode = NodeMode.DELETED;
                 System.out.println(n + ": mode=deleted");
-                if (callback != null) {
-                    callback.run();
-                }
+                leaveComplete.complete(true);
             });
-        }, job /* jobは左ノードでSetRが成功した場合に左ノード上で実行される */);
+            return false;
+        });
     }
 
     /**

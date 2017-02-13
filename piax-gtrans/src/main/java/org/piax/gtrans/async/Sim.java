@@ -9,6 +9,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.LongStream;
@@ -660,7 +661,12 @@ public class Sim {
                         r = Sim.rand.nextInt(ndel);
                     } while (failed[r]);
                     failed[r] = true; 
-                    nodes[delStart + r].leaveAsync(() -> cNode--);
+                    CompletableFuture<Boolean> future = nodes[delStart + r].leaveAsync();
+                    future.handle((rc, exc) -> {
+                        assert rc;
+                        cNode--;
+                        return false;
+                    });
                 }
             });
         };

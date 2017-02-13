@@ -3,6 +3,7 @@ package org.piax.gtrans.ov.ddllasync;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 
 import org.piax.gtrans.async.Event;
 import org.piax.gtrans.async.Event.ReplyEvent;
@@ -12,7 +13,7 @@ import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.async.Node;
 import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.gtrans.ov.ddll.LinkNum;
-import org.piax.gtrans.ov.ddllasync.DdllStrategy.FixType;
+import org.piax.gtrans.ov.ddllasync.DdllStrategy.SetRType;
 
 public abstract class DdllEvent {
     @FunctionalInterface
@@ -22,21 +23,21 @@ public abstract class DdllEvent {
     public static class SetR extends RequestEvent<SetR, SetRAckNak> {
         final Node rNew, rCur;
         final LinkNum rnewseq;
-        final FixType type;
+        final SetRType type;
         final SetRJob setRJob;
-        final transient Runnable success;
+        final transient CompletableFuture<SetRAckNak> future;
 
-        public SetR(Node receiver, FixType type, Node rNew, Node rCur,
-                LinkNum newrseq, SetRJob job, Runnable success) {
+        public SetR(Node receiver, SetRType type, Node rNew, Node rCur,
+                LinkNum newrseq, SetRJob job, CompletableFuture<SetRAckNak> future) {
             super(receiver, (SetRAckNak reply) -> {
-                reply.handle();
+                reply.req.future.complete(reply);
             });
             this.type = type;
             this.rNew = rNew;
             this.rCur = rCur;
             this.rnewseq = newrseq;
             this.setRJob = job;
-            this.success = success;
+            this.future = future;
         }
 
         @Override
@@ -49,9 +50,6 @@ public abstract class DdllEvent {
         public SetRAckNak(SetR request) {
             super(request);
         }
-        // because run() is already used (overridden) by ReplyEvent, we have
-        // to use another method here.
-        public abstract void handle();
     }
 
     public static class SetRAck extends SetRAckNak {
@@ -63,11 +61,6 @@ public abstract class DdllEvent {
             this.rnewnum = rnewnum;
             this.nbrs = nbrs;
         }
-
-        @Override
-        public void handle() {
-            ((DdllStrategy) getBaseStrategy()).setrack(this);
-        }
     }
 
     public static class SetRNak extends SetRAckNak {
@@ -78,11 +71,6 @@ public abstract class DdllEvent {
             super(request);
             this.pred = pred;
             this.succ = succ;
-        }
-
-        @Override
-        public void handle() {
-            ((DdllStrategy) getBaseStrategy()).setrnak(this);
         }
     }
 

@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 import org.piax.common.Endpoint;
@@ -247,7 +248,12 @@ public class LocalNode extends Node {
     public boolean removeKey() throws InterruptedException {
         ObjectLatch<Boolean> latch = new ObjectLatch<>(1);
         System.out.println(this + ": leaving");
-        leaveAsync(() -> latch.set(true));
+        CompletableFuture<Boolean> future = leaveAsync();
+        future.handle((rc, exc) -> {
+            assert rc;
+            latch.set(true);
+            return false;
+        });
         try {
             return latch.getOrException();
         } catch (InterruptedException e) {
@@ -322,17 +328,15 @@ public class LocalNode extends Node {
         post(ev, failure);
     }
 
-    public void leaveAsync() throws IllegalStateException {
-        leaveAsync(null);
-    }
-
-    public void leaveAsync(Runnable callback) throws IllegalStateException {
+    public CompletableFuture<Boolean> leaveAsync() throws IllegalStateException {
         System.out.println("Node " + this + " leaves");
         if (mode != NodeMode.INSERTED) {
            throw new IllegalStateException("not inserted");
         }
         mode = NodeMode.DELETING;
-        topStrategy.leave(callback);
+        CompletableFuture<Boolean> future = new CompletableFuture<>();
+        topStrategy.leave(future);
+        return future;
     }
 
     public void fail() {

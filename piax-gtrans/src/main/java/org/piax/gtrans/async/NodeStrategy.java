@@ -2,6 +2,7 @@ package org.piax.gtrans.async;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 import org.piax.gtrans.async.Event.Lookup;
 import org.piax.gtrans.async.Event.LookupDone;
@@ -44,7 +45,7 @@ public abstract class NodeStrategy {
     public abstract void joinAfterLookup(LookupDone lookupDone,
             Runnable success, FailureCallback failure);
 
-    public void leave(Runnable success) {
+    public void leave(CompletableFuture<Boolean> leaveComplete) {
         throw new UnsupportedOperationException("leave is not implemented");
     }
 
