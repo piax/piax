@@ -17,7 +17,6 @@ import org.piax.gtrans.async.Event.TimerEvent;
 import org.piax.gtrans.async.EventDispatcher;
 import org.piax.gtrans.async.EventException;
 import org.piax.gtrans.async.EventException.RetriableException;
-import org.piax.gtrans.async.FailureCallback;
 import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.async.NetworkParams;
 import org.piax.gtrans.async.Node;
@@ -122,21 +121,9 @@ public class DdllStrategy extends NodeStrategy {
     }
 
     @Override
-    public void joinAfterLookup(LookupDone l, Runnable success,
-            FailureCallback eh) {
-        CompletableFuture<Boolean> future = new CompletableFuture<>();
-        join(l.pred, l.succ, future, null);
-        future.handle((rc, exc) -> {
-            if (exc != null) {
-                eh.run((EventException)exc);
-            } else {
-                assert rc;
-                if (success != null) {
-                    success.run();
-                }
-            }
-            return false;
-        });
+    public void joinAfterLookup(LookupDone l, 
+            CompletableFuture<Boolean> joinFuture) {
+        join(l.pred, l.succ, joinFuture, null);
     }
 
     public void join(Node pred, Node succ,

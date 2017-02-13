@@ -141,7 +141,7 @@ public class TestDdll1 {
                 } else {
                     System.out.printf(" [%d] delete %n", n);
                 }
-            } catch (InterruptedException e) {
+            } catch (InterruptedException | IOException e) {
                 System.out.println("removeKey throws " + e);
             }
             break;

@@ -43,7 +43,7 @@ public abstract class NodeStrategy {
     public abstract void initInitialNode();
 
     public abstract void joinAfterLookup(LookupDone lookupDone,
-            Runnable success, FailureCallback failure);
+            CompletableFuture<Boolean> joinFuture);
 
     public void leave(CompletableFuture<Boolean> leaveComplete) {
         throw new UnsupportedOperationException("leave is not implemented");

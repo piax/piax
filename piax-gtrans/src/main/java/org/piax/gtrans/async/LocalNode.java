@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 import org.piax.common.Endpoint;
@@ -24,7 +25,6 @@ import org.piax.gtrans.async.EventException.RPCEventException;
 import org.piax.gtrans.async.EventException.RetriableException;
 import org.piax.gtrans.async.EventSender.EventSenderNet;
 import org.piax.gtrans.async.EventSender.EventSenderSim;
-import org.piax.gtrans.async.ObjectLatch.WrappedException;
 import org.piax.gtrans.async.Sim.LookupStat;
 import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.util.UniqId;
@@ -229,40 +229,27 @@ public class LocalNode extends Node {
      */
     public boolean addKey(Endpoint introducer) throws IOException,
         InterruptedException {
+        System.out.println(this + ": addKey");
         Node temp = Node.getTemporaryInstance(introducer);
-        ObjectLatch<Boolean> latch = new ObjectLatch<>(1);
-        //System.out.println(this + ": joining");
-        joinAsync(temp, () -> latch.set(true),
-                e -> latch.setException(e));
+        CompletableFuture<Boolean> future = joinAsync(temp);
         try {
-            return latch.getOrException();
+            return future.get();
+        } catch (ExecutionException e) {
+            throw new IOException(e.getCause());
         } catch (InterruptedException e) {
             throw e;
-        } catch (WrappedException e) {
-            throw new IOException(e.getCause());
-        } finally {
-            //System.out.println("join finished");
         }
     }
 
-    public boolean removeKey() throws InterruptedException {
-        ObjectLatch<Boolean> latch = new ObjectLatch<>(1);
-        System.out.println(this + ": leaving");
+    public boolean removeKey() throws IOException, InterruptedException {
+        System.out.println(this + ": removeKey");
         CompletableFuture<Boolean> future = leaveAsync();
-        future.handle((rc, exc) -> {
-            assert rc;
-            latch.set(true);
-            return false;
-        });
         try {
-            return latch.getOrException();
+            return future.get();
+        } catch (ExecutionException e) {
+            throw new IOException(e.getCause());
         } catch (InterruptedException e) {
             throw e;
-        } catch (WrappedException e) {
-            System.out.println(this + ": leave got " + e);
-            return false;
-        } finally {
-            System.out.println("leave finished");
         }
     }
 
@@ -275,57 +262,57 @@ public class LocalNode extends Node {
         insertionStartTime = insertionEndTime = getVTime();
     }
 
-    public void joinAsync(Node introducer, Runnable success) {
-        joinAsync(introducer, success, exc -> {
-            throw new Error("joinAsync: got exception", exc);
-        });
-    }
-
     /**
      * locate the node position and insert
      * @param introducer
      * @param success  a callback that is called after join succeeds
      */
-    public void joinAsync(Node introducer, Runnable success,
-            FailureCallback failure) {
-        joinAsync(introducer, success, failure,
-                INSERTION_DELETION_RETRY);
+    public CompletableFuture<Boolean> joinAsync(Node introducer) { 
+        CompletableFuture<Boolean> joinFuture = new CompletableFuture<>();
+        joinAsync(introducer, INSERTION_DELETION_RETRY, joinFuture);
+        return joinFuture;
     }
 
     /**
      * locate the node position and insert
      * @param introducer
-     * @param success  a callback that is called when join succeeds
-     * @param failure  a callback that is called when join fails
-     * @param count    number of remaining retries
+     * @param count      number of remaining retries
+     * @param joinFuture
      */
-    private void joinAsync(Node introducer, Runnable success,
-            FailureCallback failure, int count) {
+    private void joinAsync(Node introducer, int count,
+            CompletableFuture<Boolean> joinFuture) {
         if (insertionStartTime == -1) {
             insertionStartTime = getVTime();
         }
         this.mode = NodeMode.INSERTING;
         this.introducer = introducer;
         Event ev = new Lookup(introducer, key, this, (LookupDone results) -> {
-            topStrategy.joinAfterLookup(results,
-                    () -> {
-                        insertionEndTime = getVTime();
-                        mode = NodeMode.INSERTED;
-                        if (success != null) success.run();
-                    }, (exc) -> {
-                        verbose(this + ": joinAfterLookup failed:" + exc
-                                + ", count=" + count);
-                        mode = NodeMode.OUT;
-                        // reset insertionStartTime ?
-                        if (exc instanceof RetriableException && count > 1) {
-                            joinAsync(introducer, success, failure,
-                                    count - 1);
-                        } else {
-                            if (failure != null) failure.run(exc);
-                        }
-                    });
+            CompletableFuture<Boolean> future = new CompletableFuture<>();
+            topStrategy.joinAfterLookup(results, future);
+            future.handle((rc, exc) -> {
+                if (exc != null) {
+                    verbose(this + ": joinAfterLookup failed:" + exc
+                            + ", count=" + count);
+                    mode = NodeMode.OUT;
+                    // reset insertionStartTime ?
+                    if (exc instanceof RetriableException && count > 1) {
+                        joinAsync(introducer, count - 1, joinFuture);
+                    } else {
+                        joinFuture.completeExceptionally(exc);
+                    }
+                    return false;
+                }
+                if (rc) {
+                    insertionEndTime = getVTime();
+                    mode = NodeMode.INSERTED;
+                }
+                joinFuture.complete(rc);
+                return false;
+            });
         });
-        post(ev, failure);
+        post(ev, (exc) -> {
+            joinFuture.completeExceptionally(exc);
+        });
     }
 
     public CompletableFuture<Boolean> leaveAsync() throws IllegalStateException {
@@ -451,7 +438,7 @@ public class LocalNode extends Node {
         return cands;
     }
     
-    public static void main(String args[]) {
+    /*public static void main(String args[]) {
         DdllKey k0 = new DdllKey(0, new UniqId("0"));
         DdllKey k1 = new DdllKey(1, new UniqId("1"));
         DdllKey k2 = new DdllKey(2, new UniqId("2"));
@@ -464,6 +451,5 @@ public class LocalNode extends Node {
         List<Node> x = Arrays.asList(nodes).stream()
                 .sorted(comp).collect(Collectors.toList());
         System.out.println(x);
-    }
-
+    }*/
 }

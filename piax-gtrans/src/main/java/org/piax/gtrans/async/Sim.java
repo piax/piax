@@ -215,14 +215,35 @@ public class Sim {
             Runnable callback, FailureCallback failure) {
         //n.mode = NodeMode.TO_BE_INSERTED;
         if (delay == 0) {
-            n.joinAsync(introducer, callback, failure);
+            joinAsync(n, introducer, callback, failure);
         } else {
             EventDispatcher.sched(delay, () -> {
-                n.joinAsync(introducer, callback, failure);
+                joinAsync(n, introducer, callback, failure);
             });
         }
     }
-
+    
+    public static void joinAsync(LocalNode n, LocalNode introducer,
+            Runnable callback) {
+        joinAsync(n, introducer, callback, (exc) -> {
+            System.out.println(n + ": joinAsync: finished with " + exc);
+        });
+    }
+    public static void joinAsync(LocalNode n, LocalNode introducer,
+            Runnable callback, FailureCallback failure) {
+        CompletableFuture<Boolean> future = n.joinAsync(introducer);
+        future.handle((rc, exc) -> {
+            if (exc != null) {
+                failure.run((EventException)exc);
+            } else if (rc) {
+                callback.run();
+            } else {
+                System.out.println("joinAsync finished with false!");
+            }
+            return false;
+        });
+    }
+    
     public static void dump(LocalNode start) {
         System.out.println("node dump:");
         LocalNode x = start;
@@ -303,7 +324,7 @@ public class Sim {
         a.joinInitialNode();
         LocalNode b = createNode(factory, 10, NetworkParams.HALFWAY_DELAY);
         LocalNode z = createNode(factory, 100, NetworkParams.HALFWAY_DELAY);
-        b.joinAsync(a, () -> System.out.println(b + " joined!"),
+        joinAsync(b, a, () -> System.out.println(b + " joined!"),
                 exc -> {
                     System.out.println("Node b join failed!");
                 });
@@ -321,7 +342,7 @@ public class Sim {
         Arrays.sort(nodes);
         EventDispatcher.sched(2000, () -> {
             b.fail();
-            z.joinAsync(a, () -> System.out.println(z + " joined"),
+            joinAsync(z, a, () -> System.out.println(z + " joined"),
                     exc -> {
                         System.out.println("Node z join failed");
                     });
@@ -743,7 +764,7 @@ public class Sim {
         for (int j = 0; j < nLater; j++) {
             LocalNode x = aNodes.get(j);
             EventDispatcher.sched(timing, () -> {
-                x.joinAsync(nodes[0], null);
+                joinAsync(x, nodes[0], null);
             });
         }
         startSim(nodes, timing + convertSecondsToVTime(10));
@@ -788,7 +809,7 @@ public class Sim {
         for (int i = base; i < initial; i++) {
             int index = rest.get(i);
             inserted.add(index);
-            nodes[index].joinAsync(introducer, null);
+            joinAsync(nodes[index], introducer, null);
         }
         base = initial;
         int T = 1000*1000;
@@ -921,7 +942,7 @@ public class Sim {
             System.out.println(x + ": " + s + " to " + e + (
                     graceful[i] ? " graceful" : " ungraceful"));
             EventDispatcher.sched(s, () -> {
-                x.joinAsync(nodes[0], () -> {
+                joinAsync(x, nodes[0], () -> {
                     cNode++;
                     iNode++;
                     EventDispatcher.sched((long)dur, () -> {
@@ -1010,7 +1031,7 @@ public class Sim {
         int LOOKUP_TIMES = 41;
         AllLookupStats[] alls = new AllLookupStats[LOOKUP_TIMES];
         insOrder.value().method.insert(this, nodes2, 1, num - 1, 0, 0,
-                () -> nodes[CENTER].joinAsync(nodes[0], () -> {
+                () -> joinAsync(nodes[CENTER], nodes[0], () -> {
                     for (int i = 0; i < LOOKUP_TIMES; i++) {
                         alls[i] = new AllLookupStats();
                         long t = i * T;
@@ -1213,7 +1234,7 @@ public class Sim {
             introducer.joinInitialNode();
             for (int i = 1; i < n; i++) {
                 LocalNode x = nodes[i];
-                x.joinAsync(introducer, () -> {
+                joinAsync(x, introducer, () -> {
                     insert.addSample(x.getInsertionTime());
                 });
             }

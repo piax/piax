@@ -18,7 +18,6 @@ import org.piax.gtrans.async.Event.Lookup;
 import org.piax.gtrans.async.Event.LookupDone;
 import org.piax.gtrans.async.Event.TimerEvent;
 import org.piax.gtrans.async.EventDispatcher;
-import org.piax.gtrans.async.FailureCallback;
 import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.async.NetworkParams;
 import org.piax.gtrans.async.Node;
@@ -185,20 +184,30 @@ public class SuzakuStrategy extends NodeStrategy {
     }
 
     @Override
-    public void joinAfterLookup(LookupDone lookupDone, Runnable success,
-            FailureCallback eh) {
+    public void joinAfterLookup(LookupDone lookupDone,
+            CompletableFuture<Boolean> joinFuture) {
         System.out.println("JoinAfterLookup: " + lookupDone.route); 
         System.out.println("JoinAfterLookup: " + lookupDone.hops());
-        System.out.println("JOIN " + n.key + " between " + lookupDone.pred + " and " + lookupDone.succ);
+        System.out.println("JOIN " + n.key + " between "
+                + lookupDone.pred + " and " + lookupDone.succ);
         assert Node.isOrdered(lookupDone.pred.key, n.key, lookupDone.succ.key);
         joinMsgs += lookupDone.hops();
-        base.joinAfterLookup(lookupDone, () -> {
-            // 右ノードが変更された契機でリバースポインタの不要なエントリを削除
-            SuzakuStrategy szk = (SuzakuStrategy)n.topStrategy;
-            szk.table.sanitizeRevPtrs();
-            nodeInserted();
-            success.run();
-        }, eh);
+        CompletableFuture<Boolean> future = new CompletableFuture<>();
+        base.joinAfterLookup(lookupDone, future);
+        future.handle((rc, exc) -> {
+            if (exc != null) {
+                joinFuture.completeExceptionally(exc);
+            } else if (rc) {
+                // 右ノードが変更された契機でリバースポインタの不要なエントリを削除
+                SuzakuStrategy szk = (SuzakuStrategy)n.topStrategy;
+                szk.table.sanitizeRevPtrs();
+                nodeInserted();
+                joinFuture.complete(rc);
+            } else {
+                joinFuture.complete(rc);
+            }
+            return false;
+        });
     }
 
     public static class SuzakuSetRJob implements SetRJob {
