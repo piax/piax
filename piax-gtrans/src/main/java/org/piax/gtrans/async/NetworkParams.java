@@ -6,7 +6,7 @@ public class NetworkParams {
     /**
      * 仮想時間 * LATENCY_FACTOR = 実時間
      */
-    public final static double LATENCY_FACTOR = 0.2;
+    public final static double LATENCY_FACTOR = 1;
     /** タイムアウト */
     public final static long NETWORK_TIMEOUT = (long)(2*1000/LATENCY_FACTOR);
     /**

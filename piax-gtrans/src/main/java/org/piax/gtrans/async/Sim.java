@@ -555,7 +555,7 @@ public class Sim {
                 });
                 EventDispatcher.sched(t, () -> {
                     System.out.println("T = " + t
-                            + " (real=" + t * NetworkParams.LATENCY_FACTOR +")");
+                            + " (real=" + NetworkParams.toRealTime(t) +")");
                     dump(nodes);
 //                    if (isSzk) {
 //                        boolean rc = SuzakuStrategy.isAllConverged(nodes);

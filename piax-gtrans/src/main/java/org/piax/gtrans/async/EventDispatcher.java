@@ -22,6 +22,7 @@ public class EventDispatcher {
     public static BooleanOption realtime = new BooleanOption(false, "-realtime");
     public static boolean REALWORLD = false;
 
+    private static long startTime = System.currentTimeMillis();
     private static long vtime = 0;
     public static int nmsgs = 0;
     public static int DEFAULT_MAX_TIME = 200 * 1000;
@@ -35,12 +36,6 @@ public class EventDispatcher {
     }
 
     public static void load() {
-    }
-
-    public static void init() {
-        if (REALWORLD) {
-            startExecutorThread();
-        } // else, call startSimulation() manually
     }
 
     public static void enqueue(Event ev) {
@@ -128,7 +123,7 @@ public class EventDispatcher {
 
     public static long getVTime() {
         if (realtime.value()) {
-            return System.currentTimeMillis();
+            return System.currentTimeMillis() - startTime;
         } else {
             return vtime;
         }
