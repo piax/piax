@@ -208,9 +208,13 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
             U extends ReplyEvent<T, U>> extends Event {
         final transient CompletableFuture<U> future;
         transient TimerEvent replyTimeoutEvent, ackTimeoutEvent; 
-        public RequestEvent(Node receiver, CompletableFuture<U> future) {
+        public RequestEvent(Node receiver) {
             super(receiver);
-            this.future = future;
+            this.future = new CompletableFuture<U>();
+        }
+
+        public CompletableFuture<U> getCompletableFuture() {
+            return this.future;
         }
 
         @Override
@@ -278,7 +282,7 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
      */
     public static abstract class ReplyEvent<T extends RequestEvent<T, U>, 
         U extends ReplyEvent<T, U>> extends AckEvent {
-        public transient /*final*/T req;
+        public transient T req;
         private final int reqEventId;
         public ReplyEvent(T req) {
             super(req, req.origin);
@@ -327,12 +331,10 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
         public boolean fill;
         public StringBuilder trace;
 
-        public Lookup(Node receiver, DdllKey key, Node src,
-                CompletableFuture<LookupDone> future) {
-            super(receiver, future);
+        public Lookup(Node receiver, DdllKey key, Node src) {
+            super(receiver);
             this.key = key;
             this.src = src;
-            //System.out.println("LookupEvent: src=" + src + ", evid="+ this.getEventId());
         }
 
         @Override

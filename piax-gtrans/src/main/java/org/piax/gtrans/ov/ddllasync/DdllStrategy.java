@@ -10,10 +10,8 @@ import java.util.function.Consumer;
 import org.piax.common.TransportId;
 import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.IdConflictException;
-import org.piax.gtrans.async.Event;
 import org.piax.gtrans.async.Event.Lookup;
 import org.piax.gtrans.async.Event.LookupDone;
-import org.piax.gtrans.async.Event.RequestEvent;
 import org.piax.gtrans.async.Event.TimerEvent;
 import org.piax.gtrans.async.EventDispatcher;
 import org.piax.gtrans.async.EventException;
@@ -29,7 +27,6 @@ import org.piax.gtrans.async.Sim;
 import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.gtrans.ov.ddll.LinkNum;
 import org.piax.gtrans.ov.ddllasync.DdllEvent.GetCandidates;
-import org.piax.gtrans.ov.ddllasync.DdllEvent.GetCandidatesResponse;
 import org.piax.gtrans.ov.ddllasync.DdllEvent.PropagateNeighbors;
 import org.piax.gtrans.ov.ddllasync.DdllEvent.SetL;
 import org.piax.gtrans.ov.ddllasync.DdllEvent.SetR;
@@ -134,15 +131,14 @@ public class DdllStrategy extends NodeStrategy {
         n.pred = pred;
         n.succ = succ;
         setStatus(DdllStatus.INS);
-        CompletableFuture<SetRAckNak> future = new CompletableFuture<>();
         SetR ev = new SetR(n.pred, SetRType.NORMAL, n, n.succ,
-                new LinkNum(0, 0), setRjob, future);
+                new LinkNum(0, 0), setRjob);
         Consumer<EventException> joinfail = (exc) -> {
             System.out.println(n + ": join failed: " + exc);
             setStatus(DdllStatus.OUT);
             joinComplete.completeExceptionally(exc);
         };
-        future.whenComplete((SetRAckNak msg0, Throwable exc) -> {
+        ev.getCompletableFuture().whenComplete((SetRAckNak msg0, Throwable exc) -> {
             if (exc != null) {
                 joinfail.accept((EventException)exc);
             } else if (msg0 instanceof SetRAck) {
@@ -229,10 +225,9 @@ public class DdllStrategy extends NodeStrategy {
             return;
         }
         setStatus(DdllStatus.DEL);
-        CompletableFuture<SetRAckNak> future = new CompletableFuture<>();
         SetR ev = new SetR(n.pred, SetRType.NORMAL, n.succ, n,
-                rseq.next(), setRjob, future);
-        future.whenComplete((msg0, exc) -> {
+                rseq.next(), setRjob);
+        ev.getCompletableFuture().whenComplete((msg0, exc) -> {
             if (exc != null) {
                 System.out.println(n + ": leave failed: " + exc);
                 if (!(exc instanceof RetriableException)) {
@@ -454,9 +449,8 @@ public class DdllStrategy extends NodeStrategy {
         if (last == null) {
             last = n;
         }
-        CompletableFuture<GetCandidatesResponse> getResp = new CompletableFuture<>();
-        RequestEvent<?, ?> ev = new GetCandidates(last, n, getResp);
-        getResp.whenComplete((resp, exc) -> {
+        GetCandidates ev = new GetCandidates(last, n);
+        ev.getCompletableFuture().whenComplete((resp, exc) -> {
             if (exc != null) {
                 // redo.  because the failed node should have been added to
                 // suspectedNode, it is safe to redo.
@@ -497,9 +491,8 @@ public class DdllStrategy extends NodeStrategy {
             n.setSucc(leftSucc);
         }
         CompletableFuture<Boolean> future = new CompletableFuture<>();
-        CompletableFuture<SetRAckNak> setracknak = new CompletableFuture<>();
-        Event ev = new SetR(left, type, n, leftSucc, lseq, null, setracknak);
-        setracknak.whenComplete((msg0, exc) -> {
+        SetR ev = new SetR(left, type, n, leftSucc, lseq, null);
+        ev.getCompletableFuture().whenComplete((msg0, exc) -> {
             if (exc != null || msg0 instanceof SetRNak) {
                 // while fixing fails, retry fixing 
                 System.out.println(n + ": fix failed: "

@@ -344,7 +344,7 @@ public class Sim {
             b.fail();
             joinAsync(z, a, () -> System.out.println(z + " joined"),
                     exc -> {
-                        System.out.println("Node z join failed");
+                        System.out.println("Node z join failed: " + exc);
                     });
             
         });

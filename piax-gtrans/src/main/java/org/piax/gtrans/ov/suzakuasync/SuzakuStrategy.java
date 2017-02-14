@@ -14,7 +14,6 @@ import java.util.stream.Stream;
 import org.piax.common.TransportId;
 import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.IdConflictException;
-import org.piax.gtrans.async.Event;
 import org.piax.gtrans.async.Event.Lookup;
 import org.piax.gtrans.async.Event.LookupDone;
 import org.piax.gtrans.async.Event.TimerEvent;
@@ -35,9 +34,7 @@ import org.piax.gtrans.ov.ring.rq.FlexibleArray;
 import org.piax.gtrans.ov.suzakuasync.SuzakuEvent.FTEntRemoveEvent;
 import org.piax.gtrans.ov.suzakuasync.SuzakuEvent.FTEntUpdateEvent;
 import org.piax.gtrans.ov.suzakuasync.SuzakuEvent.GetFTAllEvent;
-import org.piax.gtrans.ov.suzakuasync.SuzakuEvent.GetFTAllReplyEvent;
 import org.piax.gtrans.ov.suzakuasync.SuzakuEvent.GetFTEntEvent;
-import org.piax.gtrans.ov.suzakuasync.SuzakuEvent.GetFTEntReplyEvent;
 import org.piax.gtrans.ov.suzakuasync.SuzakuEvent.RemoveReversePointerEvent;
 
 public class SuzakuStrategy extends NodeStrategy {
@@ -439,10 +436,8 @@ public class SuzakuStrategy extends NodeStrategy {
         joinMsgs += base.getMessages4Join();    // add messages consumed in DDLL 
         if (COPY_FINGERTABLES) {
             // copy predecessor's finger table
-            CompletableFuture<GetFTAllReplyEvent> future
-                = new CompletableFuture<>();
-            GetFTAllEvent ev = new GetFTAllEvent(n.pred, future);
-            future.whenComplete((rep, exc) -> {
+            GetFTAllEvent ev = new GetFTAllEvent(n.pred);
+            ev.getCompletableFuture().whenComplete((rep, exc) -> {
                 if (exc != null) {
                     System.out.println("getFTAll failed: " + exc);
                 } else {
@@ -916,9 +911,8 @@ public class SuzakuStrategy extends NodeStrategy {
         //     B = 2, p = 3 -> x = 1, y = 1, ents=[0, 1*4^1=4, 2*4^1=8]
         Node baseNode = ent.getLink();
         FingerTable tab = isBackward ? table.backward : table.forward;
-        CompletableFuture<GetFTEntReplyEvent> getResp = new CompletableFuture<>();
-        Event ev = new GetFTEntEvent(baseNode, isBackward, x, y, K, gift, gift2, getResp);
-        getResp.whenComplete((repl, exc) -> {
+        GetFTEntEvent ev = new GetFTEntEvent(baseNode, isBackward, x, y, K, gift, gift2);
+        ev.getCompletableFuture().whenComplete((repl, exc) -> {
             if (exc != null) {
                 System.out.println(n + ": getFingerTable0: TIMEOUT on " + baseNode);
                 Runnable job = () -> {

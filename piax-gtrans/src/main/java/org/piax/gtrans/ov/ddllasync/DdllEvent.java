@@ -3,7 +3,6 @@ package org.piax.gtrans.ov.ddllasync;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
 
 import org.piax.gtrans.async.Event;
 import org.piax.gtrans.async.Event.ReplyEvent;
@@ -26,14 +25,13 @@ public abstract class DdllEvent {
         final SetRJob setRJob;
 
         public SetR(Node receiver, SetRType type, Node rNew, Node rCur,
-                LinkNum newrseq, SetRJob job, CompletableFuture<SetRAckNak> future) {
-            super(receiver, future);
+                LinkNum newrseq, SetRJob job) {
+            super(receiver);
             this.type = type;
             this.rNew = rNew;
             this.rCur = rCur;
             this.rnewseq = newrseq;
             this.setRJob = job;
-            //this.future = future;
         }
 
         @Override
@@ -109,9 +107,8 @@ public abstract class DdllEvent {
     
     public static class GetCandidates extends RequestEvent<GetCandidates, GetCandidatesResponse> {
         final Node node;
-        public GetCandidates(Node receiver, Node node,
-                CompletableFuture<GetCandidatesResponse> future) {
-            super(receiver, future);
+        public GetCandidates(Node receiver, Node node) {
+            super(receiver);
             this.node = node;
         }
         @Override

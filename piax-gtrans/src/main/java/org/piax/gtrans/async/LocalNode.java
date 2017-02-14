@@ -289,9 +289,8 @@ public class LocalNode extends Node {
         }
         this.mode = NodeMode.INSERTING;
         this.introducer = introducer;
-        CompletableFuture<LookupDone> lookupFuture = new CompletableFuture<>();
-        Event ev = new Lookup(introducer, key, this, lookupFuture);
-        lookupFuture.whenComplete((results, exc) -> {
+        Lookup ev = new Lookup(introducer, key, this);
+        ev.getCompletableFuture().whenComplete((results, exc) -> {
             if (exc != null) {
                 joinFuture.completeExceptionally(exc);
             } else {
@@ -363,9 +362,8 @@ public class LocalNode extends Node {
     public void lookup(DdllKey key, LookupStat stat) {
         System.out.println(this + " lookup " + key);
         long start = EventDispatcher.getVTime();
-        CompletableFuture<LookupDone> future = new CompletableFuture<>();
-        Event ev = new Lookup(this, key, this, future);
-        future.whenComplete((done, exc) -> {
+        Lookup ev = new Lookup(this, key, this);
+        ev.getCompletableFuture().whenComplete((done, exc) -> {
             if (exc != null) {
                 System.out.println("Lookup failed: " + exc);
                 return;
