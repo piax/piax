@@ -142,7 +142,7 @@ public class DdllStrategy extends NodeStrategy {
             setStatus(DdllStatus.OUT);
             joinComplete.completeExceptionally(exc);
         };
-        future.handle((SetRAckNak msg0, Throwable exc) -> {
+        future.whenComplete((SetRAckNak msg0, Throwable exc) -> {
             if (exc != null) {
                 joinfail.accept((EventException)exc);
             } else if (msg0 instanceof SetRAck) {
@@ -201,8 +201,7 @@ public class DdllStrategy extends NodeStrategy {
             } else {
                 throw new Error("shouldn't happen");
             }
-            return false;
-        });
+         });
         n.post(ev);
     }
 
@@ -233,7 +232,7 @@ public class DdllStrategy extends NodeStrategy {
         CompletableFuture<SetRAckNak> future = new CompletableFuture<>();
         SetR ev = new SetR(n.pred, SetRType.NORMAL, n.succ, n,
                 rseq.next(), setRjob, future);
-        future.handle((msg0, exc) -> {
+        future.whenComplete((msg0, exc) -> {
             if (exc != null) {
                 System.out.println(n + ": leave failed: " + exc);
                 if (!(exc instanceof RetriableException)) {
@@ -262,7 +261,6 @@ public class DdllStrategy extends NodeStrategy {
             } else {
                 throw new Error("shouldn't happen");
             }
-            return false;
         });
         n.post(ev);
     }
@@ -458,7 +456,7 @@ public class DdllStrategy extends NodeStrategy {
         }
         CompletableFuture<GetCandidatesResponse> getResp = new CompletableFuture<>();
         RequestEvent<?, ?> ev = new GetCandidates(last, n, getResp);
-        getResp.handle((resp, exc) -> {
+        getResp.whenComplete((resp, exc) -> {
             if (exc != null) {
                 // redo.  because the failed node should have been added to
                 // suspectedNode, it is safe to redo.
@@ -467,7 +465,6 @@ public class DdllStrategy extends NodeStrategy {
             } else {
                 getLiveLeft(resp.origin, resp.succ, resp.candidates, future);
             }
-            return false;
         });
         n.post(ev);
     }
@@ -502,7 +499,7 @@ public class DdllStrategy extends NodeStrategy {
         CompletableFuture<Boolean> future = new CompletableFuture<>();
         CompletableFuture<SetRAckNak> setracknak = new CompletableFuture<>();
         Event ev = new SetR(left, type, n, leftSucc, lseq, null, setracknak);
-        setracknak.handle((msg0, exc) -> {
+        setracknak.whenComplete((msg0, exc) -> {
             if (exc != null || msg0 instanceof SetRNak) {
                 // while fixing fails, retry fixing 
                 System.out.println(n + ": fix failed: "
@@ -520,7 +517,6 @@ public class DdllStrategy extends NodeStrategy {
             } else {
                 throw new Error("shouldn't happen");
             }
-            return false;
         });
         n.post(ev);
         return future;

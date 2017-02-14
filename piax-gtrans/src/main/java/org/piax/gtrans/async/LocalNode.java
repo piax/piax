@@ -291,13 +291,13 @@ public class LocalNode extends Node {
         this.introducer = introducer;
         CompletableFuture<LookupDone> lookupFuture = new CompletableFuture<>();
         Event ev = new Lookup(introducer, key, this, lookupFuture);
-        lookupFuture.handle((results, exc) -> {
+        lookupFuture.whenComplete((results, exc) -> {
             if (exc != null) {
                 joinFuture.completeExceptionally(exc);
             } else {
                 CompletableFuture<Boolean> future = new CompletableFuture<>();
                 topStrategy.joinAfterLookup(results, future);
-                future.handle((rc, exc2) -> {
+                future.whenComplete((rc, exc2) -> {
                     if (exc2 != null) {
                         verbose(this + ": joinAfterLookup failed:" + exc2
                                 + ", count=" + count);
@@ -308,17 +308,15 @@ public class LocalNode extends Node {
                         } else {
                             joinFuture.completeExceptionally(exc2);
                         }
-                        return false;
+                        return;
                     }
                     if (rc) {
                         insertionEndTime = getVTime();
                         mode = NodeMode.INSERTED;
                     }
                     joinFuture.complete(rc);
-                    return false;
                 });
             }
-            return false;
         });
         post(ev);
     }
@@ -367,10 +365,10 @@ public class LocalNode extends Node {
         long start = EventDispatcher.getVTime();
         CompletableFuture<LookupDone> future = new CompletableFuture<>();
         Event ev = new Lookup(this, key, this, future);
-        future.handle((done, exc) -> {
+        future.whenComplete((done, exc) -> {
             if (exc != null) {
                 System.out.println("Lookup failed: " + exc);
-                return false;
+                return;
             }
             if (done.req.key.compareTo(done.pred.key) != 0) {
                 System.out.println("Lookup error: req.key=" + done.req.key
@@ -400,7 +398,6 @@ public class LocalNode extends Node {
                 System.out.println("lookup done: " + done.route + " (" + h
                         + " hops, " + elapsed + ")");
             }
-            return false;
         });
         this.post(ev);
     }

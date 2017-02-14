@@ -195,7 +195,7 @@ public class SuzakuStrategy extends NodeStrategy {
         joinMsgs += lookupDone.hops();
         CompletableFuture<Boolean> future = new CompletableFuture<>();
         base.joinAfterLookup(lookupDone, future);
-        future.handle((rc, exc) -> {
+        future.whenComplete((rc, exc) -> {
             if (exc != null) {
                 joinFuture.completeExceptionally(exc);
             } else if (rc) {
@@ -207,7 +207,6 @@ public class SuzakuStrategy extends NodeStrategy {
             } else {
                 joinFuture.complete(rc);
             }
-            return false;
         });
     }
 
@@ -267,7 +266,7 @@ public class SuzakuStrategy extends NodeStrategy {
         DdllStrategy ddll = (DdllStrategy)base;
         CompletableFuture<Boolean> future = new CompletableFuture<>();
         ddll.leave(future, job);
-        future.handle((rc, exc) -> {
+        future.whenComplete((rc, exc) -> {
             assert rc;
             // SetRAckを受信した場合の処理
             n.mode = NodeMode.GRACE;
@@ -282,7 +281,6 @@ public class SuzakuStrategy extends NodeStrategy {
                 System.out.println(n + ": mode=deleted");
                 leaveComplete.complete(true);
             });
-            return false;
         });
     }
 
@@ -444,7 +442,7 @@ public class SuzakuStrategy extends NodeStrategy {
             CompletableFuture<GetFTAllReplyEvent> future
                 = new CompletableFuture<>();
             GetFTAllEvent ev = new GetFTAllEvent(n.pred, future);
-            future.handle((rep, exc) -> {
+            future.whenComplete((rep, exc) -> {
                 if (exc != null) {
                     System.out.println("getFTAll failed: " + exc);
                 } else {
@@ -463,7 +461,6 @@ public class SuzakuStrategy extends NodeStrategy {
                         scheduleFTUpdate(true);
                     }
                 }
-                return false;
             });
             n.post(ev);
         } else {
@@ -921,7 +918,7 @@ public class SuzakuStrategy extends NodeStrategy {
         FingerTable tab = isBackward ? table.backward : table.forward;
         CompletableFuture<GetFTEntReplyEvent> getResp = new CompletableFuture<>();
         Event ev = new GetFTEntEvent(baseNode, isBackward, x, y, K, gift, gift2, getResp);
-        getResp.handle((repl, exc) -> {
+        getResp.whenComplete((repl, exc) -> {
             if (exc != null) {
                 System.out.println(n + ": getFingerTable0: TIMEOUT on " + baseNode);
                 Runnable job = () -> {
@@ -996,7 +993,6 @@ public class SuzakuStrategy extends NodeStrategy {
                 }
                 updateNext(p, isBackward, nextEnt2, nextEntX);
             }
-            return false;
         });
         n.post(ev);
     }
