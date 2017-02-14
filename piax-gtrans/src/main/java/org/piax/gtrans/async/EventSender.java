@@ -31,15 +31,15 @@ public interface EventSender {
         @Override
         public void send(Event ev) {
             Event copy = ev.clone();
-            copy.vtime = EventDispatcher.getVTime() + ev.delay;
-            EventDispatcher.enqueue(copy);
+            copy.vtime = EventExecutor.getVTime() + ev.delay;
+            EventExecutor.enqueue(copy);
         }
 
         @Override
         public void forward(Event ev) {
             Event copy = ev.clone();
-            copy.vtime = EventDispatcher.getVTime() + ev.delay;
-            EventDispatcher.enqueue(copy);
+            copy.vtime = EventExecutor.getVTime() + ev.delay;
+            EventExecutor.enqueue(copy);
         }
     }
 
@@ -75,7 +75,7 @@ public interface EventSender {
 
         @Override
         public void recv(Event ev) {
-            EventDispatcher.enqueue(ev);
+            EventExecutor.enqueue(ev);
         }
     }
 }

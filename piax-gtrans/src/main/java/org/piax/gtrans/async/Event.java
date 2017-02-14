@@ -71,7 +71,7 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
 
     @Override
     public String toString() {
-        long rem = vtime - EventDispatcher.getVTime();
+        long rem = vtime - EventExecutor.getVTime();
         StringBuilder buf = new StringBuilder("[id=" + getEventId()
             + ", vt=" + vtime
             + "(rem=" + rem + "), "
@@ -151,8 +151,8 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
             } finally {
                 if (!canceled && period > 0) {
                     executed = false;
-                    vtime = EventDispatcher.getVTime() + period;
-                    EventDispatcher.enqueue(this);
+                    vtime = EventExecutor.getVTime() + period;
+                    EventExecutor.enqueue(this);
                 }
             }
             
@@ -189,7 +189,7 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
             }
             TimerEvent ev = req.ackTimeoutEvent;
             if (ev != null) {
-                EventDispatcher.cancelEvent(ev);
+                EventExecutor.cancelEvent(ev);
             }
         }
 
@@ -223,7 +223,7 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
             // because foundFailedNode is used for registering the failed 
             // node and failureCallback relies on this.
             registerNotAckedEvent(n, this);
-            this.ackTimeoutEvent = EventDispatcher.sched(NetworkParams.NETWORK_TIMEOUT,
+            this.ackTimeoutEvent = EventExecutor.sched(NetworkParams.NETWORK_TIMEOUT,
                     () -> {
                         if (receiver != n) {
                             n.topStrategy.foundFailedNode(receiver);
@@ -231,7 +231,7 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
                     });
 
             registerRequestEvent(n, this);
-            this.replyTimeoutEvent = EventDispatcher.sched(NetworkParams.NETWORK_TIMEOUT,
+            this.replyTimeoutEvent = EventExecutor.sched(NetworkParams.NETWORK_TIMEOUT,
                     () -> {
                         this.failureCallback.run(new TimeoutException());
                     });
@@ -240,7 +240,7 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
         @Override
         public void beforeForwardHook(LocalNode n) {
             registerNotAckedEvent(n, this);
-            this.ackTimeoutEvent = EventDispatcher.sched(NetworkParams.NETWORK_TIMEOUT,
+            this.ackTimeoutEvent = EventExecutor.sched(NetworkParams.NETWORK_TIMEOUT,
                     () -> {
                         if (receiver != n) {
                             n.topStrategy.foundFailedNode(receiver);
@@ -303,7 +303,7 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
 
             // remove timeout event
             if (req.replyTimeoutEvent != null) {
-                EventDispatcher.cancelEvent(req.replyTimeoutEvent);
+                EventExecutor.cancelEvent(req.replyTimeoutEvent);
                 req.replyTimeoutEvent = null;
             }
         }

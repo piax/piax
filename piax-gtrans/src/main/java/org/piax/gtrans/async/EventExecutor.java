@@ -17,7 +17,7 @@ import org.piax.gtrans.async.EventException.GraceStateException;
 import org.piax.gtrans.async.Node.NodeMode;
 import org.piax.gtrans.async.Option.BooleanOption;
 
-public class EventDispatcher {
+public class EventExecutor {
     // run in real-time
     public static BooleanOption realtime = new BooleanOption(false, "-realtime");
     public static boolean REALWORLD = false;
@@ -165,7 +165,7 @@ public class EventDispatcher {
 
     private static Thread thread;
     public static void startExecutorThread() {
-        synchronized (EventDispatcher.class) {
+        synchronized (EventExecutor.class) {
             if (thread == null) {
                 realtime.set(true);
                 thread = new Thread(() -> run(0));

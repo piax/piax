@@ -17,7 +17,7 @@ import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.async.Event.Lookup;
 import org.piax.gtrans.async.Event.LookupDone;
 import org.piax.gtrans.async.Event.TimerEvent;
-import org.piax.gtrans.async.EventDispatcher;
+import org.piax.gtrans.async.EventExecutor;
 import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.async.NetworkParams;
 import org.piax.gtrans.async.Node;
@@ -270,10 +270,10 @@ public class SuzakuStrategy extends NodeStrategy {
             System.out.println(n + ": mode=grace");
             if (updateSchedEvent != null) {
                 System.out.println(n + ": remove schedEvent: " + updateSchedEvent.getEventId());
-                EventDispatcher.cancelEvent(updateSchedEvent);
+                EventExecutor.cancelEvent(updateSchedEvent);
                 updateSchedEvent = null;
             }
-            EventDispatcher.sched(NetworkParams.ONEWAY_DELAY, () -> {
+            EventExecutor.sched(NetworkParams.ONEWAY_DELAY, () -> {
                 n.mode = NodeMode.DELETED;
                 System.out.println(n + ": mode=deleted");
                 leaveComplete.complete(true);
@@ -353,7 +353,7 @@ public class SuzakuStrategy extends NodeStrategy {
                 }
                 l.fill = ent.needUpdate();
             }
-            System.out.println("T=" + EventDispatcher.getVTime() + ": " + n + ": handleLookup " + l.getEventId() + " " + next);
+            System.out.println("T=" + EventExecutor.getVTime() + ": " + n + ": handleLookup " + l.getEventId() + " " + next);
             n.forward(next, l, (exc) -> {
                 /* [相手ノード障害時]
                  * - 障害ノード集合に追加
@@ -477,7 +477,7 @@ public class SuzakuStrategy extends NodeStrategy {
         } else {
             delay = UPDATE_FINGER_PERIOD.value();
         }
-        updateSchedEvent = EventDispatcher.sched(delay, () -> {
+        updateSchedEvent = EventExecutor.sched(delay, () -> {
             updateFingerTable(false);
         });
         System.out.println(n + ": add schedEvent: " + updateSchedEvent.getEventId());
@@ -765,7 +765,7 @@ public class SuzakuStrategy extends NodeStrategy {
         }
         updatingFT = true;
         LocalNode.verbose("start finger table update: " + n.key
-                + ", " + EventDispatcher.getVTime());
+                + ", " + EventExecutor.getVTime());
         updateFingerTable0(0, isBackward, null, null);
         updatingFT = false;
     }
@@ -787,7 +787,7 @@ public class SuzakuStrategy extends NodeStrategy {
         boolean isFirst = isFirst(isBackward);
         int B = SuzakuStrategy.B.value();
         if (true)
-        System.out.println/*Node.verbose*/(EventDispatcher.getVTime() + ": " 
+        System.out.println/*Node.verbose*/(EventExecutor.getVTime() + ": " 
                 + "updateFingerTable0 " + n.key + ", p=" + p + ", " + isBackward
                 + ", fcount=" + forwardUpdateCount
                 + ", bcount=" + backwardUpdateCount
@@ -1075,7 +1075,7 @@ public class SuzakuStrategy extends NodeStrategy {
                 }
             } else {
                 nextLevel = p + 1;
-                EventDispatcher.sched(UPDATE_FINGER_PERIOD.value(),
+                EventExecutor.sched(UPDATE_FINGER_PERIOD.value(),
                         () -> updateFingerTable0(p + 1, isBackward, nextEntX, null));
             }
         } else {
@@ -1083,7 +1083,7 @@ public class SuzakuStrategy extends NodeStrategy {
             if (isFirst || UPDATE_ONCE.value()) {
                 updateFingerTable0(p + 1, isBackward, nextEntX, null);
             } else {
-                EventDispatcher.sched(UPDATE_FINGER_PERIOD.value(),
+                EventExecutor.sched(UPDATE_FINGER_PERIOD.value(),
                         () -> updateFingerTable0(p + 1, isBackward, nextEntX, null));
             }
         }
@@ -1101,7 +1101,7 @@ public class SuzakuStrategy extends NodeStrategy {
             System.out.println(n + ": finger table update done: "
                     + isBackward
                     + ", " + (isBackward ? backwardUpdateCount : forwardUpdateCount) + "th" 
-                    + ", " + EventDispatcher.getVTime()
+                    + ", " + EventExecutor.getVTime()
                     + ", " + n.toStringDetail());
         }
         if (!isFirst) {

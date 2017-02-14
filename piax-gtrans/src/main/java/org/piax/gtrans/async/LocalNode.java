@@ -152,7 +152,7 @@ public class LocalNode extends Node {
             ev.delay = latency(ev.receiver);
         }
         ev.failureCallback = failure;
-        ev.vtime = EventDispatcher.getVTime() + ev.delay;
+        ev.vtime = EventExecutor.getVTime() + ev.delay;
         if (Sim.verbose) {
             if (ev.delay != 0) {
                 System.out.println(this + "|send event " + ev + ", (arrive at T"
@@ -209,7 +209,7 @@ public class LocalNode extends Node {
     }
 
     private long getVTime() {
-        return EventDispatcher.getVTime();
+        return EventExecutor.getVTime();
     }
 
     public long getInsertionTime() {
@@ -361,7 +361,7 @@ public class LocalNode extends Node {
      */
     public void lookup(DdllKey key, LookupStat stat) {
         System.out.println(this + " lookup " + key);
-        long start = EventDispatcher.getVTime();
+        long start = EventExecutor.getVTime();
         Lookup ev = new Lookup(this, key, this);
         ev.getCompletableFuture().whenComplete((done, exc) -> {
             if (exc != null) {
@@ -384,7 +384,7 @@ public class LocalNode extends Node {
             int nfails = done.routeWithFailed.size() - done.route.size();
             //stat.failedNodes.addSample(nfails);
             stat.failedNodes.addSample(nfails > 0 ? 1 : 0);
-            long end = EventDispatcher.getVTime();
+            long end = EventExecutor.getVTime();
             long elapsed = (int) (end - start);
             stat.time.addSample((double) elapsed);
             if (nfails > 0) {

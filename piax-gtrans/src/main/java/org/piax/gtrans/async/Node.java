@@ -95,7 +95,7 @@ public class Node implements Comparable<Node>, Serializable {
     }
 
     public int latency(Node receiver) {
-        if (EventDispatcher.realtime.value()) {
+        if (EventExecutor.realtime.value()) {
             return 0;
         }
         if (this == receiver) {

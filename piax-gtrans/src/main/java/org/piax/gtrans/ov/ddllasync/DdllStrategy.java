@@ -13,7 +13,7 @@ import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.async.Event.Lookup;
 import org.piax.gtrans.async.Event.LookupDone;
 import org.piax.gtrans.async.Event.TimerEvent;
-import org.piax.gtrans.async.EventDispatcher;
+import org.piax.gtrans.async.EventExecutor;
 import org.piax.gtrans.async.EventException;
 import org.piax.gtrans.async.EventException.RetriableException;
 import org.piax.gtrans.async.LocalNode;
@@ -188,7 +188,7 @@ public class DdllStrategy extends NodeStrategy {
                     if (delay == 0) {
                         joinfail.accept(new RetriableException("SetRNak2"));
                     } else {
-                        EventDispatcher.sched(delay, () -> {
+                        EventExecutor.sched(delay, () -> {
                             assert status == DdllStatus.OUT;
                             joinfail.accept(new RetriableException("SetRNak3"));
                         });
@@ -250,7 +250,7 @@ public class DdllStrategy extends NodeStrategy {
                 System.out.println("pred: " + getPredecessor().toStringDetail());
                 long delay =
                         (long) (NetworkParams.ONEWAY_DELAY * Sim.rand.nextDouble());
-                EventDispatcher.sched(delay, () -> {
+                EventExecutor.sched(delay, () -> {
                     leave(leaveComplete, setRjob);
                 });
             } else {
@@ -281,10 +281,10 @@ public class DdllStrategy extends NodeStrategy {
     public void setr(SetR msg) {
         if (status != DdllStatus.IN || msg.rCur != n.succ) {
             if (status != DdllStatus.IN && status != DdllStatus.DEL) {
-                EventDispatcher.addCounter("SetR:!IN");
+                EventExecutor.addCounter("SetR:!IN");
                 n.post(new SetRNak(msg, null, null)); // XXX:
             } else {
-                EventDispatcher.addCounter("SetR:mismatch");
+                EventExecutor.addCounter("SetR:mismatch");
                 // ME ----- U ----  ME.R
                 if (Node.isIn(msg.rNew.key, n.key, n.succ.key)) {
                     n.post(new SetRNak(msg, n, n.succ));
@@ -375,7 +375,7 @@ public class DdllStrategy extends NodeStrategy {
         if (pingPeriod.value() == 0 || status != DdllStatus.IN) {
             return;
         }
-        pingTimerEvent = EventDispatcher.sched(pingPeriod.value(), () -> {
+        pingTimerEvent = EventExecutor.sched(pingPeriod.value(), () -> {
             pingTimerEvent = null;
             checkAndFix()
                 .thenRun(() -> schedNextPing());

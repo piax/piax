@@ -3,7 +3,7 @@ package test.async;
 import java.util.function.Consumer;
 
 import org.piax.gtrans.async.Event.TimerEvent;
-import org.piax.gtrans.async.EventDispatcher;
+import org.piax.gtrans.async.EventExecutor;
 
 public class TestTimer {
     public static class Foo implements Consumer<TimerEvent> {
@@ -11,7 +11,7 @@ public class TestTimer {
 
         @Override
         public void accept(TimerEvent t) {
-            System.out.println("Foo: " + EventDispatcher.getVTime() + ", " + count);
+            System.out.println("Foo: " + EventExecutor.getVTime() + ", " + count);
             count++;
             if (count == 5) {
                 t.cancel();
@@ -20,17 +20,17 @@ public class TestTimer {
     }
 
     public static void main(String[] args) {
-        EventDispatcher.sched(200, () -> {
-            System.out.println("one shot: " + EventDispatcher.getVTime());
+        EventExecutor.sched(200, () -> {
+            System.out.println("one shot: " + EventExecutor.getVTime());
         });
-        EventDispatcher.sched(500, 1000, new Foo());
-        EventDispatcher.sched(1000, 1000, tev -> {
-            System.out.println("Bar! " + EventDispatcher.getVTime());
+        EventExecutor.sched(500, 1000, new Foo());
+        EventExecutor.sched(1000, 1000, tev -> {
+            System.out.println("Bar! " + EventExecutor.getVTime());
         });
-        EventDispatcher.sched(300, 1000, tev -> {
-            System.out.println("Baz! " + EventDispatcher.getVTime());
+        EventExecutor.sched(300, 1000, tev -> {
+            System.out.println("Baz! " + EventExecutor.getVTime());
             throw new NullPointerException();
         });
-        EventDispatcher.startSimulation(10000);
+        EventExecutor.startSimulation(10000);
     }
 }

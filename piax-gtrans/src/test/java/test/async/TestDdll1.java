@@ -21,7 +21,7 @@ import org.piax.common.PeerLocator;
 import org.piax.common.TransportId;
 import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.Peer;
-import org.piax.gtrans.async.EventDispatcher;
+import org.piax.gtrans.async.EventExecutor;
 import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.async.Sim;
 import org.piax.gtrans.impl.ReceiverThreadPool;
@@ -231,7 +231,7 @@ public class TestDdll1 {
         Sim.verbose = true;
         SuzakuStrategy.UPDATE_FINGER_PERIOD.set(10*1000);
         SuzakuStrategy.NOTIFY_WITH_REVERSE_POINTER.set(true);
-        EventDispatcher.startExecutorThread();
+        EventExecutor.startExecutorThread();
 
         // seedNo番目のnodeはinitial nodeとしてinsertし、安定稼働させる
         System.out
@@ -249,7 +249,7 @@ public class TestDdll1 {
         waitForExecFin();
         System.out.println("** insert all finished");
         Sim.dump(nodes);
-        EventDispatcher.dumpMessageCounters();
+        EventExecutor.dumpMessageCounters();
         mustBeConsistent();
         //sleep(60000);
         //Sim.dump(nodes);
