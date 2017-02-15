@@ -10,8 +10,9 @@ import org.piax.gtrans.ov.ddll.DdllKey;
 
 public abstract class NodeStrategy {
     protected LocalNode n;
+    int level;
 
-    public void setupNode(LocalNode node) {
+    public void activate(LocalNode node) {
         this.n = node;
     }
 

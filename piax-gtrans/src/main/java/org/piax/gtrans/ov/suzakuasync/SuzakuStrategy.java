@@ -82,10 +82,9 @@ public class SuzakuStrategy extends NodeStrategy {
                 ChannelTransport<?> trans, DdllKey key, int latency)
                         throws IdConflictException, IOException {
             NodeStrategy base = new DdllStrategy();
-            SuzakuStrategy szk = new SuzakuStrategy(base);
-            LocalNode n = new LocalNode(transId, trans, key, szk, latency);
-            base.setupNode(n);
-            n.setBaseStrategy(base);
+            LocalNode n = new LocalNode(transId, trans, key, base, latency);
+            SuzakuStrategy szk = new SuzakuStrategy();
+            n.pushStrategy(szk);
             szk.setupLinkChangeListener(n);
             return n;
         }
@@ -94,7 +93,7 @@ public class SuzakuStrategy extends NodeStrategy {
             return "Suzaku";
         }
     }
-
+    
     public static boolean USE_BFT = false;
     public static boolean DBEUG_FT_UPDATES = false;
     public static boolean DEBUG_REVPTR = false;
@@ -155,23 +154,23 @@ public class SuzakuStrategy extends NodeStrategy {
     private static void sanityCheck() {
     }
 
-    public SuzakuStrategy(NodeStrategy base) {
-        this.base = (DdllStrategy)base;
+    public static SuzakuStrategy getSuzakuStrategy(LocalNode node) {
+        return (SuzakuStrategy)node.getStrategy(SuzakuStrategy.class);
     }
 
     @Override
-    public void setupNode(LocalNode node) {
-        super.setupNode(node);
+    public void activate(LocalNode node) {
+        super.activate(node);
+        base = (DdllStrategy)node.getLowerStrategy(this);
         table = new FingerTables(n);
     }
-
+    
     public void setupLinkChangeListener(Node n) {
 //        n.setLinkChangeEventHandler((prev, cur) -> {
 //        }, (prev, cur) -> {
 //        });
     }
-
-
+    
     @Override
     public void initInitialNode() {
         base.initInitialNode();
@@ -197,7 +196,7 @@ public class SuzakuStrategy extends NodeStrategy {
                 joinFuture.completeExceptionally(exc);
             } else if (rc) {
                 // 右ノードが変更された契機でリバースポインタの不要なエントリを削除
-                SuzakuStrategy szk = (SuzakuStrategy)n.topStrategy;
+                SuzakuStrategy szk = SuzakuStrategy.getSuzakuStrategy(n);
                 szk.table.sanitizeRevPtrs();
                 nodeInserted();
                 joinFuture.complete(rc);
@@ -222,7 +221,7 @@ public class SuzakuStrategy extends NodeStrategy {
             // node: SetR受信ノード, n: SetR送信ノード
 
             // 右ノードが変更された契機でリバースポインタの不要なエントリを削除
-            SuzakuStrategy szk = (SuzakuStrategy)node.topStrategy;
+            SuzakuStrategy szk = SuzakuStrategy.getSuzakuStrategy(node);
             szk.table.sanitizeRevPtrs();
 
             Set<Node> s = reversePointers;
@@ -1279,7 +1278,7 @@ public class SuzakuStrategy extends NodeStrategy {
         int count = 0;
         for (int i = 0; i < nodes.length; i++) {
             LocalNode n = nodes[i];
-            SuzakuStrategy szk = (SuzakuStrategy)n.topStrategy;
+            SuzakuStrategy szk = SuzakuStrategy.getSuzakuStrategy(n);
             boolean rc = szk.isConverged(nodes);
             if (rc) count++;
         }

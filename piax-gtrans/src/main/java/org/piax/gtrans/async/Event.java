@@ -90,16 +90,16 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
         return eventId;
     }
     
-    public LocalNode getNodeImpl() {
+    public LocalNode getLocalNode() {
         return (LocalNode)this.receiver;
     }
 
     public NodeStrategy getBaseStrategy() {
-        return getNodeImpl().baseStrategy;
+        return getLocalNode().getBaseStrategy();
     }
 
     public NodeStrategy getTopStrategy() {
-        return getNodeImpl().topStrategy;
+        return getLocalNode().getTopStrategy();
     }
 
     public int hops() {
@@ -246,7 +246,7 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
             this.ackTimeoutEvent = EventExecutor.sched(NetworkParams.NETWORK_TIMEOUT,
                     () -> {
                         if (receiver != n) {
-                            n.topStrategy.foundFailedNode(receiver);
+                            n.getTopStrategy().foundFailedNode(receiver);
                         }
                     });
 
@@ -263,7 +263,7 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
             this.ackTimeoutEvent = EventExecutor.sched(NetworkParams.NETWORK_TIMEOUT,
                     () -> {
                         if (receiver != n) {
-                            n.topStrategy.foundFailedNode(receiver);
+                            n.getTopStrategy().foundFailedNode(receiver);
                         }
                     });
             // when a request message is forwarded, we send AckEvent to the

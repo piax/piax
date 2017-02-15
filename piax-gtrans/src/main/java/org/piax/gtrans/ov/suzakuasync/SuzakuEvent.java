@@ -19,7 +19,7 @@ public abstract class SuzakuEvent {
         @Override
         public void run() {
             LocalNode r = (LocalNode)receiver;
-            FTEntry[][] ents = ((SuzakuStrategy)r.topStrategy).getFingerTable();
+            FTEntry[][] ents = SuzakuStrategy.getSuzakuStrategy(r).getFingerTable();
             r.post(new GetFTAllReplyEvent(this, ents));
         }
     }
@@ -60,8 +60,8 @@ public abstract class SuzakuEvent {
                         + receiver.toStringDetail());
             }
             LocalNode r = (LocalNode)receiver;
-            FTEntrySet ent = ((SuzakuStrategy)r.topStrategy)
-                    .getFingers(isBackward, x, y, k, given, gift2);
+            SuzakuStrategy s = SuzakuStrategy.getSuzakuStrategy(r);
+            FTEntrySet ent = s.getFingers(isBackward, x, y, k, given, gift2);
             r.post(new GetFTEntReplyEvent(this, ent));
         }
         @Override
@@ -101,7 +101,7 @@ public abstract class SuzakuEvent {
         @Override
         public void run() {
             LocalNode r = (LocalNode)receiver;
-            ((SuzakuStrategy)r.topStrategy).updateFTEntry(this);
+            SuzakuStrategy.getSuzakuStrategy(r).updateFTEntry(this);
         }
         @Override
         public String toStringMessage() {
@@ -123,7 +123,7 @@ public abstract class SuzakuEvent {
         @Override
         public void run() {
             LocalNode r = (LocalNode)receiver;
-            ((SuzakuStrategy)r.topStrategy).removeFromFingerTable(node,
+            SuzakuStrategy.getSuzakuStrategy(r).removeFromFingerTable(node,
                     neighbors);
         }
         @Override
@@ -142,7 +142,8 @@ public abstract class SuzakuEvent {
         @Override
         public void run() {
             LocalNode r = (LocalNode)receiver;
-            ((SuzakuStrategy)r.topStrategy).table.removeReversePointer(this.origin);
+            SuzakuStrategy.getSuzakuStrategy(r)
+                .table.removeReversePointer(this.origin);
         }
         @Override
         public String toStringMessage() {

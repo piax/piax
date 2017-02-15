@@ -81,7 +81,6 @@ public class DdllStrategy extends NodeStrategy {
     LinkNum lseq = new LinkNum(0, 0), rseq = new LinkNum(0, 0);
     DdllStatus status = DdllStatus.OUT;
 
-
     /** neighbor node set */
     public NeighborSet leftNbrs;
 
@@ -94,13 +93,14 @@ public class DdllStrategy extends NodeStrategy {
     public static void load() {
     }
 
-    public DdllStrategy() {
+    @Override
+    public void activate(LocalNode node) {
+        super.activate(node);
+        this.leftNbrs = new NeighborSet(node);
     }
 
-    @Override
-    public void setupNode(LocalNode node) {
-        super.setupNode(node);
-        this.leftNbrs = new NeighborSet(node);
+    public static DdllStrategy getDdllStrategy(LocalNode node) {
+        return (DdllStrategy)node.getStrategy(DdllStrategy.class);
     }
 
     @Override

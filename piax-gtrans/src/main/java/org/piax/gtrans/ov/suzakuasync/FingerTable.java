@@ -39,7 +39,7 @@ public class FingerTable {
     FingerTable(FingerTables tables, LocalNode vnode, boolean isBackward) {
         this.tables = tables;
         this.vnode = vnode;
-        this.suzakuStr = (SuzakuStrategy)vnode.topStrategy;
+        this.suzakuStr = SuzakuStrategy.getSuzakuStrategy(vnode);
         this.isBackward = isBackward;
         this.table = new FlexibleArray<FTEntry>(LOCALINDEX);
         // we have to use distinct instances, local1 and local2, because

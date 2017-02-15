@@ -36,7 +36,8 @@ public abstract class DdllEvent {
 
         @Override
         public void run() {
-            ((DdllStrategy) getBaseStrategy()).setr(this);
+            DdllStrategy s = DdllStrategy.getDdllStrategy(getLocalNode());
+            s.setr(this);
         }
     }
 
@@ -82,7 +83,8 @@ public abstract class DdllEvent {
 
         @Override
         public void run() {
-            ((DdllStrategy) getBaseStrategy()).setl(this);
+            DdllStrategy s = DdllStrategy.getDdllStrategy(getLocalNode());
+            s.setl(this);
         }
     }
 
@@ -101,7 +103,8 @@ public abstract class DdllEvent {
 
         @Override
         public void run() {
-            ((DdllStrategy) getBaseStrategy()).propagateNeighbors(this);
+            DdllStrategy s = DdllStrategy.getDdllStrategy(getLocalNode());
+            s.propagateNeighbors(this);
         }
     }
     
@@ -113,7 +116,7 @@ public abstract class DdllEvent {
         }
         @Override
         public void run() {
-            LocalNode n = getNodeImpl();
+            LocalNode n = getLocalNode();
             List<Node> candidates = n.getNodesForFix(node.key);
             System.out.println("GetFixCandidates: returns " + candidates);
             n.post(new GetCandidatesResponse(this, candidates, n.succ));

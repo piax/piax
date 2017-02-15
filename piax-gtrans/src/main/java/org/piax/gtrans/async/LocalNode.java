@@ -38,8 +38,11 @@ public class LocalNode extends Node {
     public Node succ, pred;
     public NodeMode mode = NodeMode.OUT;
     private boolean isFailed = false;   // for simulation
-    public NodeStrategy baseStrategy;
-    public final NodeStrategy topStrategy;
+
+    // stackable strategies
+    ArrayList<NodeStrategy> strategies = new ArrayList<>();
+    Map<Class<? extends NodeStrategy>, NodeStrategy> strategyMap = new HashMap<>();
+
     private LinkChangeEventCallback predChange;
     private LinkChangeEventCallback succChange;
 
@@ -50,16 +53,16 @@ public class LocalNode extends Node {
 
     public static LocalNode newLocalNode(TransportId transId,
             ChannelTransport<?> trans, Comparable<?> rawkey,
-            NodeStrategy topStrategy, int latency)
+            NodeStrategy strategy, int latency)
             throws IdConflictException, IOException {
         DdllKey ddllkey = new DdllKey(rawkey, new UniqId(trans.getPeerId()));
         LocalNode node =
-                new LocalNode(transId, trans, ddllkey, topStrategy, latency);
+                new LocalNode(transId, trans, ddllkey, strategy, latency);
         return node;
     }
 
     public LocalNode(TransportId transId, ChannelTransport<?> trans,
-            DdllKey ddllkey, NodeStrategy topStrategy, int latency)
+            DdllKey ddllkey, NodeStrategy strategy, int latency)
             throws IdConflictException, IOException {
         super(ddllkey, trans == null ? null : trans.getEndpoint(), latency);
         if (trans == null) {
@@ -71,9 +74,41 @@ public class LocalNode extends Node {
                 throw e;
             }
         }
-        this.topStrategy = topStrategy;
-        this.baseStrategy = topStrategy;
-        topStrategy.setupNode(this);
+        pushStrategy(strategy);
+    }
+
+    public void pushStrategy(NodeStrategy s) {
+        strategies.add(s);
+        strategyMap.put(s.getClass(), s);
+        int i = strategies.size() - 1;
+        s.level = i;
+        s.activate(this);
+    }
+
+    public NodeStrategy getStrategy(Class<? extends NodeStrategy> clazz) {
+        return strategyMap.get(clazz);
+    }
+
+    public NodeStrategy getUpperStrategy(NodeStrategy s) {
+        if (s.level < strategies.size() - 1) {
+            return strategies.get(s.level + 1);
+        }
+        return null;
+    }
+
+    public NodeStrategy getLowerStrategy(NodeStrategy s) {
+        if (s.level > 0) {
+            return strategies.get(s.level - 1);
+        }
+        return null;
+    }
+
+    public NodeStrategy getTopStrategy() {
+        return strategies.get(strategies.size() - 1);
+    }
+
+    public NodeStrategy getBaseStrategy() {
+        return strategies.get(0);
     }
 
     /**
@@ -87,10 +122,10 @@ public class LocalNode extends Node {
         return repl;
     }
 
-    public void setBaseStrategy(NodeStrategy strategy) {
+    /*public void setBaseStrategy(NodeStrategy strategy) {
         this.baseStrategy = strategy;
         strategy.setupNode(this);
-    }
+    }*/
 
     public void setLinkChangeEventHandler(LinkChangeEventCallback predChange,
             LinkChangeEventCallback succChange) {
@@ -111,7 +146,7 @@ public class LocalNode extends Node {
 
     @Override
     public String toStringDetail() {
-        return this.topStrategy.toStringDetail();
+        return this.getTopStrategy().toStringDetail();
     }
 
     public void setPred(Node newPred) {
@@ -220,7 +255,7 @@ public class LocalNode extends Node {
     }
 
     public int getMessages4Join() {
-        return topStrategy.getMessages4Join();
+        return getTopStrategy().getMessages4Join();
     }
 
     /**
@@ -260,7 +295,7 @@ public class LocalNode extends Node {
      * insert an initial node
      */
     public void joinInitialNode() {
-        topStrategy.initInitialNode();
+        getTopStrategy().initInitialNode();
         mode = NodeMode.INSERTED;
         insertionStartTime = insertionEndTime = getVTime();
     }
@@ -295,7 +330,7 @@ public class LocalNode extends Node {
                 joinFuture.completeExceptionally(exc);
             } else {
                 CompletableFuture<Boolean> future = new CompletableFuture<>();
-                topStrategy.joinAfterLookup(results, future);
+                getTopStrategy().joinAfterLookup(results, future);
                 future.whenComplete((rc, exc2) -> {
                     if (exc2 != null) {
                         verbose(this + ": joinAfterLookup failed:" + exc2
@@ -351,7 +386,7 @@ public class LocalNode extends Node {
      * @param lookup
      */
     public void handleLookup(Lookup lookup) {
-        topStrategy.handleLookup(lookup);
+        getTopStrategy().handleLookup(lookup);
     }
 
     /**
@@ -403,7 +438,7 @@ public class LocalNode extends Node {
 
     public Node getClosestPredecessor(DdllKey k) {
         Comparator<Node> comp = getComparator(k);
-        List<Node> nodes = topStrategy.getAllLinks2();
+        List<Node> nodes = getTopStrategy().getAllLinks2();
         //Collections.sort(nodes, comp);
         //System.out.println("nodes = " + nodes);
         Optional<Node> n = nodes.stream().max(comp);
@@ -437,7 +472,7 @@ public class LocalNode extends Node {
      */
     public List<Node> getNodesForFix(DdllKey k) {
         Comparator<Node> comp = getComparator(k);
-        List<Node> nodes = topStrategy.getAllLinks2();
+        List<Node> nodes = getTopStrategy().getAllLinks2();
         List<Node> cands = nodes.stream()
                 .filter(p -> Node.isOrdered(this.key, true, p.key, k, false))
                 .sorted(comp)
