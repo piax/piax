@@ -1,7 +1,7 @@
 package test.async;
 
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
@@ -25,12 +25,13 @@ import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.gtrans.ov.ddllasync.DdllStrategy;
 import org.piax.gtrans.ov.ddllasync.DdllStrategy.DdllNodeFactory;
 import org.piax.gtrans.ov.ddllasync.DdllStrategy.SetRNakMode;
+import org.piax.gtrans.ov.suzakuasync.SuzakuStrategy.SuzakuNodeFactory;
 import org.piax.gtrans.raw.emu.EmuLocator;
 import org.piax.gtrans.raw.tcp.TcpLocator;
 import org.piax.gtrans.raw.udp.UdpLocator;
 import org.piax.util.UniqId;
 
-public class DdllTest {
+public class AsyncTest {
     public static class Indirect<U> {
         U obj;
     }
@@ -89,10 +90,10 @@ public class DdllTest {
         DdllStrategy.setrnakmode.set(SetRNakMode.SETRNAK_OPT2);
     }
     
-    static LocalNode[] createNodes(int num) {
+    static LocalNode[] createNodes(NodeFactory factory, int num) {
         nodes = new LocalNode[num];
         for (int i = 0; i < num; i++) {
-            nodes[i] = createNode(new DdllNodeFactory(), i * 100, 100);
+            nodes[i] = createNode(factory, i * 100, 100);
         }
         return nodes;
     }
@@ -125,12 +126,21 @@ public class DdllTest {
             assertTrue(nodes[i].pred == nodes[(i - 1 + s) % s]);
         }
     }
-    
+
     @Test
-    public void testBasicInsDel() {
+    public void testDdllBasicInsDel() {
+        testBasicInsDel(new DdllNodeFactory());
+    }
+
+    @Test
+    public void testSuzakuBasicInsDel() {
+        testBasicInsDel(new SuzakuNodeFactory(3));
+    }
+
+    private void testBasicInsDel(NodeFactory factory) {
         System.out.println("** testBasicInsDel");
         init();
-        nodes = createNodes(2);
+        nodes = createNodes(factory, 2);
         nodes[0].joinInitialNode();
         {
             CompletableFuture<Boolean> f = nodes[1].joinAsync(nodes[0]);
@@ -153,10 +163,19 @@ public class DdllTest {
     }
 
     @Test
-    public void testParallelInsDel() {
+    public void testDdllParallelInsDel() {
+        testParallelInsDel(new DdllNodeFactory());
+    }
+
+    @Test
+    public void testSuzakuParallelInsDel() {
+        testParallelInsDel(new SuzakuNodeFactory(3));
+    }
+
+    private void testParallelInsDel(NodeFactory factory) {
         System.out.println("** testParallelInsDel");
         init();
-        nodes = createNodes(4);
+        nodes = createNodes(factory, 4);
         nodes[0].joinInitialNode();
         {
             CompletableFuture<Boolean> f1 = nodes[1].joinAsync(nodes[0]);
@@ -178,10 +197,19 @@ public class DdllTest {
     }
 
     @Test
-    public void testFix() {
+    public void testDdllFix1() {
+        testFix1(new DdllNodeFactory());
+    }
+
+    @Test
+    public void testSuzakuFix1() {
+        testFix1(new SuzakuNodeFactory(3));
+    }
+
+    private void testFix1(NodeFactory factory) {
         System.out.println("** testFix");
         init();
-        nodes = createNodes(4);
+        nodes = createNodes(factory, 4);
         nodes[0].joinInitialNode();
         {
             CompletableFuture<Boolean> f1 = nodes[1].joinAsync(nodes[0]);
@@ -199,10 +227,19 @@ public class DdllTest {
     }
 
     @Test
-    public void testFix2() {
+    public void testDdllFix2() {
+        testFix2(new DdllNodeFactory());
+    }
+
+    @Test
+    public void testSuzakuFix2() {
+        testFix2(new SuzakuNodeFactory(3));
+    }
+
+    private void testFix2(NodeFactory factory) {
         System.out.println("** testFix2");
         init();
-        nodes = createNodes(3);
+        nodes = createNodes(factory, 3);
         nodes[0].joinInitialNode();
         {
             CompletableFuture<Boolean> f1 = nodes[1].joinAsync(nodes[0]);
@@ -221,10 +258,19 @@ public class DdllTest {
     }
 
     @Test
-    public void testFix3() {
+    public void testDdllFix3() {
+        testFix3(new DdllNodeFactory());
+    }
+
+    @Test
+    public void testSuzakuFix3() {
+        testFix3(new SuzakuNodeFactory(3));
+    }
+
+    private void testFix3(NodeFactory factory) {
         System.out.println("** testFix3");
         init();
-        nodes = createNodes(2);
+        nodes = createNodes(factory, 2);
         nodes[0].joinInitialNode();
         {
             CompletableFuture<Boolean> f1 = nodes[1].joinAsync(nodes[0]);
