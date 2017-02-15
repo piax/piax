@@ -529,9 +529,6 @@ public class SuzakuStrategy extends NodeStrategy {
 
     public List<Node> getAllLinks2() {
         List<Node> links = new ArrayList<>();
-        if (n.mode != NodeMode.INSERTED && n.mode != NodeMode.DELETING) {
-            return links;
-        }
         links.add(getLocalLink());
         for (int i = 0; i < getFingerTableSize(); i++) {
             FTEntry ent = getFingerTableEntry(i);
@@ -1118,6 +1115,11 @@ public class SuzakuStrategy extends NodeStrategy {
             backwardUpdateCount++;
         }
         return;
+    }
+
+    @Override
+    public void foundFailedNode(Node node) {
+        base.foundFailedNode(node);
     }
 
     @Override
