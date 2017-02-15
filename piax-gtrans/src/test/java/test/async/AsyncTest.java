@@ -16,6 +16,7 @@ import org.piax.common.TransportId;
 import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.Peer;
+import org.piax.gtrans.async.EventException.TimeoutException;
 import org.piax.gtrans.async.EventExecutor;
 import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.async.NetworkParams;
@@ -88,6 +89,7 @@ public class AsyncTest {
         }
         DdllStrategy.pingPeriod.set(10000);
         DdllStrategy.setrnakmode.set(SetRNakMode.SETRNAK_OPT2);
+        EventExecutor.reset();
     }
     
     static LocalNode[] createNodes(NodeFactory factory, int num) {
@@ -283,6 +285,29 @@ public class AsyncTest {
             assertNotNull(f2.obj);
             dump(nodes);
             checkCompleted(f1, f2.obj);
+        }
+    }
+    
+    @Test
+    public void testDdllJoinFail() {
+        System.out.println("** testDdllJoinFail");
+        init();
+        nodes = createNodes(new DdllNodeFactory(), 2);
+        nodes[0].joinInitialNode();
+        nodes[0].fail();
+        {
+            CompletableFuture<Boolean> f1 = nodes[1].joinAsync(nodes[0]);
+            f1.whenComplete((rc, exc) -> 
+                System.out.println("rc=" + rc + ", exc=" + exc));
+            EventExecutor.startSimulation(30000);
+            dump(nodes);
+            assertTrue(f1.isDone());
+            try {
+                f1.get();
+                fail();
+            } catch (InterruptedException | ExecutionException e) {
+                assertTrue(e.getCause() instanceof TimeoutException);
+            }
         }
     }
 }
