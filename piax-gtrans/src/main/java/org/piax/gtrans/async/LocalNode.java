@@ -17,8 +17,8 @@ import org.piax.common.TransportId;
 import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.RPCException;
+import org.piax.gtrans.async.Event.LeaveEvent;
 import org.piax.gtrans.async.Event.Lookup;
-import org.piax.gtrans.async.Event.LookupDone;
 import org.piax.gtrans.async.Event.RequestEvent;
 import org.piax.gtrans.async.EventException.RPCEventException;
 import org.piax.gtrans.async.EventException.RetriableException;
@@ -327,7 +327,8 @@ public class LocalNode extends Node {
         }
         mode = NodeMode.DELETING;
         CompletableFuture<Boolean> future = new CompletableFuture<>();
-        topStrategy.leave(future);
+        LeaveEvent leave = new LeaveEvent(this, future);
+        post(leave);
         return future;
     }
 

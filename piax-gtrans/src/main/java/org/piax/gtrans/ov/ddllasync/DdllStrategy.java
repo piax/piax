@@ -127,7 +127,6 @@ public class DdllStrategy extends NodeStrategy {
 
     public void join(Node pred, Node succ,
             CompletableFuture<Boolean> joinComplete, SetRJob setRjob) {
-        assert fixComplete == null;
         n.pred = pred;
         n.succ = succ;
         setStatus(DdllStatus.INS);
@@ -210,8 +209,7 @@ public class DdllStrategy extends NodeStrategy {
             SetRJob setRjob) {
         System.out.println(n + ": leave start");
         stopPeriodicalPing();
-        if (fixComplete != null) {
-            // XXX: not tested
+        if (!fixComplete.isDone()) {
             System.out.println("but fix() is running");
             fixComplete.thenAccept(rc -> {
                 if (rc) {
@@ -222,6 +220,12 @@ public class DdllStrategy extends NodeStrategy {
                     leaveComplete.complete(false);
                 }
             });
+            return;
+        }
+        if (n.succ == n) {
+            // last node case
+            setStatus(DdllStatus.OUT);
+            leaveComplete.complete(true);
             return;
         }
         setStatus(DdllStatus.DEL);
@@ -369,7 +373,7 @@ public class DdllStrategy extends NodeStrategy {
     private TimerEvent pingTimerEvent = null;
     enum FIXSTATE {IDLE, CHECKING, FIXING};
     private FIXSTATE fixState = FIXSTATE.IDLE;
-    private CompletableFuture<Boolean> fixComplete = null;
+    private CompletableFuture<Boolean> fixComplete = CompletableFuture.completedFuture(true);
     private void schedNextPing() {
         assert pingTimerEvent == null;
         if (pingPeriod.value() == 0 || status != DdllStatus.IN) {
@@ -400,7 +404,7 @@ public class DdllStrategy extends NodeStrategy {
      * 
      */
     public CompletableFuture<Boolean> checkAndFix() {
-        if (fixComplete != null) {
+        if (!fixComplete.isDone()) {
             // we have already doing the job
             return fixComplete;
         }
@@ -421,7 +425,6 @@ public class DdllStrategy extends NodeStrategy {
                     } else {
                         fixState = FIXSTATE.IDLE;
                         System.out.println("FIXSTATE=" + fixState);
-                        fixComplete = null;
                         return CompletableFuture.completedFuture(true);
                     }
                 });

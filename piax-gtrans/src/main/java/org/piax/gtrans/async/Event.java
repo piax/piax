@@ -98,6 +98,10 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
         return getNodeImpl().baseStrategy;
     }
 
+    public NodeStrategy getTopStrategy() {
+        return getNodeImpl().topStrategy;
+    }
+
     public int hops() {
         return route.size() - 1;
     }
@@ -162,6 +166,22 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
         }
         public boolean isExecuted() {
             return executed;
+        }
+    }
+    
+    /**
+     * LeaveEvent is used for requesting a node to leave.
+     */
+    public static class LeaveEvent extends Event {
+        final CompletableFuture<Boolean> future;
+        public LeaveEvent(LocalNode receiver,
+                CompletableFuture<Boolean> future) {
+            super(receiver, 0);
+            this.future = future;
+        }
+        @Override
+        public void run() {
+            getTopStrategy().leave(future);
         }
     }
 
