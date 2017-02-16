@@ -49,7 +49,7 @@ public class LocalNode extends Node {
     // incomplete requests 
     Map<Integer, RequestEvent<?, ?>> ongoingRequests = new HashMap<>();
     // requests that are not ack'ed
-    Map<Integer, RequestEvent<?, ?>> unAckedEvents = new HashMap<>();
+    Map<Integer, RequestEvent<?, ?>> unAckedRequests = new HashMap<>();
 
     public static LocalNode newLocalNode(TransportId transId,
             ChannelTransport<?> trans, Comparable<?> rawkey,

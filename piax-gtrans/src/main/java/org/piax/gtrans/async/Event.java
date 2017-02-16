@@ -187,6 +187,7 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
 
     public static class AckEvent extends Event {
         int ackEventId = 0;
+        protected boolean expectMuptipleAck = false;
         public AckEvent(RequestEvent<?, ?> req, Node receiver) {
             super(receiver);
             if (req.sender == receiver) {
@@ -204,7 +205,9 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
             RequestEvent<?, ?> req = RequestEvent.removeNotAckedEvent(
                     (LocalNode)receiver, ackEventId);
             if (req == null) {
-                System.out.println("already acked: ackEventId=" + ackEventId);
+                if (!expectMuptipleAck) {
+                    System.out.println("already acked: ackEventId=" + ackEventId);
+                }
                 return;
             }
             TimerEvent ev = req.ackTimeoutEvent;
@@ -212,7 +215,6 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
                 EventExecutor.cancelEvent(ev);
             }
         }
-
         public String toStringMessage() {
             return getType() + ", ackId=" + ackEventId;
         }
@@ -253,6 +255,10 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
             registerRequestEvent(n, this);
             this.replyTimeoutEvent = EventExecutor.sched(NetworkParams.NETWORK_TIMEOUT,
                     () -> {
+                        RequestEvent<?, ?> ev1 = removeNotAckedEvent(n, getEventId());
+                        RequestEvent<?, ?> ev2 = removeRequestEvent(n, getEventId());
+                        assert ev1 != null;
+                        assert ev2 != null;
                         this.failureCallback.run(new TimeoutException());
                     });
         }
@@ -262,6 +268,7 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
             registerNotAckedEvent(n, this);
             this.ackTimeoutEvent = EventExecutor.sched(NetworkParams.NETWORK_TIMEOUT,
                     () -> {
+                        removeNotAckedEvent(n, getEventId());
                         if (receiver != n) {
                             n.getTopStrategy().foundFailedNode(receiver);
                         }
@@ -284,12 +291,17 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
             return ev;
         }
 
+        public synchronized static RequestEvent<?, ?> lookupRequestEvent(LocalNode n, int id) {
+            RequestEvent<?, ?> ev = n.ongoingRequests.get(id);
+            return ev;
+        }
+
         private static void registerNotAckedEvent(LocalNode n, RequestEvent<?, ?> ev) {
-            n.unAckedEvents.put(ev.getEventId(), ev);
+            n.unAckedRequests.put(ev.getEventId(), ev);
         }
 
         public static RequestEvent<?, ?> removeNotAckedEvent(LocalNode n, int id) {
-            RequestEvent<?, ?> ev = n.unAckedEvents.remove(id);
+            RequestEvent<?, ?> ev = n.unAckedRequests.remove(id);
             return ev;
         }
     }
@@ -304,22 +316,33 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
         U extends ReplyEvent<T, U>> extends AckEvent {
         public transient T req;
         private final int reqEventId;
+        // true if partial results are allowed
+        private final boolean isPartial;
+
         public ReplyEvent(T req) {
+            this(req, false);
+        }
+
+        public ReplyEvent(T req, boolean isPartial) {
             super(req, req.origin);
             this.req = req;
             this.reqEventId = req.getEventId();
             this.route.addAll(req.route);
             this.route.remove(this.route.size() - 1);
             this.routeWithFailed.addAll(req.routeWithFailed);
+            this.expectMuptipleAck = this.isPartial = isPartial;
         }
-
         @Override
         public void beforeRunHook(LocalNode n) {
             // restore transient "req" field
-            RequestEvent<?, ?> r = RequestEvent.removeRequestEvent(n, reqEventId);
+            RequestEvent<?, ?> r;
+            if (isPartial) {
+                r = RequestEvent.lookupRequestEvent(n, reqEventId);
+            } else {
+                r = RequestEvent.removeRequestEvent(n, reqEventId);
+            }
             assert r != null;
             this.req = (T)r;
-            //assert this.req.after != null;
 
             // remove timeout event
             if (req.replyTimeoutEvent != null) {
@@ -327,7 +350,7 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
                 req.replyTimeoutEvent = null;
             }
         }
-        
+
         @Override
         public void beforeSendHook(LocalNode n) {
             if (receiver != req.sender) {
@@ -339,7 +362,9 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
         @Override
         public void run() {
             super.run();
-            req.future.complete((U)this);
+            if (!isPartial) {
+                req.future.complete((U)this);
+            }
         }
     }
 

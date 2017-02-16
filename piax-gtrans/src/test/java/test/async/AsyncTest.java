@@ -5,7 +5,9 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
@@ -128,6 +130,22 @@ public class AsyncTest {
             assertTrue(nodes[i].pred == nodes[(i - 1 + s) % s]);
         }
     }
+    
+    void checkMemoryLeakage(LocalNode... nodes) {
+        int s = nodes.length;
+        for (int i = 0; i < s ; i++) {
+            Map<?, ?> m1 = (Map<?, ?>)getPrivateField(nodes[i], "ongoingRequests");
+            if (!m1.isEmpty()) {
+                System.out.println(nodes[i] + ": ongoingRequests: " + m1);
+                fail();
+            }
+            Map<?, ?> m2 = (Map<?, ?>)getPrivateField(nodes[i], "unAckedRequests");
+            if (!m2.isEmpty()) {
+                System.out.println(nodes[i] + ": unAckedRequests: " + m2);
+                fail();
+            }
+        }
+    }
 
     @Test
     public void testDdllBasicInsDel() {
@@ -155,12 +173,14 @@ public class AsyncTest {
             EventExecutor.startSimulation(30000);
             checkCompleted(f);
             checkConsistent(nodes[0]);
+            checkMemoryLeakage(nodes[1]);
         }
 
         {
             CompletableFuture<Boolean> f = nodes[0].leaveAsync();
             EventExecutor.startSimulation(30000);
             checkCompleted(f);
+            checkMemoryLeakage(nodes[0]);
         }
     }
 
@@ -194,6 +214,7 @@ public class AsyncTest {
             CompletableFuture<Boolean> f3 = nodes[3].leaveAsync();
             EventExecutor.startSimulation(30000);
             checkCompleted(f1, f2, f3);
+            checkMemoryLeakage(nodes[1], nodes[2], nodes[3]);
             checkConsistent(nodes[0]);
         }
     }
@@ -254,6 +275,7 @@ public class AsyncTest {
             EventExecutor.startSimulation(30000);
             assertNotNull(f3.obj);
             checkCompleted(f1, f2, f3.obj);
+            checkMemoryLeakage(nodes[2]);
             dump(nodes);
             checkConsistent(nodes[0]);
         }
@@ -285,6 +307,7 @@ public class AsyncTest {
             assertNotNull(f2.obj);
             dump(nodes);
             checkCompleted(f1, f2.obj);
+            checkMemoryLeakage(nodes[1]);
         }
     }
     
@@ -308,6 +331,19 @@ public class AsyncTest {
             } catch (InterruptedException | ExecutionException e) {
                 assertTrue(e.getCause() instanceof TimeoutException);
             }
+        }
+    }
+
+    public static Object getPrivateField(Object target, String field) {
+        try {
+            Class<?> c = target.getClass();
+            Field f = c.getDeclaredField(field);
+            f.setAccessible(true);
+            return f.get(target);
+        } catch (IllegalAccessException | IllegalArgumentException 
+                | SecurityException | NoSuchFieldException e) {
+            fail(e.toString());
+            return null;
         }
     }
 }
