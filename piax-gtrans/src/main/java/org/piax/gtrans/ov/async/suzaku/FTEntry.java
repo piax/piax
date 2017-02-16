@@ -9,7 +9,7 @@
  *
  * $Id: Link.java 1172 2015-05-18 14:31:59Z teranisi $
  */
-package org.piax.gtrans.ov.suzakuasync;
+package org.piax.gtrans.ov.async.suzaku;
 
 import java.io.Serializable;
 import java.util.ArrayList;

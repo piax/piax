@@ -1,4 +1,4 @@
-package org.piax.gtrans.ov.ddllasync;
+package org.piax.gtrans.ov.async.ddll;
 
 import java.io.Serializable;
 import java.util.List;
@@ -9,9 +9,9 @@ import org.piax.gtrans.async.Event.ReplyEvent;
 import org.piax.gtrans.async.Event.RequestEvent;
 import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.async.Node;
+import org.piax.gtrans.ov.async.ddll.DdllStrategy.SetRType;
 import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.gtrans.ov.ddll.LinkNum;
-import org.piax.gtrans.ov.ddllasync.DdllStrategy.SetRType;
 
 public abstract class DdllEvent {
     @FunctionalInterface

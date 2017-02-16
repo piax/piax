@@ -1,4 +1,4 @@
-package org.piax.gtrans.ov.ddllasync;
+package org.piax.gtrans.ov.async.ddll;
 
 import java.io.IOException;
 import java.util.HashSet;
@@ -24,16 +24,16 @@ import org.piax.gtrans.async.NodeStrategy;
 import org.piax.gtrans.async.Option.EnumOption;
 import org.piax.gtrans.async.Option.IntegerOption;
 import org.piax.gtrans.async.Sim;
+import org.piax.gtrans.ov.async.ddll.DdllEvent.GetCandidates;
+import org.piax.gtrans.ov.async.ddll.DdllEvent.PropagateNeighbors;
+import org.piax.gtrans.ov.async.ddll.DdllEvent.SetL;
+import org.piax.gtrans.ov.async.ddll.DdllEvent.SetR;
+import org.piax.gtrans.ov.async.ddll.DdllEvent.SetRAck;
+import org.piax.gtrans.ov.async.ddll.DdllEvent.SetRAckNak;
+import org.piax.gtrans.ov.async.ddll.DdllEvent.SetRJob;
+import org.piax.gtrans.ov.async.ddll.DdllEvent.SetRNak;
 import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.gtrans.ov.ddll.LinkNum;
-import org.piax.gtrans.ov.ddllasync.DdllEvent.GetCandidates;
-import org.piax.gtrans.ov.ddllasync.DdllEvent.PropagateNeighbors;
-import org.piax.gtrans.ov.ddllasync.DdllEvent.SetL;
-import org.piax.gtrans.ov.ddllasync.DdllEvent.SetR;
-import org.piax.gtrans.ov.ddllasync.DdllEvent.SetRAck;
-import org.piax.gtrans.ov.ddllasync.DdllEvent.SetRAckNak;
-import org.piax.gtrans.ov.ddllasync.DdllEvent.SetRJob;
-import org.piax.gtrans.ov.ddllasync.DdllEvent.SetRNak;
 
 public class DdllStrategy extends NodeStrategy {
     public static class DdllNodeFactory extends NodeFactory {

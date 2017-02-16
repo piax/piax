@@ -1,4 +1,4 @@
-package org.piax.gtrans.ov.suzakuasync;
+package org.piax.gtrans.ov.async.suzaku;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -27,15 +27,15 @@ import org.piax.gtrans.async.NodeStrategy;
 import org.piax.gtrans.async.Option.BooleanOption;
 import org.piax.gtrans.async.Option.IntegerOption;
 import org.piax.gtrans.async.Sim;
+import org.piax.gtrans.ov.async.ddll.DdllStrategy;
+import org.piax.gtrans.ov.async.ddll.DdllEvent.SetRJob;
+import org.piax.gtrans.ov.async.suzaku.SuzakuEvent.FTEntRemoveEvent;
+import org.piax.gtrans.ov.async.suzaku.SuzakuEvent.FTEntUpdateEvent;
+import org.piax.gtrans.ov.async.suzaku.SuzakuEvent.GetFTAllEvent;
+import org.piax.gtrans.ov.async.suzaku.SuzakuEvent.GetFTEntEvent;
+import org.piax.gtrans.ov.async.suzaku.SuzakuEvent.RemoveReversePointerEvent;
 import org.piax.gtrans.ov.ddll.DdllKey;
-import org.piax.gtrans.ov.ddllasync.DdllEvent.SetRJob;
-import org.piax.gtrans.ov.ddllasync.DdllStrategy;
 import org.piax.gtrans.ov.ring.rq.FlexibleArray;
-import org.piax.gtrans.ov.suzakuasync.SuzakuEvent.FTEntRemoveEvent;
-import org.piax.gtrans.ov.suzakuasync.SuzakuEvent.FTEntUpdateEvent;
-import org.piax.gtrans.ov.suzakuasync.SuzakuEvent.GetFTAllEvent;
-import org.piax.gtrans.ov.suzakuasync.SuzakuEvent.GetFTEntEvent;
-import org.piax.gtrans.ov.suzakuasync.SuzakuEvent.RemoveReversePointerEvent;
 
 public class SuzakuStrategy extends NodeStrategy {
     public static class SuzakuNodeFactory extends NodeFactory {

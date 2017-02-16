@@ -10,7 +10,7 @@
  * $Id: NeighborSet.java 1172 2015-05-18 14:31:59Z teranisi $
  */
 
-package org.piax.gtrans.ov.ddllasync;
+package org.piax.gtrans.ov.async.ddll;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -26,8 +26,8 @@ import java.util.concurrent.ConcurrentSkipListSet;
 import org.piax.gtrans.async.Node;
 import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.async.Option.IntegerOption;
+import org.piax.gtrans.ov.async.ddll.DdllEvent.PropagateNeighbors;
 import org.piax.gtrans.ov.ddll.DdllKey;
-import org.piax.gtrans.ov.ddllasync.DdllEvent.PropagateNeighbors;
 
 /**
  * a class for implementing a (left) neighbor set.

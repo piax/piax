@@ -1,4 +1,4 @@
-package org.piax.gtrans.ov.suzakuasync;
+package org.piax.gtrans.ov.async.suzaku;
 
 import java.util.HashSet;
 import java.util.Optional;
