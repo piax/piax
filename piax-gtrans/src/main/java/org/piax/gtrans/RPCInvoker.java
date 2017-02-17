@@ -874,7 +874,9 @@ public class RPCInvoker<T extends RPCIf, E extends Endpoint> implements RPCIf {
                 }
             }
             else {
-                ch.close();
+                if (ch != null) {
+                    ch.close();
+                }
             }
         }
     }
