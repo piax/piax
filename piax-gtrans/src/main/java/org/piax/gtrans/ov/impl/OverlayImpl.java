@@ -20,6 +20,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.piax.common.Destination;
 import org.piax.common.Endpoint;
@@ -52,7 +53,7 @@ public abstract class OverlayImpl<D extends Destination, K extends Key> extends
             .getLogger(OverlayImpl.class);
 
     private final Map<ObjectId, Map<K, Integer>> keysByUpper =
-            new HashMap<ObjectId, Map<K, Integer>>();
+            new ConcurrentHashMap<ObjectId, Map<K, Integer>>();
     protected final Map<K, Integer> keyRegister = new HashMap<K, Integer>();
     protected volatile boolean isJoined = false;
     final DCLTranslator parser = new DCLTranslator();
@@ -218,55 +219,63 @@ public abstract class OverlayImpl<D extends Destination, K extends Key> extends
     }
 
     protected void registerKey(K key) {
-        Integer count = keyRegister.get(key);
-        if (count == null) {
-            keyRegister.put(key, 1);
-        } else {
-            keyRegister.put(key, count + 1);
+        synchronized(keyRegister) {
+            Integer count = keyRegister.get(key);
+            if (count == null) {
+                keyRegister.put(key, 1);
+            } else {
+                keyRegister.put(key, count + 1);
+            }
         }
     }
     
     private void registerKey(ObjectId upper, K key) {
-        Map<K, Integer> keyCounts = keysByUpper.get(upper);
-        if (keyCounts == null) {
-            keyCounts = new HashMap<K, Integer>();
-            keysByUpper.put(upper, keyCounts);
-        }
-        Integer count = keyCounts.get(key);
-        if (count == null) {
-            keyCounts.put(key, 1);
-        } else {
-            keyCounts.put(key, count + 1);
+        synchronized(keysByUpper) {
+            Map<K, Integer> keyCounts = keysByUpper.get(upper);
+            if (keyCounts == null) {
+                keyCounts = new HashMap<K, Integer>();
+                keysByUpper.put(upper, keyCounts);
+            }
+            Integer count = keyCounts.get(key);
+            if (count == null) {
+                keyCounts.put(key, 1);
+            } else {
+                keyCounts.put(key, count + 1);
+            }
         }
         registerKey(key);
     }
     
     protected boolean unregisterKey(K key) {
-        Integer count = keyRegister.get(key);
-        if (count == null) return false;
-        if (count == 1) {
-            keyRegister.remove(key);
-        } else {
-            keyRegister.put(key, count - 1);
+        synchronized(keyRegister) {
+            Integer count = keyRegister.get(key);
+            if (count == null) return false;
+            if (count == 1) {
+                keyRegister.remove(key);
+            } else {
+                keyRegister.put(key, count - 1);
+            }
         }
         return true;
     }
     
     private boolean unregisterKey(ObjectId upper, K key) {
-        Map<K, Integer> keyCounts = keysByUpper.get(upper);
-        if (keyCounts == null) return false;
-        Integer count = keyCounts.get(key);
-        if (count == null) return false;
-        if (count == 1) {
-            keyCounts.remove(key);
-        } else {
-            keyCounts.put(key, count - 1);
+        synchronized(keysByUpper) {
+            Map<K, Integer> keyCounts = keysByUpper.get(upper);
+            if (keyCounts == null) return false;
+            Integer count = keyCounts.get(key);
+            if (count == null) return false;
+            if (count == 1) {
+                keyCounts.remove(key);
+            } else {
+                keyCounts.put(key, count - 1);
+            }
+            if (!unregisterKey(key)) {
+                logger.error("keyRegister should have specified key");
+                return false;
+            }
+            return true;
         }
-        if (!unregisterKey(key)) {
-            logger.error("keyRegister should have specified key");
-            return false;
-        }
-        return true;
     }
 
     protected void lowerAddKey(K key) throws IOException {
@@ -327,14 +336,14 @@ public abstract class OverlayImpl<D extends Destination, K extends Key> extends
 //    }
 
     public Set<K> getKeys(ObjectId upper) {
-        synchronized (keyRegister) {
+//        synchronized (keyRegister) {
             Map<K, Integer> keyCounts = keysByUpper.get(upper);
             if (keyCounts == null) {
 //                return Collections.emptySet();
                 return new HashSet<K>();
             }
             return new HashSet<K>(keyCounts.keySet());
-        }
+//        }
     }
     
     public Set<K> getKeys() {
