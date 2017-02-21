@@ -3,6 +3,7 @@ package org.piax.gtrans.async;
 import java.io.IOException;
 import java.io.ObjectStreamException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -10,14 +11,18 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import org.piax.common.Endpoint;
 import org.piax.common.TransportId;
+import org.piax.common.subspace.Range;
 import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.RPCException;
-import org.piax.gtrans.async.Event.LeaveEvent;
+import org.piax.gtrans.RemoteValue;
+import org.piax.gtrans.TransOptions;
+import org.piax.gtrans.async.Event.LocalEvent;
 import org.piax.gtrans.async.Event.Lookup;
 import org.piax.gtrans.async.Event.RequestEvent;
 import org.piax.gtrans.async.EventException.RPCEventException;
@@ -121,11 +126,6 @@ public class LocalNode extends Node {
         Node repl = new Node(this.key, this.addr, this.latency);
         return repl;
     }
-
-    /*public void setBaseStrategy(NodeStrategy strategy) {
-        this.baseStrategy = strategy;
-        strategy.setupNode(this);
-    }*/
 
     public void setLinkChangeEventHandler(LinkChangeEventCallback predChange,
             LinkChangeEventCallback succChange) {
@@ -362,9 +362,17 @@ public class LocalNode extends Node {
         }
         mode = NodeMode.DELETING;
         CompletableFuture<Boolean> future = new CompletableFuture<>();
-        LeaveEvent leave = new LeaveEvent(this, future);
-        post(leave);
+        LocalEvent ev = new LocalEvent(this, () -> {
+            getTopStrategy().leave(future);
+        });
+        post(ev);
         return future;
+    }
+    
+    public void rangeQueryAsync(Collection<? extends Range<?>> ranges,
+            Object query, TransOptions opts,
+            Consumer<RemoteValue<?>> resultsReceiver) {
+        getTopStrategy().rangeQuery(ranges, query, opts, resultsReceiver);
     }
 
     public void fail() {
@@ -447,7 +455,7 @@ public class LocalNode extends Node {
         return n.orElse(null);
     }
 
-    private static Comparator<Node> getComparator(DdllKey k) {
+    public static Comparator<Node> getComparator(DdllKey k) {
         Comparator<Node> comp = (Node a, Node b) -> {
             // aの方がkに近ければ正の数，bの方がkeyに近ければ負の数を返す
             // [a, key, b) -> plus

@@ -105,7 +105,21 @@ public class EventExecutor {
     }
 
     public static TimerEvent sched(long delay, long period, Consumer<TimerEvent> job) {
-        TimerEvent ev = new TimerEvent(delay, period, job);
+        return sched(null, delay, period, job);
+    }
+
+    public static TimerEvent sched(String name, long delay, Runnable run) {
+        return sched(name, delay, 0, ev -> run.run());
+    }
+
+    public static TimerEvent sched(String name, long delay, long period,
+            Runnable run) {
+        return sched(name, delay, period, ev -> run.run());
+    }
+
+    public static TimerEvent sched(String name, long delay, long period,
+            Consumer<TimerEvent> job) {
+        TimerEvent ev = new TimerEvent(name, delay, period, job);
         ev.vtime = getVTime() + delay;
         enqueue(ev);
         return ev;

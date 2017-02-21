@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -27,8 +28,8 @@ import org.piax.gtrans.async.NodeStrategy;
 import org.piax.gtrans.async.Option.BooleanOption;
 import org.piax.gtrans.async.Option.IntegerOption;
 import org.piax.gtrans.async.Sim;
-import org.piax.gtrans.ov.async.ddll.DdllStrategy;
 import org.piax.gtrans.ov.async.ddll.DdllEvent.SetRJob;
+import org.piax.gtrans.ov.async.ddll.DdllStrategy;
 import org.piax.gtrans.ov.async.suzaku.SuzakuEvent.FTEntRemoveEvent;
 import org.piax.gtrans.ov.async.suzaku.SuzakuEvent.FTEntUpdateEvent;
 import org.piax.gtrans.ov.async.suzaku.SuzakuEvent.GetFTAllEvent;
@@ -528,7 +529,7 @@ public class SuzakuStrategy extends NodeStrategy {
 
     public List<Node> getAllLinks2() {
         List<Node> links = new ArrayList<>();
-        links.add(getLocalLink());
+        links.add(getLocalNode());
         for (int i = 0; i < getFingerTableSize(); i++) {
             FTEntry ent = getFingerTableEntry(i);
             if (ent != null && ent.getLink() != null) {
@@ -544,6 +545,87 @@ public class SuzakuStrategy extends NodeStrategy {
         return links;
     }
 
+    @Override
+    public List<List<Node>> getRoutingEntries() {
+        return getValidFTEntries().stream()
+            .map(ent -> ent.allLinks())
+            .collect(Collectors.toList());
+    }
+
+    /**
+     * get valid finger table entries from all inserted nodes
+     * 
+     * @return list of finger table entries
+     */
+    private List<FTEntry> getValidFTEntries() {
+        //logger.debug("getValid: {}", this);
+        List<FTEntry> rc = new ArrayList<>();
+        List<SuzakuStrategy> vnodes = Arrays.asList(this);
+        SuzakuStrategy v1 = vnodes.get(0);
+        SuzakuStrategy v2;
+        for (int k = 1; k <= vnodes.size(); k++, v1 = v2) {
+            v2 = vnodes.get(k % vnodes.size());
+            List<FTEntry> flist = new ArrayList<>();
+            List<FTEntry> blist = new ArrayList<>();
+            FTEntry me = v1.getLocalFTEnetry();
+            flist.add(me);
+            FTEntry fent = null;
+            FTEntry bent = null;
+            int fsz = v1.getFingerTableSize();
+            int bsz = v2.getBackwardFingerTableSize();
+            // forward ft と backward ft の両方を，0 番目のエントリから順番にスキャンし，
+            // 両者が出会うところまで　flist と blist に登録していく．
+            for (int i = 0; i < Math.max(fsz, bsz); i++) {
+                boolean f = false, b = false;
+                if (i < fsz) {
+                    fent = v1.getFingerTableEntry(i);
+                    f = true;
+                }
+                if (i < bsz) {
+                    bent = v2.getBackwardFingerTableEntry(i);
+                    b = true;
+                }
+                if ((fent != null)
+                        && (bent != null)
+                        && Node.isOrdered(v1.getLocalNode().key,
+                                bent.getLink().key, fent.getLink().key)) {
+                    if (f) {
+                        FTEntry bprev;
+                        // fentがbprevとbentの間に挟まれるならば，fentを採用
+                        // FFT:         F8...F7...F6
+                        // BFT: B6...B7....B8 
+                        // さもなくば，fentは採用しない
+                        // FFT:   F8.........F7...F6
+                        // BFT: B6...B7....B8 
+                        if (blist.size() > 0) {
+                            bprev = blist.get(blist.size() - 1);
+                        } else {
+                            bprev = me;
+                        }
+                        if (Node.isOrdered(bent.getLink().key, fent.getLink().key,
+                                bprev.getLink().key)) {
+                            flist.add(fent);
+                        }
+                    }
+                    break;
+                }
+                if (f && (fent != null)) {
+                    flist.add(fent);
+                }
+                if (b && (bent != null)) {
+                    blist.add(bent);
+                }
+            }
+            Collections.reverse(blist);
+            //            logger.debug("getValid: v1={}, v2={}, flist={}, blist={}",
+            //                    v1.getKey(), v2.getKey(), flist, blist);
+            rc.addAll(flist);
+            rc.addAll(blist);
+        }
+        return rc;
+    }
+
+    
     public Stream<Node> routingEntryStream() {
         Stream<Node> s = table.stream()
                 .filter(ent -> (ent != null && ent.getLink() != null))
@@ -613,7 +695,7 @@ public class SuzakuStrategy extends NodeStrategy {
 
     // to be overridden
     protected FTEntry getLocalFTEnetry() {
-        return new FTEntry(getLocalLink());
+        return new FTEntry(getLocalNode());
     }
 
     public int getFingerTableSize() {

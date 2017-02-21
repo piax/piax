@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import org.piax.common.Endpoint;
+import org.piax.common.PeerId;
 import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.util.ConcurrentReferenceHashMap;
 
@@ -25,6 +26,7 @@ public class Node implements Comparable<Node>, Serializable {
     public final DdllKey key;
     public final Endpoint addr;
     public final int latency;
+    public final PeerId peerId;
 
     // we have to guard `instances' with synchronized block
     private static Map<DdllKey, Node> instances
@@ -60,12 +62,21 @@ public class Node implements Comparable<Node>, Serializable {
         this.key = ddllkey;
         this.addr = ep;
         this.latency = latency;
+        if (key != null) {
+            this.peerId = new PeerId(ddllkey.getUniqId().getBytes());
+        } else {
+            this.peerId = null;
+        }
         synchronized (Node.class) {
             if (ddllkey != null && !instances.containsKey(ddllkey)) {
                 // use putIfAbsent ?
                 instances.put(ddllkey, this);
             }
         }
+    }
+    
+    public PeerId getPeerId() {
+        return peerId;
     }
 
     @Override

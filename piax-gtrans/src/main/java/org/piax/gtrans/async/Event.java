@@ -31,6 +31,7 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
     transient public FailureCallback failureCallback;    // run at sender node
     public List<Node> route = new ArrayList<>();
     public List<Node> routeWithFailed = new ArrayList<>();
+
     public Event(Node receiver) {
         this(receiver, Node.NETWORK_LATENCY);
     }
@@ -133,12 +134,19 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
     }
 
     public static class TimerEvent extends Event {
+        final String name;
         final Consumer<TimerEvent> job;
         final long period;
         private boolean canceled = false;
         private boolean executed = false;
-        public TimerEvent(long initial, long period, Consumer<TimerEvent> job) {
+        public TimerEvent(String name, long initial, long period, 
+                Consumer<TimerEvent> job) {
             super(null, initial);
+            if (name != null) {
+                this.name = name;
+            } else {
+                this.name = "NONAME-" + System.identityHashCode(this);
+            }
             this.job = job;
             this.period = period;
         }
@@ -161,6 +169,10 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
             }
             
         }
+        @Override
+        public String toStringMessage() {
+            return "TimerEvent[" + name + "]";
+        }
         public void cancel() {
             canceled = true;
         }
@@ -168,20 +180,16 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
             return executed;
         }
     }
-    
-    /**
-     * LeaveEvent is used for requesting a node to leave.
-     */
-    public static class LeaveEvent extends Event {
-        final CompletableFuture<Boolean> future;
-        public LeaveEvent(LocalNode receiver,
-                CompletableFuture<Boolean> future) {
+
+    public static class LocalEvent extends Event {
+        final Runnable run;
+        public LocalEvent(LocalNode receiver, Runnable run) {
             super(receiver, 0);
-            this.future = future;
+            this.run = run;
         }
         @Override
         public void run() {
-            getTopStrategy().leave(future);
+            run.run();
         }
     }
 
@@ -221,6 +229,46 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
     }
 
     /**
+     * a request that allows multiple replies
+     *
+     * @param <T>
+     * @param <U>
+     */
+    public static abstract class StreamingRequestEvent<T extends StreamingRequestEvent<T, U>,
+        U extends ReplyEvent<T, U>> extends RequestEvent<T, U> {
+        final transient Consumer<U> replyReceiver;
+        final transient Consumer<Throwable> exceptionReceiver;
+        
+        public StreamingRequestEvent(Node receiver, boolean isParent,
+                Consumer<U> replyReceiver,
+                Consumer<Throwable> exceptionReceiver) { 
+            super(receiver);
+            this.isParent = isParent;
+            this.replyReceiver = replyReceiver;
+            this.exceptionReceiver = exceptionReceiver;
+            super.getCompletableFuture().whenComplete((rep, exc) -> {
+                assert rep == null;
+                exceptionReceiver.accept(exc);
+            });
+        }
+        
+        @Override
+        public CompletableFuture<U> getCompletableFuture() {
+            throw new UnsupportedOperationException("don't use getCompletableFuture()");
+        }
+
+        @Override
+        public void beforeRunHook(LocalNode n) {
+            super.beforeRunHook(n);
+        }
+
+        @Override
+        public void receiveReply(U reply) {
+            replyReceiver.accept(reply);
+        }
+    }
+
+    /**
      * base class of a request event
      *
      * @param <T> the type of request event
@@ -228,8 +276,9 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
      */
     public static abstract class RequestEvent<T extends RequestEvent<T, U>,
             U extends ReplyEvent<T, U>> extends Event {
+        protected boolean isParent = false;
         final transient CompletableFuture<U> future;
-        transient TimerEvent replyTimeoutEvent, ackTimeoutEvent; 
+        transient TimerEvent replyTimeoutEvent, ackTimeoutEvent;
         public RequestEvent(Node receiver) {
             super(receiver);
             this.future = new CompletableFuture<U>();
@@ -237,6 +286,37 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
 
         public CompletableFuture<U> getCompletableFuture() {
             return this.future;
+        }
+
+        /*
+         * cleanup the instance at sender half
+         */
+        public void cleanup() {
+            LocalNode local = (LocalNode)sender;
+            System.out.println(local + ": cleanup " + this + ", isParent=" + isParent);
+            if (isParent) {
+                assert false;
+            } else {
+                Event r = removeRequestEvent(local, getEventId());
+                assert r != null;
+
+                // remove timeout event
+                if (replyTimeoutEvent != null) {
+                    EventExecutor.cancelEvent(replyTimeoutEvent);
+                    replyTimeoutEvent = null;
+                }
+            }
+        }
+
+        public void receiveReply(U reply) {
+            cleanup();
+            future.complete(reply);
+        }
+
+        @Override
+        public void beforeRunHook(LocalNode n) {
+            super.beforeRunHook(n);
+            this.isParent = true;
         }
 
         @Override
@@ -257,6 +337,9 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
                     () -> {
                         RequestEvent<?, ?> ev1 = removeNotAckedEvent(n, getEventId());
                         RequestEvent<?, ?> ev2 = removeRequestEvent(n, getEventId());
+                        if (ev1 == null) {
+                            System.out.println("removeNotAck: not found: " + getEventId());
+                        }
                         assert ev1 != null;
                         assert ev2 != null;
                         this.failureCallback.run(new TimeoutException());
@@ -282,25 +365,30 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
          * handling `requestMap' should be in synchronized block because the
          * upper layer might be multi-threaded.
          */
-        private synchronized static void registerRequestEvent(LocalNode n, RequestEvent<?, ?> ev) {
+        public synchronized static void registerRequestEvent(LocalNode n,
+                RequestEvent<?, ?> ev) {
             n.ongoingRequests.put(ev.getEventId(), ev);
         }
 
-        public synchronized static RequestEvent<?, ?> removeRequestEvent(LocalNode n, int id) {
+        public synchronized static RequestEvent<?, ?>
+        removeRequestEvent(LocalNode n, int id) {
             RequestEvent<?, ?> ev = n.ongoingRequests.remove(id);
             return ev;
         }
 
-        public synchronized static RequestEvent<?, ?> lookupRequestEvent(LocalNode n, int id) {
+        public synchronized static RequestEvent<?, ?>
+        lookupRequestEvent(LocalNode n, int id) {
             RequestEvent<?, ?> ev = n.ongoingRequests.get(id);
             return ev;
         }
 
-        private static void registerNotAckedEvent(LocalNode n, RequestEvent<?, ?> ev) {
+        private static void registerNotAckedEvent(LocalNode n, 
+                RequestEvent<?, ?> ev) {
             n.unAckedRequests.put(ev.getEventId(), ev);
         }
 
-        public static RequestEvent<?, ?> removeNotAckedEvent(LocalNode n, int id) {
+        public static RequestEvent<?, ?> removeNotAckedEvent(LocalNode n,
+                int id) {
             RequestEvent<?, ?> ev = n.unAckedRequests.remove(id);
             return ev;
         }
@@ -316,39 +404,23 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
         U extends ReplyEvent<T, U>> extends AckEvent {
         public transient T req;
         private final int reqEventId;
-        // true if partial results are allowed
-        private final boolean isPartial;
 
         public ReplyEvent(T req) {
-            this(req, false);
-        }
-
-        public ReplyEvent(T req, boolean isPartial) {
             super(req, req.origin);
             this.req = req;
             this.reqEventId = req.getEventId();
             this.route.addAll(req.route);
             this.route.remove(this.route.size() - 1);
             this.routeWithFailed.addAll(req.routeWithFailed);
-            this.expectMuptipleAck = this.isPartial = isPartial;
         }
+
         @Override
         public void beforeRunHook(LocalNode n) {
+            System.out.println("ReplyEvent#beforeRunHook: reqEventId=" + reqEventId);
             // restore transient "req" field
-            RequestEvent<?, ?> r;
-            if (isPartial) {
-                r = RequestEvent.lookupRequestEvent(n, reqEventId);
-            } else {
-                r = RequestEvent.removeRequestEvent(n, reqEventId);
-            }
+            RequestEvent<?, ?> r = RequestEvent.lookupRequestEvent(n, reqEventId);
             assert r != null;
             this.req = (T)r;
-
-            // remove timeout event
-            if (req.replyTimeoutEvent != null) {
-                EventExecutor.cancelEvent(req.replyTimeoutEvent);
-                req.replyTimeoutEvent = null;
-            }
         }
 
         @Override
@@ -362,9 +434,7 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
         @Override
         public void run() {
             super.run();
-            if (!isPartial) {
-                req.future.complete((U)this);
-            }
+            req.receiveReply((U)this);
         }
     }
 
