@@ -14,6 +14,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
@@ -29,12 +30,14 @@ import org.piax.gtrans.Peer;
 import org.piax.gtrans.RemoteValue;
 import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.TransOptions.ResponseType;
+import org.piax.gtrans.async.Event.RequestEvent;
 import org.piax.gtrans.async.EventException.TimeoutException;
 import org.piax.gtrans.async.EventExecutor;
 import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.async.NetworkParams;
 import org.piax.gtrans.async.NodeFactory;
 import org.piax.gtrans.async.Sim;
+import org.piax.gtrans.ov.async.ddll.DdllEvent.GetCandidates;
 import org.piax.gtrans.ov.async.ddll.DdllStrategy;
 import org.piax.gtrans.ov.async.ddll.DdllStrategy.DdllNodeFactory;
 import org.piax.gtrans.ov.async.ddll.DdllStrategy.SetRNakMode;
@@ -146,13 +149,19 @@ public class AsyncTest {
     void checkMemoryLeakage(LocalNode... nodes) {
         int s = nodes.length;
         for (int i = 0; i < s ; i++) {
-            Map<?, ?> m1 = (Map<?, ?>)getPrivateField(nodes[i], "ongoingRequests");
-            if (!m1.isEmpty()) {
+            Map<Integer, RequestEvent<?, ?>> m1 = (Map)getPrivateField(nodes[i], "ongoingRequests");
+            Optional<RequestEvent<?, ?>> o1 = m1.values().stream()
+                .filter(req -> !(req instanceof GetCandidates))
+                .findAny();
+            if (o1.isPresent()) {
                 System.out.println(nodes[i] + ": ongoingRequests: " + m1);
                 fail();
             }
-            Map<?, ?> m2 = (Map<?, ?>)getPrivateField(nodes[i], "unAckedRequests");
-            if (!m2.isEmpty()) {
+            Map<Integer, RequestEvent<?, ?>> m2 = (Map)getPrivateField(nodes[i], "unAckedRequests");
+            Optional<RequestEvent<?, ?>> o2 = m2.values().stream()
+                    .filter(req -> !(req instanceof GetCandidates))
+                    .findAny();
+            if (o2.isPresent()) {
                 System.out.println(nodes[i] + ": unAckedRequests: " + m2);
                 fail();
             }
@@ -396,8 +405,8 @@ public class AsyncTest {
                     .collect(Collectors.toList());
             System.out.println("RVAL=" + rvals);
             assertTrue(rvals.equals(Arrays.asList(200, 300)));
+            checkMemoryLeakage(nodes);
         }
-        checkConsistent(nodes);
     }
 
     public static Object getPrivateField(Object target, String field) {

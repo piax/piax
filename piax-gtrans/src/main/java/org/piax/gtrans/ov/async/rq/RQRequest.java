@@ -77,6 +77,8 @@ public class RQRequest extends StreamingRequestEvent<RQRequest, RQReply> {
     enum SPECIAL {
         PADDING;
     }
+    
+    transient List<Runnable> cleanup = new ArrayList<>();
 
     /**
      * create a root RQRequest.
@@ -112,10 +114,14 @@ public class RQRequest extends StreamingRequestEvent<RQRequest, RQReply> {
         assert !isRoot || isParent; // isRoot -> isParent
         assert isParent || !isRoot; // !isParent -> !isRoot
         if (isRoot && opts.getResponseType() == ResponseType.DIRECT) {
-            this.root = receiver;
+            LocalNode local = (LocalNode)receiver;
+            this.root = local;
             this.rootEventId = getEventId();
             // in DIRECT mode, this instance receives RQReplyDirect messages
-            RequestEvent.registerRequestEvent((LocalNode)receiver, this);
+            RequestEvent.registerRequestEvent(local, this);
+            cleanup.add(() -> {
+                RequestEvent.removeRequestEvent(local, getEventId());
+            });
         } else {
             this.root = null;
             this.rootEventId = 0;
@@ -275,6 +281,9 @@ public class RQRequest extends StreamingRequestEvent<RQRequest, RQReply> {
                                 resultsReceiver.accept(RQStrategy.END_OF_RESULTS);
                             }
                         });
+                cleanup.add(() -> {
+                    expirationTask.cancel();
+                });
             }
             if (isRoot) {
                 // retransmission task
@@ -287,6 +296,9 @@ public class RQRequest extends StreamingRequestEvent<RQRequest, RQReply> {
                             retrans, retrans, () -> {
                         retransmit();
                     });
+                    cleanup.add(() -> {
+                        slowRetransTask.cancel();
+                    });
                 }
             } else if (opts.getResponseType() == ResponseType.AGGREGATE) {
                 // flush task
@@ -296,6 +308,9 @@ public class RQRequest extends StreamingRequestEvent<RQRequest, RQReply> {
                         flush, flush, () -> {
                             flush();
                         });
+                cleanup.add(() -> {
+                    flushTask.cancel();
+                });
             }
         }
 
@@ -464,20 +479,12 @@ public class RQRequest extends StreamingRequestEvent<RQRequest, RQReply> {
         }
 
         private void dispose() {
+            logger.debug("dispose: {}", this);
             if (disposed) {
                 return;
             }
-            logger.debug("dispose: {}", this);
             childMsgs.clear();
-            expirationTask.cancel();
-            if (slowRetransTask != null) {
-                slowRetransTask.cancel();
-                slowRetransTask = null;
-            }
-            if (flushTask != null) {
-                flushTask.cancel();
-                flushTask = null;
-            }
+            cleanup.stream().forEach(runnable -> runnable.run());
             disposed = true;
         }
 
@@ -518,7 +525,7 @@ public class RQRequest extends StreamingRequestEvent<RQRequest, RQReply> {
             if (isCompleted() || opts.getResponseType() == ResponseType.DIRECT) {
                 // transmit the collected results to the parent node
                 flush();
-                if (childMsgs.isEmpty()) {
+                if (isCompleted() && childMsgs.isEmpty()) {
                     // DIRECTの場合，子ノードからのACKを受信するまでdispose()してはいけない
                     dispose();
                 }
