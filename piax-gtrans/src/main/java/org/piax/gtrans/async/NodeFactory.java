@@ -20,6 +20,5 @@ public abstract class NodeFactory {
         return createNode(transId, trans, ddllkey, latency);
     }
 
-
     public abstract String name();
 }

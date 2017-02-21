@@ -1,11 +1,15 @@
 package org.piax.gtrans.ov.async.ddll;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import org.piax.common.TransportId;
 import org.piax.gtrans.ChannelTransport;
@@ -13,9 +17,9 @@ import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.async.Event.Lookup;
 import org.piax.gtrans.async.Event.LookupDone;
 import org.piax.gtrans.async.Event.TimerEvent;
-import org.piax.gtrans.async.EventExecutor;
 import org.piax.gtrans.async.EventException;
 import org.piax.gtrans.async.EventException.RetriableException;
+import org.piax.gtrans.async.EventExecutor;
 import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.async.NetworkParams;
 import org.piax.gtrans.async.Node;
@@ -109,6 +113,14 @@ public class DdllStrategy extends NodeStrategy {
                 + ", pred=" + (n.pred != null ? n.pred.key : "null")
                 + ", status=" + status + ", lseq=" + lseq + ", rseq=" + rseq
                 + ", nbrs=" + leftNbrs + ")";
+    }
+
+    @Override
+    public List<List<Node>> getRoutingEntries() {
+        return Arrays.asList(n.pred, n, n.succ).stream()
+                .distinct()
+                .map(Collections::singletonList)
+                .collect(Collectors.toList());
     }
 
     @Override

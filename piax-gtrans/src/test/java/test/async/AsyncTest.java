@@ -7,17 +7,28 @@ import static org.junit.Assert.fail;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
 
 import org.junit.Test;
 import org.piax.common.PeerId;
 import org.piax.common.PeerLocator;
 import org.piax.common.TransportId;
+import org.piax.common.subspace.Range;
 import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.Peer;
+import org.piax.gtrans.RemoteValue;
+import org.piax.gtrans.TransOptions;
+import org.piax.gtrans.TransOptions.ResponseType;
 import org.piax.gtrans.async.EventException.TimeoutException;
 import org.piax.gtrans.async.EventExecutor;
 import org.piax.gtrans.async.LocalNode;
@@ -27,6 +38,7 @@ import org.piax.gtrans.async.Sim;
 import org.piax.gtrans.ov.async.ddll.DdllStrategy;
 import org.piax.gtrans.ov.async.ddll.DdllStrategy.DdllNodeFactory;
 import org.piax.gtrans.ov.async.ddll.DdllStrategy.SetRNakMode;
+import org.piax.gtrans.ov.async.rq.RQStrategy.RQNodeFactory;
 import org.piax.gtrans.ov.async.suzaku.SuzakuStrategy.SuzakuNodeFactory;
 import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.gtrans.raw.emu.EmuLocator;
@@ -60,7 +72,7 @@ public class AsyncTest {
                 throw new Error("something wrong!", e);
             }
         } else {
-            UniqId p = new UniqId("P");
+            UniqId p = new UniqId("P" + key);
             DdllKey k = new DdllKey(key, p, "", null);
             try {
                 return factory.createNode(null, null, k, latency);
@@ -332,6 +344,60 @@ public class AsyncTest {
                 assertTrue(e.getCause() instanceof TimeoutException);
             }
         }
+    }
+    
+    @Test
+    public void testRQ1Aggregate() {
+        TransOptions opts = new TransOptions();
+        opts.setResponseType(ResponseType.AGGREGATE);
+        testRQ1(opts);
+    }
+
+    @Test
+    public void testRQ1Direct() {
+        TransOptions opts = new TransOptions();
+        opts.setResponseType(ResponseType.DIRECT);
+        testRQ1(opts);
+    }
+    
+    private void testRQ1(TransOptions opts) {
+        NodeFactory factory = new RQNodeFactory(new DdllNodeFactory());
+        System.out.println("** testRQ1");
+        init();
+        nodes = createNodes(factory, 5);
+        nodes[0].joinInitialNode();
+        {
+            CompletableFuture<Boolean> f1 = nodes[1].joinAsync(nodes[0]);
+            CompletableFuture<Boolean> f2 = nodes[2].joinAsync(nodes[0]);
+            CompletableFuture<Boolean> f3 = nodes[3].joinAsync(nodes[0]);
+            CompletableFuture<Boolean> f4 = nodes[4].joinAsync(nodes[0]);
+            EventExecutor.startSimulation(30000);
+            checkCompleted(f1, f2, f3, f4);
+        }
+        checkConsistent(nodes);
+
+        {
+            Range<Integer> range = new Range<>(200, true, 400, false);
+            Collection<Range<Integer>> ranges = Collections.singleton(range);
+            Object query = "Q";
+            List<RemoteValue<DdllKey>> results = new ArrayList<>();
+            nodes[0].rangeQueryAsync(ranges, query, opts, (ret) -> {
+                System.out.println("RESULT:" + ret);
+                results.add((RemoteValue<DdllKey>)ret);
+            });
+            EventExecutor.startSimulation(30000);
+            assertTrue(results.size() == 3);
+            assertTrue(results.get(results.size() - 1 ) == null);
+            List<?> rvals = results.stream()
+                    .filter(Objects::nonNull)
+                    .map(rv -> rv.getValue())   // extract DdllKey
+                    .map(rv -> rv.getPrimaryKey()) // extract Comparable
+                    .sorted()
+                    .collect(Collectors.toList());
+            System.out.println("RVAL=" + rvals);
+            assertTrue(rvals.equals(Arrays.asList(200, 300)));
+        }
+        checkConsistent(nodes);
     }
 
     public static Object getPrivateField(Object target, String field) {

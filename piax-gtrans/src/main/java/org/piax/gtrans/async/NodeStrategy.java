@@ -1,9 +1,15 @@
 package org.piax.gtrans.async;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 
+import org.piax.common.subspace.Range;
+import org.piax.gtrans.RemoteValue;
+import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.async.Event.Lookup;
 import org.piax.gtrans.async.Event.LookupDone;
 import org.piax.gtrans.ov.ddll.DdllKey;
@@ -24,37 +30,59 @@ public abstract class NodeStrategy {
         return n.succ;
     }
 
-    public Node getLocalLink() {
+    public LocalNode getLocalNode() {
         return n;
     }
 
     public List<Node> getAllLinks2() {
-        Node[] a = {
-                getSuccessor(), n, getPredecessor()
-        };
-        return Arrays.asList(a);
+        return Arrays.asList(getSuccessor(), n, getPredecessor());
+    }
+
+    public List<List<Node>> getRoutingEntries() {
+        return getLower().getRoutingEntries();
     }
 
     public boolean isResponsible(DdllKey key) {
         return Node.isIn2(key, n.key, getSuccessor().key);
     }
 
-    public abstract String toStringDetail();
-
-    public abstract void initInitialNode();
-
-    public abstract void joinAfterLookup(LookupDone lookupDone,
-            CompletableFuture<Boolean> joinFuture);
-
-    public void leave(CompletableFuture<Boolean> leaveComplete) {
-        throw new UnsupportedOperationException("leave is not implemented");
+    public String toStringDetail() {
+        return getLower().toStringDetail();
     }
 
-    public abstract void handleLookup(Lookup lookup);
+    public void initInitialNode() {
+        getLower().initInitialNode();
+    }
+
+    public void joinAfterLookup(LookupDone lookupDone,
+            CompletableFuture<Boolean> joinFuture) {
+        getLower().joinAfterLookup(lookupDone, joinFuture);
+    }
+
+    public void leave(CompletableFuture<Boolean> leaveComplete) {
+        getLower().leave(leaveComplete);
+    }
     
-    public abstract void foundFailedNode(Node node);
+
+    public void rangeQuery(Collection<? extends Range<?>> ranges, Object query,
+            TransOptions opts, Consumer<RemoteValue<?>> resultsReceiver) {
+        getLower().rangeQuery(ranges, query, opts, resultsReceiver);
+    }
+
+    public void handleLookup(Lookup lookup) {
+        getLower().handleLookup(lookup);
+    }
+    
+    public void foundFailedNode(Node node) {
+        getLower().foundFailedNode(node);
+    }
 
     public int getMessages4Join() {
-        throw new UnsupportedOperationException("getMessages4Join is not implemented");
+        return getLower().getMessages4Join();
+    }
+
+    protected NodeStrategy getLower() {
+        NodeStrategy lower = n.getLowerStrategy(this);
+        return lower;
     }
 }
