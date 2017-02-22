@@ -17,7 +17,6 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.piax.common.Endpoint;
 import org.piax.common.Id;
 import org.piax.common.PeerId;
 import org.piax.common.subspace.CircularRange;
@@ -231,13 +230,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         /** gaps (subranges that have not yet received any return values) */
         final Set<DdllKeyRange> gaps;
 
-        /** set of Endpoint of the destination of child messages */
-        //final Set<Endpoint> children = new HashSet<>();
-        /** subset of children that has completed the request */
-        final Set<Endpoint> finished = new HashSet<>();
-
         // basic statistics
-        int rcvCount = 0;
         int retransCount = 0;
 
         TimerEvent expirationTask;
@@ -283,7 +276,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             + (rvals.size() > 10 ? "(" + rvals.size() + " entries)"
                     : rvals.values())
             + ", gaps=" + gaps + ", childMsgs="
-            + childMsgs + ", rcvCount=" + rcvCount
+            + childMsgs
             + ", retrans=" + retransCount + "]";
         }
         
@@ -599,6 +592,9 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         }
         
         private void notifyResult(RemoteValue<T> rval) {
+            if (resultsReceiver == null) {
+                return;
+            }
             if (rval == null || rval.getValue() != SPECIAL.PADDING) {
                 resultsReceiver.accept(rval);
             }
@@ -700,8 +696,8 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                     // 1) obtain a value from provider
                     CompletableFuture<T> f;
                     if (!r.contains(r.getNode().key)) {
-                        // although SPECIAL.PADDING is not type of T, the following
-                        // assignment is safe because it is used just as a marker. 
+                        // although SPECIAL.PADDING is not a type of T, using
+                        // it as T is safe because it is used just as a marker. 
                         f = CompletableFuture.completedFuture((T)SPECIAL.PADDING);
                     } else {
                         // XXX: consider the case where provider throws exception
