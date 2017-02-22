@@ -40,7 +40,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * an abstract class representing a message used for propagating range queries.
+ * a class used for range queries.
  * <p>
  * this class contains various data that are required to be transmitted to the
  * target nodes. this class also contains {@link #failedLinks} field, which
@@ -64,7 +64,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
     final RQValueProvider<T> provider;
     final TransOptions opts;
     final boolean isRoot;
-    transient final Consumer<RemoteValue<T>> resultsReceiver;  // root only
+    transient Consumer<RemoteValue<T>> resultsReceiver;  // root only
 
     /**
      * failed links. this field is used for avoiding and repairing dead links.
@@ -191,6 +191,14 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
 
     private void handleErrors(Throwable exc) {
         logger.debug("RQRequest: got exception: {}, {}", this, exc.toString());
+    }
+    
+    @Override
+    protected Event clone() {
+        RQRequest<?> ev = (RQRequest<?>)super.clone();
+        ev.resultsReceiver = null;
+        ev.catcher = null;
+        return ev;
     }
     
     private static <T> Stream<T> streamopt(Optional<T> opt) {
@@ -489,7 +497,6 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             reply.req.cleanup(); // cleanup sender half
             boolean rc = childMsgs.remove(reply.req);
             assert rc;
-            incrementRcvCount();
 //            if (reply.isFinal) {
 //                finished.add(reply.getSender());
 //            }
@@ -497,7 +504,6 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         }
 
         void replyReceived(RQReplyDirect<T> reply) {
-            incrementRcvCount();
             addRemoteValues(reply.vals);
         }
 
@@ -640,10 +646,6 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
 
         public RQResults<?> getRQResults() {
             return results;
-        }
-
-        void incrementRcvCount() {
-            rcvCount++;
         }
 
         boolean isCompleted() {

@@ -273,6 +273,15 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
         public void receiveReply(U reply) {
             replyReceiver.accept(reply);
         }
+
+        @Override
+        protected Event clone() {
+            StreamingRequestEvent<?, ?> ev
+                = (StreamingRequestEvent<?, ?>)super.clone();
+            ev.replyReceiver = null;
+            ev.exceptionReceiver = null;
+            return ev;
+        }
     }
 
     /**
