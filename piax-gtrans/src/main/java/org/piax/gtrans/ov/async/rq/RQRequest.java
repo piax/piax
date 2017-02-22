@@ -88,7 +88,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
     public RQRequest(Node receiver, Collection<RQRange> ranges, 
             RQValueProvider<T> provider, TransOptions opts, 
             Consumer<RemoteValue<T>> resultReceiver) {
-        this(receiver, ranges, provider, opts, true, resultReceiver, null);
+        this(receiver, true, ranges, provider, opts, resultReceiver, null);
     }
 
     /*
@@ -97,18 +97,22 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
      * !isParent -> resultReceiver == null
      */
     private RQRequest(Node receiver, 
-            Collection<RQRange> ranges, RQValueProvider<T> provider,
-            TransOptions opts, boolean isParent,
+            boolean isReceiverHalf, Collection<RQRange> ranges,
+            RQValueProvider<T> provider, TransOptions opts,
             Consumer<RemoteValue<T>> resultsReceiver,
             RQRequest<T> parent) {
-        super(receiver, isParent, (RQReply<T> rep) -> {
-            parent.catcher.replyReceived(rep);
-        }, (Throwable exc) -> {
-            logger.debug("RQRequest: got exception: {}", exc);
-        });
+        super(receiver, isReceiverHalf);
         this.isRoot = resultsReceiver != null;
-        assert !isRoot || isParent; // isRoot -> isParent
-        assert isParent || !isRoot; // !isParent -> !isRoot
+        assert !isRoot || isReceiverHalf; // isRoot -> isParent
+        assert isReceiverHalf || !isRoot; // !isParent -> !isRoot
+
+        super.setReplyReceiver((RQReply<T> rep) -> {
+            parent.catcher.replyReceived(rep);
+        });
+        super.setExceptionReceiver((Throwable exc) -> {
+            handleErrors(exc);
+        });
+
         if (isRoot && opts.getResponseType() == ResponseType.DIRECT) {
             LocalNode local = (LocalNode)receiver;
             this.root = local;
@@ -127,7 +131,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         this.provider = provider;
         this.opts = opts;
         this.failedLinks = new HashSet<>();
-        if (isParent) {
+        if (isReceiverHalf) {
             this.catcher = new RQCatcher();
         }
     }
@@ -143,8 +147,8 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
      */
     private RQRequest<T> newChildInstance(Node receiver,
             Collection<RQRange> newRQRange) {
-        RQRequest<T> child = new RQRequest<>(receiver, newRQRange, this.provider,
-                this.opts, false, null, this);
+        RQRequest<T> child = new RQRequest<>(receiver, false, newRQRange,
+                this.provider, this.opts, null, this);
         child.root = this.root;
         child.rootEventId = this.rootEventId;
         return child;
@@ -160,8 +164,8 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
     }
     
     @Override
-    public void beforeRunHook(LocalNode n) {
-        super.beforeRunHook(n);
+    public boolean beforeRunHook(LocalNode n) {
+        return super.beforeRunHook(n);
     }
 
     public void addFailedLinks(Collection<Node> links) {
@@ -185,6 +189,10 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         catcher.replyReceived(rep);
     }
 
+    private void handleErrors(Throwable exc) {
+        logger.debug("RQRequest: got exception: {}, {}", this, exc.toString());
+    }
+    
     private static <T> Stream<T> streamopt(Optional<T> opt) {
         if (opt.isPresent()) {
             return Stream.of(opt.get());
@@ -323,9 +331,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                         exp, () -> {
                             logger.debug("expired: {}", this);
                             cleanup();
-                            if (resultsReceiver != null) {
-                                resultsReceiver.accept(null);
-                            }
+                            notifyResult(null);
                         });
                 cleanup.add(() -> {
                     expirationTask.cancel();
@@ -597,10 +603,10 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
          * cleared after flushing.
          */
         public void flush() {
-            logger.debug("flush(): {}", this);
             if (isRoot) {
                 return;
             }
+            logger.debug("flush(): {}", this);
             Collection<DKRangeRValue<T>> vals = new ArrayList<>(rvals.values());
             ResponseType rtype = opts.getResponseType();
             switch (rtype) {
@@ -621,8 +627,10 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                 }
                 break;
             case AGGREGATE:
-                Event ev = new RQReply<T>(RQRequest.this, vals, isCompleted());
-                getLocalNode().post(ev);
+                if (!vals.isEmpty()) {
+                    Event ev = new RQReply<T>(RQRequest.this, vals, isCompleted());
+                    getLocalNode().post(ev);
+                }
                 break;
             default:
                 throw new Error("shouldn't happen");
@@ -643,7 +651,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             return (TransOptions.responseType(opts) == ResponseType.NO_RESPONSE)
                     || (gaps.size() == 0);
         }
-
+        
         /**
          * (slow) retransmit the range query message for the gap ranges.
          */

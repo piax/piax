@@ -115,8 +115,8 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
         // empty
     }
 
-    public void beforeRunHook(LocalNode n) {
-        // empty
+    public boolean beforeRunHook(LocalNode n) {
+        return true;
     }
 
     public abstract void run();
@@ -236,20 +236,27 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
      */
     public static abstract class StreamingRequestEvent<T extends StreamingRequestEvent<T, U>,
         U extends ReplyEvent<T, U>> extends RequestEvent<T, U> {
-        final transient Consumer<U> replyReceiver;
-        final transient Consumer<Throwable> exceptionReceiver;
+        transient Consumer<U> replyReceiver;
+        transient Consumer<Throwable> exceptionReceiver;
         
-        public StreamingRequestEvent(Node receiver, boolean isReceiverHalf,
-                Consumer<U> replyReceiver,
-                Consumer<Throwable> exceptionReceiver) { 
+        public StreamingRequestEvent(Node receiver, boolean isReceiverHalf) {
             super(receiver);
             this.isReceiverHalf = isReceiverHalf;
-            this.replyReceiver = replyReceiver;
-            this.exceptionReceiver = exceptionReceiver;
             super.getCompletableFuture().whenComplete((rep, exc) -> {
+                System.out.println("SreamingRequestEvent: complete! " + rep + ", " + exc);
                 assert rep == null;
                 exceptionReceiver.accept(exc);
             });
+        }
+
+        protected void setReplyReceiver(Consumer<U> receiver) {
+            assert this.replyReceiver == null;
+            this.replyReceiver = receiver;
+        }
+
+        protected void setExceptionReceiver(Consumer<Throwable> receiver) {
+            assert this.exceptionReceiver == null;
+            this.exceptionReceiver = receiver;
         }
         
         @Override
@@ -258,8 +265,8 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
         }
 
         @Override
-        public void beforeRunHook(LocalNode n) {
-            super.beforeRunHook(n);
+        public boolean beforeRunHook(LocalNode n) {
+            return super.beforeRunHook(n);
         }
 
         @Override
@@ -313,7 +320,6 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
          * cleanup the instance at sender half
          */
         public void cleanup() {
-            System.out.println(local + ": cleanup " + this);
             cleanup.stream().forEach(r -> r.run());
             cleanup.clear();
         }
@@ -324,10 +330,11 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
         }
 
         @Override
-        public void beforeRunHook(LocalNode n) {
+        public boolean beforeRunHook(LocalNode n) {
             super.beforeRunHook(n);
             this.isReceiverHalf = true;
             this.local = n;
+            return true;
         }
 
         @Override
@@ -338,7 +345,9 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
                 Runnable r = () -> removeRequestEvent(n, getEventId());
                 cleanup.add(r);
 
-                this.replyTimeoutEvent = EventExecutor.sched(NetworkParams.NETWORK_TIMEOUT,
+                this.replyTimeoutEvent = EventExecutor.sched(
+                        "replyTimer-" + getEventId(),
+                        NetworkParams.NETWORK_TIMEOUT,
                         () -> {
                             RequestEvent<?, ?> ev1 = removeNotAckedEvent(n, getEventId());
                             RequestEvent<?, ?> ev2 = removeRequestEvent(n, getEventId());
@@ -433,12 +442,16 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
         }
 
         @Override
-        public void beforeRunHook(LocalNode n) {
-            System.out.println("ReplyEvent#beforeRunHook: reqEventId=" + reqEventId);
+        public boolean beforeRunHook(LocalNode n) {
             // restore transient "req" field
             RequestEvent<?, ?> r = RequestEvent.lookupRequestEvent(n, reqEventId);
-            assert r != null;
+            if (r == null) {
+                System.out.println("ReplyEvent#beforeRunHook: reqEventId=" + reqEventId + ": not found");
+                return false;
+            }
+            System.out.println("ReplyEvent#beforeRunHook: reqEventId=" + reqEventId);
             this.req = (T)r;
+            return true;
         }
 
         @Override

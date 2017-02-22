@@ -35,7 +35,7 @@ public class RQReply<T> extends ReplyEvent<RQRequest<T>, RQReply<T>> {
         if (val) {
             return name;
         } else {
-            return "";
+            return "!" + name;
         }
     }
 }

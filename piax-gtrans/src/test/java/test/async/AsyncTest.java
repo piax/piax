@@ -379,7 +379,7 @@ public class AsyncTest {
     public void testRQ1AggregateSlow() {
         TransOptions opts = new TransOptions();
         opts.setResponseType(ResponseType.AGGREGATE);
-        testRQ1(opts, new SlowValueProvider(300),
+        testRQ1(opts, new SlowValueProvider(2000),
                 new Range<Integer>(200, true, 400, false),
                 Arrays.asList(200, 300));
     }
@@ -388,6 +388,7 @@ public class AsyncTest {
     public void testRQ1DirectSlow() {
         TransOptions opts = new TransOptions();
         opts.setResponseType(ResponseType.DIRECT);
+        opts.setTimeout(20000);
         testRQ1(opts, new SlowValueProvider(300),
                 new Range<Integer>(200, true, 400, false),
                 Arrays.asList(200, 300));
@@ -416,6 +417,7 @@ public class AsyncTest {
                     .sorted()
                     .collect(Collectors.toList());
             System.out.println("RVALS = " + rvals);
+            System.out.println("EXPECT = " + expect);
             assertTrue(rvals.equals(expect));
             checkMemoryLeakage(nodes);
         }
@@ -456,7 +458,7 @@ public class AsyncTest {
         @Override
         public CompletableFuture<DdllKey> get(DdllKey key) {
             CompletableFuture<DdllKey> f = new CompletableFuture<>();
-            EventExecutor.sched(delay, () -> {
+            EventExecutor.sched("slowvalueprovider", delay, () -> {
                 System.out.println("provider finished: " + key);
                 f.complete(key);
             });

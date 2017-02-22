@@ -255,8 +255,9 @@ public class EventExecutor {
                         receiver + ": received in grace period: " + ev);
                 if (ev instanceof Lookup) {
                     addToRoute(ev.route, receiver);
-                    ev.beforeRunHook(receiver);
-                    ev.run();
+                    if (ev.beforeRunHook(receiver)) {
+                        ev.run();
+                    }
                 } else if (ev instanceof RequestEvent) {
                     receiver.post(new ErrorEvent((RequestEvent<?, ?>)ev, 
                             new GraceStateException()));
@@ -266,8 +267,9 @@ public class EventExecutor {
                 System.out.println("message received by deleted or failed node: " + ev);
             } else {
                 addToRoute(ev.route, receiver);
-                ev.beforeRunHook(receiver);
-                ev.run();
+                if (ev.beforeRunHook(receiver)) {
+                    ev.run();
+                }
             }
         }
     }

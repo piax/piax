@@ -177,7 +177,10 @@ public class LocalNode extends Node {
     public void post(Event ev, FailureCallback failure) {
         if (ev instanceof RequestEvent && failure == null) {
             RequestEvent<?, ?> req = (RequestEvent<?, ?>)ev;
-            failure = exc -> req.future.completeExceptionally(exc);
+            failure = exc -> {
+                System.out.println("got exception: " + exc + ", " + ev);
+                req.future.completeExceptionally(exc);
+            };
         }
         ev.sender = ev.origin = this;
         ev.route.add(this);
