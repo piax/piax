@@ -6,11 +6,11 @@ import org.piax.gtrans.async.Event;
 import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.ov.ring.rq.DKRangeRValue;
 
-public class RQReplyDirect extends Event {
-    final Collection<DKRangeRValue<?>> vals;
+public class RQReplyDirect<T> extends Event {
+    final Collection<DKRangeRValue<T>> vals;
     final int rootEventId;
     
-    public RQReplyDirect(RQRequest req, Collection<DKRangeRValue<?>> vals) {
+    public RQReplyDirect(RQRequest<T> req, Collection<DKRangeRValue<T>> vals) {
         super(req.root);
         this.rootEventId = req.rootEventId;
         this.vals = vals;
@@ -19,7 +19,8 @@ public class RQReplyDirect extends Event {
     @Override
     public void run() {
         LocalNode local = getLocalNode();
-        RQRequest ev = (RQRequest) RequestEvent.lookupRequestEvent(local,
+        @SuppressWarnings("unchecked")
+        RQRequest<T> ev = (RQRequest<T>) RequestEvent.lookupRequestEvent(local,
                 rootEventId);
         if (ev == null) {
             System.out.println("No RQRequest found: " + rootEventId);

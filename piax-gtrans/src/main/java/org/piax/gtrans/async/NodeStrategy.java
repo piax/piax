@@ -12,6 +12,7 @@ import org.piax.gtrans.RemoteValue;
 import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.async.Event.Lookup;
 import org.piax.gtrans.async.Event.LookupDone;
+import org.piax.gtrans.ov.async.rq.RQValueProvider;
 import org.piax.gtrans.ov.ddll.DdllKey;
 
 public abstract class NodeStrategy {
@@ -64,9 +65,10 @@ public abstract class NodeStrategy {
     }
     
 
-    public void rangeQuery(Collection<? extends Range<?>> ranges, Object query,
-            TransOptions opts, Consumer<RemoteValue<?>> resultsReceiver) {
-        getLower().rangeQuery(ranges, query, opts, resultsReceiver);
+    public <T> void rangeQuery(Collection<? extends Range<?>> ranges,
+            RQValueProvider<T> provider, TransOptions opts,
+            Consumer<RemoteValue<T>> resultsReceiver) {
+        getLower().rangeQuery(ranges, provider, opts, resultsReceiver);
     }
 
     public void handleLookup(Lookup lookup) {

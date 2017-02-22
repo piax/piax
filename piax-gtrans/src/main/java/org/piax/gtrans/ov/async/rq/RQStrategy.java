@@ -26,8 +26,6 @@ import org.slf4j.LoggerFactory;
 public class RQStrategy extends NodeStrategy {
     static final Logger logger = LoggerFactory.getLogger(RQStrategy.class);
 
-    public static RemoteValue<?> END_OF_RESULTS = new RemoteValue<>(null); 
-    
     public static class RQNodeFactory extends NodeFactory {
         final NodeFactory base;
         public RQNodeFactory(NodeFactory base) {
@@ -48,11 +46,11 @@ public class RQStrategy extends NodeStrategy {
     }
 
     @Override
-    public void rangeQuery(Collection<? extends Range<?>> ranges,
-            Object query, TransOptions opts,
-            Consumer<RemoteValue<?>> resultsReceiver) {
+    public <T> void rangeQuery(Collection<? extends Range<?>> ranges,
+            RQValueProvider<T> provider, TransOptions opts,
+            Consumer<RemoteValue<T>> resultsReceiver) {
         if (ranges.size() == 0) {
-            resultsReceiver.accept(END_OF_RESULTS);
+            resultsReceiver.accept(null);
             return;
         }
         // convert ranges of Comparable<?> into Set<RQRange>
@@ -63,7 +61,7 @@ public class RQStrategy extends NodeStrategy {
         }).collect(Collectors.toSet());
         
         n.post(new LocalEvent(n, () -> {
-            RQRequest root = new RQRequest(n, rqranges, query, opts,
+            RQRequest<T> root = new RQRequest<>(n, rqranges, provider, opts,
                     resultsReceiver);
             root.run();
         }));

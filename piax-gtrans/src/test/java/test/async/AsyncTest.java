@@ -41,7 +41,9 @@ import org.piax.gtrans.ov.async.ddll.DdllEvent.GetCandidates;
 import org.piax.gtrans.ov.async.ddll.DdllStrategy;
 import org.piax.gtrans.ov.async.ddll.DdllStrategy.DdllNodeFactory;
 import org.piax.gtrans.ov.async.ddll.DdllStrategy.SetRNakMode;
+import org.piax.gtrans.ov.async.rq.RQValueProvider;
 import org.piax.gtrans.ov.async.rq.RQStrategy.RQNodeFactory;
+import org.piax.gtrans.ov.async.rq.RQValueProvider.SimpleValueProvider;
 import org.piax.gtrans.ov.async.suzaku.SuzakuStrategy.SuzakuNodeFactory;
 import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.gtrans.raw.emu.EmuLocator;
@@ -359,43 +361,53 @@ public class AsyncTest {
     public void testRQ1Aggregate() {
         TransOptions opts = new TransOptions();
         opts.setResponseType(ResponseType.AGGREGATE);
-        testRQ1(opts);
+        testRQ1(opts, new SimpleValueProvider(),
+                new Range<Integer>(200, true, 400, false),
+                Arrays.asList(200, 300));
     }
 
     @Test
     public void testRQ1Direct() {
         TransOptions opts = new TransOptions();
         opts.setResponseType(ResponseType.DIRECT);
-        testRQ1(opts);
+        testRQ1(opts, new SimpleValueProvider(),
+                new Range<Integer>(200, true, 400, false),
+                Arrays.asList(200, 300));
     }
     
-    private void testRQ1(TransOptions opts) {
+    @Test
+    public void testRQ1AggregateSlow() {
+        TransOptions opts = new TransOptions();
+        opts.setResponseType(ResponseType.AGGREGATE);
+        testRQ1(opts, new SlowValueProvider(300),
+                new Range<Integer>(200, true, 400, false),
+                Arrays.asList(200, 300));
+    }
+
+    @Test
+    public void testRQ1DirectSlow() {
+        TransOptions opts = new TransOptions();
+        opts.setResponseType(ResponseType.DIRECT);
+        testRQ1(opts, new SlowValueProvider(300),
+                new Range<Integer>(200, true, 400, false),
+                Arrays.asList(200, 300));
+    }
+
+    private void testRQ1(TransOptions opts, RQValueProvider<DdllKey> provider,
+            Range<Integer> range, List<Integer> expect) {
         NodeFactory factory = new RQNodeFactory(new DdllNodeFactory());
         System.out.println("** testRQ1");
         init();
-        nodes = createNodes(factory, 5);
-        nodes[0].joinInitialNode();
+        createAndInsert(factory, 5);
         {
-            CompletableFuture<Boolean> f1 = nodes[1].joinAsync(nodes[0]);
-            CompletableFuture<Boolean> f2 = nodes[2].joinAsync(nodes[0]);
-            CompletableFuture<Boolean> f3 = nodes[3].joinAsync(nodes[0]);
-            CompletableFuture<Boolean> f4 = nodes[4].joinAsync(nodes[0]);
-            EventExecutor.startSimulation(30000);
-            checkCompleted(f1, f2, f3, f4);
-        }
-        checkConsistent(nodes);
-
-        {
-            Range<Integer> range = new Range<>(200, true, 400, false);
             Collection<Range<Integer>> ranges = Collections.singleton(range);
-            Object query = "Q";
             List<RemoteValue<DdllKey>> results = new ArrayList<>();
-            nodes[0].rangeQueryAsync(ranges, query, opts, (ret) -> {
-                System.out.println("RESULT:" + ret);
-                results.add((RemoteValue<DdllKey>)ret);
+            nodes[0].rangeQueryAsync(ranges, provider, 
+                    opts, (ret) -> {
+                System.out.println("GOT RESULT: " + ret);
+                results.add(ret);
             });
             EventExecutor.startSimulation(30000);
-            assertTrue(results.size() == 3);
             assertTrue(results.get(results.size() - 1 ) == null);
             List<?> rvals = results.stream()
                     .filter(Objects::nonNull)
@@ -403,10 +415,24 @@ public class AsyncTest {
                     .map(rv -> rv.getPrimaryKey()) // extract Comparable
                     .sorted()
                     .collect(Collectors.toList());
-            System.out.println("RVAL=" + rvals);
-            assertTrue(rvals.equals(Arrays.asList(200, 300)));
+            System.out.println("RVALS = " + rvals);
+            assertTrue(rvals.equals(expect));
             checkMemoryLeakage(nodes);
         }
+    }
+
+    private void createAndInsert(NodeFactory factory, int num) {
+        nodes = createNodes(factory, num);
+        nodes[0].joinInitialNode();
+        CompletableFuture<Boolean>[] futures = new CompletableFuture[num];
+        for (int i = 1; i < num; i++) {
+            futures[i] = nodes[i].joinAsync(nodes[0]);
+        }
+        EventExecutor.startSimulation(30000);
+        for (int i = 1; i < num; i++) {
+            checkCompleted(futures[i]);
+        }
+        checkConsistent(nodes);
     }
 
     public static Object getPrivateField(Object target, String field) {
@@ -419,6 +445,22 @@ public class AsyncTest {
                 | SecurityException | NoSuchFieldException e) {
             fail(e.toString());
             return null;
+        }
+    }
+    
+    public static class SlowValueProvider implements RQValueProvider<DdllKey> {
+        final int delay;
+        public SlowValueProvider(int delay) {
+            this.delay = delay;
+        }
+        @Override
+        public CompletableFuture<DdllKey> get(DdllKey key) {
+            CompletableFuture<DdllKey> f = new CompletableFuture<>();
+            EventExecutor.sched(delay, () -> {
+                System.out.println("provider finished: " + key);
+                f.complete(key);
+            });
+            return f;
         }
     }
 }

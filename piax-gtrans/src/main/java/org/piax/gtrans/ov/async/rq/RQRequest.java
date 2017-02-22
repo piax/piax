@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.NavigableMap;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -49,7 +50,7 @@ import org.slf4j.LoggerFactory;
  * this class also manages (partial) results returned from child nodes.
  * 
  */
-public class RQRequest extends StreamingRequestEvent<RQRequest, RQReply> {
+public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>> {
     /*--- logger ---*/
     private static final Logger logger =
             LoggerFactory.getLogger(RQRequest.class);
@@ -60,11 +61,10 @@ public class RQRequest extends StreamingRequestEvent<RQRequest, RQReply> {
 
     /** the target ranges, that is not modified */
     protected final Collection<RQRange> targetRanges;
-    /* query contents */
-    final Object query;
+    final RQValueProvider<T> provider;
     final TransOptions opts;
     final boolean isRoot;
-    transient final Consumer<RemoteValue<?>> resultsReceiver;  // root only
+    transient final Consumer<RemoteValue<T>> resultsReceiver;  // root only
 
     /**
      * failed links. this field is used for avoiding and repairing dead links.
@@ -73,7 +73,6 @@ public class RQRequest extends StreamingRequestEvent<RQRequest, RQReply> {
 
     transient RQCatcher catcher; // parent only
 
-    // for handling the left-most part of the query range
     enum SPECIAL {
         PADDING;
     }
@@ -86,9 +85,10 @@ public class RQRequest extends StreamingRequestEvent<RQRequest, RQReply> {
      * @param opts the transport options.
      * @param resultReceiver
      */
-    public RQRequest(Node receiver, Collection<RQRange> ranges, Object query,
-            TransOptions opts, Consumer<RemoteValue<?>> resultReceiver) {
-        this(receiver, ranges, query, opts, true, resultReceiver, null);
+    public RQRequest(Node receiver, Collection<RQRange> ranges, 
+            RQValueProvider<T> provider, TransOptions opts, 
+            Consumer<RemoteValue<T>> resultReceiver) {
+        this(receiver, ranges, provider, opts, true, resultReceiver, null);
     }
 
     /*
@@ -97,16 +97,16 @@ public class RQRequest extends StreamingRequestEvent<RQRequest, RQReply> {
      * !isParent -> resultReceiver == null
      */
     private RQRequest(Node receiver, 
-            Collection<RQRange> ranges, Object query,
+            Collection<RQRange> ranges, RQValueProvider<T> provider,
             TransOptions opts, boolean isParent,
-            Consumer<RemoteValue<?>> resultReceiver,
-            RQRequest parent) {
-        super(receiver, isParent, (RQReply rep) -> {
+            Consumer<RemoteValue<T>> resultsReceiver,
+            RQRequest<T> parent) {
+        super(receiver, isParent, (RQReply<T> rep) -> {
             parent.catcher.replyReceived(rep);
         }, (Throwable exc) -> {
             logger.debug("RQRequest: got exception: {}", exc);
         });
-        this.isRoot = resultReceiver != null;
+        this.isRoot = resultsReceiver != null;
         assert !isRoot || isParent; // isRoot -> isParent
         assert isParent || !isRoot; // !isParent -> !isRoot
         if (isRoot && opts.getResponseType() == ResponseType.DIRECT) {
@@ -122,9 +122,9 @@ public class RQRequest extends StreamingRequestEvent<RQRequest, RQReply> {
             this.root = null;
             this.rootEventId = 0;
         }
-        this.resultsReceiver = resultReceiver;
+        this.resultsReceiver = resultsReceiver;
         this.targetRanges = Collections.unmodifiableCollection(ranges);
-        this.query = query;
+        this.provider = provider;
         this.opts = opts;
         this.failedLinks = new HashSet<>();
         if (isParent) {
@@ -141,10 +141,10 @@ public class RQRequest extends StreamingRequestEvent<RQRequest, RQReply> {
      * @param newRQRange new RQRange for the child RQMessage
      * @return a instance of child RQMessage
      */
-    private RQRequest newChildInstance(Node receiver,
+    private RQRequest<T> newChildInstance(Node receiver,
             Collection<RQRange> newRQRange) {
-        RQRequest child = new RQRequest(receiver, newRQRange, this.query, this.opts,
-                false, null, this);
+        RQRequest<T> child = new RQRequest<>(receiver, newRQRange, this.provider,
+                this.opts, false, null, this);
         child.root = this.root;
         child.rootEventId = this.rootEventId;
         return child;
@@ -172,10 +172,6 @@ public class RQRequest extends StreamingRequestEvent<RQRequest, RQReply> {
         return targetRanges;
     }
 
-    public Object getQuery() {
-        return query;
-    }
-
     @Override
     public void run() {
         if (catcher == null) {
@@ -184,7 +180,7 @@ public class RQRequest extends StreamingRequestEvent<RQRequest, RQReply> {
         catcher.rqDisseminate();
     }
  
-    public void receiveReply(RQReplyDirect rep) {
+    public void receiveReply(RQReplyDirect<T> rep) {
         logger.debug("direct reply received: {}", rep);
         catcher.replyReceived(rep);
     }
@@ -211,10 +207,10 @@ public class RQRequest extends StreamingRequestEvent<RQRequest, RQReply> {
         /** return values */
         // XXX: return value 1つづつに DdllKeyRange を保持するのはメモリ効率が悪い．
         // XXX: 中継ノードから親ノードに渡すときに，連続するKeyRangeをまとめると良い．
-        final NavigableMap<DdllKey, DKRangeRValue<?>> rvals;
+        final NavigableMap<DdllKey, DKRangeRValue<T>> rvals;
 
         /** messages sent to children */
-        final Set<RQRequest> childMsgs = new HashSet<>();
+        final Set<RQRequest<T>> childMsgs = new HashSet<>();
 
         /** gaps (subranges that have not yet received any return values) */
         final Set<DdllKeyRange> gaps;
@@ -310,7 +306,7 @@ public class RQRequest extends StreamingRequestEvent<RQRequest, RQReply> {
                 .forEach(ent -> {
                     List<RQRange> sub = ent.getValue();
                     Node dlg = sub.get(0).getNode();
-                    RQRequest m = newChildInstance(dlg, sub);
+                    RQRequest<T> m = newChildInstance(dlg, sub);
                     logger.debug("send to child: {}", m);
                     this.childMsgs.add(m);
                     getLocalNode().post(m);
@@ -328,7 +324,7 @@ public class RQRequest extends StreamingRequestEvent<RQRequest, RQReply> {
                             logger.debug("expired: {}", this);
                             cleanup();
                             if (resultsReceiver != null) {
-                                resultsReceiver.accept(RQStrategy.END_OF_RESULTS);
+                                resultsReceiver.accept(null);
                             }
                         });
                 cleanup.add(() -> {
@@ -349,28 +345,31 @@ public class RQRequest extends StreamingRequestEvent<RQRequest, RQReply> {
             }
 
             // obtain values for local ranges
-            List<DKRangeRValue<?>> rvals = rqExecuteLocal(map.get(peerId));
-            logger.debug("rqDisseminate: rvals = {}", rvals);
-            
-            if (!isRoot) {
-                switch (rtype) {
-                case NO_RESPONSE:
-                    cleanup();
-                    break;
-                case DIRECT:
-                    addRemoteValues(rvals);
-                    break;
-                case AGGREGATE:
-                    addRemoteValues(rvals);
-                    if (!isCompleted()) {
-                        // when no RQReply is sent to the parent, send AckEvent instead.
-                        getLocalNode().post(new AckEvent(RQRequest.this, sender));
+            CompletableFuture<List<DKRangeRValue<T>>> future
+                = rqExecuteLocal(map.get(peerId));
+            future.thenAccept((List<DKRangeRValue<T>> rvals) -> {
+                logger.debug("rqDisseminate: rvals = {}", rvals);
+                if (!isRoot) {
+                    switch (rtype) {
+                    case NO_RESPONSE:
+                        cleanup();
+                        break;
+                    case DIRECT:
+                        addRemoteValues(rvals);
+                        break;
+                    case AGGREGATE:
+                        addRemoteValues(rvals);
+                        if (!isCompleted()) {
+                            // when no RQReply is sent to the parent, send AckEvent instead.
+                            // XXX: if the provider takes long time to finish, it'd be better to send AckEvent firstly.
+                            getLocalNode().post(new AckEvent(RQRequest.this, sender));
+                        }
+                        break;
+                    default:
+                        throw new Error("shouldn't happen");
                     }
-                    break;
-                default:
-                    throw new Error("shouldn't happen");
                 }
-            }
+            });
             logger.debug("rqDisseminate finished");
         }
 
@@ -479,7 +478,7 @@ public class RQRequest extends StreamingRequestEvent<RQRequest, RQReply> {
          * 
          * @param reply the reply message.
          */
-        void replyReceived(RQReply reply) {
+        void replyReceived(RQReply<T> reply) {
             logger.debug("RQRequest: reply received: {}", reply);
             reply.req.cleanup(); // cleanup sender half
             boolean rc = childMsgs.remove(reply.req);
@@ -491,7 +490,7 @@ public class RQRequest extends StreamingRequestEvent<RQRequest, RQReply> {
             addRemoteValues(reply.vals);
         }
 
-        void replyReceived(RQReplyDirect reply) {
+        void replyReceived(RQReplyDirect<T> reply) {
             incrementRcvCount();
             addRemoteValues(reply.vals);
         }
@@ -501,12 +500,12 @@ public class RQRequest extends StreamingRequestEvent<RQRequest, RQReply> {
          * 
          * @param ranges the ranges.
          */
-        private void addRemoteValues(Collection<DKRangeRValue<?>> ranges) {
+        private void addRemoteValues(Collection<DKRangeRValue<T>> ranges) {
             if (ranges == null) {
                 // ACKの代わりにRQReplyを受信した場合
                 return;
             }
-            for (DKRangeRValue<?> range : ranges) {
+            for (DKRangeRValue<T> range : ranges) {
                 addRemoteValue(range.getRemoteValue(), range);
             }
             logger.debug("gaps={}", gaps);
@@ -532,7 +531,7 @@ public class RQRequest extends StreamingRequestEvent<RQRequest, RQReply> {
             }
         }
 
-        private void addRemoteValue(RemoteValue<?> rval, Range<DdllKey> range) {
+        private void addRemoteValue(RemoteValue<T> rval, Range<DdllKey> range) {
             /*
              * 1. rvalsに，rvalを加える．同一のキーがあれば上書きする．
              *  NavigableMap<DdllKey, DKRangeRValue<?>> rvals;
@@ -571,10 +570,11 @@ public class RQRequest extends StreamingRequestEvent<RQRequest, RQReply> {
             if (isRoot) {
                 Object v = rval.getValue();
                 if (v instanceof MVal) {
-                    // in the future, MVal should be removed
-                    MVal mval = (MVal)v;
-                    for (ReturnValue<Object> o : mval.vals) {
-                        notifyResult(new RemoteValue<Object>(
+                    // MVal should be removed
+                    @SuppressWarnings("unchecked")
+                    MVal<T> mval = (MVal<T>)v;
+                    for (ReturnValue<T> o : mval.vals) {
+                        notifyResult(new RemoteValue<>(
                                 rval.getPeer(), o.getValue()));
                     }
                 } else {
@@ -586,7 +586,7 @@ public class RQRequest extends StreamingRequestEvent<RQRequest, RQReply> {
             }
         }
         
-        private void notifyResult(RemoteValue<?> rval) {
+        private void notifyResult(RemoteValue<T> rval) {
             if (rval == null || rval.getValue() != SPECIAL.PADDING) {
                 resultsReceiver.accept(rval);
             }
@@ -601,27 +601,27 @@ public class RQRequest extends StreamingRequestEvent<RQRequest, RQReply> {
             if (isRoot) {
                 return;
             }
-            Collection<DKRangeRValue<?>> vals = new ArrayList<>(rvals.values());
+            Collection<DKRangeRValue<T>> vals = new ArrayList<>(rvals.values());
             ResponseType rtype = opts.getResponseType();
             switch (rtype) {
             case NO_RESPONSE:
                 return;
             case DIRECT:
                 if (sender == root) {
-                    Event ev = new RQReply(RQRequest.this, vals, true);
+                    Event ev = new RQReply<T>(RQRequest.this, vals, true);
                     getLocalNode().post(ev);
                 } else {
                     if (rvals.size() > 0) {
-                        Event ev = new RQReplyDirect(RQRequest.this, vals);
+                        Event ev = new RQReplyDirect<T>(RQRequest.this, vals);
                         getLocalNode().post(ev);
                     }
                     // send RQReply to parent instead of Ack
-                    Event ev = new RQReply(RQRequest.this, null, true);
+                    Event ev = new RQReply<T>(RQRequest.this, null, true);
                     getLocalNode().post(ev);
                 }
                 break;
             case AGGREGATE:
-                Event ev = new RQReply(RQRequest.this, vals, isCompleted());
+                Event ev = new RQReply<T>(RQRequest.this, vals, isCompleted());
                 getLocalNode().post(ev);
                 break;
             default:
@@ -671,34 +671,50 @@ public class RQRequest extends StreamingRequestEvent<RQRequest, RQReply> {
         }
 
         /**
-         * execute the execQuery at local node
-         * @param list このノードが担当する範囲のリスト．各範囲はtargetRangeに含まれる
-         * @param rvals
+         * obtain a result value from local node.
+         *  
+         * @param ranges このノードが担当する範囲のリスト．各範囲はtargetRangeに含まれる
+         * @returns CompletableFuture
          */
-        public List<DKRangeRValue<?>> rqExecuteLocal(List<RQRange> list) {
-            logger.debug("rqExecuteLocal: list={}", list);
+        private CompletableFuture<List<DKRangeRValue<T>>>
+        rqExecuteLocal(List<RQRange> ranges) {
+            logger.debug("rqExecuteLocal: list={}", ranges);
             // results of locally-resolved ranges
-            List<DKRangeRValue<?>> rvals = new ArrayList<>();
-            if (list == null) {
-                return rvals;
+            List<DKRangeRValue<T>> rvals = new ArrayList<>();
+            if (ranges == null) {
+                return CompletableFuture.completedFuture(rvals);
             }
-            for (RQRange r : list) {
-                Object val = SPECIAL.PADDING;
-                if (r.contains(r.getNode().key)) {
-                    val = getLocalNode().key;
-                }
-                RemoteValue<?> rval = new RemoteValue<>(getLocalNode().peerId,
-                        val);
-                rvals.add(new DKRangeRValue<>(rval, r));
-            }
-            return rvals;
+            @SuppressWarnings("unchecked")
+            CompletableFuture<Void> futures = ranges.stream()
+                .map(r -> {
+                    // 1) obtain a value from provider
+                    CompletableFuture<T> f;
+                    if (!r.contains(r.getNode().key)) {
+                        // although SPECIAL.PADDING is not type of T, the following
+                        // assignment is safe because it is used just as a marker. 
+                        f = CompletableFuture.completedFuture((T)SPECIAL.PADDING);
+                    } else {
+                        // XXX: consider the case where provider throws exception
+                        f = provider.get(getLocalNode().key);
+                    }
+                    return f.thenAccept((T val) -> {
+                        // 2) on provider completion, adds the value to rvals 
+                        RemoteValue<T> rval = new RemoteValue<>(getLocalNode().peerId, val);
+                        rvals.add(new DKRangeRValue<T>(rval, r));
+                    });
+                })
+                .reduce((a, b) -> a.runAfterBoth(b, () -> {}))
+                .orElse(null);
+            CompletableFuture<List<DKRangeRValue<T>>> rc = new CompletableFuture<>();
+            futures.thenRun(() -> rc.complete(rvals));
+            return rc;
         }
     }
-
-    public static class MVal implements Serializable {
+    
+    public static class MVal<T> implements Serializable {
         private static final long serialVersionUID = 1L;
-        public List<ReturnValue<Object>> vals =
-                new ArrayList<ReturnValue<Object>>();
+        public List<ReturnValue<T>> vals =
+                new ArrayList<ReturnValue<T>>();
 
         public String toString() {
             return "" + vals;

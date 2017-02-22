@@ -30,6 +30,7 @@ import org.piax.gtrans.async.EventException.RetriableException;
 import org.piax.gtrans.async.EventSender.EventSenderNet;
 import org.piax.gtrans.async.EventSender.EventSenderSim;
 import org.piax.gtrans.async.Sim.LookupStat;
+import org.piax.gtrans.ov.async.rq.RQValueProvider;
 import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.util.UniqId;
 
@@ -369,10 +370,10 @@ public class LocalNode extends Node {
         return future;
     }
     
-    public void rangeQueryAsync(Collection<? extends Range<?>> ranges,
-            Object query, TransOptions opts,
-            Consumer<RemoteValue<?>> resultsReceiver) {
-        getTopStrategy().rangeQuery(ranges, query, opts, resultsReceiver);
+    public <T> void rangeQueryAsync(Collection<? extends Range<?>> ranges,
+            RQValueProvider<T> provider, TransOptions opts,
+            Consumer<RemoteValue<T>> resultsReceiver) {
+        getTopStrategy().rangeQuery(ranges, provider, opts, resultsReceiver);
     }
 
     public void fail() {
