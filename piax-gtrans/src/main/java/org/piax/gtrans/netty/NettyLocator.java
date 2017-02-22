@@ -110,11 +110,11 @@ public class NettyLocator extends PeerLocator implements NettyEndpoint {
             throws IOException {
         return null;
     }
-    
+
     public String getKeyString() {
         return type + ":" + toString();
     }
-    
+
     @Override
     public int hashCode() {
         return (type + ":" + toString()).hashCode();

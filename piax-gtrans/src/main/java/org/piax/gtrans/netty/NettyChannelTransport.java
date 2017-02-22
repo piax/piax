@@ -63,7 +63,7 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
     protected AtomicInteger seq;
     final public int RAW_POOL_SIZE = 10;
     
-    public AttributeKey<String> rawKey = AttributeKey.valueOf("rawKey");
+    public AttributeKey<String> rawChannelKey = AttributeKey.valueOf("rawKey");
 
     enum AttemptType {
         ATTEMPT, ACK, NACK 
@@ -130,7 +130,7 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
         raws.put(locator, ch);
     }
 
-    NettyRawChannel<E> getRaw(E locator) {
+    protected NettyRawChannel<E> getRaw(E locator) {
         return raws.get(locator);
     }
 
@@ -252,7 +252,7 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
 
     void outboundActive(NettyRawChannel<E> raw, ChannelHandlerContext ctx) {
         logger.debug("outbound active: " + ctx.channel().remoteAddress());
-        ctx.channel().attr(rawKey).set(raw.getRemote().getKeyString());
+        ctx.channel().attr(rawChannelKey).set(raw.getRemote().getKeyString());
         cchannels.add(ctx.channel());
         int attemptRand = rand.nextInt();
         // is this valid only for tcp channel?
@@ -278,7 +278,7 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
 
     void outboundInactive(ChannelHandlerContext ctx) {
         logger.debug("outbound inactive: " + ctx.channel().remoteAddress());
-        String key = ctx.channel().attr(rawKey).get();
+        String key = ctx.channel().attr(rawChannelKey).get();
         //logger.info("outbound raw key: " + key);
         deleteRaw(key);
         /*
@@ -299,7 +299,7 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
 
     void inboundInactive(ChannelHandlerContext ctx) {
         logger.debug("inbound inactive: " + ctx.channel().remoteAddress());
-        String key = ctx.channel().attr(rawKey).get();
+        String key = ctx.channel().attr(rawChannelKey).get();
         //logger.info("inbound raw key : {} on {}", key, ctx.channel().localAddress());
         // Sometimes, the key is null.
         if (key != null) {
@@ -318,8 +318,6 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
     }
 
     protected static final int CHANNEL_ESTABLISH_TIMEOUT = 10000;
-    protected static final int NAT_FORWARD_HOPS_LIMIT = 3;
-    public int forwardCount = 0;
 
     void inboundReceive(ChannelHandlerContext ctx, Object msg) {
         if (msg instanceof AttemptMessage<?>) {
@@ -368,7 +366,7 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
                         // cache not found. just accept it.
                         raw = new NettyRawChannel<E>(attempt.getSource(), this);
                         synchronized(raw) {
-                            ctx.channel().attr(rawKey).set(raw.getRemote().getKeyString());
+                            ctx.channel().attr(rawChannelKey).set(raw.getRemote().getKeyString());
                             // accept attempt.
                             raw.setStat(Stat.RUN);
                             raw.setContext(ctx);
@@ -391,7 +389,7 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
         } else if (msg instanceof NettyMessage<?>) {
             NettyMessage<E> nmsg = (NettyMessage<E>) msg;
             logger.debug("inbound received msg: " + nmsg.getMsg() + " on " + locator
-                    + " from " + nmsg.getSourceLocator() + " to " + nmsg.getDestinationLocator());
+                    + " from " + nmsg.getSource() + " to " + nmsg.getDestination());
             
             if (filterMessage(nmsg)) {
                 return;
@@ -403,13 +401,13 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
                     ch = getChannel(nmsg.channelNo(), (E)nmsg.getChannelInitiator());
                     if (ch == null) {
                         synchronized (raws) {
-                            NettyRawChannel<E> raw = getRaw(nmsg.getSourceLocator());
+                            NettyRawChannel<E> raw = getRaw(nmsg.getSource());
                             if (raw == null || raw.getStat() != Stat.RUN) {
                                 // might receive message in WAIT state.
                                 logger.info(
                                         "receive in illegal state {} from {} (channel not running): throwing it away.",
                                         raw == null ? "null" : raw.getStat(),
-                                        nmsg.getSourceLocator());
+                                        nmsg.getSource());
                             } else {
                                 // channel is created on the first message
                                 // arrival.
@@ -486,7 +484,7 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
         }
         else if (msg instanceof NettyMessage) {
             NettyMessage<E> nmsg = (NettyMessage<E>) msg;
-            logger.debug("outbound received msg: " + nmsg.getMsg() + " on " + locator + " from " + nmsg.getSourceLocator()  + " to " + nmsg.getDestinationLocator());
+            logger.debug("outbound received msg: " + nmsg.getMsg() + " on " + locator + " from " + nmsg.getSource()  + " to " + nmsg.getDestination());
 
             if (filterMessage(nmsg)) {
                 return;
@@ -532,8 +530,8 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
         if (!nmsg.isChannelSend()) {
             TransportListener<E> listener = (TransportListener<E>)getListener(nmsg.getObjectId());
             if (listener != null) {
-                ReceivedMessage rmsg = new ReceivedMessage(nmsg.getObjectId(), nmsg.getSourceLocator(), nmsg.getMsg());
-                logger.debug("trans received {} on {}", rmsg.getMessage(), nmsg.getSourceLocator());
+                ReceivedMessage rmsg = new ReceivedMessage(nmsg.getObjectId(), nmsg.getSource(), nmsg.getMsg());
+                logger.debug("trans received {} on {}", rmsg.getMessage(), nmsg.getSource());
                 listener.onReceive((Transport<E>)this, rmsg);
             }
         }

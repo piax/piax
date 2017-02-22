@@ -8,8 +8,8 @@ import org.piax.common.PeerId;
 
 public class NettyMessage<E extends NettyEndpoint> implements Serializable {
     private static final long serialVersionUID = -5499407890598183414L;
-    private E srcLocator;
-    private final E dstLocator;
+    private E src;
+    private final E dst;
     private final E channelInitiator;
     private final ObjectId sender;
     private final PeerId peerId;
@@ -22,8 +22,8 @@ public class NettyMessage<E extends NettyEndpoint> implements Serializable {
             PeerId peerId, Object msg, 
             boolean isChannelSend, int channelNo) {
         this.sender = upper;
-        this.srcLocator = src;
-        this.dstLocator = dst;
+        this.src = src;
+        this.dst = dst;
         this.channelInitiator = channelInitiator;
         this.peerId = peerId;
         this.msg = msg;
@@ -36,16 +36,16 @@ public class NettyMessage<E extends NettyEndpoint> implements Serializable {
         return sender;
     }
 
-    public E getSourceLocator() {
-        return srcLocator;
+    public E getSource() {
+        return src;
     }
     
-    public void setSourceLocator(E locator) {
-        this.srcLocator = locator;
+    public void setSource(E locator) {
+        this.src = locator;
     }
     
-    public E getDestinationLocator() {
-        return dstLocator;
+    public E getDestination() {
+        return dst;
     }
 
     public E getChannelInitiator() {
@@ -77,6 +77,6 @@ public class NettyMessage<E extends NettyEndpoint> implements Serializable {
     }
 
     public String toString() {
-        return "locator=" + srcLocator + ",objectId=" + sender + "msg=" + msg;
+        return "locator=" + src + ",objectId=" + sender + "msg=" + msg;
     }
 }
