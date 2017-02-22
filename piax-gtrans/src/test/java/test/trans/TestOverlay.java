@@ -887,11 +887,11 @@ public class TestOverlay {
                 }
                 if (i != numOfPeers - 1) {
                     assertTrue(((DoubleKey) (trs[i].getRight(new DoubleKey(
-                            (double) i)).key.getPrimaryKey())).getKey() == (double) i + 1);
+                            (double) i)).key.getRawKey())).getKey() == (double) i + 1);
                 }
                 if (i != 0) {
                     assertTrue(((DoubleKey) (trs[i].getLeft(new DoubleKey(
-                            (double) i)).key.getPrimaryKey())).getKey() == (double) i - 1);
+                            (double) i)).key.getRawKey())).getKey() == (double) i - 1);
                 }
             }
 
@@ -973,11 +973,11 @@ public class TestOverlay {
                 }
                 if (i != numOfPeers - 1) {
                     assertTrue(((DoubleKey) (trs[i].getRight(new DoubleKey(
-                            (double) i)).key.getPrimaryKey())).getKey() == (double) i + 1);
+                            (double) i)).key.getRawKey())).getKey() == (double) i + 1);
                 }
                 if (i != 0) {
                     assertTrue(((DoubleKey) (trs[i].getLeft(new DoubleKey(
-                            (double) i)).key.getPrimaryKey())).getKey() == (double) i - 1);
+                            (double) i)).key.getRawKey())).getKey() == (double) i - 1);
                 }
             }
         } finally {
