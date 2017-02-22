@@ -5,6 +5,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
+import org.piax.common.Endpoint;
 import org.piax.common.ObjectId;
 import org.piax.common.TransportId;
 import org.piax.gtrans.Channel;
@@ -13,23 +14,23 @@ import org.piax.gtrans.netty.nat.NettyNATLocator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class NettyChannel implements Channel<NettyLocator> {
+public class NettyChannel<E extends NettyEndpoint> implements Channel<E> {
 
     final ObjectId localObjectId;
     final ObjectId remoteObjectId;
-    final NettyLocator channelInitiator;
-    final NettyLocator dst;
-    NettyRawChannel raw;
+    final E channelInitiator;
+    final E dst;
+    NettyRawChannel<E> raw;
     final boolean isCreator;
-    final NettyChannelTransport trans;
+    final NettyChannelTransport<E> trans;
     private final BlockingQueue<Object> rcvQueue;
     final int id;
     boolean isClosed;
     private static final Logger logger = LoggerFactory.getLogger(NettyChannel.class.getName());
 
-    public NettyChannel(int channelNo, NettyLocator channelInitiator,
-            NettyLocator destination,
-            ObjectId localObjectId, ObjectId remoteObjectId, boolean isCreator, NettyRawChannel raw, NettyChannelTransport trans) {
+    public NettyChannel(int channelNo, E channelInitiator,
+            E destination,
+            ObjectId localObjectId, ObjectId remoteObjectId, boolean isCreator, NettyRawChannel<E> raw, NettyChannelTransport<E> trans) {
         this.id = channelNo;
         this.channelInitiator = channelInitiator;
         this.dst = destination;
@@ -73,8 +74,8 @@ public class NettyChannel implements Channel<NettyLocator> {
     }
 
     @Override
-    public NettyLocator getLocal() {
-        return trans.locator;
+    public E getLocal() {
+        return (E)trans.getEndpoint();
       //return raw.getLocal();
     }
 
@@ -84,7 +85,7 @@ public class NettyChannel implements Channel<NettyLocator> {
     }
 
     @Override
-    public NettyLocator getRemote() {
+    public E getRemote() {
         return dst;
         //return raw.getRemote();
     }
@@ -105,7 +106,7 @@ public class NettyChannel implements Channel<NettyLocator> {
         return channelInitiator.equals(trans.locator);
     }
 
-    public NettyLocator getChannelInitiator() {
+    public E getChannelInitiator() {
         return channelInitiator;
     }
 
@@ -118,19 +119,9 @@ public class NettyChannel implements Channel<NettyLocator> {
             logger.debug("re-creating the raw channel for {}", getRemote());
             raw = trans.getRawCreateAsClient(getRemote());
         }
-        NettyLocator src = raw.getLocal();
-        if (NettyChannelTransport.NAT_SUPPORT) {
-            if (src instanceof NettyNATLocator) {
-                logger.debug("on {}, update from {}", raw, src);
-                ((NettyNATLocator)src).updateRawChannelLocators(trans);
-                logger.debug("updated to {}", src);
-            }
-            //if (raw.getRemote() instanceof NettyNATLocator) {
-            logger.debug("on {}, send to {}, channel.remote={}", raw, raw.getRemote(), getRemote());
-            //}
-        }
-
-        NettyMessage nmsg = new NettyMessage(remoteObjectId, src,
+        E src = raw.getLocal();
+        trans.channelSendHook(src, dst);
+        NettyMessage<E> nmsg = new NettyMessage<E>(remoteObjectId, src,
                 dst,
                 getChannelInitiator(), raw.getPeerId(), msg, true,
                 getChannelNo());

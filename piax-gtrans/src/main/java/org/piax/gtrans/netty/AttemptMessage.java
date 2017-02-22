@@ -2,14 +2,15 @@ package org.piax.gtrans.netty;
 
 import java.io.Serializable;
 
+import org.piax.common.Endpoint;
 import org.piax.gtrans.netty.NettyChannelTransport.AttemptType;
 
-class AttemptMessage implements Serializable {
+class AttemptMessage<E extends NettyEndpoint> implements Serializable {
     private static final long serialVersionUID = 4729231253864270776L;
     final AttemptType type;
-    final NettyLocator source;
+    final E source;
     final Object arg;
-    public AttemptMessage(AttemptType type, NettyLocator source, Object arg) {
+    public AttemptMessage(AttemptType type, E source, Object arg) {
         this.type = type;
         this.source = source;
         this.arg = arg;
@@ -23,7 +24,7 @@ class AttemptMessage implements Serializable {
         return arg;
     }
 
-    public NettyLocator getSource() {
+    public E getSource() {
         return source;
     }
 }

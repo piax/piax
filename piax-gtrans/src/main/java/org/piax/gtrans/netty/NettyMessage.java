@@ -2,14 +2,15 @@ package org.piax.gtrans.netty;
 
 import java.io.Serializable;
 
+import org.piax.common.Endpoint;
 import org.piax.common.ObjectId;
 import org.piax.common.PeerId;
 
-public class NettyMessage implements Serializable {
+public class NettyMessage<E extends NettyEndpoint> implements Serializable {
     private static final long serialVersionUID = -5499407890598183414L;
-    private NettyLocator srcLocator;
-    private final NettyLocator dstLocator;
-    private final NettyLocator channelInitiator;
+    private E srcLocator;
+    private final E dstLocator;
+    private final E channelInitiator;
     private final ObjectId sender;
     private final PeerId peerId;
     private final Object msg;
@@ -17,7 +18,7 @@ public class NettyMessage implements Serializable {
     private final int channelNo; // the channel number
     private int hops;
 
-    public NettyMessage(ObjectId upper, NettyLocator src, NettyLocator dst, NettyLocator channelInitiator,
+    public NettyMessage(ObjectId upper, E src, E dst, E channelInitiator,
             PeerId peerId, Object msg, 
             boolean isChannelSend, int channelNo) {
         this.sender = upper;
@@ -35,19 +36,19 @@ public class NettyMessage implements Serializable {
         return sender;
     }
 
-    public NettyLocator getSourceLocator() {
+    public E getSourceLocator() {
         return srcLocator;
     }
     
-    public void setSourceLocator(NettyLocator locator) {
+    public void setSourceLocator(E locator) {
         this.srcLocator = locator;
     }
     
-    public NettyLocator getDestinationLocator() {
+    public E getDestinationLocator() {
         return dstLocator;
     }
 
-    public NettyLocator getChannelInitiator() {
+    public E getChannelInitiator() {
         return channelInitiator;
     }
 

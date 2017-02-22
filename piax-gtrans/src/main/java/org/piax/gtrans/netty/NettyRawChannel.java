@@ -4,6 +4,7 @@ import io.netty.channel.ChannelHandlerContext;
 
 import java.io.IOException;
 
+import org.piax.common.Endpoint;
 import org.piax.common.ObjectId;
 import org.piax.common.PeerId;
 import org.piax.common.TransportId;
@@ -13,11 +14,11 @@ import org.piax.gtrans.netty.nat.NettyNATLocator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class NettyRawChannel implements Channel<NettyLocator> {
+public class NettyRawChannel<E extends NettyEndpoint> implements Channel<E> {
 
     private ChannelHandlerContext ctx;
-    private final NettyLocator remote;
-    private final NettyChannelTransport mother;
+    private final E remote;
+    private final NettyChannelTransport<E> mother;
     private static final Logger logger = LoggerFactory.getLogger(NettyRawChannel.class.getName());
     Integer attempt = null;
     long lastUse;
@@ -33,7 +34,7 @@ public class NettyRawChannel implements Channel<NettyLocator> {
     }
     Stat stat;
 
-    public NettyRawChannel(NettyChannelTransport mother) {
+    public NettyRawChannel(NettyChannelTransport<E> mother) {
         this.remote = null; // loopback
         this.mother = mother;
         this.attempt = null;
@@ -44,7 +45,7 @@ public class NettyRawChannel implements Channel<NettyLocator> {
         priority = 0;
     }
     
-    public NettyRawChannel(NettyLocator remote, NettyChannelTransport mother) {
+    public NettyRawChannel(E remote, NettyChannelTransport<E> mother) {
         this.remote = remote;
         this.mother = mother;
         this.attempt = null;
@@ -55,7 +56,7 @@ public class NettyRawChannel implements Channel<NettyLocator> {
         priority = 0;
     }
     
-    public NettyRawChannel(NettyLocator remote, NettyChannelTransport mother, boolean isCreatorSide) {
+    public NettyRawChannel(E remote, NettyChannelTransport<E> mother, boolean isCreatorSide) {
         this.remote = remote;
         this.mother = mother;
         this.attempt = null;
@@ -105,7 +106,7 @@ public class NettyRawChannel implements Channel<NettyLocator> {
     }
 
     @Override
-    public NettyLocator getLocal() {
+    public E getLocal() {
         return mother.getEndpoint();
     }
 
@@ -115,7 +116,7 @@ public class NettyRawChannel implements Channel<NettyLocator> {
     }
 
     @Override
-    public NettyLocator getRemote() {
+    public E getRemote() {
         return remote;
     }
 
@@ -173,13 +174,13 @@ public class NettyRawChannel implements Channel<NettyLocator> {
     @Override
     public void send(Object msg) throws IOException {
         touch();
-        if (NettyChannelTransport.NAT_SUPPORT) {
+        //if (NettyChannelTransport.NAT_SUPPORT) {
             // just for count
-            if (getRemote() instanceof NettyNATLocator) {
-                logger.debug("forwarding {} on {} to {}", ((NettyMessage)msg).getMsg(), getLocal(), ((NettyMessage)msg).getDestinationLocator());
-                mother.forwardCount++;
-            }
-        }
+        //    if (getRemote() instanceof NettyNATLocator) {
+        //        logger.debug("forwarding {} on {} to {}", ((NettyMessage)msg).getMsg(), getLocal(), ((NettyMessage)msg).getDestinationLocator());
+        //        mother.forwardCount++;
+        //    }
+        //}
         // object is supposed to be a NettyMessage
         logger.debug("sending {} from {} to {}", ((NettyMessage)msg).getMsg(), getLocal(), getRemote());
         if (stat == Stat.RUN && ctx.channel().isOpen()) {

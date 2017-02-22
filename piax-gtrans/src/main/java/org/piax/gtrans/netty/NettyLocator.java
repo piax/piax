@@ -9,9 +9,9 @@ import org.piax.common.PeerLocator;
 import org.piax.gtrans.ProtocolUnsupportedException;
 import org.piax.gtrans.raw.RawTransport;
 
-public class NettyLocator extends PeerLocator {
+public class NettyLocator extends PeerLocator implements NettyEndpoint {
     
-    protected enum TYPE {
+    public enum TYPE {
         TCP, SSL, WS, WSS, UDT
     };
     TYPE type;
@@ -113,6 +113,11 @@ public class NettyLocator extends PeerLocator {
     
     public String getKeyString() {
         return type + ":" + toString();
+    }
+    
+    @Override
+    public int hashCode() {
+        return (type + ":" + toString()).hashCode();
     }
 
     @Override
