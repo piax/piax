@@ -281,17 +281,28 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         }
         
         /*
+         * Message Sequences:
+         * 
+         * NO_RESPONSE:
+         * 
+         *   ROOT----RQRequest---->CHILD1                 CHILD2
+         *     |                     |------RQRequest------>|
+         *
+         * 
          * DIRECT:
          *
-         *   ROOT----RQRequest---->CHILD1
-         *     |<-----RQReply--------|------RQRequest---->CHILD2
+         *   ROOT----RQRequest---->CHILD1                 CHILD2
+         *     |<-----RQReply--------|------RQRequest------>|
          *     |                     |<----RQReply(dummy)---|
          *     |<-------------------------RQReplyDirect-----|
+         *  
+         *  - always send RQReply to the parent node.
+         *  - no AckEvent is used. 
          * 
          * AGGREGATE:
          *
-         *   ROOT----RQRequest---->CHILD1
-         *     |<-----AckEvent-------|------RQRequest---->CHILD2
+         *   ROOT----RQRequest---->CHILD1                 CHILD2
+         *     |<-----AckEvent-------|------RQRequest------>|
          *     |                     |<------RQReply--------|
          *     |<-----RQReply--------|                      |
          *
@@ -470,8 +481,8 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             for (int i = 0; i < included.size(); i++) {
                 Node ent = included.get(i);
                 Node next = (i == included.size() - 1) ? null : included.get(i + 1);
-                DdllKey from = (i == 0) ? queryRange.from : ent.key;
-                DdllKey to = (i == included.size() - 1) ? queryRange.to: next.key; 
+                DdllKey from = ent.key;
+                DdllKey to = (next == null ? queryRange.to: next.key); 
                 RQRange r = new RQRange(ent, from, to);
                 r.assignSubId(queryRange);
                 list.add(r);
