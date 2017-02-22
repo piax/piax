@@ -1816,7 +1816,7 @@ public class Node {
         for (Link node : nbrs) {
             logger.debug("checking {}", node);
             // ignore the ghost of myself (XXX: THINK!)
-            if (node.key.primaryKey.equals(me.key.primaryKey)
+            if (node.key.rawKey.equals(me.key.rawKey)
                     && node.addr.equals(me.addr) && !node.equals(me)) {
                 continue;
             }

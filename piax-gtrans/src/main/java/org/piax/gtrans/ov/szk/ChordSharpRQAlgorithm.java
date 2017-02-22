@@ -140,7 +140,7 @@ public class ChordSharpRQAlgorithm<E extends Endpoint> implements RQAlgorithm {
         }
         for (DKRangeLink kr : list) {
             Link link = kr.getLink();
-            RQVNode<E> n = manager.getVNode(link.key.getPrimaryKey());
+            RQVNode<E> n = manager.getVNode(link.key.getRawKey());
             if (n == null) {
                 throw new Error("no VNode is found for" + kr);
             }

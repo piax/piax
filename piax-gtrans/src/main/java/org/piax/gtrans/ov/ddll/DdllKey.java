@@ -44,7 +44,7 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
     private static KeyComparator keyComp = KeyComparator.getInstance();
 
     // 主キー
-    final Comparable<?> primaryKey;
+    final Comparable<?> rawKey;
     final UniqId uniqId;
     // 以下は大小比較の際考慮しない．
     // 同一物理ノードの間でキーを識別するための識別子
@@ -54,10 +54,10 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
     private final int hash; 
     
     public DdllKey(Comparable<?> key, UniqId uniqId, String id, Object appData) {
-        this.primaryKey = key;
+        this.rawKey = key;
         this.uniqId = uniqId;
         this.id = id;
-        int h = primaryKey.hashCode();
+        int h = rawKey.hashCode();
         if (uniqId != null) {
             h ^= uniqId.hashCode();
         }
@@ -70,12 +70,12 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
     }
 
     /**
-     * get primaryKey portion of the key
+     * get rawKey portion of the key
      * 
-     * @return the primary key
+     * @return the raw key
      **/
-    public Comparable<?> getPrimaryKey() {
-        return primaryKey;
+    public Comparable<?> getRawKey() {
+        return rawKey;
     }
 
     /**
@@ -92,7 +92,7 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
     }
 
     public int compareTo(DdllKey o) {
-        int cmp = keyComp.compare(primaryKey, o.primaryKey);
+        int cmp = keyComp.compare(rawKey, o.rawKey);
         if (cmp != 0) {
             if (logger.isDebugEnabled()) {
                 logger.debug("compareTo: " + this + ", " + o + " = " + cmp);
@@ -118,7 +118,7 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
             return false;
         }
         DdllKey o = (DdllKey)obj;
-        if (!primaryKey.equals(o.primaryKey)) {
+        if (!rawKey.equals(o.rawKey)) {
             return false;
         }
         if (!uniqId.equals(o.uniqId)) {
@@ -137,7 +137,7 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
      * @return  comparison results
      */
     public boolean equals2(DdllKey o) {
-        if (!primaryKey.equals(o.primaryKey)) {
+        if (!rawKey.equals(o.rawKey)) {
             return false;
         }
         if (!uniqId.equals(o.uniqId)) {
@@ -170,7 +170,7 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
                 s = s.substring(0, 4);
             }
         }
-        return primaryKey.toString() + "!" + s
+        return rawKey.toString() + "!" + s
             + (id.equals("") ? "" : "." + id);
     }
 
@@ -190,6 +190,6 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
      * @return  the DdllKey with the specified ID
      */
     public DdllKey getIdChangedKey(String id) {
-        return new DdllKey(primaryKey, uniqId, id, appData);
+        return new DdllKey(rawKey, uniqId, id, appData);
     }
 }

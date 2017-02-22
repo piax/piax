@@ -805,7 +805,7 @@ public class RQManager<E extends Endpoint> extends RingManager<E> implements
             // 例えば key 0 しか存在しないときに，find() で -1 を検索すると，一周して
             // key 0 が帰ってくる．この場合はクエリ対象が存在しないので終了する．
             if (!wrapAround
-                    && keyComp.compare(rawFromKey, n.key.getPrimaryKey()) < 0) {
+                    && keyComp.compare(rawFromKey, n.key.getRawKey()) < 0) {
                 logger.debug("forwardQueryLeft: finish (no node is smaller than rawFromKey)");
                 break;
             }
@@ -817,7 +817,7 @@ public class RQManager<E extends Endpoint> extends RingManager<E> implements
             // 実行するかどうかを決定する．
             boolean doAction = true;
             try {
-                eqr = stub.invokeExecQuery(n.key.getPrimaryKey(), nRight,
+                eqr = stub.invokeExecQuery(n.key.getRawKey(), nRight,
                 		  qid, doAction, query, opts);
             } catch (RightNodeMismatch e) {
                 // XXX: not tested

@@ -556,7 +556,7 @@ public class SGNode<E extends Endpoint> implements NodeObserver {
             SGNodeInfo inf;
             try {
                 logger.debug("findMatchingNode: calling getSGNodeInfo on {}", n);
-                inf = stub.getSGNodeInfo(n.key.getPrimaryKey(), level - 1, mv,
+                inf = stub.getSGNodeInfo(n.key.getRawKey(), level - 1, mv,
                         traversed);
                 if (inf == null) {
                     // nが削除中で対応するレベルが消えている場合．
@@ -1030,7 +1030,7 @@ public class SGNode<E extends Endpoint> implements NodeObserver {
             try {
                 SkipGraphIf<E> stub = sg.getStub((E) right.addr);
                 logger.debug("{}: forward right {} at L{}", h, right, level);
-                stub.fixAndPropagateSingle(right.key.getPrimaryKey(), failedLink,
+                stub.fixAndPropagateSingle(right.key.getRawKey(), failedLink,
                         failedLinks, rLimit);
             } catch (RPCException e) {
                 logger.info("", e);
