@@ -361,7 +361,7 @@ public class AsyncTest {
     public void testRQ1Aggregate() {
         TransOptions opts = new TransOptions();
         opts.setResponseType(ResponseType.AGGREGATE);
-        testRQ1(opts, new SimpleValueProvider(),
+        testRQ1(new DdllNodeFactory(), opts, new SimpleValueProvider(),
                 new Range<Integer>(200, true, 400, false),
                 Arrays.asList(200, 300));
     }
@@ -370,7 +370,7 @@ public class AsyncTest {
     public void testRQ1Direct() {
         TransOptions opts = new TransOptions();
         opts.setResponseType(ResponseType.DIRECT);
-        testRQ1(opts, new SimpleValueProvider(),
+        testRQ1(new DdllNodeFactory(), opts, new SimpleValueProvider(),
                 new Range<Integer>(200, true, 400, false),
                 Arrays.asList(200, 300));
     }
@@ -379,7 +379,7 @@ public class AsyncTest {
     public void testRQ1AggregateSlow() {
         TransOptions opts = new TransOptions();
         opts.setResponseType(ResponseType.AGGREGATE);
-        testRQ1(opts, new SlowValueProvider(2000),
+        testRQ1(new DdllNodeFactory(), opts, new SlowValueProvider(2000),
                 new Range<Integer>(200, true, 400, false),
                 Arrays.asList(200, 300));
     }
@@ -389,14 +389,33 @@ public class AsyncTest {
         TransOptions opts = new TransOptions();
         opts.setResponseType(ResponseType.DIRECT);
         opts.setTimeout(20000);
-        testRQ1(opts, new SlowValueProvider(300),
+        testRQ1(new DdllNodeFactory(), opts, new SlowValueProvider(300),
                 new Range<Integer>(200, true, 400, false),
                 Arrays.asList(200, 300));
     }
 
-    private void testRQ1(TransOptions opts, RQValueProvider<DdllKey> provider,
+    @Test
+    public void testRQ1AggregateSuzaku() {
+        TransOptions opts = new TransOptions();
+        opts.setResponseType(ResponseType.AGGREGATE);
+        testRQ1(new SuzakuNodeFactory(3), opts, new SimpleValueProvider(),
+                new Range<Integer>(200, true, 400, false),
+                Arrays.asList(200, 300));
+    }
+
+    @Test
+    public void testRQ1DirectSuzaku() {
+        TransOptions opts = new TransOptions();
+        opts.setResponseType(ResponseType.DIRECT);
+        testRQ1(new SuzakuNodeFactory(3), opts, new SimpleValueProvider(),
+                new Range<Integer>(200, true, 400, false),
+                Arrays.asList(200, 300));
+    }
+
+    private void testRQ1(NodeFactory base, 
+            TransOptions opts, RQValueProvider<DdllKey> provider,
             Range<Integer> range, List<Integer> expect) {
-        NodeFactory factory = new RQNodeFactory(new DdllNodeFactory());
+        NodeFactory factory = new RQNodeFactory(base);
         System.out.println("** testRQ1");
         init();
         createAndInsert(factory, 5);
