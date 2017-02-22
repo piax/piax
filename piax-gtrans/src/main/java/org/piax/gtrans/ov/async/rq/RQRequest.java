@@ -217,7 +217,7 @@ public class RQRequest extends StreamingRequestEvent<RQRequest, RQReply> {
         final Set<RQRequest> childMsgs = new HashSet<>();
 
         /** gaps (subranges that have not yet received any return values) */
-        final NavigableMap<DdllKey, DdllKeyRange> gaps;
+        final Set<DdllKeyRange> gaps;
 
         /** set of Endpoint of the destination of child messages */
         //final Set<Endpoint> children = new HashSet<>();
@@ -237,10 +237,8 @@ public class RQRequest extends StreamingRequestEvent<RQRequest, RQReply> {
 
         public RQCatcher() {
             this.rvals = new ConcurrentSkipListMap<>();
-            this.gaps = new ConcurrentSkipListMap<>();
-            for (DdllKeyRange range : targetRanges) {
-                gaps.put(range.from, range);
-            }
+            this.gaps = new HashSet<>();
+            gaps.addAll(targetRanges);
             if (isRoot) {
                 results = new RQResults(this);
             } else {
@@ -272,7 +270,7 @@ public class RQRequest extends StreamingRequestEvent<RQRequest, RQReply> {
             + ", rvals="
             + (rvals.size() > 10 ? "(" + rvals.size() + " entries)"
                     : rvals.values())
-            + ", gaps=" + gaps.values() + ", childMsgs="
+            + ", gaps=" + gaps + ", childMsgs="
             + childMsgs + ", rcvCount=" + rcvCount
             + ", retrans=" + retransCount + "]";
         }
@@ -548,23 +546,22 @@ public class RQRequest extends StreamingRequestEvent<RQRequest, RQReply> {
             }
 
             // find the gap that contains range.from 
-            Map.Entry<DdllKey, DdllKeyRange> ent = gaps.entrySet().stream()
-                .filter(e -> e.getValue().contains(range.from))
+            DdllKeyRange gap = gaps.stream()
+                .filter(e -> e.contains(range.from))
                 .findAny()
                 .orElse(null);
-            if (ent == null) {
+            if (gap == null) {
                 logger.info("no gap instance: {} in {}", range.from, this);
                 return;
             }
-            CircularRange<DdllKey> gap = ent.getValue();
             // delete the range r from gaps
-            gaps.remove(ent.getKey());
+            gaps.remove(gap);
             List<CircularRange<DdllKey>> retains = gap.retain(range, null);
             // add the remaining ranges to gaps
             if (retains != null) {
                 for (CircularRange<DdllKey> p : retains) {
                     DdllKeyRange s = new DdllKeyRange(p.from, true, p.to, false);
-                    gaps.put(s.from, s);
+                    gaps.add(s);
                 }
             }
             logger.debug("addRV: gap={}, r={}, retains={}, gaps={}", gap, range,
@@ -651,7 +648,7 @@ public class RQRequest extends StreamingRequestEvent<RQRequest, RQReply> {
          * (slow) retransmit the range query message for the gap ranges.
          */
         private void retransmit() {
-            retransmit(gaps.values());
+            retransmit(gaps);
         }
 
         /**
