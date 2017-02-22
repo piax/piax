@@ -77,8 +77,6 @@ public class RQRequest extends StreamingRequestEvent<RQRequest, RQReply> {
     enum SPECIAL {
         PADDING;
     }
-    
-    transient List<Runnable> cleanup = new ArrayList<>();
 
     /**
      * create a root RQRequest.
@@ -104,11 +102,9 @@ public class RQRequest extends StreamingRequestEvent<RQRequest, RQReply> {
             Consumer<RemoteValue<?>> resultReceiver,
             RQRequest parent) {
         super(receiver, isParent, (RQReply rep) -> {
-            logger.debug("reply received: {}", rep);
-            rep.req.cleanup();
             parent.catcher.replyReceived(rep);
         }, (Throwable exc) -> {
-            logger.debug("got exception: {}", exc);
+            logger.debug("RQRequest: got exception: {}", exc);
         });
         this.isRoot = resultReceiver != null;
         assert !isRoot || isParent; // isRoot -> isParent
@@ -193,14 +189,6 @@ public class RQRequest extends StreamingRequestEvent<RQRequest, RQReply> {
         catcher.replyReceived(rep);
     }
 
-    @Override
-    public void cleanup() {
-        assert !isParent;
-        super.cleanup();
-        if (catcher != null) {
-        }
-    }
-
     private static <T> Stream<T> streamopt(Optional<T> opt) {
         if (opt.isPresent()) {
             return Stream.of(opt.get());
@@ -219,7 +207,6 @@ public class RQRequest extends StreamingRequestEvent<RQRequest, RQReply> {
          * rvals    [-)  [-)    [-)
          * gaps  [--) [--) [---)  [---)
          */
-        final RQResults<?> results;
 
         /** return values */
         // XXX: return value 1つづつに DdllKeyRange を保持するのはメモリ効率が悪い．
@@ -237,8 +224,6 @@ public class RQRequest extends StreamingRequestEvent<RQRequest, RQReply> {
         /** subset of children that has completed the request */
         final Set<Endpoint> finished = new HashSet<>();
 
-        private boolean disposed = false;
-
         // basic statistics
         int rcvCount = 0;
         int retransCount = 0;
@@ -248,6 +233,7 @@ public class RQRequest extends StreamingRequestEvent<RQRequest, RQReply> {
         TimerEvent flushTask;
 
         final RQStrategy strategy;
+        final RQResults<?> results;
 
         public RQCatcher() {
             this.rvals = new ConcurrentSkipListMap<>();
@@ -255,7 +241,6 @@ public class RQRequest extends StreamingRequestEvent<RQRequest, RQReply> {
             for (DdllKeyRange range : targetRanges) {
                 gaps.put(range.from, range);
             }
-            int expire = (int) TransOptions.timeout(opts);
             if (isRoot) {
                 results = new RQResults(this);
             } else {
@@ -263,32 +248,10 @@ public class RQRequest extends StreamingRequestEvent<RQRequest, RQReply> {
             }
             this.strategy = RQStrategy.getRQStrategy(getLocalNode());
 
-            /* 
-             * schedule tasks:
-             * (1) expiration task (purge after expiration period)
-             * (2) (slow) retransmission task (root node only)
-             * (3) flush task (non root intermediate node only)
-             */
-            if (expire != 0) {
-                // この処理は child message があるときだけで良いはず
-                long exp = expire + (isRoot ? 0 : RQManager.RQ_EXPIRATION_GRACE);
-                logger.debug("schedule expiration after {}", exp);
-                expirationTask = EventExecutor.sched("expire-" + getEventId(),
-                        exp, () -> {
-                            logger.debug("RQReturn: expired: {}", this);
-                            dispose();
-                            if (resultsReceiver != null) {
-                                resultsReceiver.accept(RQStrategy.END_OF_RESULTS);
-                            }
-                        });
-                cleanup.add(() -> {
-                    expirationTask.cancel();
-                });
-            }
             if (isRoot) {
-                // retransmission task
                 RetransMode rmode = opts.getRetransMode();
                 if (rmode == RetransMode.SLOW || rmode == RetransMode.RELIABLE) {
+                    // schedule slow retransmission task
                     long retrans = RQManager.RQ_RETRANS_PERIOD;
                     logger.debug("schedule slow retransmission every {}", retrans);
                     slowRetransTask = EventExecutor.sched(
@@ -300,17 +263,6 @@ public class RQRequest extends StreamingRequestEvent<RQRequest, RQReply> {
                         slowRetransTask.cancel();
                     });
                 }
-            } else if (opts.getResponseType() == ResponseType.AGGREGATE) {
-                // flush task
-                long flush = RQManager.RQ_FLUSH_PERIOD;
-                logger.debug("schedule periodic flushing {}", flush);
-                flushTask = EventExecutor.sched("flush-" + getEventId(), 
-                        flush, flush, () -> {
-                            flush();
-                        });
-                cleanup.add(() -> {
-                    flushTask.cancel();
-                });
             }
         }
 
@@ -325,6 +277,23 @@ public class RQRequest extends StreamingRequestEvent<RQRequest, RQReply> {
             + ", retrans=" + retransCount + "]";
         }
         
+        /*
+         * DIRECT:
+         *
+         *   ROOT----RQRequest---->CHILD1
+         *     |<-----RQReply--------|------RQRequest---->CHILD2
+         *     |                     |<----RQReply(dummy)---|
+         *     |<-------------------------RQReplyDirect-----|
+         * 
+         * AGGREGATE:
+         *
+         *   ROOT----RQRequest---->CHILD1
+         *     |<-----AckEvent-------|------RQRequest---->CHILD2
+         *     |                     |<------RQReply--------|
+         *     |<-----RQReply--------|                      |
+         *
+         *  - AckEvents are sent only from intermediate nodes.
+         */
         // XXX: note that wrap-around query ranges such as [10, 5) do not work
         // for now (k-abe)
         private void rqDisseminate() {
@@ -333,6 +302,7 @@ public class RQRequest extends StreamingRequestEvent<RQRequest, RQReply> {
             Map<Id, List<RQRange>> map = assignDelegates();
             logger.debug("aggregated: {}", map);
             PeerId peerId = getLocalNode().getPeerId();
+            ResponseType rtype = opts.getResponseType();
 
             /*
              * send aggregated requests to children.
@@ -348,20 +318,49 @@ public class RQRequest extends StreamingRequestEvent<RQRequest, RQReply> {
                     getLocalNode().post(m);
                 });
 
+            // if we have children, do not wait longer than `expire' period
+            long expire = opts.getTimeout();
+            if (expire != 0
+                    && !this.childMsgs.isEmpty()
+                    && (isRoot || opts.getResponseType() == ResponseType.AGGREGATE)) {
+                long exp = expire + (isRoot ? 0 : RQManager.RQ_EXPIRATION_GRACE);
+                logger.debug("schedule expiration after {}", exp);
+                expirationTask = EventExecutor.sched("expire-" + getEventId(),
+                        exp, () -> {
+                            logger.debug("expired: {}", this);
+                            cleanup();
+                            if (resultsReceiver != null) {
+                                resultsReceiver.accept(RQStrategy.END_OF_RESULTS);
+                            }
+                        });
+                cleanup.add(() -> {
+                    expirationTask.cancel();
+                });
+            }
+
+            if (!isRoot
+                    && !this.childMsgs.isEmpty()
+                    && opts.getResponseType() == ResponseType.AGGREGATE) {
+                long flush = RQManager.RQ_FLUSH_PERIOD;
+                logger.debug("schedule periodic flushing {}", flush);
+                flushTask = EventExecutor.sched("flush-" + getEventId(), 
+                        flush, flush, () -> flush());
+                cleanup.add(() -> {
+                    flushTask.cancel();
+                });
+            }
+
             // obtain values for local ranges
             List<DKRangeRValue<?>> rvals = rqExecuteLocal(map.get(peerId));
             logger.debug("rqDisseminate: rvals = {}", rvals);
             
             if (!isRoot) {
-                ResponseType rtype = opts.getResponseType();
                 switch (rtype) {
                 case NO_RESPONSE:
-                    dispose();
+                    cleanup();
                     break;
                 case DIRECT:
                     addRemoteValues(rvals);
-                    //flush();
-                    //dispose();
                     break;
                 case AGGREGATE:
                     addRemoteValues(rvals);
@@ -443,13 +442,14 @@ public class RQRequest extends StreamingRequestEvent<RQRequest, RQReply> {
                 }
             }
             logger.debug("succRanges={}, list={}", succRanges, list);
-            RQRange qr = queryRange;
+
+            RQRange qr = queryRange;  // make effectively final
             // included = nodes that are contained in the queryRange
             List<Node> included = actives.stream()
                     .filter(node -> qr.contains(node.key))
                     .sorted()
                     .collect(Collectors.toList());
-            logger.debug("qr={}, included={}", qr, included);
+            logger.debug("included={}", included);
 
             // 左端の担当ノードを決める
             Node first = included.isEmpty() ? null : included.get(0);
@@ -461,7 +461,6 @@ public class RQRequest extends StreamingRequestEvent<RQRequest, RQReply> {
                         (first == null ? queryRange.to : first.key),
                         queryRange.ids);
                 list.add(r);
-                logger.debug("added to list: {}", r);
             }
 
             for (int i = 0; i < included.size(); i++) {
@@ -472,20 +471,9 @@ public class RQRequest extends StreamingRequestEvent<RQRequest, RQReply> {
                 RQRange r = new RQRange(ent, from, to);
                 r.assignSubId(queryRange);
                 list.add(r);
-                logger.debug("added to list2: {}", r);
             }
-            logger.debug("assignDelegate: QR={}, returns {}", queryRange, list);
+            logger.debug("assignDelegate: returns {}", list);
             return list;
-        }
-
-        private void dispose() {
-            logger.debug("dispose: {}", this);
-            if (disposed) {
-                return;
-            }
-            childMsgs.clear();
-            cleanup.stream().forEach(runnable -> runnable.run());
-            disposed = true;
         }
 
         /**
@@ -494,6 +482,8 @@ public class RQRequest extends StreamingRequestEvent<RQRequest, RQReply> {
          * @param reply the reply message.
          */
         void replyReceived(RQReply reply) {
+            logger.debug("RQRequest: reply received: {}", reply);
+            reply.req.cleanup(); // cleanup sender half
             boolean rc = childMsgs.remove(reply.req);
             assert rc;
             incrementRcvCount();
@@ -526,8 +516,8 @@ public class RQRequest extends StreamingRequestEvent<RQRequest, RQReply> {
                 // transmit the collected results to the parent node
                 flush();
                 if (isCompleted() && childMsgs.isEmpty()) {
-                    // DIRECTの場合，子ノードからのACKを受信するまでdispose()してはいけない
-                    dispose();
+                    // DIRECTの場合，子ノードからのACKを受信するまでcleanup()してはいけない
+                    cleanup();
                 }
             } else {
                 // fast flushing

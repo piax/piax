@@ -32,9 +32,9 @@ public interface EventSender {
         public void send(Event ev) {
             // because sender Events and receiver Events are distinguished,
             // we have to clone the event even if sender == receiver.
-            ev = ev.clone();
-            ev.vtime = EventExecutor.getVTime() + ev.delay;
-            EventExecutor.enqueue(ev);
+            Event copy = ev.clone();
+            copy.vtime = EventExecutor.getVTime() + ev.delay;
+            EventExecutor.enqueue(copy);
         }
 
         @Override
