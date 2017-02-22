@@ -23,8 +23,8 @@ import org.piax.gtrans.Peer;
 import org.piax.gtrans.Transport;
 import org.piax.gtrans.base.BaseChannelTransportImpl;
 import org.piax.gtrans.base.BaseDatagramTransport;
-import org.piax.gtrans.netty.NettyChannelTransport;
 import org.piax.gtrans.netty.NettyLocator;
+import org.piax.gtrans.netty.loctrans.LocatorChannelTransport;
 import org.piax.gtrans.raw.emu.EmuLocator;
 import org.piax.gtrans.raw.lwtcp.LWTcpTransport;
 import org.piax.gtrans.raw.tcp.TcpLocator;
@@ -84,7 +84,7 @@ public class DefaultBaseTransportGenerator extends BaseTransportGenerator {
                     new LWTcpTransport(peer.getPeerId(), (TcpLocator) loc,
                             linger0Option));
         } else if (loc instanceof NettyLocator){
-            trans = (ChannelTransport<E>)new NettyChannelTransport(peer, transId, peer.getPeerId(), (NettyLocator)loc);
+            trans = (ChannelTransport<E>)new LocatorChannelTransport(peer, transId, peer.getPeerId(), (NettyLocator)loc);
         } else {
             return null;
         }
