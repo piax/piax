@@ -367,25 +367,23 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                 = rqExecuteLocal(map.get(peerId));
             future.thenAccept((List<DKRangeRValue<T>> rvals) -> {
                 logger.debug("rqDisseminate: rvals = {}", rvals);
-                if (!isRoot) {
-                    switch (rtype) {
-                    case NO_RESPONSE:
-                        cleanup();
-                        break;
-                    case DIRECT:
-                        addRemoteValues(rvals);
-                        break;
-                    case AGGREGATE:
-                        addRemoteValues(rvals);
-                        if (!isCompleted()) {
-                            // when no RQReply is sent to the parent, send AckEvent instead.
-                            // XXX: if the provider takes long time to finish, it'd be better to send AckEvent firstly.
-                            getLocalNode().post(new AckEvent(RQRequest.this, sender));
-                        }
-                        break;
-                    default:
-                        throw new Error("shouldn't happen");
+                switch (rtype) {
+                case NO_RESPONSE:
+                    cleanup();
+                    break;
+                case DIRECT:
+                    addRemoteValues(rvals);
+                    break;
+                case AGGREGATE:
+                    addRemoteValues(rvals);
+                    if (!isCompleted() && !isRoot) {
+                        // when no RQReply is sent to the parent, send AckEvent instead.
+                        // XXX: if the provider takes long time to finish, it'd be better to send AckEvent firstly.
+                        getLocalNode().post(new AckEvent(RQRequest.this, sender));
                     }
+                    break;
+                default:
+                    throw new Error("shouldn't happen");
                 }
             });
             logger.debug("rqDisseminate finished");
@@ -529,7 +527,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                 // transmit the collected results to the parent node
                 flush();
                 if (isCompleted() && childMsgs.isEmpty()) {
-                    // DIRECTの場合，子ノードからのACKを受信するまでcleanup()してはいけない
+                    // 子ノードからのACKを受信するまでcleanup()してはいけない
                     cleanup();
                 }
             } else {

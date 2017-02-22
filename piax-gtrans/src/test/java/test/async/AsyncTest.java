@@ -362,8 +362,8 @@ public class AsyncTest {
         TransOptions opts = new TransOptions();
         opts.setResponseType(ResponseType.AGGREGATE);
         testRQ1(new DdllNodeFactory(), opts, new SimpleValueProvider(),
-                new Range<Integer>(200, true, 400, false),
-                Arrays.asList(200, 300));
+                new Range<Integer>(0, true, 500, true),
+                Arrays.asList(0, 100, 200, 300, 400));
     }
 
     @Test
