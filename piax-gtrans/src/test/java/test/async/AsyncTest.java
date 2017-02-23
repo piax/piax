@@ -388,11 +388,12 @@ public class AsyncTest {
     public void testRQ1DirectSlow() {
         TransOptions opts = new TransOptions();
         opts.setResponseType(ResponseType.DIRECT);
-        opts.setTimeout(20000);
-        testRQ1(new DdllNodeFactory(), opts, new SlowValueProvider(300),
+        opts.setTimeout(10000);
+        testRQ1(new DdllNodeFactory(), opts, new SlowValueProvider(20000),
                 new Range<Integer>(200, true, 400, false),
                 Arrays.asList(200, 300));
     }
+
 
     @Test
     public void testRQ1AggregateSuzaku() {
@@ -428,6 +429,7 @@ public class AsyncTest {
                 results.add(ret);
             });
             EventExecutor.startSimulation(30000);
+            assertTrue(!results.isEmpty());
             assertTrue(results.get(results.size() - 1 ) == null);
             List<?> rvals = results.stream()
                     .filter(Objects::nonNull)

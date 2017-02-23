@@ -329,6 +329,8 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
          * cleanup the instance at sender half
          */
         public void cleanup() {
+            System.out.println("cleanup is called!: " + this);
+
             cleanup.stream().forEach(r -> r.run());
             cleanup.clear();
         }
@@ -353,10 +355,9 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
                 registerRequestEvent(n, this);
                 Runnable r = () -> removeRequestEvent(n, getEventId());
                 cleanup.add(r);
-
                 this.replyTimeoutEvent = EventExecutor.sched(
                         "replyTimer-" + getEventId(),
-                        NetworkParams.NETWORK_TIMEOUT,
+                        getReplyTimeoutValue(),
                         () -> {
                             RequestEvent<?, ?> ev1 = removeNotAckedEvent(n, getEventId());
                             RequestEvent<?, ?> ev2 = removeRequestEvent(n, getEventId());
@@ -369,6 +370,7 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
                             System.out.println("reply timed out: " + this);
                             this.failureCallback.run(new TimeoutException());
                         });
+                System.out.println("schedule reply timer: " + replyTimeoutEvent);
                 cleanup.add(() -> EventExecutor.cancelEvent(replyTimeoutEvent));
             }
         }
@@ -379,6 +381,11 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
             // when a request message is forwarded, we send AckEvent to the
             // sender node.
             n.post(new AckEvent(this, this.sender));
+        }
+
+        // override if necessary
+        protected long getReplyTimeoutValue() {
+            return NetworkParams.NETWORK_TIMEOUT;
         }
  
         private void registerForAck(LocalNode n) {
