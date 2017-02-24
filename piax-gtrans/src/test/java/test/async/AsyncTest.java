@@ -394,15 +394,14 @@ public class AsyncTest {
     }
 
     @Test
-    public void testRQ1DirectSlow() {
+    public void testRQ1Timeout() {
         TransOptions opts = new TransOptions();
         opts.setResponseType(ResponseType.DIRECT);
         opts.setTimeout(10000);
         testRQ1(new DdllNodeFactory(), opts, new SlowValueProvider(20000),
                 new Range<Integer>(200, true, 400, false),
-                Arrays.asList(200, 300));
+                Arrays.asList());
     }
-
 
     @Test
     public void testRQ1AggregateSuzaku() {
@@ -450,6 +449,56 @@ public class AsyncTest {
             System.out.println("EXPECT = " + expect);
             assertTrue(rvals.equals(expect));
             checkMemoryLeakage(nodes);
+        }
+    }
+
+    @Test
+    public void testRetransDirectSuzaku() {
+        TransOptions opts = new TransOptions();
+        opts.setResponseType(ResponseType.DIRECT);
+        testRetrans(new SuzakuNodeFactory(3), opts, new SimpleValueProvider(),
+                new Range<Integer>(200, true, 400, false),
+                Arrays.asList(300));
+    }
+
+    @Test
+    public void testRetransAggregateSuzaku() {
+        TransOptions opts = new TransOptions();
+        opts.setResponseType(ResponseType.AGGREGATE);
+        testRetrans(new SuzakuNodeFactory(3), opts, new SimpleValueProvider(),
+                new Range<Integer>(200, true, 400, false),
+                Arrays.asList(300));
+    }
+
+    private void testRetrans(NodeFactory base,
+            TransOptions opts, RQValueProvider<DdllKey> provider,
+            Range<Integer> range, List<Integer> expect) {
+        NodeFactory factory = new RQNodeFactory(base);
+        System.out.println("** testSlowRetrans");
+        init();
+        createAndInsert(factory, 5);
+        {
+            nodes[2].fail();
+            Collection<Range<Integer>> ranges = Collections.singleton(range);
+            List<RemoteValue<DdllKey>> results = new ArrayList<>();
+            nodes[0].rangeQueryAsync(ranges, provider, 
+                    opts, (ret) -> {
+                System.out.println("GOT RESULT: " + ret);
+                results.add(ret);
+            });
+            EventExecutor.startSimulation(30000);
+            assertTrue(!results.isEmpty());
+            assertTrue(results.get(results.size() - 1 ) == null);
+            List<?> rvals = results.stream()
+                    .filter(Objects::nonNull)
+                    .map(rv -> rv.getValue())   // extract DdllKey
+                    .map(rv -> rv.getPrimaryKey()) // extract Comparable
+                    .sorted()
+                    .collect(Collectors.toList());
+            System.out.println("RVALS = " + rvals);
+            System.out.println("EXPECT = " + expect);
+            assertTrue(rvals.equals(expect));
+            checkMemoryLeakage(nodes[0], nodes[1], nodes[3], nodes[4]);
         }
     }
 

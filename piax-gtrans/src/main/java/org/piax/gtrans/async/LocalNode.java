@@ -6,9 +6,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
@@ -56,6 +58,11 @@ public class LocalNode extends Node {
     Map<Integer, RequestEvent<?, ?>> ongoingRequests = new HashMap<>();
     // requests that are not ack'ed
     Map<Integer, RequestEvent<?, ?>> unAckedRequests = new HashMap<>();
+    
+    // maybe-failed nodes
+    // TODO: purge entries by timer!
+    // TODO: define accessors!
+    public Set<Node> maybeFailedNodes = new HashSet<>();
 
     public static LocalNode newLocalNode(TransportId transId,
             ChannelTransport<?> trans, Comparable<?> rawkey,
@@ -260,6 +267,11 @@ public class LocalNode extends Node {
 
     public int getMessages4Join() {
         return getTopStrategy().getMessages4Join();
+    }
+
+    public void addMaybeFailedNode(Node node) {
+        maybeFailedNodes.add(node);
+        getTopStrategy().foundMaybeFailedNode(node);
     }
 
     /**

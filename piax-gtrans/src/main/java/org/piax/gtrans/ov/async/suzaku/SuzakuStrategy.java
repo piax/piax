@@ -1199,11 +1199,6 @@ public class SuzakuStrategy extends NodeStrategy {
     }
 
     @Override
-    public void foundFailedNode(Node node) {
-        base.foundFailedNode(node);
-    }
-
-    @Override
     public int getMessages4Join() {
         return joinMsgs;
     }

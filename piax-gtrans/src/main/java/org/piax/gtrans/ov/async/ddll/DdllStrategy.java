@@ -88,9 +88,6 @@ public class DdllStrategy extends NodeStrategy {
     /** neighbor node set */
     public NeighborSet leftNbrs;
 
-    // TODO: purge entries by timer! 2017/02/09
-    Set<Node> suspectedNodes = new HashSet<>();
-
     public int joinTime = -1;
     private int joinMsgs = 0;
 
@@ -369,9 +366,8 @@ public class DdllStrategy extends NodeStrategy {
     }
 
     @Override
-    public void foundFailedNode(Node node) {
+    public void foundMaybeFailedNode(Node node) {
         System.out.println(n + ": foundFailedNode: " + node);
-        suspectedNodes.add(node);
     }
 
     @Override
@@ -453,10 +449,10 @@ public class DdllStrategy extends NodeStrategy {
     private void getLiveLeft(Node left, Node leftSucc, List<Node> candidates,
             CompletableFuture<Node[]> future) {
         Node last = candidates.stream()
-                .filter(q -> !suspectedNodes.contains(q))
+                .filter(q -> !n.maybeFailedNodes.contains(q))
                 .reduce((a, b) -> b).orElse(null);
         System.out.println("left=" + left +", last=" + last
-                + ", suspect=" + suspectedNodes);
+                + ", suspect=" + n.maybeFailedNodes);
         if (last == left) {
             future.complete(new Node[]{left, leftSucc});
             return;

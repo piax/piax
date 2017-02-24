@@ -75,8 +75,8 @@ public abstract class NodeStrategy {
         getLower().handleLookup(lookup);
     }
     
-    public void foundFailedNode(Node node) {
-        getLower().foundFailedNode(node);
+    public void foundMaybeFailedNode(Node node) {
+        getLower().foundMaybeFailedNode(node);
     }
 
     public int getMessages4Join() {

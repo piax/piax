@@ -367,12 +367,13 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
                 // because foundFailedNode is used for registering the failed 
                 // node and failureCallback relies on this.
                 registerNotAckedEvent(n, this);
+                cleanup.add(() -> removeNotAckedEvent(n, getEventId()));
                 this.ackTimeoutEvent = EventExecutor.sched(
                         "acktimer-" + getEventId(),
                         acktimeout,
                         () -> {
                             if (receiver != n) {
-                                n.getTopStrategy().foundFailedNode(receiver);
+                                n.addMaybeFailedNode(receiver);
                             }
                         });
                 cleanup.add(() -> EventExecutor.cancelEvent(ackTimeoutEvent));
@@ -383,8 +384,7 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
             long replytimeout = getReplyTimeoutValue();
             if (replytimeout != 0) {
                 registerRequestEvent(n, this);
-                Runnable r = () -> removeRequestEvent(n, getEventId());
-                cleanup.add(r);
+                cleanup.add(() -> removeRequestEvent(n, getEventId()));
                 this.replyTimeoutEvent = EventExecutor.sched(
                         "replyTimer-" + getEventId(),
                         replytimeout,

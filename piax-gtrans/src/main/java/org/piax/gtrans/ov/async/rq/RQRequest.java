@@ -30,6 +30,7 @@ import org.piax.gtrans.async.Event;
 import org.piax.gtrans.async.Event.StreamingRequestEvent;
 import org.piax.gtrans.async.EventExecutor;
 import org.piax.gtrans.async.LocalNode;
+import org.piax.gtrans.async.NetworkParams;
 import org.piax.gtrans.async.Node;
 import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.gtrans.ov.ring.rq.DKRangeRValue;
@@ -65,7 +66,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
     /**
      * failed links. this field is used for avoiding and repairing dead links.
      */
-    final Set<Node> failedLinks;
+    final Set<Node> obstacles;
 
     transient RQCatcher catcher; // receiver half only
 
@@ -126,7 +127,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         this.targetRanges = Collections.unmodifiableCollection(ranges);
         this.provider = provider;
         this.opts = opts;
-        this.failedLinks = new HashSet<>();
+        this.obstacles = new HashSet<>();
         if (isReceiverHalf) {
             this.catcher = new RQCatcher();
         }
@@ -150,13 +151,14 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         return child;
     }
 
-    public String toString() {
+    @Override
+    public String toStringMessage() {
         return "RQRequest[Opts=" + opts + ", isRoot=" + isRoot
-                + ", sender=" + sender + ", receiver=" + receiver
-                + ", evId=" + getEventId() + ", root=" + root
+                + ", sender=" + sender
+                + ", root=" + root
                 + ", rootEvId=" + rootEventId
                 + ", target=" + targetRanges
-                + ", failedLinks=" + failedLinks + "]";
+                + ", obstacles=" + obstacles + "]";
     }
 
     @Override
@@ -164,7 +166,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         if (opts.getResponseType() == ResponseType.NO_RESPONSE) {
             return 0;
         } else {
-            return opts.getTimeout();
+            return NetworkParams.NETWORK_TIMEOUT;
         }
     }
 
@@ -178,8 +180,8 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         }
     }
 
-    public void addFailedLinks(Collection<Node> links) {
-        failedLinks.addAll(links);
+    public void addObstacles(Collection<Node> links) {
+        obstacles.addAll(links);
     }
 
     public Collection<RQRange> getTargetRanges() {
@@ -326,6 +328,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                     logger.debug("send to child: {}", m);
                     this.childMsgs.add(m);
                     getLocalNode().post(m);
+                    cleanup.add(() -> m.cleanup());
                 });
 
             // obtain values for local ranges
@@ -345,27 +348,31 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
          * @return a map of id and RQRanges
          */
          protected Map<Id, List<RQRange>> assignDelegates() {
-            Set<Node> maybeFailed = failedLinks;
-            // make sure that i'm not failed 
-            maybeFailed.remove(getLocalNode());
             List<List<Node>> allNodes = strategy.getRoutingEntries();
 
             // collect [me, successor)
+            List<Node> successors = new ArrayList<>();
             List<RQRange> succRanges = new ArrayList<>();
             for (LocalNode v : Arrays.asList(getLocalNode())) {
+                successors.add(v.succ);
                 succRanges.add(new RQRange(v, v.key, v.succ.key));
             }
 
+            Set<Node> maybeFailedNodes = getLocalNode().maybeFailedNodes;
             List<Node> actives = allNodes.stream()
                     .flatMap(list -> {
                         Optional<Node> p = list.stream()
-                                .filter(node -> true)
+                                .filter(node -> 
+                                    (successors.contains(node)
+                                    || !maybeFailedNodes.contains(node))) 
                                 .findFirst();
                         return streamopt(p);
                     })
+                    .distinct()
                     .collect(Collectors.toList());
 
-            logger.debug("allNodes={}, actives={}", allNodes, actives);
+            logger.debug("allNodes={}, actives={}, maybeFailed={}", allNodes,
+                    actives, maybeFailedNodes);
             return gaps.stream()
                     .flatMap(range -> assignDelegate(range, actives, succRanges)
                             .stream())
