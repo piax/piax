@@ -25,7 +25,6 @@ public class Node implements Comparable<Node>, Serializable {
 
     public final DdllKey key;
     public final Endpoint addr;
-    public final int latency;
     public final PeerId peerId;
 
     // we have to guard `instances' with synchronized block
@@ -33,11 +32,10 @@ public class Node implements Comparable<Node>, Serializable {
         = new ConcurrentReferenceHashMap<>(16,
                 ConcurrentReferenceHashMap.ReferenceType.WEAK,
                 ConcurrentReferenceHashMap.ReferenceType.WEAK);
-    public static synchronized Node getInstance(DdllKey ddllkey, Endpoint ep,
-            int latency) {
+    public static synchronized Node getInstance(DdllKey ddllkey, Endpoint ep) {
         Node n = instances.get(ddllkey);
         if (n == null) {
-            n = new Node(ddllkey, ep, latency);
+            n = new Node(ddllkey, ep);
         }
         return n;
     }
@@ -47,7 +45,7 @@ public class Node implements Comparable<Node>, Serializable {
     }
 
     public static Node getTemporaryInstance(Endpoint ep) {
-        return new Node(null, ep, 0);
+        return new Node(null, ep);
     }
 
     public static synchronized LocalNode getAnyLocalNode() {
@@ -58,10 +56,9 @@ public class Node implements Comparable<Node>, Serializable {
         return (LocalNode) anyNode.orElse(null);
     }
 
-    protected Node(DdllKey ddllkey, Endpoint ep, int latency) {
+    protected Node(DdllKey ddllkey, Endpoint ep) {
         this.key = ddllkey;
         this.addr = ep;
-        this.latency = latency;
         if (key != null) {
             this.peerId = new PeerId(ddllkey.getUniqId().getBytes());
         } else {
@@ -101,21 +98,8 @@ public class Node implements Comparable<Node>, Serializable {
      * @throws ObjectStreamException
      */
     private Object readResolve() throws ObjectStreamException {
-        Node repl = Node.getInstance(this.key, this.addr, this.latency);
+        Node repl = Node.getInstance(this.key, this.addr);
         return repl;
-    }
-
-    public int latency(Node receiver) {
-        if (EventExecutor.realtime.value()) {
-            return 0;
-        }
-        if (this == receiver) {
-            return 0;
-        }
-        long l = latency + receiver.latency;
-        double jitter = 1.0 + (Sim.rand.nextDouble()
-                * 2 * NetworkParams.JITTER.value()) - NetworkParams.JITTER.value();
-        return (int)(l * jitter);
     }
 
     // x in (y, z]

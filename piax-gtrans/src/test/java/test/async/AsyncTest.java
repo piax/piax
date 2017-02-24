@@ -33,6 +33,7 @@ import org.piax.gtrans.TransOptions.ResponseType;
 import org.piax.gtrans.async.Event.RequestEvent;
 import org.piax.gtrans.async.EventException.TimeoutException;
 import org.piax.gtrans.async.EventExecutor;
+import org.piax.gtrans.async.LatencyProvider.StarLatencyProvider;
 import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.async.NetworkParams;
 import org.piax.gtrans.async.NodeFactory;
@@ -41,8 +42,8 @@ import org.piax.gtrans.ov.async.ddll.DdllEvent.GetCandidates;
 import org.piax.gtrans.ov.async.ddll.DdllStrategy;
 import org.piax.gtrans.ov.async.ddll.DdllStrategy.DdllNodeFactory;
 import org.piax.gtrans.ov.async.ddll.DdllStrategy.SetRNakMode;
-import org.piax.gtrans.ov.async.rq.RQValueProvider;
 import org.piax.gtrans.ov.async.rq.RQStrategy.RQNodeFactory;
+import org.piax.gtrans.ov.async.rq.RQValueProvider;
 import org.piax.gtrans.ov.async.rq.RQValueProvider.SimpleValueProvider;
 import org.piax.gtrans.ov.async.suzaku.SuzakuStrategy.SuzakuNodeFactory;
 import org.piax.gtrans.ov.ddll.DdllKey;
@@ -57,6 +58,8 @@ public class AsyncTest {
     }
 
     static LocalNode[] nodes;
+    static StarLatencyProvider latencyProvider = new StarLatencyProvider(); 
+
     static boolean REALTIME = false;
 
     private static LocalNode createNode(NodeFactory factory, int key) {
@@ -72,7 +75,9 @@ public class AsyncTest {
             ChannelTransport<?> trans;
             try {
                 trans = peer.newBaseChannelTransport(loc);
-                return factory.createNode(transId, trans, k, latency);
+                LocalNode n = factory.createNode(transId, trans, k);
+                latencyProvider.add(n, latency);
+                return n;
             } catch (IOException | IdConflictException e) {
                 throw new Error("something wrong!", e);
             }
@@ -80,7 +85,9 @@ public class AsyncTest {
             UniqId p = new UniqId("P" + key);
             DdllKey k = new DdllKey(key, p, "", null);
             try {
-                return factory.createNode(null, null, k, latency);
+                LocalNode n = factory.createNode(null, null, k);
+                latencyProvider.add(n, latency);
+                return n;
             } catch (IOException | IdConflictException e) {
                 throw new Error("something wrong!", e);
             }
@@ -109,6 +116,7 @@ public class AsyncTest {
         DdllStrategy.pingPeriod.set(10000);
         DdllStrategy.setrnakmode.set(SetRNakMode.SETRNAK_OPT2);
         EventExecutor.reset();
+        EventExecutor.setLatencyProvider(latencyProvider);
     }
     
     static LocalNode[] createNodes(NodeFactory factory, int num) {
@@ -122,8 +130,7 @@ public class AsyncTest {
     public static void dump(LocalNode[] nodes) {
         System.out.println("node dump:");
         for (int i = 0; i < nodes.length; i++) {
-            System.out.println(i + ": " + nodes[i].toStringDetail()
-                    + ", latency=" + nodes[i].latency);
+            System.out.println(i + ": " + nodes[i].toStringDetail());
         }
     }
 

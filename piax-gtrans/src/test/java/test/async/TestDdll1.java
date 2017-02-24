@@ -225,7 +225,7 @@ public class TestDdll1 {
             //nodes[i] = LocalNode.newLocalNode(transId, trans, i,
             //        new DdllStrategy(), 0);
             SuzakuNodeFactory factory = new SuzakuNodeFactory(3);
-            nodes[i] = factory.createNode(transId, trans, i, 0);
+            nodes[i] = factory.createNode(transId, trans, i);
         }
 
         Sim.verbose = true;

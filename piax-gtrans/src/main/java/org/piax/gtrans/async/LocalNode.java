@@ -66,18 +66,18 @@ public class LocalNode extends Node {
 
     public static LocalNode newLocalNode(TransportId transId,
             ChannelTransport<?> trans, Comparable<?> rawkey,
-            NodeStrategy strategy, int latency)
+            NodeStrategy strategy) 
             throws IdConflictException, IOException {
         DdllKey ddllkey = new DdllKey(rawkey, new UniqId(trans.getPeerId()));
         LocalNode node =
-                new LocalNode(transId, trans, ddllkey, strategy, latency);
+                new LocalNode(transId, trans, ddllkey, strategy);
         return node;
     }
 
     public LocalNode(TransportId transId, ChannelTransport<?> trans,
-            DdllKey ddllkey, NodeStrategy strategy, int latency)
+            DdllKey ddllkey, NodeStrategy strategy)
             throws IdConflictException, IOException {
-        super(ddllkey, trans == null ? null : trans.getEndpoint(), latency);
+        super(ddllkey, trans == null ? null : trans.getEndpoint());
         if (trans == null) {
             this.sender = EventSenderSim.getInstance();
         } else {
@@ -131,7 +131,7 @@ public class LocalNode extends Node {
      * @throws ObjectStreamException
      */
     private Object writeReplace() {
-        Node repl = new Node(this.key, this.addr, this.latency);
+        Node repl = new Node(this.key, this.addr);
         return repl;
     }
 
@@ -195,7 +195,7 @@ public class LocalNode extends Node {
             ev.routeWithFailed.add(this);
         }
         if (ev.delay == Node.NETWORK_LATENCY) {
-            ev.delay = latency(ev.receiver);
+            ev.delay = EventExecutor.latency(this, ev.receiver);
         }
         ev.failureCallback = failure;
         ev.vtime = EventExecutor.getVTime() + ev.delay;
@@ -233,7 +233,7 @@ public class LocalNode extends Node {
         ev.sender = this;
         ev.failureCallback = failure;
         if (ev.delay == Node.NETWORK_LATENCY) {
-            ev.delay = latency(dest);
+            ev.delay = EventExecutor.latency(this, dest);
         }
         ev.receiver = dest;
         if (Sim.verbose) {

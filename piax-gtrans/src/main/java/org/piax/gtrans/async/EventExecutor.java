@@ -29,6 +29,7 @@ public class EventExecutor {
     private static ReentrantLock lock = new ReentrantLock();
     private static Condition cond = lock.newCondition();
     private static PriorityQueue<Event> timeq = new PriorityQueue<>();
+    private static LatencyProvider latencyProvider;
     private static Map<String, Count> counter = new HashMap<String, Count>();
 
     public static class Count {
@@ -278,5 +279,22 @@ public class EventExecutor {
         if (route.isEmpty() || route.get(route.size() - 1) != next) {
             route.add(next);
         }
+    }
+
+    public static void setLatencyProvider(LatencyProvider p) {
+        latencyProvider = p;
+    }
+
+    public static int latency(Node a, Node b) {
+        if (EventExecutor.realtime.value()) {
+            return 0;
+        }
+        if (a == b) {
+            return 0;
+        }
+        if (latencyProvider == null) {
+            return 100;
+        }
+        return latencyProvider.latency(a, b);
     }
 }

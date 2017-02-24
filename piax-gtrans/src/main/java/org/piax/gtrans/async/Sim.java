@@ -20,6 +20,7 @@ import org.piax.common.TransportId;
 import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.Peer;
+import org.piax.gtrans.async.LatencyProvider.StarLatencyProvider;
 import org.piax.gtrans.async.Node.NodeMode;
 import org.piax.gtrans.async.Option.BooleanOption;
 import org.piax.gtrans.async.Option.DoubleOption;
@@ -151,7 +152,8 @@ public class Sim {
         = new DoubleOption(convertSecondsToVTime(15*60), "-avelife");
     public static DoubleOption failRate
         = new DoubleOption(0.0, "-failRate");
-
+    StarLatencyProvider latencyProvider = new StarLatencyProvider();
+    
     public static void main(String[] args) {
         // force load to initialize Options
         EventExecutor.load();
@@ -183,6 +185,7 @@ public class Sim {
     }
 
     private void sim(Algorithm algorithm, ExpType exptype) {
+        EventExecutor.setLatencyProvider(latencyProvider);
         NodeFactory factory = algorithm.method.getFactory();
         exptype.method.run(this, factory);
     }
@@ -261,8 +264,7 @@ public class Sim {
         int c = 0;
         for (int i = 0; i < nodes.length; i++) {
             if (nodes[i].mode == NodeMode.INSERTED) {
-                System.out.println(i + ": " + nodes[i].toStringDetail()
-                        + ", latency=" + nodes[i].latency);
+                System.out.println(i + ": " + nodes[i].toStringDetail());
                 c++;
             }
         }
@@ -290,7 +292,9 @@ public class Sim {
             ChannelTransport<?> trans;
             try {
                 trans = peer.newBaseChannelTransport(loc);
-                return factory.createNode(transId, trans, k, latency);
+                LocalNode n = factory.createNode(transId, trans, k);
+                latencyProvider.add(n, latency);
+                return n;
             } catch (IOException | IdConflictException e) {
                 throw new Error("something wrong!", e);
             }
@@ -298,7 +302,9 @@ public class Sim {
             UniqId p = new UniqId("P");
             DdllKey k = new DdllKey(key, p, "", null);
             try {
-                return factory.createNode(null, null, k, latency);
+                LocalNode n = factory.createNode(null, null, k);
+                latencyProvider.add(n, latency);
+                return n;
             } catch (IOException | IdConflictException e) {
                 throw new Error("something wrong!", e);
             }

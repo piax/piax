@@ -80,10 +80,10 @@ public class SuzakuStrategy extends NodeStrategy {
         }
         @Override
         public LocalNode createNode(TransportId transId,
-                ChannelTransport<?> trans, DdllKey key, int latency)
+                ChannelTransport<?> trans, DdllKey key)
                         throws IdConflictException, IOException {
             NodeStrategy base = new DdllStrategy();
-            LocalNode n = new LocalNode(transId, trans, key, base, latency);
+            LocalNode n = new LocalNode(transId, trans, key, base);
             SuzakuStrategy szk = new SuzakuStrategy();
             n.pushStrategy(szk);
             szk.setupLinkChangeListener(n);

@@ -33,9 +33,9 @@ public class RQStrategy extends NodeStrategy {
         }
         @Override
         public LocalNode createNode(TransportId transId,
-                ChannelTransport<?> trans, DdllKey key, int latency)
+                ChannelTransport<?> trans, DdllKey key)
                 throws IOException, IdConflictException {
-            LocalNode node = base.createNode(transId, trans, key, latency);
+            LocalNode node = base.createNode(transId, trans, key);
             node.pushStrategy(new RQStrategy());
             return node;
         }

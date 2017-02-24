@@ -1,10 +1,8 @@
 package org.piax.gtrans.ov.async.ddll;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -43,10 +41,9 @@ public class DdllStrategy extends NodeStrategy {
     public static class DdllNodeFactory extends NodeFactory {
         @Override
         public LocalNode createNode(TransportId transId,
-                ChannelTransport<?> trans, DdllKey key, int latency)
+                ChannelTransport<?> trans, DdllKey key)
                 throws IOException, IdConflictException {
-            return new LocalNode(transId, trans, key, new DdllStrategy(),
-                    latency);
+            return new LocalNode(transId, trans, key, new DdllStrategy());
         }
 
         @Override
@@ -158,8 +155,7 @@ public class DdllStrategy extends NodeStrategy {
                 leftNbrs.set(msg.nbrs);
                 // nbrs does not contain the immediate left node
                 leftNbrs.add(getPredecessor());
-                System.out.println(n + ": INSERTED, vtime = " + msg.vtime
-                        + ", latency=" + n.latency);
+                System.out.println(n + ": INSERTED, vtime = " + msg.vtime);
                 joinComplete.complete(true);
             } else if (msg0 instanceof SetRNak){
                 SetRNak msg = (SetRNak)msg0;
@@ -254,8 +250,7 @@ public class DdllStrategy extends NodeStrategy {
                 }
             } else if (msg0 instanceof SetRAck) {
                 setStatus(DdllStatus.OUT);
-                System.out.println(n + ": DELETED, vtime = " + msg0.vtime
-                        + ", latency=" + n.latency);
+                System.out.println(n + ": DELETED, vtime = " + msg0.vtime);
                 leaveComplete.complete(true);
             } else if (msg0 instanceof SetRNak) {
                 setStatus(DdllStatus.IN);

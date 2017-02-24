@@ -10,14 +10,14 @@ import org.piax.util.UniqId;
 
 public abstract class NodeFactory {
     public abstract LocalNode createNode(TransportId transId,
-            ChannelTransport<?> trans, DdllKey key, int latency)
+            ChannelTransport<?> trans, DdllKey key)
                     throws IOException, IdConflictException;
 
     public LocalNode createNode(TransportId transId,
-            ChannelTransport<?> trans, Comparable<?> rawkey, int latency)
+            ChannelTransport<?> trans, Comparable<?> rawkey)
                     throws IOException, IdConflictException {
         DdllKey ddllkey = new DdllKey(rawkey, new UniqId(trans.getPeerId()));
-        return createNode(transId, trans, ddllkey, latency);
+        return createNode(transId, trans, ddllkey);
     }
 
     public abstract String name();
