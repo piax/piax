@@ -89,9 +89,9 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
     }
 
     /*
-     * isRoot -> isParent
+     * isRoot -> isReceiverHalf
      * isRoot <-> resultReceiver != null
-     * !isParent -> resultReceiver == null
+     * !isReceiverHalf -> resultReceiver == null
      */
     private RQRequest(Node receiver, 
             boolean isReceiverHalf, Collection<RQRange> ranges,
@@ -100,8 +100,8 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             RQRequest<T> parent) {
         super(receiver, isReceiverHalf);
         this.isRoot = resultsReceiver != null;
-        assert !isRoot || isReceiverHalf; // isRoot -> isParent
-        assert isReceiverHalf || !isRoot; // !isParent -> !isRoot
+        assert !isRoot || isReceiverHalf; // isRoot -> isReceiverHalf
+        assert isReceiverHalf || !isRoot; // !isReceiverHalf -> !isRoot
 
         super.setReplyReceiver((RQReply<T> rep) -> {
             parent.catcher.replyReceived(rep);
@@ -110,19 +110,8 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             handleErrors(exc);
         });
 
-        if (isRoot && opts.getResponseType() == ResponseType.DIRECT) {
-            LocalNode local = (LocalNode)receiver;
-            this.root = local;
-            this.rootEventId = getEventId();
-            // in DIRECT mode, this instance receives RQReplyDirect messages
-            RequestEvent.registerRequestEvent(local, this);
-            cleanup.add(() -> {
-                RequestEvent.removeRequestEvent(local, getEventId());
-            });
-        } else {
-            this.root = null;
-            this.rootEventId = 0;
-        }
+        this.root = null;  // overridden by DirectResponder at root node
+        this.rootEventId = 0; // overridden by DirectResponder at root node
         this.resultsReceiver = resultsReceiver;
         this.targetRanges = Collections.unmodifiableCollection(ranges);
         this.provider = provider;
@@ -172,10 +161,10 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
 
     @Override
     protected long getReplyTimeoutValue() {
-        // XXX: 再送時には短いタイムアウトで!
         if (opts.getResponseType() == ResponseType.NO_RESPONSE) {
             return 0;
         } else {
+            // XXX: 再送時には短いタイムアウトで!
             return opts.getTimeout();
         }
     }
@@ -240,24 +229,20 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         /** messages sent to children */
         final Set<RQRequest<T>> childMsgs = new HashSet<>();
 
-        /** gaps (subranges that have not yet received any return values) */
+        /** subranges that have not yet received any return values */
         final Set<RQRange> gaps;
 
-        // basic statistics
         int retransCount = 0;
-
-        TimerEvent slowRetransTask; // root node only
 
         final RQStrategy strategy;
         final Responder responder;
-        final RQResults<?> results;
+        final RQResults<T> results;
 
         public RQCatcher() {
             this.rvals = new ConcurrentSkipListMap<>();
-            this.gaps = new HashSet<>();
-            gaps.addAll(targetRanges);
+            this.gaps = new HashSet<>(targetRanges);
             if (isRoot) {
-                results = new RQResults(this);
+                results = new RQResults<T>(this);
             } else {
                 results = null;
             }
@@ -276,24 +261,6 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             default:
                 throw new Error("unknown response type: " + opts.getResponseType());
             }
-
-            if (isRoot && opts.getResponseType() != ResponseType.NO_RESPONSE) {
-                RetransMode rmode = opts.getRetransMode();
-                if (rmode == RetransMode.SLOW || rmode == RetransMode.RELIABLE) {
-                    // schedule slow retransmission task
-                    long retrans = RQManager.RQ_RETRANS_PERIOD;
-                    logger.debug("schedule slow retransmission every {}", retrans);
-                    slowRetransTask = EventExecutor.sched(
-                            "slowretrans-" + getEventId(),
-                            retrans, retrans, () -> {
-                                logger.debug("slow retransmit: gaps={}", gaps);
-                                rqDisseminate();
-                            });
-                    cleanup.add(() -> {
-                        slowRetransTask.cancel();
-                    });
-                }
-            }
         }
 
         @Override
@@ -306,7 +273,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             + childMsgs
             + ", retrans=" + retransCount + "]";
         }
-        
+
         // XXX: note that wrap-around query ranges such as [10, 5) do not work
         // for now (k-abe)
         private void rqDisseminate() {
@@ -337,7 +304,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             future.thenAccept((List<DKRangeRValue<T>> rvals) -> {
                 addRemoteValues(rvals);
             });
-            responder.firstDisseminateFinish();
+            responder.rqDisseminateFinish();
             logger.debug("rqDisseminate finished");
         }
 
@@ -507,14 +474,6 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         }
 
         private void addRemoteValue(RemoteValue<T> rval, Range<DdllKey> range) {
-            /*
-             * 1. rvalsに，rvalを加える．同一のキーがあれば上書きする．
-             *  NavigableMap<DdllKey, DKRangeRValue<?>> rvals;
-             *
-             * duplicated: [(62.0)!p62..(63.0)!p63)([peer=p62 val=[[val=62]]])
-             * duplicated: [(60.0)!p60..(63.0)!p63)([peer=p62 val=[[val=62]]])
-             * 2. gaps から r を削る
-             */
             if (rvals.containsKey(range.from)) {
                 return;
             }
@@ -646,10 +605,11 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
          *
          *  - AckEvents are sent only from intermediate nodes.
          */
-       abstract class Responder {
-           TimerEvent expirationTask;
+        abstract class Responder {
+            TimerEvent expirationTask;
+            TimerEvent slowRetransTask;
             // called when rqDisseminate has finished
-            abstract void firstDisseminateFinish();
+            abstract void rqDisseminateFinish();
             // called when some return values are available
             abstract void onReceiveValues();
             protected void startExpirationTask() {
@@ -667,11 +627,30 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                         });
                 cleanup.add(() -> expirationTask.cancel());
             }
+            protected void startSlowRetranstTask() {
+                assert isRoot;
+                assert slowRetransTask == null;
+                RetransMode rmode = opts.getRetransMode();
+                if (rmode == RetransMode.SLOW || rmode == RetransMode.RELIABLE) {
+                    // schedule slow retransmission task
+                    long retrans = RQManager.RQ_RETRANS_PERIOD;
+                    logger.debug("schedule slow retransmission every {}", retrans);
+                    slowRetransTask = EventExecutor.sched(
+                            "slowretrans-" + getEventId(),
+                            retrans, retrans, () -> {
+                                logger.debug("start slow retransmit");
+                                rqDisseminate();
+                            });
+                    cleanup.add(() -> {
+                        slowRetransTask.cancel();
+                    });
+                }
+            }
         }
 
         class NoResponder extends Responder {
             @Override
-            void firstDisseminateFinish() {
+            void rqDisseminateFinish() {
                 if (isRoot) {
                     notifyResult(null);
                 }
@@ -685,8 +664,13 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         class AggregateResponder extends Responder {
             TimerEvent flushTask;
             boolean flushed;
+            public AggregateResponder() {
+                if (isRoot) {
+                    startSlowRetranstTask();
+                }
+            }
             @Override
-            void firstDisseminateFinish() {
+            void rqDisseminateFinish() {
                 if (!isRoot && !flushed) {
                     // if we have some value, flush it immediately instead of
                     // just sending an ack.
@@ -731,8 +715,21 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         
         class DirectResponder extends Responder {
             boolean acked;
+            public DirectResponder() {
+                if (isRoot) {
+                    LocalNode local = (LocalNode)receiver;
+                    RQRequest.this.root = local;
+                    RQRequest.this.rootEventId = getEventId();
+                    // this instance receives RQReplyDirect messages
+                    RequestEvent.registerRequestEvent(local, RQRequest.this);
+                    cleanup.add(() -> {
+                        RequestEvent.removeRequestEvent(local, getEventId());
+                    });
+                    startSlowRetranstTask();
+                }
+            }
             @Override
-            void firstDisseminateFinish() {
+            void rqDisseminateFinish() {
                 if (!isRoot && !acked) {
                     // send empty RQReply to parent instead of Ack
                     Event ev = new RQReply<T>(RQRequest.this, null, true);
