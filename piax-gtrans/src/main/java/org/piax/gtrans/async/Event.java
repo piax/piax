@@ -175,6 +175,7 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
         }
         public void cancel() {
             canceled = true;
+            EventExecutor.cancelEvent(this);
         }
         public boolean isExecuted() {
             return executed;

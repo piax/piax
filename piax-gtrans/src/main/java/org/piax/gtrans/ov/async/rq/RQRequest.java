@@ -445,9 +445,11 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
          */
         void replyReceived(RQReply<T> reply) {
             logger.debug("RQRequest: reply received: {}", reply);
-            reply.req.cleanup(); // cleanup sender half
-            boolean rc = childMsgs.remove(reply.req);
-            assert rc;
+            if (reply.isFinal) {
+                reply.req.cleanup(); // cleanup sender half
+                boolean rc = childMsgs.remove(reply.req);
+                assert rc;
+            }
             addRemoteValues(reply.vals);
             if (isCompleted()) {
                 cleanup();
@@ -644,9 +646,8 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             // called when some return values are available
             abstract void onReceiveValues();
             protected void startExpirationTask() {
-                assert expirationTask == null;
                 long expire = opts.getTimeout();
-                if (expire == 0) {
+                if (expirationTask != null || expire == 0) {
                     return;
                 }
                 long exp = expire + (isRoot ? 0 : RQManager.RQ_EXPIRATION_GRACE);
@@ -680,7 +681,13 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             @Override
             void firstDisseminateFinish() {
                 if (!isRoot && !flushed) {
-                    getLocalNode().post(new AckEvent(RQRequest.this, sender));
+                    // if we have some value, flush it immediately instead of
+                    // just sending an ack.
+                    if (!rvals.isEmpty()) {
+                        flush();
+                    } else {
+                        getLocalNode().post(new AckEvent(RQRequest.this, sender));
+                    }
                 }
                 if (!isCompleted()) {
                     startExpirationTask();
