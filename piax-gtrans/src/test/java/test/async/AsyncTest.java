@@ -376,6 +376,15 @@ public class AsyncTest {
     }
     
     @Test
+    public void testRQ1NoResponse() {
+        TransOptions opts = new TransOptions();
+        opts.setResponseType(ResponseType.NO_RESPONSE);
+        testRQ1(new DdllNodeFactory(), opts, new SimpleValueProvider(),
+                new Range<Integer>(200, true, 400, false),
+                Arrays.asList());
+    }
+
+    @Test
     public void testRQ1AggregateSlow() {
         TransOptions opts = new TransOptions();
         opts.setResponseType(ResponseType.AGGREGATE);

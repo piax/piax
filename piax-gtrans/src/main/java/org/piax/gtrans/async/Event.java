@@ -265,11 +265,6 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
         }
 
         @Override
-        public boolean beforeRunHook(LocalNode n) {
-            return super.beforeRunHook(n);
-        }
-
-        @Override
         public void receiveReply(U reply) {
             replyReceiver.accept(reply);
         }
@@ -292,8 +287,6 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
      */
     public static abstract class RequestEvent<T extends RequestEvent<T, U>,
             U extends ReplyEvent<T, U>> extends Event {
-        final boolean useAck;
-        final boolean expectReply;
         protected boolean isReceiverHalf = false;
         transient CompletableFuture<U> future;
         transient TimerEvent replyTimeoutEvent, ackTimeoutEvent;
@@ -301,13 +294,7 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
         transient LocalNode local;
 
         public RequestEvent(Node receiver) {
-            this(receiver, true, true);
-        }
-
-        public RequestEvent(Node receiver, boolean useAck, boolean expectReply) {
             super(receiver);
-            this.useAck = useAck;
-            this.expectReply = expectReply;
             this.future = new CompletableFuture<U>();
         }
 
@@ -350,14 +337,56 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
 
         @Override
         public void beforeSendHook(LocalNode n) {
-            registerForAck(n);
-            if (expectReply) {
+            prepareForAck(n);
+            prepareForReply(n);
+        }
+
+        @Override
+        public void beforeForwardHook(LocalNode n) {
+            prepareForAck(n);
+            // when a request message is forwarded, we send AckEvent to the
+            // sender node.
+            n.post(new AckEvent(this, this.sender));
+        }
+
+        // override if necessary
+        protected long getAckTimeoutValue() {
+            return NetworkParams.NETWORK_TIMEOUT;
+        }
+
+        // override if necessary
+        protected long getReplyTimeoutValue() {
+            return NetworkParams.NETWORK_TIMEOUT;
+        }
+ 
+        private void prepareForAck(LocalNode n) {
+            long acktimeout = getAckTimeoutValue();
+            if (acktimeout != 0) {
+                // foundFailedNode must be called in prior to failureCallback
+                // because foundFailedNode is used for registering the failed 
+                // node and failureCallback relies on this.
+                registerNotAckedEvent(n, this);
+                this.ackTimeoutEvent = EventExecutor.sched(
+                        "acktimer-" + getEventId(),
+                        acktimeout,
+                        () -> {
+                            if (receiver != n) {
+                                n.getTopStrategy().foundFailedNode(receiver);
+                            }
+                        });
+                cleanup.add(() -> EventExecutor.cancelEvent(ackTimeoutEvent));
+            }
+        }
+
+        private void prepareForReply(LocalNode n) {
+            long replytimeout = getReplyTimeoutValue();
+            if (replytimeout != 0) {
                 registerRequestEvent(n, this);
                 Runnable r = () -> removeRequestEvent(n, getEventId());
                 cleanup.add(r);
                 this.replyTimeoutEvent = EventExecutor.sched(
                         "replyTimer-" + getEventId(),
-                        getReplyTimeoutValue(),
+                        replytimeout,
                         () -> {
                             RequestEvent<?, ?> ev1 = removeNotAckedEvent(n, getEventId());
                             RequestEvent<?, ?> ev2 = removeRequestEvent(n, getEventId());
@@ -372,35 +401,6 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
                         });
                 System.out.println("schedule reply timer: " + replyTimeoutEvent);
                 cleanup.add(() -> EventExecutor.cancelEvent(replyTimeoutEvent));
-            }
-        }
-
-        @Override
-        public void beforeForwardHook(LocalNode n) {
-            registerForAck(n);
-            // when a request message is forwarded, we send AckEvent to the
-            // sender node.
-            n.post(new AckEvent(this, this.sender));
-        }
-
-        // override if necessary
-        protected long getReplyTimeoutValue() {
-            return NetworkParams.NETWORK_TIMEOUT;
-        }
- 
-        private void registerForAck(LocalNode n) {
-            if (useAck) {
-                // foundFailedNode must be called in prior to failureCallback
-                // because foundFailedNode is used for registering the failed 
-                // node and failureCallback relies on this.
-                registerNotAckedEvent(n, this);
-                this.ackTimeoutEvent = EventExecutor.sched(NetworkParams.NETWORK_TIMEOUT,
-                        () -> {
-                            if (receiver != n) {
-                                n.getTopStrategy().foundFailedNode(receiver);
-                            }
-                        });
-                cleanup.add(() -> EventExecutor.cancelEvent(ackTimeoutEvent));
             }
         }
 

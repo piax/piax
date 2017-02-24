@@ -160,9 +160,22 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
     }
 
     @Override
+    protected long getAckTimeoutValue() {
+        if (opts.getResponseType() == ResponseType.NO_RESPONSE) {
+            return 0;
+        } else {
+            return opts.getTimeout();
+        }
+    }
+
+    @Override
     protected long getReplyTimeoutValue() {
         // XXX: 再送時には短いタイムアウトで!
-        return opts.getTimeout();
+        if (opts.getResponseType() == ResponseType.NO_RESPONSE) {
+            return 0;
+        } else {
+            return opts.getTimeout();
+        }
     }
 
     public void addFailedLinks(Collection<Node> links) {
@@ -231,11 +244,10 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         // basic statistics
         int retransCount = 0;
 
-        TimerEvent expirationTask;
         TimerEvent slowRetransTask; // root node only
-        TimerEvent flushTask;
 
         final RQStrategy strategy;
+        final Responder responder;
         final RQResults<?> results;
 
         public RQCatcher() {
@@ -249,7 +261,21 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             }
             this.strategy = RQStrategy.getRQStrategy(getLocalNode());
 
-            if (isRoot) {
+            switch (opts.getResponseType()) {
+            case NO_RESPONSE:
+                responder = new NoResponder();
+                break;
+            case DIRECT:
+                responder = new DirectResponder();
+                break;
+            case AGGREGATE:
+                responder = new AggregateResponder();
+                break;
+            default:
+                throw new Error("unknown response type: " + opts.getResponseType());
+            }
+
+            if (isRoot && opts.getResponseType() != ResponseType.NO_RESPONSE) {
                 RetransMode rmode = opts.getRetransMode();
                 if (rmode == RetransMode.SLOW || rmode == RetransMode.RELIABLE) {
                     // schedule slow retransmission task
@@ -279,34 +305,6 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             + ", retrans=" + retransCount + "]";
         }
         
-        /*
-         * Message Sequences:
-         * 
-         * NO_RESPONSE:
-         * 
-         *   ROOT----RQRequest---->CHILD1                 CHILD2
-         *     |                     |------RQRequest------>|
-         *
-         * 
-         * DIRECT:
-         *
-         *   ROOT----RQRequest---->CHILD1                 CHILD2
-         *     |<-----RQReply--------|------RQRequest------>|
-         *     |                     |<----RQReply(dummy)---|
-         *     |<-------------------------RQReplyDirect-----|
-         *  
-         *  - always send RQReply to the parent node.
-         *  - no AckEvent is used. 
-         * 
-         * AGGREGATE:
-         *
-         *   ROOT----RQRequest---->CHILD1                 CHILD2
-         *     |<-----AckEvent-------|------RQRequest------>|
-         *     |                     |<------RQReply--------|
-         *     |<-----RQReply--------|                      |
-         *
-         *  - AckEvents are sent only from intermediate nodes.
-         */
         // XXX: note that wrap-around query ranges such as [10, 5) do not work
         // for now (k-abe)
         private void rqDisseminate() {
@@ -315,7 +313,6 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             Map<Id, List<RQRange>> map = assignDelegates();
             logger.debug("aggregated: {}", map);
             PeerId peerId = getLocalNode().getPeerId();
-            ResponseType rtype = opts.getResponseType();
 
             /*
              * send aggregated requests to children.
@@ -331,68 +328,13 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                     getLocalNode().post(m);
                 });
 
-            // if we have children, do not wait longer than `expire' period
-            long expire = opts.getTimeout();
-            if (expirationTask == null  // consider retransmission
-                    && expire != 0
-                    && !this.childMsgs.isEmpty()
-                    && (isRoot || opts.getResponseType() == ResponseType.AGGREGATE)) {
-                long exp = expire + (isRoot ? 0 : RQManager.RQ_EXPIRATION_GRACE);
-                logger.debug("schedule expiration after {}", exp);
-                expirationTask = EventExecutor.sched("expire-" + getEventId(),
-                        exp, () -> {
-                            logger.debug("expired: {}", this);
-                            cleanup();
-                            notifyResult(null);
-                        });
-                cleanup.add(() -> {
-                    expirationTask.cancel();
-                });
-            }
-
-            if (flushTask == null       // consider retransmission
-                    && !isRoot
-                    && !this.childMsgs.isEmpty()
-                    && opts.getResponseType() == ResponseType.AGGREGATE) {
-                long flush = RQManager.RQ_FLUSH_PERIOD;
-                logger.debug("schedule periodic flushing {}", flush);
-                flushTask = EventExecutor.sched("flush-" + getEventId(), 
-                        flush, flush, () -> flush());
-                cleanup.add(() -> {
-                    flushTask.cancel();
-                });
-            }
-
             // obtain values for local ranges
             CompletableFuture<List<DKRangeRValue<T>>> future
                 = rqExecuteLocal(map.get(peerId));
-            if (!isRoot && rtype == ResponseType.AGGREGATE && !future.isDone()) {
-                // send Ack in prior to rqExecuteLocal completes
-                getLocalNode().post(new AckEvent(RQRequest.this, sender));
-            }
             future.thenAccept((List<DKRangeRValue<T>> rvals) -> {
-                logger.debug("rqDisseminate: rvals = {}", rvals);
-                switch (rtype) {
-                case NO_RESPONSE:
-                    cleanup();
-                    break;
-                case DIRECT:
-                    addRemoteValues(rvals);
-                    if (!isRoot) {
-                        cleanup();
-                    }
-                    break;
-                case AGGREGATE:
-                    boolean flushed = addRemoteValues(rvals);
-                    if (!flushed && !isRoot) {
-                        // when no RQReply is sent to the parent, send AckEvent instead.
-                        getLocalNode().post(new AckEvent(RQRequest.this, sender));
-                    }
-                    break;
-                default:
-                    throw new Error("shouldn't happen");
-                }
+                addRemoteValues(rvals);
             });
+            responder.firstDisseminateFinish();
             logger.debug("rqDisseminate finished");
         }
 
@@ -525,33 +467,34 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
          * @param ranges the ranges.
          * @returns true if flushed.
          */
-        private boolean addRemoteValues(Collection<DKRangeRValue<T>> ranges) {
+        private void addRemoteValues(Collection<DKRangeRValue<T>> ranges) {
             if (ranges == null) {
                 // ACKの代わりにRQReplyを受信した場合
-                return false;
+                return;
             }
             for (DKRangeRValue<T> range : ranges) {
                 addRemoteValue(range.getRemoteValue(), range);
             }
             logger.debug("gaps={}", gaps);
-            if (isCompleted() || opts.getResponseType() == ResponseType.DIRECT) {
-                // transmit the collected results to the parent node
-                flush();
-                return true;
-            } else {
-                return false;
-                // fast flushing
-                // finished + failed = children ならば flush
-                /*Set<Endpoint> eset = new HashSet<>();
-                eset.addAll(children);
-                eset.removeAll(finished);
-                eset.removeAll(failedLinks);
-                logger.debug("children={}, finished={}, failed={}, eset={}",
-                        children, finished, failedLinks, eset);
-                if (eset.size() == 0) {
-                    flush();
-                }*/
-            }
+            responder.onReceiveValues();
+//            if (isCompleted() || opts.getResponseType() == ResponseType.DIRECT) {
+//                // transmit the collected results to the parent node
+//                flush();
+//                return true;
+//            } else {
+//                return false;
+//                // fast flushing
+//                // finished + failed = children ならば flush
+//                /*Set<Endpoint> eset = new HashSet<>();
+//                eset.addAll(children);
+//                eset.removeAll(finished);
+//                eset.removeAll(failedLinks);
+//                logger.debug("children={}, finished={}, failed={}, eset={}",
+//                        children, finished, failedLinks, eset);
+//                if (eset.size() == 0) {
+//                    flush();
+//                }*/
+//            }
         }
 
         private void addRemoteValue(RemoteValue<T> rval, Range<DdllKey> range) {
@@ -618,54 +561,12 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             }
         }
 
-        /**
-         * send the collected results to the parent node. note that the results are
-         * cleared after flushing.
-         */
-        public void flush() {
-            if (isRoot) {
-                return;
-            }
-            logger.debug("flush(): {}", this);
-            Collection<DKRangeRValue<T>> vals = new ArrayList<>(rvals.values());
-            ResponseType rtype = opts.getResponseType();
-            switch (rtype) {
-            case NO_RESPONSE:
-                return;
-            case DIRECT:
-                if (sender == root) {
-                    Event ev = new RQReply<T>(RQRequest.this, vals, true);
-                    getLocalNode().post(ev);
-                } else {
-                    if (rvals.size() > 0) {
-                        Event ev = new RQReplyDirect<T>(RQRequest.this, vals);
-                        getLocalNode().post(ev);
-                    }
-                    // send RQReply to parent instead of Ack
-                    Event ev = new RQReply<T>(RQRequest.this, null, true);
-                    getLocalNode().post(ev);
-                }
-                break;
-            case AGGREGATE:
-                if (!vals.isEmpty()) {
-                    Event ev = new RQReply<T>(RQRequest.this, vals, isCompleted());
-                    getLocalNode().post(ev);
-                }
-                break;
-            default:
-                throw new Error("shouldn't happen");
-            }
-            rvals.clear();
-        }
-
         public RQResults<?> getRQResults() {
             return results;
         }
 
         boolean isCompleted() {
-            // XXX if NO_RESPONSE, request itself completes immediately
-            return (TransOptions.responseType(opts) == ResponseType.NO_RESPONSE)
-                    || (gaps.size() == 0);
+            return gaps.isEmpty();
         }
 
         /**
@@ -706,6 +607,145 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             CompletableFuture<List<DKRangeRValue<T>>> rc = new CompletableFuture<>();
             futures.thenRun(() -> rc.complete(rvals));
             return rc;
+        }
+
+        /*
+         * Message Sequences:
+         * 
+         * NO_RESPONSE:
+         * 
+         *   ROOT----RQRequest---->CHILD1                 CHILD2
+         *     |                     |------RQRequest------>|
+         *
+         * 
+         * DIRECT:
+         *
+         *   ROOT----RQRequest---->CHILD1                 CHILD2
+         *     |<-----RQReply--------|------RQRequest------>|
+         *     |                     |<----RQReply(dummy)---|
+         *     |<-------------------------RQReplyDirect-----|
+         *  
+         *  - always send RQReply to the parent node.
+         *  - no AckEvent is used. 
+         * 
+         * AGGREGATE:
+         *
+         *   ROOT----RQRequest---->CHILD1                 CHILD2
+         *     |<-----AckEvent-------|------RQRequest------>|
+         *     |                     |<------RQReply--------|
+         *     |<-----RQReply--------|                      |
+         *
+         *  - AckEvents are sent only from intermediate nodes.
+         */
+       abstract class Responder {
+           TimerEvent expirationTask;
+            // called when rqDisseminate has finished
+            abstract void firstDisseminateFinish();
+            // called when some return values are available
+            abstract void onReceiveValues();
+            protected void startExpirationTask() {
+                assert expirationTask == null;
+                long expire = opts.getTimeout();
+                if (expire == 0) {
+                    return;
+                }
+                long exp = expire + (isRoot ? 0 : RQManager.RQ_EXPIRATION_GRACE);
+                logger.debug("schedule expiration after {}", exp);
+                expirationTask = EventExecutor.sched("expire-" + getEventId(),
+                        exp, () -> {
+                            logger.debug("expired: {}", this);
+                            cleanup();
+                            notifyResult(null);
+                        });
+                cleanup.add(() -> expirationTask.cancel());
+            }
+        }
+
+        class NoResponder extends Responder {
+            @Override
+            void firstDisseminateFinish() {
+                if (isRoot) {
+                    notifyResult(null);
+                }
+            }
+            @Override
+            void onReceiveValues() {
+                // empty
+            }
+        }
+
+        class AggregateResponder extends Responder {
+            TimerEvent flushTask;
+            boolean flushed;
+            @Override
+            void firstDisseminateFinish() {
+                if (!isRoot && !flushed) {
+                    getLocalNode().post(new AckEvent(RQRequest.this, sender));
+                }
+                if (!isCompleted()) {
+                    startExpirationTask();
+                }
+            }
+            @Override
+            void onReceiveValues() {
+                if (!isRoot && isCompleted()) {
+                    flush();
+                    flushed = true;
+                    if (flushTask != null) {
+                        flushTask.cancel();
+                    }
+                } else if (!isRoot && flushTask == null) {
+                    long flush = RQManager.RQ_FLUSH_PERIOD;
+                    logger.debug("schedule periodic flushing {}", flushTask);
+                    flushTask = EventExecutor.sched("flush-" + getEventId(), 
+                            flush, flush, () -> flush());
+                    cleanup.add(() -> {
+                        flushTask.cancel();
+                    });
+                }
+            }
+            private void flush() {
+                if (!rvals.isEmpty()) {
+                    // if we don't copy, we'll send an empty list
+                    Collection<DKRangeRValue<T>> copy = new ArrayList<>(rvals.values());
+                    Event ev = new RQReply<T>(RQRequest.this, copy, isCompleted());
+                    getLocalNode().post(ev);
+                    rvals.clear();
+                }
+            }
+        }
+        
+        class DirectResponder extends Responder {
+            boolean acked;
+            @Override
+            void firstDisseminateFinish() {
+                if (!isRoot && !acked) {
+                    // send empty RQReply to parent instead of Ack
+                    Event ev = new RQReply<T>(RQRequest.this, null, true);
+                    getLocalNode().post(ev);
+                }
+                if (isRoot && !isCompleted()) {
+                    startExpirationTask();
+                }
+            }
+            @Override
+            void onReceiveValues() {
+                if (!isRoot) {
+                    flush();
+                }
+            }
+            private void flush() {
+                if (sender == root) {
+                    Event ev = new RQReply<T>(RQRequest.this, rvals.values(), true);
+                    getLocalNode().post(ev);
+                    acked = true;
+                } else {
+                    if (rvals.size() > 0) {
+                        Event ev = new RQReplyDirect<T>(RQRequest.this, rvals.values());
+                        getLocalNode().post(ev);
+                    }
+                }
+            }
         }
     }
     
