@@ -1,6 +1,7 @@
 package org.piax.gtrans.netty;
 
 import io.netty.bootstrap.Bootstrap;
+import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.group.ChannelGroup;
@@ -11,7 +12,6 @@ import io.netty.util.concurrent.GlobalEventExecutor;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.List;
-import java.util.ListIterator;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -32,7 +32,9 @@ import org.piax.gtrans.TransportListener;
 import org.piax.gtrans.impl.ChannelTransportImpl;
 import org.piax.gtrans.netty.NettyRawChannel.Stat;
 import org.piax.gtrans.netty.bootstrap.NettyBootstrap;
-import org.piax.gtrans.netty.nat.NATLocatorManager;
+import org.piax.gtrans.netty.bootstrap.SslBootstrap;
+import org.piax.gtrans.netty.bootstrap.TcpBootstrap;
+import org.piax.gtrans.netty.bootstrap.UdtBootstrap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,7 +45,7 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
     protected EventLoopGroup serverGroup;
     protected EventLoopGroup clientGroup;
     boolean supportsDuplex = true;
-    protected E locator = null;
+    protected E ep = null;
     final PeerId peerId;
     // a map to hold active raw channels;
     protected final ConcurrentHashMap<E,NettyRawChannel<E>> raws =
@@ -58,8 +60,7 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
     final ChannelGroup cchannels =
             new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
     // XXX should be private
-    public NATLocatorManager nMgr; 
-    protected NettyBootstrap bs;
+    protected NettyBootstrap<E> bs;
     protected AtomicInteger seq;
     final public int RAW_POOL_SIZE = 10;
     
@@ -77,8 +78,28 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
         //this.locator = peerLocator;
         this.peerId = peerId;
         seq = new AtomicInteger(0);// sequence number (ID of the channel)
-        
+        switch(peerLocator.getType()){
+        case TCP:
+            bs = new TcpBootstrap<E>();
+            break;
+        case SSL:
+            bs = new SslBootstrap<E>(ep.getHost(), ep.getPort());
+            break;
+        case UDT:
+            bs = new UdtBootstrap<E>();
+            break;
+        default:
+            throw new ProtocolUnsupportedException("not implemented yet.");
+        }
+        bossGroup = bs.getParentEventLoopGroup();
+        serverGroup = bs.getChildEventLoopGroup();
+        clientGroup = bs.getClientEventLoopGroup();
+
         bootstrap(peerLocator);
+        ServerBootstrap b = bs.getServerBootstrap(this);
+        b.bind(new InetSocketAddress(ep.getHost(), ep.getPort())).syncUninterruptibly();
+            
+        logger.debug("bound " + ep);
         isRunning = true;
     }
 
@@ -96,25 +117,27 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
     @Override
     public void send(ObjectId sender, ObjectId receiver, E dst,
             Object msg) throws ProtocolUnsupportedException, IOException {
-        NettyRawChannel<E> raw = getRawCreateAsClient(dst);
+//        E src = (E)raw.getLocal();
+        E src = ep;
+        channelSendHook(src, dst);
+        NettyMessage<E> nmsg = new NettyMessage<E>(receiver, src, dst, null, getPeerId(), msg, false, 0);
+        // generate a new channel if not exists
+        NettyRawChannel<E> raw = getRawCreateAsClient(dst, nmsg);
         if (raw == null) {
             throw new IOException("Getting new raw channel failed (maybe peer down).");
         }
-        // generate a new channel
-        logger.debug("oneway send to {} from {} msg={}", dst, locator, msg);
-        E src = (E)raw.getLocal();
-        NettyMessage<E> nmsg = new NettyMessage<E>(receiver, src, dst, null, raw.getPeerId(), msg, false, 0);
+        logger.debug("oneway send to {} from {} msg={}", dst, ep, msg);
         raw.touch();
         raw.send(nmsg);
     }
 
     void putChannel(NettyChannel<E> ch) {
-        logger.debug("" + ch.getChannelNo() + ch.channelInitiator.hashCode() + "->" + ch + " on " + locator);
+        logger.debug("" + ch.getChannelNo() + ch.channelInitiator.hashCode() + "->" + ch + " on " + ep);
         channels.put("" + ch.getChannelNo() + ch.channelInitiator.hashCode(), ch);
     }
 
     NettyChannel<E> getChannel(int channelNo, E channelInitiator) {
-        logger.debug("" + channelNo + channelInitiator.hashCode() + " on " + locator);
+        logger.debug("" + channelNo + channelInitiator.hashCode() + " on " + ep);
         return channels.get("" + channelNo + channelInitiator.hashCode());
     }
 
@@ -123,15 +146,15 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
     }
 
     // package local
-    void putRaw(E locator, NettyRawChannel<E> ch) {
+    void putRaw(E ep, NettyRawChannel<E> ch) {
         if (raws.size() == 0) { // the first channel. its premier.
             ch.setPriority(1);
         }
-        raws.put(locator, ch);
+        raws.put(ep, ch);
     }
 
-    protected NettyRawChannel<E> getRaw(E locator) {
-        return raws.get(locator);
+    protected NettyRawChannel<E> getRaw(E ep) {
+        return raws.get(ep);
     }
 
     void deleteRaw(NettyRawChannel<E> raw) {
@@ -174,9 +197,11 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
         return ret;
     }
 */
-    protected abstract NettyRawChannel<E> getRawCreateAsClient(E dst) throws IOException;
+    protected abstract NettyRawChannel<E> getRawCreateAsClient(E dst, NettyMessage<E> msg) throws IOException;
     protected abstract boolean filterMessage(NettyMessage<E> msg);
     protected abstract void bootstrap(NettyLocator locator) throws ProtocolUnsupportedException;
+    protected abstract NettyRawChannel<E> getResolvedRawChannel(E ep) throws IOException;
+    protected abstract NettyLocator directLocator(E ep);
     
     // do nothing by default.
     protected void channelSendHook(E src, E dst) {}
@@ -213,8 +238,9 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
                 count++;
             }
             raw = new NettyRawChannel<E>(dst, this, true);
-            Bootstrap b = bs.getBootstrap(raw, this); 
-            b.connect(dst.getHost(), dst.getPort());
+            NettyLocator l = directLocator(dst);
+            Bootstrap b = bs.getBootstrap(raw, this);
+            b.connect(l.getHost(), l.getPort());
         }
         while (raw.getStat() == Stat.INIT || raw.getStat() == Stat.WAIT) {
             try {
@@ -260,7 +286,7 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
         InetSocketAddress sa = (InetSocketAddress)ctx.channel().remoteAddress();
         
         E dst = createEndpoint(sa.getHostName(), sa.getPort());
-        AttemptMessage<E> attempt = new AttemptMessage<E>(AttemptType.ATTEMPT, locator, attemptRand);
+        AttemptMessage<E> attempt = new AttemptMessage<E>(AttemptType.ATTEMPT, ep, attemptRand);
         synchronized(raws) {
             // NettyRawChannel raw = raws.get(locator);
             synchronized (raw) {
@@ -328,14 +354,14 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
             case ATTEMPT:
                 synchronized (raws) {
                     NettyRawChannel<E> raw = getRaw(attempt.getSource());
-                    if (raw != null && locator.equals(attempt.getSource())) {
+                    if (raw != null && ep.equals(attempt.getSource())) {
                         // loop back.
                         synchronized (raw) {
                             raw.touch();
                             raw.setStat(Stat.RUN);
                             raw.setContext(ctx);
                             ctx.writeAndFlush(new AttemptMessage<E>(
-                                    AttemptType.ACK, locator, null));
+                                    AttemptType.ACK, ep, null));
                         }
                     } else if (raw != null && raw.attempt != null) {
                         synchronized (raw) {
@@ -344,13 +370,13 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
                             if (raw.attempt > (int) attempt.getArg()) {
                                 logger.debug("attempt won on " + raw);
                                 ctx.writeAndFlush(new AttemptMessage<E>(
-                                        AttemptType.NACK, locator, null));
+                                        AttemptType.NACK, ep, null));
                                 
                                 
                             } else { // opposite side wins.
                                 logger.debug("attempt lose on " + raw);
                                 ctx.writeAndFlush(new AttemptMessage<E>(
-                                        AttemptType.ACK, locator, null));
+                                        AttemptType.ACK, ep, null));
                                 //if (raw.getStat() == Stat.DENIED) {
                                 //logger.info("NACK is already received: " + raw);
                                 // if NACK is already received, it goes to RUN state.
@@ -374,7 +400,7 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
                                     + attempt.getSource());
                         }
                         ctx.writeAndFlush(new AttemptMessage<E>(AttemptType.ACK,
-                                locator, null));
+                                ep, null));
                         putRaw(attempt.getSource(), raw);
                     }
                 } // synchronized raws
@@ -388,7 +414,7 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
             }
         } else if (msg instanceof NettyMessage<?>) {
             NettyMessage<E> nmsg = (NettyMessage<E>) msg;
-            logger.debug("inbound received msg: " + nmsg.getMsg() + " on " + locator
+            logger.debug("inbound received msg: " + nmsg.getMsg() + " on " + ep
                     + " from " + nmsg.getSource() + " to " + nmsg.getDestination());
             
             if (filterMessage(nmsg)) {
@@ -484,7 +510,7 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
         }
         else if (msg instanceof NettyMessage) {
             NettyMessage<E> nmsg = (NettyMessage<E>) msg;
-            logger.debug("outbound received msg: " + nmsg.getMsg() + " on " + locator + " from " + nmsg.getSource()  + " to " + nmsg.getDestination());
+            logger.debug("outbound received msg: " + nmsg.getMsg() + " on " + ep + " from " + nmsg.getSource()  + " to " + nmsg.getDestination());
 
             if (filterMessage(nmsg)) {
                 return;
@@ -546,21 +572,21 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
 
     @Override
     public E getEndpoint() {
-        return (E)locator;
+        return (E)ep;
     }
 
     @Override
     public Channel<E> newChannel(ObjectId sender, ObjectId receiver,
             E dst, boolean isDuplex, int timeout)
             throws ProtocolUnsupportedException, IOException {
-        logger.debug("new channel for: " + dst + " on " + locator);
-        NettyRawChannel<E> raw = getRawCreateAsClient(dst);
+        logger.debug("new channel for: " + dst + " on " + ep);
+        NettyRawChannel<E> raw = getRawCreateAsClient(dst, null);
         if (raw == null) {
             throw new IOException("Getting new raw channel failed (maybe peer down).");
         }
         NettyChannel<E> ch;
         synchronized(channels) {
-            ch = new NettyChannel<E>(seq.incrementAndGet(), locator, dst, sender, receiver, true, raw, this);
+            ch = new NettyChannel<E>(seq.incrementAndGet(), ep, dst, sender, receiver, true, raw, this);
             putChannel(ch);
         }
         return ch;

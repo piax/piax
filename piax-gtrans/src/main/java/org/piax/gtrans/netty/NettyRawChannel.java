@@ -4,13 +4,11 @@ import io.netty.channel.ChannelHandlerContext;
 
 import java.io.IOException;
 
-import org.piax.common.Endpoint;
 import org.piax.common.ObjectId;
 import org.piax.common.PeerId;
 import org.piax.common.TransportId;
 import org.piax.gtrans.Channel;
 import org.piax.gtrans.NetworkTimeoutException;
-import org.piax.gtrans.netty.nat.NettyNATLocator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

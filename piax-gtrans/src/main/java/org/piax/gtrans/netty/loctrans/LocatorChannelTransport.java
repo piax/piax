@@ -26,35 +26,14 @@ public class LocatorChannelTransport extends NettyChannelTransport<NettyLocator>
         super(peer, transId, peerId, peerLocator);
     }
     
-    protected NettyRawChannel<NettyLocator> getRawCreateAsClient(NettyLocator dst) throws IOException {
+    protected NettyRawChannel<NettyLocator> getRawCreateAsClient(NettyLocator dst, NettyMessage<NettyLocator> nmsg) throws IOException {
         NettyRawChannel<NettyLocator> raw = getRawCreateAsClient0(dst);
         return raw;
     }
 
     @Override
     protected void bootstrap(NettyLocator peerLocator) throws ProtocolUnsupportedException {
-        this.locator = peerLocator;
-        switch(peerLocator.getType()){
-        case TCP:
-            bs = new TcpBootstrap();
-            break;
-        case SSL:
-            bs = new SslBootstrap(locator.getHost(), locator.getPort());
-            break;
-        case UDT:
-            bs = new UdtBootstrap();
-            break;
-        default:
-            throw new ProtocolUnsupportedException("not implemented yet.");
-        }
-        bossGroup = bs.getParentEventLoopGroup();
-        serverGroup = bs.getChildEventLoopGroup();
-        clientGroup = bs.getClientEventLoopGroup();
-        
-        ServerBootstrap b = bs.getServerBootstrap(this);
-        b.bind(new InetSocketAddress(peerLocator.getHost(), peerLocator.getPort())).syncUninterruptibly();
-            
-        logger.debug("bound " + peerLocator);
+        this.ep = peerLocator;
     }
 
     @Override
@@ -66,6 +45,18 @@ public class LocatorChannelTransport extends NettyChannelTransport<NettyLocator>
     protected boolean filterMessage(NettyMessage<NettyLocator> msg) {
         // TODO Auto-generated method stub
         return false;
+    }
+
+    @Override
+    protected NettyLocator directLocator(NettyLocator l) {
+        return l;
+    }
+
+    @Override
+    protected NettyRawChannel<NettyLocator> getResolvedRawChannel(
+            NettyLocator ep) throws IOException {
+        // TODO Auto-generated method stub
+        return null;
     }
 
 }

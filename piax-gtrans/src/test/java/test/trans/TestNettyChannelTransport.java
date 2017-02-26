@@ -31,7 +31,7 @@ public class TestNettyChannelTransport {
                 received1 = "654321".equals(msg.getMessage());
             }
         });
-        
+
         tr2.setListener(new TransportListener<NettyLocator>() {
             public void onReceive(Transport<NettyLocator> trans, ReceivedMessage msg) {
                 received2 = "123456".equals(msg.getMessage());

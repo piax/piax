@@ -17,9 +17,7 @@ import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.GTransConfigValues;
 import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.Peer;
-import org.piax.gtrans.netty.NettyChannelTransport;
 import org.piax.gtrans.netty.NettyLocator;
-import org.piax.gtrans.netty.nat.NettyNATLocator;
 import org.piax.gtrans.ov.Overlay;
 import org.piax.gtrans.ov.ddll.NodeMonitor;
 import org.piax.gtrans.ov.sg.MSkipGraph;
@@ -136,12 +134,12 @@ public class TestOnDHT {
             		PeerLocator l = null;
             		switch(loc) {
             		case NETTY:
-                        if (i % 10 == 1) {
-                            l = new NettyNATLocator(new InetSocketAddress("localhost", 20000 + i)); 
-                        }
-                        else {
+                        //if (i % 10 == 1) {
+                        //    l = new NettyNATLocator(new InetSocketAddress("localhost", 20000 + i)); 
+                        //}
+                        //else {
                             l = new NettyLocator(new InetSocketAddress("localhost", 20000 + i));
-                        }
+                        //}
                         break;
             		case TCP:
                         l = new TcpLocator(new InetSocketAddress("localhost", 20000 + i));
@@ -196,11 +194,11 @@ public class TestOnDHT {
 
         printf("%n** get (%d)%n", n);
         stime = System.currentTimeMillis();
-        for (int i = 0; i < numPeer; i++) {
+        /*for (int i = 0; i < numPeer; i++) {
             if (loc == L.NETTY) {
                 ((NettyChannelTransport)ovs[i].getBaseTransport()).forwardCount = 0;
             }
-        }
+        }*/
         dht = dhts[29];
         for (int i = 0; i < n; i++) {
             String get = (String) dht.get("hoge" + i);
@@ -222,9 +220,9 @@ public class TestOnDHT {
             }
             */
             if (loc == L.NETTY) {
-                if (!(((NettyChannelTransport)ovs[i].getBaseTransport()).getEndpoint() instanceof NettyNATLocator)) {
+                /*if (!(((NettyChannelTransport)ovs[i].getBaseTransport()).getEndpoint() instanceof NettyNATLocator)) {
                     System.out.println(ovs[i].getEndpoint() + "\t" +((NettyChannelTransport)ovs[i].getBaseTransport()).forwardCount);// + "," + ((NettyChannelTransport)ovs[i].getBaseTransport()).nMgr);
-                }
+                }*/
             }
         }
         etime = System.currentTimeMillis();

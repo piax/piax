@@ -19,11 +19,12 @@ import io.netty.util.concurrent.DefaultThreadFactory;
 import java.util.concurrent.ThreadFactory;
 
 import org.piax.gtrans.netty.NettyChannelTransport;
+import org.piax.gtrans.netty.NettyEndpoint;
 import org.piax.gtrans.netty.NettyInboundHandler;
 import org.piax.gtrans.netty.NettyOutboundHandler;
 import org.piax.gtrans.netty.NettyRawChannel;
 
-public class UdtBootstrap implements NettyBootstrap {
+public class UdtBootstrap<E extends NettyEndpoint> implements NettyBootstrap<E> {
     EventLoopGroup parentGroup;
     EventLoopGroup childGroup;
     EventLoopGroup clientGroup;
@@ -39,7 +40,7 @@ public class UdtBootstrap implements NettyBootstrap {
     }
 
     private ChannelInitializer<?> getChannelInboundInitializer(
-            NettyChannelTransport trans) {
+            NettyChannelTransport<E> trans) {
         return new ChannelInitializer<UdtChannel>() {
             @Override
             public void initChannel(UdtChannel ch) throws Exception {
@@ -53,7 +54,7 @@ public class UdtBootstrap implements NettyBootstrap {
     }
 
      private ChannelInitializer<?> getChannelOutboundInitializer(
-            NettyRawChannel raw, NettyChannelTransport trans) {
+            NettyRawChannel<E> raw, NettyChannelTransport<E> trans) {
         return new ChannelInitializer<UdtChannel>() {
             @Override
             public void initChannel(UdtChannel sch)
@@ -83,7 +84,7 @@ public class UdtBootstrap implements NettyBootstrap {
     }
 
     @Override
-    public ServerBootstrap getServerBootstrap(NettyChannelTransport trans) {
+    public ServerBootstrap getServerBootstrap(NettyChannelTransport<E> trans) {
         ServerBootstrap b = new ServerBootstrap();
         b.group(parentGroup, childGroup)
         .channelFactory(NioUdtProvider.BYTE_ACCEPTOR)
@@ -97,7 +98,7 @@ public class UdtBootstrap implements NettyBootstrap {
     }
 
     @Override
-    public Bootstrap getBootstrap(NettyRawChannel raw, NettyChannelTransport trans) {
+    public Bootstrap getBootstrap(NettyRawChannel<E> raw, NettyChannelTransport<E> trans) {
         Bootstrap b = new Bootstrap();
         b.group(clientGroup)
         //.channel(transType.getChannelClass())

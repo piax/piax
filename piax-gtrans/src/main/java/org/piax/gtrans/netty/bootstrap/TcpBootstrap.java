@@ -13,15 +13,14 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.serialization.ClassResolvers;
 import io.netty.handler.codec.serialization.ObjectDecoder;
 import io.netty.handler.codec.serialization.ObjectEncoder;
-import io.netty.handler.logging.LogLevel;
-import io.netty.handler.logging.LoggingHandler;
 
 import org.piax.gtrans.netty.NettyChannelTransport;
+import org.piax.gtrans.netty.NettyEndpoint;
 import org.piax.gtrans.netty.NettyInboundHandler;
 import org.piax.gtrans.netty.NettyOutboundHandler;
 import org.piax.gtrans.netty.NettyRawChannel;
 
-public class TcpBootstrap implements NettyBootstrap {
+public class TcpBootstrap<E extends NettyEndpoint> implements NettyBootstrap<E> {
     EventLoopGroup parentGroup;
     EventLoopGroup childGroup;
     EventLoopGroup clientGroup;
@@ -48,7 +47,7 @@ public class TcpBootstrap implements NettyBootstrap {
     }
 
     private ChannelInitializer<?> getChannelInboundInitializer(
-            NettyChannelTransport trans) {
+            NettyChannelTransport<E> trans) {
         return new ChannelInitializer<SocketChannel>() {
             @Override
             public void initChannel(SocketChannel ch) throws Exception {
@@ -61,7 +60,7 @@ public class TcpBootstrap implements NettyBootstrap {
         };
     }
 
-    private ChannelInitializer<?> getChannelOutboundInitializer(NettyRawChannel raw, NettyChannelTransport trans) {
+    private ChannelInitializer<?> getChannelOutboundInitializer(NettyRawChannel<E> raw, NettyChannelTransport<E> trans) {
         return new ChannelInitializer<SocketChannel>() {
             @Override
             public void initChannel(SocketChannel sch)
@@ -76,7 +75,7 @@ public class TcpBootstrap implements NettyBootstrap {
     }
     
     @Override
-    public ServerBootstrap getServerBootstrap(NettyChannelTransport trans) {
+    public ServerBootstrap getServerBootstrap(NettyChannelTransport<E> trans) {
         ServerBootstrap b = new ServerBootstrap();
         b.group(parentGroup, childGroup)
         .channel(NioServerSocketChannel.class)
@@ -87,7 +86,7 @@ public class TcpBootstrap implements NettyBootstrap {
     }
 
     @Override
-    public Bootstrap getBootstrap(NettyRawChannel raw, NettyChannelTransport trans) {
+    public Bootstrap getBootstrap(NettyRawChannel<E> raw, NettyChannelTransport<E> trans) {
         Bootstrap b = new Bootstrap();
         b.group(clientGroup)
         .channel(NioSocketChannel.class)
