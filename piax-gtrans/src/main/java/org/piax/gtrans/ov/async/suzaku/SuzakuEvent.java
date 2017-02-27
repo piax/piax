@@ -55,10 +55,6 @@ public abstract class SuzakuEvent {
         }
         @Override
         public void run() {
-            if (false && !Sim.verbose) {
-                System.out.println(receiver + " receives " + this + "\n"
-                        + receiver.toStringDetail());
-            }
             LocalNode r = (LocalNode)receiver;
             SuzakuStrategy s = SuzakuStrategy.getSuzakuStrategy(r);
             FTEntrySet ent = s.getFingers(isBackward, x, y, k, given, gift2);

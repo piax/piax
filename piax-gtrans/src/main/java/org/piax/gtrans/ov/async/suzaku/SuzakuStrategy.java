@@ -20,6 +20,7 @@ import org.piax.gtrans.async.Event.LookupDone;
 import org.piax.gtrans.async.Event.TimerEvent;
 import org.piax.gtrans.async.EventExecutor;
 import org.piax.gtrans.async.LocalNode;
+import org.piax.gtrans.async.Log;
 import org.piax.gtrans.async.NetworkParams;
 import org.piax.gtrans.async.Node;
 import org.piax.gtrans.async.Node.NodeMode;
@@ -27,7 +28,7 @@ import org.piax.gtrans.async.NodeFactory;
 import org.piax.gtrans.async.NodeStrategy;
 import org.piax.gtrans.async.Option.BooleanOption;
 import org.piax.gtrans.async.Option.IntegerOption;
-import org.piax.gtrans.async.Sim;
+//import org.piax.gtrans.async.Sim;
 import org.piax.gtrans.ov.async.ddll.DdllEvent.SetRJob;
 import org.piax.gtrans.ov.async.ddll.DdllStrategy;
 import org.piax.gtrans.ov.async.suzaku.SuzakuEvent.FTEntRemoveEvent;
@@ -251,7 +252,7 @@ public class SuzakuStrategy extends NodeStrategy {
 
     @Override
     public void leave(CompletableFuture<Boolean> leaveComplete) {
-        LocalNode.verbose("leave " + n);
+        Log.verbose(()-> "leave " + n);
         // jobはSetRが成功した場合に左ノード上で実行される
         SetRJob job;
         if (NOTIFY_WITH_REVERSE_POINTER.value()) {
@@ -473,7 +474,7 @@ public class SuzakuStrategy extends NodeStrategy {
         }
         long delay;
         if (isFirst) {
-            delay = Sim.rand.nextInt(UPDATE_FINGER_PERIOD.value());
+            delay = EventExecutor.random().nextInt(UPDATE_FINGER_PERIOD.value());
         } else {
             delay = UPDATE_FINGER_PERIOD.value();
         }
@@ -844,7 +845,7 @@ public class SuzakuStrategy extends NodeStrategy {
             return;
         }
         updatingFT = true;
-        LocalNode.verbose("start finger table update: " + n.key
+        Log.verbose(() -> "start finger table update: " + n.key
                 + ", " + EventExecutor.getVTime());
         updateFingerTable0(0, isBackward, null, null);
         updatingFT = false;
@@ -976,7 +977,7 @@ public class SuzakuStrategy extends NodeStrategy {
         // 取得するエントリを指定するパラメータ (論文参照)
         int x = p / B;
         int y = p - B * x; // = p % B
-        LocalNode.verbose("update: " + n.key + ", " + isBackward
+        Log.verbose(() -> "update: " + n.key + ", " + isBackward
                 + ", ent = " + ent.getLink().key + ", p =" + p);
         // entから，距離が t*k^x (0 <= t <= 2^y)離れたエントリを取得する．
         // y = p - B * (p / B)
@@ -1177,13 +1178,12 @@ public class SuzakuStrategy extends NodeStrategy {
      */
     private void finish(boolean isBackward, int level) {
         boolean isFirst = isFirst(isBackward);
-        if (true || isFirst || Sim.verbose) {
-            System.out.println(n + ": finger table update done: "
-                    + isBackward
-                    + ", " + (isBackward ? backwardUpdateCount : forwardUpdateCount) + "th" 
-                    + ", " + EventExecutor.getVTime()
-                    + ", " + n.toStringDetail());
-        }
+        Log.verbose(() -> 
+            n + ": finger table update done: "
+            + isBackward
+            + ", " + (isBackward ? backwardUpdateCount : forwardUpdateCount) + "th" 
+            + ", " + EventExecutor.getVTime()
+            + ", " + n.toStringDetail());
         if (!isFirst) {
             // truncate the finger tables
             table.forward.shrink(level + 1);

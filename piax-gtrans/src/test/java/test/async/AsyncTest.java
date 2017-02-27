@@ -36,9 +36,9 @@ import org.piax.gtrans.async.EventException.TimeoutException;
 import org.piax.gtrans.async.EventExecutor;
 import org.piax.gtrans.async.LatencyProvider.StarLatencyProvider;
 import org.piax.gtrans.async.LocalNode;
+import org.piax.gtrans.async.Log;
 import org.piax.gtrans.async.NetworkParams;
 import org.piax.gtrans.async.NodeFactory;
-import org.piax.gtrans.async.Sim;
 import org.piax.gtrans.ov.async.ddll.DdllEvent.GetCandidates;
 import org.piax.gtrans.ov.async.ddll.DdllStrategy;
 import org.piax.gtrans.ov.async.ddll.DdllStrategy.DdllNodeFactory;
@@ -133,7 +133,7 @@ public class AsyncTest {
      * reset the simulation environment.
      */
     public static void init() {
-        Sim.verbose = true;
+        Log.verbose = true;
         if (REALTIME) {
             EventExecutor.realtime.set(true);
         }

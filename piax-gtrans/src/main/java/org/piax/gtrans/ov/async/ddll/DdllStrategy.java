@@ -19,13 +19,13 @@ import org.piax.gtrans.async.EventException;
 import org.piax.gtrans.async.EventException.RetriableException;
 import org.piax.gtrans.async.EventExecutor;
 import org.piax.gtrans.async.LocalNode;
+import org.piax.gtrans.async.Log;
 import org.piax.gtrans.async.NetworkParams;
 import org.piax.gtrans.async.Node;
 import org.piax.gtrans.async.NodeFactory;
 import org.piax.gtrans.async.NodeStrategy;
 import org.piax.gtrans.async.Option.EnumOption;
 import org.piax.gtrans.async.Option.IntegerOption;
-import org.piax.gtrans.async.Sim;
 import org.piax.gtrans.ov.async.ddll.DdllEvent.GetCandidates;
 import org.piax.gtrans.ov.async.ddll.DdllEvent.PropagateNeighbors;
 import org.piax.gtrans.ov.async.ddll.DdllEvent.SetL;
@@ -58,15 +58,15 @@ public class DdllStrategy extends NodeStrategy {
 
     public static int JOIN_RETRY_DELAY = 2;
 
-    // SETRNAKOPT: SetRNakメッセージにsuccessor, predecessor情報を入れる．
-    // joinリトライ時にそれをそのまま使ってSetR送信．
-    //public static boolean SETRNAKOPT = false;
-    // SETRNAKOPT2: SetRNakメッセージにsuccessor, predecessor情報を入れる．
-    // joinリトライ時，predecessorに変化がなければそのまま使ってSetR送信．
-    // 変わっていればSetRを送っても無駄なので再検索する．
-    //public static boolean SETRNAKOPT2 = false;
     public enum SetRNakMode {
-        SETRNAK_NONE, SETRNAK_OPT1, SETRNAK_OPT2
+        SETRNAK_NONE,
+        /** SetRNakメッセージにsuccessor, predecessor情報を入れる．
+            joinリトライ時にそれをそのまま使ってSetRを送信．*/
+        SETRNAK_OPT1, 
+        /** SetRNakメッセージにsuccessor, predecessor情報を入れる．
+            joinリトライ時，predecessorに変化がなければそのまま使ってSetR送信．
+            変わっていればSetRを送っても無駄なので再検索する．*/
+        SETRNAK_OPT2
     };
 
     public enum SetRType {
@@ -75,6 +75,13 @@ public class DdllStrategy extends NodeStrategy {
 
     public static EnumOption<SetRNakMode> setrnakmode = new EnumOption<>(
             SetRNakMode.class, SetRNakMode.SETRNAK_NONE, "-setrnak");
+
+    public enum RetryMode {
+        IMMED, CONST, RANDOM
+    }
+    public static EnumOption<RetryMode> retryMode
+        = new EnumOption<>(RetryMode.class, RetryMode.IMMED, "-retrymode");
+
     // pinging is off by default
     public static IntegerOption pingPeriod =
             new IntegerOption(0, "-pingperiod");
@@ -85,7 +92,6 @@ public class DdllStrategy extends NodeStrategy {
     /** neighbor node set */
     public NeighborSet leftNbrs;
 
-    public int joinTime = -1;
     private int joinMsgs = 0;
 
     public static void load() {
@@ -162,7 +168,7 @@ public class DdllStrategy extends NodeStrategy {
                 joinMsgs += 2; // SetR and SetRNak
                 setStatus(DdllStatus.OUT);
                 // retry!
-                LocalNode.verbose("receive SetRNak: join retry, pred=" + msg.pred
+                Log.verbose(() -> "receive SetRNak: join retry, pred=" + msg.pred
                         + ", succ=" + msg.succ);
                 if (setrnakmode.value() == SetRNakMode.SETRNAK_OPT2) {
                     // DDLLopt2
@@ -177,12 +183,12 @@ public class DdllStrategy extends NodeStrategy {
                 } else {
                     // DDLL without optimization
                     int delay = 0;
-                    switch (Sim.retryMode.value()) {
+                    switch (retryMode.value()) {
                     case IMMED:
                         delay = 0;
                         break;
                     case RANDOM:
-                        delay = Sim.rand.nextInt(JOIN_RETRY_DELAY)
+                        delay = EventExecutor.random().nextInt(JOIN_RETRY_DELAY)
                                 * NetworkParams.HALFWAY_DELAY;
                         break;
                     case CONST:
@@ -257,7 +263,7 @@ public class DdllStrategy extends NodeStrategy {
                 System.out.println(n + ": retry deletion:" + this.toStringDetail());
                 System.out.println("pred: " + getPredecessor().toStringDetail());
                 long delay =
-                        (long) (NetworkParams.ONEWAY_DELAY * Sim.rand.nextDouble());
+                        (long) (NetworkParams.ONEWAY_DELAY * EventExecutor.random().nextDouble());
                 EventExecutor.sched(delay, () -> {
                     leave(leaveComplete, setRjob);
                 });

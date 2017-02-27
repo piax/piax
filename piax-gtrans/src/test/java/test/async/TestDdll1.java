@@ -23,6 +23,7 @@ import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.Peer;
 import org.piax.gtrans.async.EventExecutor;
 import org.piax.gtrans.async.LocalNode;
+import org.piax.gtrans.async.Log;
 import org.piax.gtrans.async.Sim;
 import org.piax.gtrans.impl.ReceiverThreadPool;
 import org.piax.gtrans.ov.async.suzaku.SuzakuStrategy;
@@ -228,7 +229,7 @@ public class TestDdll1 {
             nodes[i] = factory.createNode(transId, trans, i);
         }
 
-        Sim.verbose = true;
+        Log.verbose = true;
         SuzakuStrategy.UPDATE_FINGER_PERIOD.set(10*1000);
         SuzakuStrategy.NOTIFY_WITH_REVERSE_POINTER.set(true);
         EventExecutor.startExecutorThread();

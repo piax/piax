@@ -159,12 +159,6 @@ public class LocalNode extends Node {
         this.succChange = succChange;
     }
 
-    public static void verbose(String s) {
-        if (Sim.verbose) {
-            System.out.println(s);
-        }
-    }
-    
     @Override
     public String toString() {
         return super.toString() + (isFailed ? "(failed)" : ""); 
@@ -222,7 +216,7 @@ public class LocalNode extends Node {
         }
         ev.failureCallback = failure;
         ev.vtime = EventExecutor.getVTime() + ev.delay;
-        if (Sim.verbose) {
+        if (Log.verbose) {
             if (ev.delay != 0) {
                 System.out.println(this + "|send event " + ev + ", (arrive at T"
                         + ev.vtime + ")");
@@ -235,7 +229,7 @@ public class LocalNode extends Node {
             try {
                 sender.send(ev);
             } catch (RPCException e) {
-                verbose(this + " got exception: " + e);
+                Log.verbose(() -> this + " got exception: " + e);
                 failure.run(new RPCEventException(e));
             }
         }
@@ -260,7 +254,7 @@ public class LocalNode extends Node {
             ev.delay = EventExecutor.latency(this, dest);
         }
         ev.receiver = dest;
-        if (Sim.verbose) {
+        if (Log.verbose) {
             if (ev.delay != 0) {
                 System.out.println(this + "|forward to " + dest + ", " + ev
                         + ", (arrive at T" + ev.vtime + ")");
@@ -272,7 +266,7 @@ public class LocalNode extends Node {
             try {
                 sender.forward(ev);
             } catch (RPCException e) {
-                verbose(this + " got exception: " + e);
+                Log.verbose(()-> this + " got exception: " + e);
                 failure.run(new RPCEventException(e));
             }
         }
@@ -373,7 +367,7 @@ public class LocalNode extends Node {
                 getTopStrategy().joinAfterLookup(results, future);
                 future.whenComplete((rc, exc2) -> {
                     if (exc2 != null) {
-                        verbose(this + ": joinAfterLookup failed:" + exc2
+                        Log.verbose(() -> this + ": joinAfterLookup failed:" + exc2
                                 + ", count=" + count);
                         mode = NodeMode.OUT;
                         // reset insertionStartTime ?

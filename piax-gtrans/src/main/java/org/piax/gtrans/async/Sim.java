@@ -1,5 +1,7 @@
 package org.piax.gtrans.async;
 
+import static org.piax.gtrans.async.EventExecutor.random;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
@@ -7,7 +9,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -28,6 +29,7 @@ import org.piax.gtrans.async.Option.EnumOption;
 import org.piax.gtrans.async.Option.IntegerOption;
 import org.piax.gtrans.ov.async.ddll.DdllStrategy;
 import org.piax.gtrans.ov.async.ddll.DdllStrategy.DdllNodeFactory;
+import org.piax.gtrans.ov.async.ddll.DdllStrategy.RetryMode;
 import org.piax.gtrans.ov.async.suzaku.SuzakuStrategy;
 import org.piax.gtrans.ov.async.suzaku.SuzakuStrategy.SuzakuNodeFactory;
 import org.piax.gtrans.ov.ddll.DdllKey;
@@ -56,10 +58,6 @@ public class Sim {
         private Algorithm(GetFactory method) {
             this.method = method;
         }
-    }
-
-    public enum RetryMode {
-        IMMED, CONST, RANDOM
     }
 
     @FunctionalInterface
@@ -121,9 +119,8 @@ public class Sim {
         });
 
     public static LocalNode[] nodes;
-    public static boolean verbose = false;
     public static BooleanOption verbOpt = new BooleanOption(false, "-verbose",
-            val -> {Sim.verbose = val;});
+            val -> {Log.verbose = val;});
     public static EnumOption<Algorithm> algorithm
         = new EnumOption<>(Algorithm.class, Algorithm.DDLL, "-algorithm");
     // use PIAX network as the underlying network
@@ -131,17 +128,15 @@ public class Sim {
     public static BooleanOption netOpt = new BooleanOption(false, "-net");
     public static EnumOption<ExpType> exptype
         = new EnumOption<>(ExpType.class, ExpType.CONCURRENTJOIN, "-type");
-    public static Random rand = new MersenneTwister();
     @SuppressWarnings("unused")
     private static IntegerOption seedOption = new IntegerOption(-1, "-seed", val -> {
         if (val == -1) {
-            rand = new MersenneTwister();
+            EventExecutor.setRandom(new MersenneTwister());
         } else {
-            rand = new MersenneTwister(val);
+            EventExecutor.setRandom(new MersenneTwister(val));
         }
     });
-    public static EnumOption<RetryMode> retryMode
-        = new EnumOption<>(RetryMode.class, RetryMode.IMMED, "-retrymode");
+ 
     public static EnumOption<InsertOrder> insOrder
         = new EnumOption<InsertOrder>(InsertOrder.class, InsertOrder.RANDOM,
                 "-insorder");
@@ -398,7 +393,7 @@ public class Sim {
             long delay2, Runnable after) {
         List<Integer> order = new ArrayList<>();
         IntStream.range(from,  to).forEach(order::add);
-        Collections.shuffle(order, rand);
+        Collections.shuffle(order, EventExecutor.random());
         insertSeq(nodes, order, 0, delay1, delay2, after);
     }
 
@@ -486,7 +481,7 @@ public class Sim {
     private void distLookupTest(LocalNode[] nodes, LookupStat s, long tFrom,
             int tWidth, boolean[] ignFrom, boolean[] ignTo, int nquery) {
         for (int i = 0; i < nquery; i++) {
-            long t = tFrom + rand.nextInt(tWidth);
+            long t = tFrom + random().nextInt(tWidth);
             EventExecutor.sched(t, () -> {
                 lookup1(nodes, s, ignFrom, ignTo);
             });
@@ -497,11 +492,11 @@ public class Sim {
             boolean[] ignFrom, boolean[] ignTo) {
         int from, dest;
         do {
-            from = rand.nextInt(nodes.length);
+            from = random().nextInt(nodes.length);
         } while (nodes[from].mode != NodeMode.INSERTED
                 || (ignFrom != null && ignFrom[from]));
         do {
-            dest = rand.nextInt(nodes.length);
+            dest = random().nextInt(nodes.length);
         } while (nodes[dest].mode != NodeMode.INSERTED
                 || (ignTo != null && ignTo[dest]));
         nodes[from].lookup(nodes[dest].key, s);
@@ -606,7 +601,7 @@ public class Sim {
                         for (int i = 0; i < nFail; i++) {
                             int r;
                             do {
-                                r = Sim.rand.nextInt(num);
+                                r = random().nextInt(num);
                             } while (failed[r]);
                             failed[r] = true; 
                             //nodes[r].fail();
@@ -685,7 +680,7 @@ public class Sim {
                 for (int i = 0; i < ndel; i++) {
                     int r;
                     do {
-                        r = Sim.rand.nextInt(ndel);
+                        r = random().nextInt(ndel);
                     } while (failed[r]);
                     failed[r] = true; 
                     CompletableFuture<Boolean> future = nodes[delStart + r].leaveAsync();
@@ -731,9 +726,9 @@ public class Sim {
         StatSet msgset = new StatSet();
         int ITER = 60;
         long T = convertSecondsToVTime(30);
-        int seed = rand.nextInt();
+        int seed = random().nextInt();
         for (int i = 1; i < ITER; i++) {
-            rand.setSeed(seed);
+            random().setSeed(seed);
             msgs4Join(factory, i * T, msgset.getStat(i));
         }
         msgset.printBasicStat("joinmsgs");
@@ -750,7 +745,7 @@ public class Sim {
         }
         List<LocalNode> aNodes = new ArrayList<LocalNode>();
         for (int i = 0; i < nLater; i++) {
-            int j = Sim.rand.nextInt(num);
+            int j = random().nextInt(num);
             if (j == 0 || aNodes.contains(allNodes[j])) {
                 i--;
                 continue;
@@ -809,7 +804,7 @@ public class Sim {
         for (int i = 1; i < num; i++) {
             rest.add(i);
         }
-        Collections.shuffle(rest, rand);
+        Collections.shuffle(rest, random());
         ArrayList<Integer> inserted = new ArrayList<>();
         int base = 1;
         for (int i = base; i < initial; i++) {
@@ -822,7 +817,7 @@ public class Sim {
         for (int j = 1; j < 10; j += 2) {
             for (int i = 0; i < diff; i++) {
                 if (inserted.size() > 0) {
-                    int r = Sim.rand.nextInt(inserted.size());
+                    int r = random().nextInt(inserted.size());
                     int index = inserted.get(r);
                     inserted.remove(r);
                     long t = j * 10 * T;
@@ -890,7 +885,7 @@ public class Sim {
         nodes[0].joinInitialNode();
         List<Integer> order = new ArrayList<>();
         IntStream.range(1, NEND).forEach(order::add);
-        Collections.shuffle(order, rand);
+        Collections.shuffle(order, random());
         for (int i = 0; i < order.size(); i++) {
             joinLater(nodes[order.get(i)], nodes[0], i * DELTA, null);
         }
@@ -934,13 +929,13 @@ public class Sim {
         boolean[] graceful = new boolean[num];
         for (int i = 0; i < nodes.length; i++) {
             nodes[i] = createNode(factory, i * 10, NetworkParams.HALFWAY_DELAY);
-            graceful[i]= rand.nextDouble() > failRate.value();
+            graceful[i]= random().nextDouble() > failRate.value();
         }
         nodes[0].joinInitialNode();
         long T = convertSecondsToVTime(60); // 1分
         for (int i = 1; i < nodes.length; i++) {
             long s, e;
-            s = (long)(rand.nextDouble() * 100 * T);
+            s = (long)(random().nextDouble() * 100 * T);
             double dur = exponentialDist(1.0/(aveLifeTime.value()));
             e = s + (long)dur;
             LocalNode x = nodes[i];
@@ -1081,7 +1076,7 @@ public class Sim {
      * 指数分布に従う乱数を返す
      */
     private static double exponentialDist(double lambda) {
-        return -Math.log(1.0 - rand.nextDouble()) / lambda;
+        return -Math.log(1.0 - random().nextDouble()) / lambda;
     }
 
     /**
@@ -1222,7 +1217,7 @@ public class Sim {
         for (int i = 0; i < n; i++) {
             int r;
             do {
-                r = rand.nextInt(MAXID);
+                r = random().nextInt(MAXID);
             } while (iset.contains(r));
             iset.add(r);
             if (i < nSlowNodes) {
@@ -1269,7 +1264,7 @@ public class Sim {
      * @param cons
      */
     private void retransTest(NodeFactory factory) {
-        if (retryMode.value() != RetryMode.RANDOM) {
+        if (DdllStrategy.retryMode.value() != RetryMode.RANDOM) {
             System.err.println("specify -retrymode RANDOM");
             System.exit(1);
         }
