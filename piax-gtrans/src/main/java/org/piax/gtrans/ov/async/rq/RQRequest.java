@@ -562,8 +562,9 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                         // it as T is safe because it is used just as a marker. 
                         f = CompletableFuture.completedFuture((T)SPECIAL.PADDING);
                     } else {
+                        QueryId qid = new QueryId(RQRequest.this);
                         // XXX: consider the case where provider throws exception
-                        f = provider.get(r.getNode().key);
+                        f = provider.getRaw((LocalNode)r.getNode(), qid, r.getNode().key);
                     }
                     return f.thenAccept((T val) -> {
                         // 2) on provider completion, adds the value to rvals 

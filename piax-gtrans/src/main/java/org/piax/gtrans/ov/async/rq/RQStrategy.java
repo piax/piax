@@ -2,11 +2,15 @@ package org.piax.gtrans.ov.async.rq;
 
 import java.io.IOException;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+import org.piax.common.PeerId;
 import org.piax.common.TransportId;
 import org.piax.common.subspace.Range;
 import org.piax.gtrans.ChannelTransport;
@@ -44,6 +48,13 @@ public class RQStrategy extends NodeStrategy {
             return "RQ/" + base.name();
         }
     }
+
+    /**
+     * query result cache used by
+     * {@link org.piax.gtrans.ov.async.rq.RQValueProvider.CacheProvider}
+     *  */ 
+    Map<PeerId, Map<QueryId, CompletableFuture<?>>> resultCache =
+            new HashMap<>();
 
     @Override
     public <T> void rangeQuery(Collection<? extends Range<?>> ranges,

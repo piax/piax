@@ -53,7 +53,7 @@ public class LocalNode extends Node {
 
     // to support multi-keys
     private static Map<PeerId, SortedSet<LocalNode>> localNodeMap
-        = new ConcurrentHashMap<>(); 
+        = new ConcurrentHashMap<>();
 
     // stackable strategies
     ArrayList<NodeStrategy> strategies = new ArrayList<>();
@@ -105,7 +105,7 @@ public class LocalNode extends Node {
         pushStrategy(strategy);
     }
     
-    /*>
+    /*
      * strategy
      */
     public void pushStrategy(NodeStrategy s) {
@@ -192,10 +192,8 @@ public class LocalNode extends Node {
     }
 
     public List<LocalNode> getSiblings() {
-        synchronized (LocalNode.class) {
-            SortedSet<LocalNode> set = localNodeMap.get(peerId);
-            return new ArrayList<>(set);
-        }
+        SortedSet<LocalNode> set = localNodeMap.get(peerId);
+        return new ArrayList<>(set);
     }
 
     /**
