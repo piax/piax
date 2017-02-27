@@ -17,6 +17,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.junit.Test;
@@ -58,7 +59,7 @@ public class AsyncTest {
     }
 
     static LocalNode[] nodes;
-    static StarLatencyProvider latencyProvider = new StarLatencyProvider(); 
+    static StarLatencyProvider latencyProvider;
 
     static boolean REALTIME = false;
 
@@ -67,9 +68,14 @@ public class AsyncTest {
     }
 
     private static LocalNode createNode(NodeFactory factory, int key, int latency) {
+        return createNode(factory, key, "P" + key, latency);
+    }
+
+    private static LocalNode createNode(NodeFactory factory, int key,
+            String peerIdStr, int latency) {
         TransportId transId = new TransportId("SimTrans");
         if (REALTIME) {
-            Peer peer = Peer.getInstance(new PeerId("P" + key));
+            Peer peer = Peer.getInstance(new PeerId(peerIdStr));
             DdllKey k = new DdllKey(key, new UniqId(peer.getPeerId()), "", null);
             PeerLocator loc = newLocator("emu", key);
             ChannelTransport<?> trans;
@@ -82,7 +88,7 @@ public class AsyncTest {
                 throw new Error("something wrong!", e);
             }
         } else {
-            UniqId p = new UniqId("P" + key);
+            UniqId p = new UniqId(peerIdStr);
             DdllKey k = new DdllKey(key, p, "", null);
             try {
                 LocalNode n = factory.createNode(null, null, k);
@@ -92,6 +98,20 @@ public class AsyncTest {
                 throw new Error("something wrong!", e);
             }
         }
+    }
+
+    static LocalNode[] createNodes(NodeFactory factory, int num) {
+        return createNodes(factory, num, k -> "P" + k);
+    }
+
+    static LocalNode[] createNodes(NodeFactory factory, int num,
+            Function<Integer, String> key2IdMapper) {
+        nodes = new LocalNode[num];
+        for (int i = 0; i < num; i++) {
+            int key = i * 100;
+            nodes[i] = createNode(factory, key, key2IdMapper.apply(key), 100);
+        }
+        return nodes;
     }
 
     static PeerLocator newLocator(String locatorType, int vport) {
@@ -107,7 +127,10 @@ public class AsyncTest {
         }
         return peerLocator;
     }
-    
+
+    /*
+     * reset the simulation environment.
+     */
     public static void init() {
         Sim.verbose = true;
         if (REALTIME) {
@@ -115,16 +138,21 @@ public class AsyncTest {
         }
         DdllStrategy.pingPeriod.set(10000);
         DdllStrategy.setrnakmode.set(SetRNakMode.SETRNAK_OPT2);
+        
+        // clear strong references to "Node" to cleanup Node.instances.
         EventExecutor.reset();
-        EventExecutor.setLatencyProvider(latencyProvider);
-    }
-    
-    static LocalNode[] createNodes(NodeFactory factory, int num) {
-        nodes = new LocalNode[num];
-        for (int i = 0; i < num; i++) {
-            nodes[i] = createNode(factory, i * 100, 100);
+        if (nodes != null) {
+            // reset the previous execution
+            for (LocalNode n : nodes) {
+                if (n != null) {
+                    n.cleanup();
+                }
+            }
+            nodes = null;
         }
-        return nodes;
+        latencyProvider = new StarLatencyProvider(); 
+        EventExecutor.setLatencyProvider(latencyProvider);
+        System.gc();  // force gc for cleaning Node.instances
     }
     
     public static void dump(LocalNode[] nodes) {
@@ -508,10 +536,68 @@ public class AsyncTest {
             checkMemoryLeakage(nodes[0], nodes[1], nodes[3], nodes[4]);
         }
     }
+    
+    @Test
+    public void testMultikeySuzaku() {
+        TransOptions opts = new TransOptions();
+        opts.setResponseType(ResponseType.AGGREGATE);
+        testMultikey(new SuzakuNodeFactory(3), opts, new SimpleValueProvider(),
+                new Range<Integer>(0, true, 500, false),
+                Arrays.asList(0, 100, 200, 300, 400));
+    }
+
+    private void testMultikey(NodeFactory base,
+            TransOptions opts, RQValueProvider<DdllKey> provider,
+            Range<Integer> range, List<Integer> expect) {
+        NodeFactory factory = new RQNodeFactory(base);
+        System.out.println("** testMultikey");
+        init();
+        createAndInsert(factory, 5, k -> {
+            if (k == 300 || k == 400) {
+                return "P100";
+            } else {
+                return "P" + k;
+            }
+        });
+        {
+            Collection<Range<Integer>> ranges = Collections.singleton(range);
+            List<RemoteValue<DdllKey>> results = new ArrayList<>();
+            nodes[0].rangeQueryAsync(ranges, provider, 
+                    opts, (ret) -> {
+                System.out.println("GOT RESULT: " + ret);
+                results.add(ret);
+            });
+            EventExecutor.startSimulation(30000);
+            assertTrue(!results.isEmpty());
+            assertTrue(results.get(results.size() - 1 ) == null);
+            List<?> rvals = results.stream()
+                    .filter(Objects::nonNull)
+                    .map(rv -> rv.getValue())   // extract DdllKey
+                    .map(rv -> rv.getPrimaryKey()) // extract Comparable
+                    .sorted()
+                    .collect(Collectors.toList());
+            System.out.println("RVALS = " + rvals);
+            System.out.println("EXPECT = " + expect);
+            assertTrue(rvals.equals(expect));
+            checkMemoryLeakage(nodes[0], nodes[1], nodes[3], nodes[4]);
+        }
+    }
 
     private void createAndInsert(NodeFactory factory, int num) {
         nodes = createNodes(factory, num);
+        insertAll();
+    }
+
+    private void createAndInsert(NodeFactory factory, int num, 
+            Function<Integer, String> mapper) {
+        nodes = createNodes(factory, num, mapper);
+        insertAll();
+    }
+
+    private void insertAll() { 
+        int num = nodes.length;
         nodes[0].joinInitialNode();
+        @SuppressWarnings("unchecked")
         CompletableFuture<Boolean>[] futures = new CompletableFuture[num];
         for (int i = 1; i < num; i++) {
             futures[i] = nodes[i].joinAsync(nodes[0]);

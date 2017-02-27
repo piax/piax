@@ -11,12 +11,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import org.piax.common.Endpoint;
+import org.piax.common.PeerId;
 import org.piax.common.TransportId;
 import org.piax.common.subspace.Range;
 import org.piax.gtrans.ChannelTransport;
@@ -46,6 +50,10 @@ public class LocalNode extends Node {
     public Node succ, pred;
     public NodeMode mode = NodeMode.OUT;
     private boolean isFailed = false;   // for simulation
+
+    // to support multi-keys
+    private static Map<PeerId, SortedSet<LocalNode>> localNodeMap
+        = new ConcurrentHashMap<>(); 
 
     // stackable strategies
     ArrayList<NodeStrategy> strategies = new ArrayList<>();
@@ -78,6 +86,13 @@ public class LocalNode extends Node {
             DdllKey ddllkey, NodeStrategy strategy)
             throws IdConflictException, IOException {
         super(ddllkey, trans == null ? null : trans.getEndpoint());
+        assert getInstance(ddllkey) == this; 
+        assert trans == null || this.peerId.equals(trans.getPeerId());
+
+        // to support multi-keys
+        localNodeMap.computeIfAbsent(peerId, k -> new TreeSet<>())
+            .add(this);
+
         if (trans == null) {
             this.sender = EventSenderSim.getInstance();
         } else {
@@ -89,7 +104,10 @@ public class LocalNode extends Node {
         }
         pushStrategy(strategy);
     }
-
+    
+    /*>
+     * strategy
+     */
     public void pushStrategy(NodeStrategy s) {
         strategies.add(s);
         strategyMap.put(s.getClass(), s);
@@ -173,6 +191,13 @@ public class LocalNode extends Node {
         }
     }
 
+    public List<LocalNode> getSiblings() {
+        synchronized (LocalNode.class) {
+            SortedSet<LocalNode> set = localNodeMap.get(peerId);
+            return new ArrayList<>(set);
+        }
+    }
+
     /**
      * post a event
      * @param ev
@@ -219,9 +244,10 @@ public class LocalNode extends Node {
     }
 
     /**
-     * post an Event to a node
-     * @param dest
-     * @param ev
+     * forward the event to the specified node.
+     * 
+     * @param dest  destination node
+     * @param ev    event
      */
     public void forward(Node dest, Event ev) {
         this.forward(dest, ev, null);
@@ -371,10 +397,12 @@ public class LocalNode extends Node {
         post(ev);
     }
 
-    public CompletableFuture<Boolean> leaveAsync() throws IllegalStateException {
+    public CompletableFuture<Boolean> leaveAsync() {
         System.out.println("Node " + this + " leaves");
         if (mode != NodeMode.INSERTED) {
-           throw new IllegalStateException("not inserted");
+            CompletableFuture<Boolean> f = new CompletableFuture<>();
+            f.completeExceptionally(new IllegalStateException("not inserted"));
+            return f;
         }
         mode = NodeMode.DELETING;
         CompletableFuture<Boolean> future = new CompletableFuture<>();
@@ -382,7 +410,13 @@ public class LocalNode extends Node {
             getTopStrategy().leave(future);
         });
         post(ev);
-        return future;
+        CompletableFuture<Boolean> f = future.thenApply(rc -> {
+            if (rc) {
+                cleanup();
+            }
+            return rc;
+        });
+        return f;
     }
     
     public <T> void rangeQueryAsync(Collection<? extends Range<?>> ranges,
@@ -508,19 +542,8 @@ public class LocalNode extends Node {
         }
         return cands;
     }
-    
-    /*public static void main(String args[]) {
-        DdllKey k0 = new DdllKey(0, new UniqId("0"));
-        DdllKey k1 = new DdllKey(1, new UniqId("1"));
-        DdllKey k2 = new DdllKey(2, new UniqId("2"));
-        DdllKey k3 = new DdllKey(3, new UniqId("3"));
-        Node n0 = new Node(k0, null, 0);
-        Node n1 = new Node(k1, null, 0);
-        Node n2 = new Node(k2, null, 0);
-        Comparator<Node> comp = LocalNode.getComparator(k1);
-        Node[] nodes = new Node[]{n0, n1, n2};
-        List<Node> x = Arrays.asList(nodes).stream()
-                .sorted(comp).collect(Collectors.toList());
-        System.out.println(x);
-    }*/
+
+    public void cleanup() {
+        localNodeMap.get(peerId).remove(this);
+    }
 }

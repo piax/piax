@@ -560,7 +560,9 @@ public class SuzakuStrategy extends NodeStrategy {
     private List<FTEntry> getValidFTEntries() {
         //logger.debug("getValid: {}", this);
         List<FTEntry> rc = new ArrayList<>();
-        List<SuzakuStrategy> vnodes = Arrays.asList(this);
+        List<SuzakuStrategy> vnodes = n.getSiblings().stream()
+                .map(ln -> getSuzakuStrategy(ln))
+                .collect(Collectors.toList());
         SuzakuStrategy v1 = vnodes.get(0);
         SuzakuStrategy v2;
         for (int k = 1; k <= vnodes.size(); k++, v1 = v2) {

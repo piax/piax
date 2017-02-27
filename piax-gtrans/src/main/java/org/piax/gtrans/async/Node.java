@@ -65,9 +65,12 @@ public class Node implements Comparable<Node>, Serializable {
             this.peerId = null;
         }
         synchronized (Node.class) {
-            if (ddllkey != null && !instances.containsKey(ddllkey)) {
-                // use putIfAbsent ?
-                instances.put(ddllkey, this);
+            if (ddllkey != null) {
+                if (instances.containsKey(ddllkey)) {
+                    assert !(this instanceof LocalNode);
+                } else {
+                    instances.put(ddllkey, this);
+                }
             }
         }
     }

@@ -2,7 +2,6 @@ package org.piax.gtrans.ov.async.rq;
 
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -314,18 +313,20 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
          * 
          * @return a map of id and RQRanges
          */
-         protected Map<Id, List<RQRange>> assignDelegates() {
+        protected Map<Id, List<RQRange>> assignDelegates() {
+            LocalNode local = getLocalNode(); 
             List<List<Node>> allNodes = strategy.getRoutingEntries();
 
             // collect [me, successor)
             List<Node> successors = new ArrayList<>();
             List<RQRange> succRanges = new ArrayList<>();
-            for (LocalNode v : Arrays.asList(getLocalNode())) {
+            for (LocalNode v : local.getSiblings()) {
                 successors.add(v.succ);
                 succRanges.add(new RQRange(v, v.key, v.succ.key));
             }
 
-            Set<Node> maybeFailedNodes = getLocalNode().maybeFailedNodes;
+            // XXX: merge maybeFailedNode over siblings
+            Set<Node> maybeFailedNodes = local.maybeFailedNodes;
             List<Node> actives = allNodes.stream()
                     .flatMap(list -> {
                         Optional<Node> p = list.stream()
@@ -562,7 +563,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                         f = CompletableFuture.completedFuture((T)SPECIAL.PADDING);
                     } else {
                         // XXX: consider the case where provider throws exception
-                        f = provider.get(getLocalNode().key);
+                        f = provider.get(r.getNode().key);
                     }
                     return f.thenAccept((T val) -> {
                         // 2) on provider completion, adds the value to rvals 
