@@ -35,10 +35,11 @@ import org.piax.gtrans.async.EventException.RPCEventException;
 import org.piax.gtrans.async.EventException.RetriableException;
 import org.piax.gtrans.async.EventSender.EventSenderNet;
 import org.piax.gtrans.async.EventSender.EventSenderSim;
-import org.piax.gtrans.async.Sim.LookupStat;
 import org.piax.gtrans.ov.async.rq.RQValueProvider;
 import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.util.UniqId;
+
+import test.async.sim.Sim.LookupStat;
 
 public class LocalNode extends Node {
     public static final int INSERTION_DELETION_RETRY = 10; 

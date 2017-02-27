@@ -24,7 +24,6 @@ import org.piax.gtrans.Peer;
 import org.piax.gtrans.async.EventExecutor;
 import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.async.Log;
-import org.piax.gtrans.async.Sim;
 import org.piax.gtrans.impl.ReceiverThreadPool;
 import org.piax.gtrans.ov.async.suzaku.SuzakuStrategy;
 import org.piax.gtrans.ov.async.suzaku.SuzakuStrategy.SuzakuNodeFactory;
@@ -34,6 +33,8 @@ import org.piax.gtrans.raw.udp.UdpLocator;
 import org.piax.util.MersenneTwister;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import test.async.sim.Sim;
 
 /**
  * 以下のテストを行う。

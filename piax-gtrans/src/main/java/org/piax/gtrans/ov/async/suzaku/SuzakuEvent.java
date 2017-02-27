@@ -5,10 +5,9 @@ import java.util.List;
 import org.piax.gtrans.async.Event;
 import org.piax.gtrans.async.Event.ReplyEvent;
 import org.piax.gtrans.async.Event.RequestEvent;
-import org.piax.gtrans.ov.async.suzaku.SuzakuStrategy.FTEntrySet;
 import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.async.Node;
-import org.piax.gtrans.async.Sim;
+import org.piax.gtrans.ov.async.suzaku.SuzakuStrategy.FTEntrySet;
 
 public abstract class SuzakuEvent {
     public static class GetFTAllEvent
