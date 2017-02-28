@@ -501,7 +501,7 @@ public class AsyncTest {
     public void testRetransAggregateSuzaku() {
         TransOptions opts = new TransOptions();
         opts.setResponseType(ResponseType.AGGREGATE);
-        opts.setRetransMode(RetransMode.FAST);
+        opts.setRetransMode(RetransMode.RELIABLE);
         opts.setTimeout(15*1000);
         testRetrans(new SuzakuNodeFactory(3), opts, new FastValueProvider(),
                 new Range<Integer>(100, true, 400, true),

@@ -114,7 +114,6 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         this.provider = provider;
         this.opts = opts;
         this.obstacles = new HashSet<>();
-        this.catcher = new RQCatcher();
     }
 
     /**
@@ -187,9 +186,32 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
 
     @Override
     public void run() {
+        // check if we've received the same query
+        // targetRanges に含まれる各部分範囲について，受信済みかどうかを個別に判定しているが，
+        // 現在の実装では，1つのRQRequestで受信済みと非受信済みの範囲が混在することはない．
+        RQStrategy strategy = RQStrategy.getRQStrategy(getLocalNode());
+        Set<Integer> history = strategy.queryHistory.computeIfAbsent(qid,
+                q -> {
+                    EventExecutor.sched("purge_qh-" + qid,
+                            opts.getTimeout(),
+                            () -> strategy.queryHistory.remove(qid));
+                    return new HashSet<>();
+                });
+        List<RQRange> filtered = targetRanges.stream()
+            .filter(r -> {
+                int lastId = r.ids[r.ids.length - 1];
+                boolean received = history.contains(lastId);
+                return !received;
+            }).peek(r -> {
+                history.addAll(Arrays.asList(r.ids));
+            }).collect(Collectors.toList());
+        if (filtered.isEmpty()) {
+            logger.debug("already received");
+            return;
+        }
         if (catcher == null) {
             // note that catcher is transient
-            this.catcher = new RQCatcher();
+            this.catcher = new RQCatcher(filtered);
         }
         catcher.rqDisseminate(catcher.gaps);
     }
@@ -243,9 +265,9 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         final Responder responder;
         final RQResults<T> results;
 
-        public RQCatcher() {
+        public RQCatcher(Collection<RQRange> ranges) {
             this.rvals = new ConcurrentSkipListMap<>();
-            this.gaps = new ArrayList<>(targetRanges);
+            this.gaps = new ArrayList<>(ranges);
             if (isRoot) {
                 results = new RQResults<T>(this);
             } else {
@@ -282,31 +304,9 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         private void rqDisseminate(List<RQRange> ranges) {
             logger.debug("rqDisseminate start: {}", this);
             logger.debug("                   : {}", RQRequest.this);
-            RQStrategy strategy = RQStrategy.getRQStrategy(getLocalNode());
 
-            // check if we've received the same query
-            Set<Integer> history = strategy.queryHistory.computeIfAbsent(qid,
-                    q -> {
-                        EventExecutor.sched("purge_qh-" + qid,
-                                opts.getTimeout(),
-                                () -> strategy.queryHistory.remove(qid));
-                        return new HashSet<>();
-                    });
-            List<RQRange> filtered = ranges.stream()
-                .filter(r -> {
-                    int lastId = r.ids[r.ids.length - 1];
-                    boolean received = history.contains(lastId);
-                    return !received;
-                }).peek(r -> {
-                    history.addAll(Arrays.asList(r.ids));
-                }).collect(Collectors.toList());
-            if (filtered.isEmpty()) {
-                logger.debug("already received");
-                return;
-            }
-
-            // assign a delegate node for each range
-            Map<Id, List<RQRange>> map = assignDelegates(filtered);
+             // assign a delegate node for each range
+            Map<Id, List<RQRange>> map = assignDelegates(ranges);
             logger.debug("aggregated: {}", map);
             PeerId peerId = getLocalNode().getPeerId();
 
