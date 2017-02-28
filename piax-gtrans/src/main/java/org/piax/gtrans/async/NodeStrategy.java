@@ -54,15 +54,14 @@ public abstract class NodeStrategy {
         getLower().initInitialNode();
     }
 
-    public void joinAfterLookup(LookupDone lookupDone,
+    public void join(LookupDone lookupDone,
             CompletableFuture<Boolean> joinFuture) {
-        getLower().joinAfterLookup(lookupDone, joinFuture);
+        getLower().join(lookupDone, joinFuture);
     }
 
     public void leave(CompletableFuture<Boolean> leaveComplete) {
         getLower().leave(leaveComplete);
     }
-    
 
     public <T> void rangeQuery(Collection<? extends Range<?>> ranges,
             RQValueProvider<T> provider, TransOptions opts,

@@ -182,7 +182,7 @@ public class SuzakuStrategy extends NodeStrategy {
     }
 
     @Override
-    public void joinAfterLookup(LookupDone lookupDone,
+    public void join(LookupDone lookupDone,
             CompletableFuture<Boolean> joinFuture) {
         System.out.println("JoinAfterLookup: " + lookupDone.route); 
         System.out.println("JoinAfterLookup: " + lookupDone.hops());
@@ -191,7 +191,7 @@ public class SuzakuStrategy extends NodeStrategy {
         assert Node.isOrdered(lookupDone.pred.key, n.key, lookupDone.succ.key);
         joinMsgs += lookupDone.hops();
         CompletableFuture<Boolean> future = new CompletableFuture<>();
-        base.joinAfterLookup(lookupDone, future);
+        base.join(lookupDone, future);
         future.whenComplete((rc, exc) -> {
             if (exc != null) {
                 joinFuture.completeExceptionally(exc);

@@ -132,7 +132,7 @@ public class DdllStrategy extends NodeStrategy {
     }
 
     @Override
-    public void joinAfterLookup(LookupDone l, 
+    public void join(LookupDone l, 
             CompletableFuture<Boolean> joinFuture) {
         join(l.pred, l.succ, joinFuture, null);
     }

@@ -365,7 +365,7 @@ public class LocalNode extends Node {
                 joinFuture.completeExceptionally(exc);
             } else {
                 CompletableFuture<Boolean> future = new CompletableFuture<>();
-                getTopStrategy().joinAfterLookup(results, future);
+                getTopStrategy().join(results, future);
                 future.whenComplete((rc, exc2) -> {
                     if (exc2 != null) {
                         Log.verbose(() -> this + ": joinAfterLookup failed:" + exc2
