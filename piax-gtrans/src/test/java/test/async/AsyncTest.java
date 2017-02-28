@@ -19,6 +19,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.junit.Test;
 import org.piax.common.PeerId;
@@ -39,6 +40,7 @@ import org.piax.gtrans.async.LatencyProvider.StarLatencyProvider;
 import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.async.Log;
 import org.piax.gtrans.async.NetworkParams;
+import org.piax.gtrans.async.Node;
 import org.piax.gtrans.async.NodeFactory;
 import org.piax.gtrans.ov.async.ddll.DdllEvent.GetCandidates;
 import org.piax.gtrans.ov.async.ddll.DdllStrategy;
@@ -47,6 +49,7 @@ import org.piax.gtrans.ov.async.ddll.DdllStrategy.SetRNakMode;
 import org.piax.gtrans.ov.async.rq.RQStrategy.RQNodeFactory;
 import org.piax.gtrans.ov.async.rq.RQValueProvider;
 import org.piax.gtrans.ov.async.rq.RQValueProvider.CacheProvider;
+import org.piax.gtrans.ov.async.rq.RQValueProvider.InsertionPointProvider;
 import org.piax.gtrans.ov.async.rq.RQValueProvider.KeyProvider;
 import org.piax.gtrans.ov.async.suzaku.SuzakuStrategy.SuzakuNodeFactory;
 import org.piax.gtrans.ov.ddll.DdllKey;
@@ -487,7 +490,46 @@ public class AsyncTest {
             checkMemoryLeakage(nodes);
         }
     }
+    
+    @Test
+    public void testRQInsertionPointProvider() {
+        TransOptions opts = new TransOptions();
+        opts.setResponseType(ResponseType.DIRECT);
+        testRQ2(new SuzakuNodeFactory(3), opts, new InsertionPointProvider(),
+                new Range<Integer>(150), "[N100!P100, N200!P200]");
+    }
 
+    private void testRQ2(NodeFactory base, 
+            TransOptions opts, RQValueProvider<Node[]> provider,
+            Range<Integer> range, String expect) {
+        NodeFactory factory = new RQNodeFactory(base);
+        System.out.println("** testRQ2");
+        init();
+        createAndInsert(factory, 5);
+        {
+            Collection<Range<Integer>> ranges = Collections.singleton(range);
+            List<RemoteValue<Node[]>> results = new ArrayList<>();
+            nodes[0].rangeQueryAsync(ranges, provider, 
+                    opts, (ret) -> {
+                System.out.println("GOT RESULT: " + ret);
+                results.add(ret);
+            });
+            EventExecutor.startSimulation(30000);
+            assertTrue(!results.isEmpty());
+            assertTrue(results.get(results.size() - 1 ) == null);
+            List<Node> rvals = results.stream()
+                    .filter(Objects::nonNull)
+                    .map(rv -> rv.getValue())   // extract Node[]
+                    .flatMap((Node[] ns) -> Stream.of(ns))
+                    .collect(Collectors.toList());
+            assertTrue(rvals.size() == 2);
+            String rstr = rvals.toString();
+            System.out.println("RVALS = " + rstr);
+            System.out.println("EXPECT = " + expect);
+            assertTrue(rstr.toString().equals(expect));
+            checkMemoryLeakage(nodes);
+        }
+    }
     @Test
     public void testRetransDirectSuzaku() {
         TransOptions opts = new TransOptions();

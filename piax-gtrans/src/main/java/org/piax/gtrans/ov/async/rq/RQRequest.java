@@ -588,15 +588,9 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             CompletableFuture<Void> futures = ranges.stream()
                 .map(r -> {
                     // 1) obtain a value from provider
-                    CompletableFuture<T> f;
-                    if (!r.contains(r.getNode().key)) {
-                        // although SPECIAL.PADDING is not a type of T, using
-                        // it as T is safe because it is used just as a marker. 
-                        f = CompletableFuture.completedFuture((T)SPECIAL.PADDING);
-                    } else {
-                        // XXX: consider the case where provider throws exception
-                        f = provider.getRaw((LocalNode)r.getNode(), qid, r.getNode().key);
-                    }
+                    // XXX: consider the case where provider throws exception
+                    CompletableFuture<T> f
+                        = provider.getRaw((LocalNode)r.getNode(), r, qid);
                     return f.thenAccept((T val) -> {
                         // 2) on provider completion, adds the value to rvals 
                         RemoteValue<T> rval = new RemoteValue<>(getLocalNode().peerId, val);
