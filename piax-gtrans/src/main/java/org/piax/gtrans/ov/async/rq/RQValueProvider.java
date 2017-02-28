@@ -9,10 +9,11 @@ import org.piax.common.PeerId;
 import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.async.EventExecutor;
 import org.piax.gtrans.async.LocalNode;
+import org.piax.gtrans.async.Log;
 import org.piax.gtrans.ov.ddll.DdllKey;
 
 public abstract class RQValueProvider<T> implements Serializable {
-    protected CompletableFuture<T> getRaw(LocalNode localNode, QueryId qid,
+    protected CompletableFuture<T> getRaw(LocalNode localNode, long qid,
             DdllKey key) {
         return get(localNode, key);
     }
@@ -43,13 +44,13 @@ public abstract class RQValueProvider<T> implements Serializable {
         }
 
         @Override
-        protected CompletableFuture<T> getRaw(LocalNode localNode, QueryId qid,
+        protected CompletableFuture<T> getRaw(LocalNode localNode, long qid,
                 DdllKey key) {
             RQStrategy s = RQStrategy.getRQStrategy(localNode);
-            Map<PeerId, Map<QueryId, CompletableFuture<?>>> pmap =
-                    s.resultCache;
-            Map<QueryId, CompletableFuture<?>> qmap = pmap
+            Map<PeerId, Map<Long, CompletableFuture<?>>> pmap = s.resultCache;
+            Map<Long, CompletableFuture<?>> qmap = pmap
                     .computeIfAbsent(localNode.peerId, k -> new HashMap<>());
+            Log.verbose(() -> "getRaw: qid=" + qid);
             @SuppressWarnings("unchecked")
             CompletableFuture<T> f = (CompletableFuture<T>) qmap.get(qid);
             if (f == null) {

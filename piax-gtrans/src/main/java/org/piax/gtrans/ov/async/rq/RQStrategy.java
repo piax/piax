@@ -53,8 +53,7 @@ public class RQStrategy extends NodeStrategy {
      * query result cache used by
      * {@link org.piax.gtrans.ov.async.rq.RQValueProvider.CacheProvider}
      *  */ 
-    Map<PeerId, Map<QueryId, CompletableFuture<?>>> resultCache =
-            new HashMap<>();
+    Map<PeerId, Map<Long, CompletableFuture<?>>> resultCache = new HashMap<>();
 
     @Override
     public <T> void rangeQuery(Collection<? extends Range<?>> ranges,

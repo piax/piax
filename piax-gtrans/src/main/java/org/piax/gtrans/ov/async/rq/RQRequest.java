@@ -54,6 +54,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             LoggerFactory.getLogger(RQRequest.class);
     private static final long serialVersionUID = 1L;
 
+    final long qid;
     Node root;       // DIRECT only
     int rootEventId; // DIRECT only
     protected final Collection<RQRange> targetRanges;
@@ -109,6 +110,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             handleErrors(exc);
         });
 
+        this.qid = EventExecutor.random().nextLong();
         this.root = null;  // overridden by DirectResponder at root node
         this.rootEventId = 0; // overridden by DirectResponder at root node
         this.resultsReceiver = resultsReceiver;
@@ -122,6 +124,33 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
     }
 
     /**
+     * create a child instance of specified RQRequest.
+     * 
+     * @param parent
+     * @param receiver
+     * @param newRanges
+     */
+    private RQRequest(RQRequest<T> parent, Node receiver,
+            Collection<RQRange> newRanges) {
+        super(receiver, false);
+        this.isRoot = false;
+        super.setReplyReceiver((RQReply<T> rep) -> {
+            parent.catcher.replyReceived(rep);
+        });
+        super.setExceptionReceiver((Throwable exc) -> {
+            handleErrors(exc);
+        });
+        this.qid = parent.qid;
+        this.root = parent.root;
+        this.rootEventId = parent.rootEventId;
+        this.resultsReceiver = parent.resultsReceiver;
+        this.targetRanges = newRanges;
+        this.provider = parent.provider;
+        this.opts = parent.opts;
+        this.obstacles = parent.obstacles;
+    }
+
+    /**
      * create a child RQRequest from this instance.
      * <p>
      * this method is used both at intermediate nodes and at root node (in slow
@@ -132,16 +161,15 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
      */
     private RQRequest<T> newChildInstance(Node receiver,
             Collection<RQRange> newRQRange) {
-        RQRequest<T> child = new RQRequest<>(receiver, false, newRQRange,
-                this.provider, this.opts, null, this);
-        child.root = this.root;
-        child.rootEventId = this.rootEventId;
-        return child;
+        return new RQRequest<>(this, receiver, newRQRange);
     }
 
     @Override
     public String toStringMessage() {
-        return "RQRequest[Opts=" + opts + ", isRoot=" + isRoot
+        return "RQRequest["
+                + "qid=" + qid
+                + ", opts=" + opts
+                + ", isRoot=" + isRoot
                 + ", sender=" + sender
                 + ", root=" + root
                 + ", rootEvId=" + rootEventId
@@ -562,7 +590,6 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                         // it as T is safe because it is used just as a marker. 
                         f = CompletableFuture.completedFuture((T)SPECIAL.PADDING);
                     } else {
-                        QueryId qid = new QueryId(RQRequest.this);
                         // XXX: consider the case where provider throws exception
                         f = provider.getRaw((LocalNode)r.getNode(), qid, r.getNode().key);
                     }
