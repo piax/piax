@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
+import org.piax.gtrans.async.EventException.AckTimeoutException;
 import org.piax.gtrans.async.EventException.TimeoutException;
 import org.piax.gtrans.ov.ddll.DdllKey;
 
@@ -317,8 +318,7 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
          * cleanup the instance at sender half
          */
         public void cleanup() {
-            System.out.println("cleanup is called!: " + this);
-
+            Log.verbose(() -> "cleanup() called for " + this);
             cleanup.stream().forEach(r -> r.run());
             cleanup.clear();
         }
@@ -375,6 +375,7 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
                             if (receiver != n) {
                                 n.addMaybeFailedNode(receiver);
                             }
+                            this.failureCallback.run(new AckTimeoutException(receiver));
                         });
                 cleanup.add(() -> EventExecutor.cancelEvent(ackTimeoutEvent));
             }

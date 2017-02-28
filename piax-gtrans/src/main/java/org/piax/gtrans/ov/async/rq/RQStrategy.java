@@ -50,6 +50,11 @@ public class RQStrategy extends NodeStrategy {
     }
 
     /**
+     * query receipt history
+     */
+    Map<Long, Set<Integer>> queryHistory = new HashMap<>();
+
+    /**
      * query result cache used by
      * {@link org.piax.gtrans.ov.async.rq.RQValueProvider.CacheProvider}
      *  */ 
@@ -75,11 +80,6 @@ public class RQStrategy extends NodeStrategy {
                     resultsReceiver);
             root.run();
         }));
-
-        /*root.getCompletableFuture().exceptionally(exc -> {
-            System.out.println("RQRequest got: " + exc);
-            return null;
-        });*/
     }
 
     private static RQRange convertToRQRange(

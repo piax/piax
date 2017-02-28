@@ -2,6 +2,7 @@ package org.piax.gtrans.ov.async.rq;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -57,6 +58,8 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
     final long qid;
     Node root;       // DIRECT only
     int rootEventId; // DIRECT only
+    // XXX: note that wrap-around query ranges such as [10, 5) do not work
+    // for now (k-abe)
     protected final Collection<RQRange> targetRanges;
     final RQValueProvider<T> provider;
     final TransOptions opts;
@@ -82,32 +85,25 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
      * @param opts the transport options.
      * @param resultReceiver
      */
-    public RQRequest(Node receiver, Collection<RQRange> ranges, 
-            RQValueProvider<T> provider, TransOptions opts, 
-            Consumer<RemoteValue<T>> resultReceiver) {
-        this(receiver, true, ranges, provider, opts, resultReceiver, null);
-    }
-
     /*
      * isRoot -> isReceiverHalf
      * isRoot <-> resultReceiver != null
      * !isReceiverHalf -> resultReceiver == null
      */
-    private RQRequest(Node receiver, 
-            boolean isReceiverHalf, Collection<RQRange> ranges,
+    RQRequest(Node receiver, 
+            Collection<RQRange> ranges,
             RQValueProvider<T> provider, TransOptions opts,
-            Consumer<RemoteValue<T>> resultsReceiver,
-            RQRequest<T> parent) {
-        super(receiver, isReceiverHalf);
+            Consumer<RemoteValue<T>> resultsReceiver) {
+        super(receiver, true);
         this.isRoot = resultsReceiver != null;
         assert !isRoot || isReceiverHalf; // isRoot -> isReceiverHalf
         assert isReceiverHalf || !isRoot; // !isReceiverHalf -> !isRoot
 
         super.setReplyReceiver((RQReply<T> rep) -> {
-            parent.catcher.replyReceived(rep);
+            assert false;
         });
         super.setExceptionReceiver((Throwable exc) -> {
-            handleErrors(exc);
+            assert false;
         });
 
         this.qid = EventExecutor.random().nextLong();
@@ -118,28 +114,27 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         this.provider = provider;
         this.opts = opts;
         this.obstacles = new HashSet<>();
-        if (isReceiverHalf) {
-            this.catcher = new RQCatcher();
-        }
+        this.catcher = new RQCatcher();
     }
 
     /**
-     * create a child instance of specified RQRequest.
+     * create a sender-half of child RQRequest from this instance.
+     * <p>
+     * this method is used both at intermediate nodes and at root node (in slow
+     * retransmission case)
      * 
      * @param parent
      * @param receiver
-     * @param newRanges
+     * @param newRQRange new RQRange for the child RQMessage
      */
     private RQRequest(RQRequest<T> parent, Node receiver,
-            Collection<RQRange> newRanges) {
+            Collection<RQRange> newRanges, Consumer<Throwable> errorHandler) {
         super(receiver, false);
         this.isRoot = false;
         super.setReplyReceiver((RQReply<T> rep) -> {
             parent.catcher.replyReceived(rep);
         });
-        super.setExceptionReceiver((Throwable exc) -> {
-            handleErrors(exc);
-        });
+        super.setExceptionReceiver(errorHandler);
         this.qid = parent.qid;
         this.root = parent.root;
         this.rootEventId = parent.rootEventId;
@@ -148,20 +143,6 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         this.provider = parent.provider;
         this.opts = parent.opts;
         this.obstacles = parent.obstacles;
-    }
-
-    /**
-     * create a child RQRequest from this instance.
-     * <p>
-     * this method is used both at intermediate nodes and at root node (in slow
-     * retransmission case)
-     * 
-     * @param newRQRange new RQRange for the child RQMessage
-     * @return a instance of child RQMessage
-     */
-    private RQRequest<T> newChildInstance(Node receiver,
-            Collection<RQRange> newRQRange) {
-        return new RQRequest<>(this, receiver, newRQRange);
     }
 
     @Override
@@ -207,9 +188,10 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
     @Override
     public void run() {
         if (catcher == null) {
+            // note that catcher is transient
             this.catcher = new RQCatcher();
         }
-        catcher.rqDisseminate();
+        catcher.rqDisseminate(catcher.gaps);
     }
  
     public void receiveReply(RQReplyDirect<T> rep) {
@@ -217,10 +199,6 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         catcher.replyReceived(rep);
     }
 
-    private void handleErrors(Throwable exc) {
-        logger.debug("RQRequest: got exception: {}, {}", this, exc.toString());
-    }
-    
     @Override
     protected Event clone() {
         RQRequest<?> ev = (RQRequest<?>)super.clone();
@@ -257,7 +235,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         final Set<RQRequest<T>> childMsgs = new HashSet<>();
 
         /** subranges that have not yet received any return values */
-        final Set<RQRange> gaps;
+        final List<RQRange> gaps;
 
         int retransCount = 0;
 
@@ -267,7 +245,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
 
         public RQCatcher() {
             this.rvals = new ConcurrentSkipListMap<>();
-            this.gaps = new HashSet<>(targetRanges);
+            this.gaps = new ArrayList<>(targetRanges);
             if (isRoot) {
                 results = new RQResults<T>(this);
             } else {
@@ -301,12 +279,34 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             + ", retrans=" + retransCount + "]";
         }
 
-        // XXX: note that wrap-around query ranges such as [10, 5) do not work
-        // for now (k-abe)
-        private void rqDisseminate() {
+        private void rqDisseminate(List<RQRange> ranges) {
             logger.debug("rqDisseminate start: {}", this);
             logger.debug("                   : {}", RQRequest.this);
-            Map<Id, List<RQRange>> map = assignDelegates();
+            RQStrategy strategy = RQStrategy.getRQStrategy(getLocalNode());
+
+            // check if we've received the same query
+            Set<Integer> history = strategy.queryHistory.computeIfAbsent(qid,
+                    q -> {
+                        EventExecutor.sched("purge_qh-" + qid,
+                                opts.getTimeout(),
+                                () -> strategy.queryHistory.remove(qid));
+                        return new HashSet<>();
+                    });
+            List<RQRange> filtered = ranges.stream()
+                .filter(r -> {
+                    int lastId = r.ids[r.ids.length - 1];
+                    boolean received = history.contains(lastId);
+                    return !received;
+                }).peek(r -> {
+                    history.addAll(Arrays.asList(r.ids));
+                }).collect(Collectors.toList());
+            if (filtered.isEmpty()) {
+                logger.debug("already received");
+                return;
+            }
+
+            // assign a delegate node for each range
+            Map<Id, List<RQRange>> map = assignDelegates(filtered);
             logger.debug("aggregated: {}", map);
             PeerId peerId = getLocalNode().getPeerId();
 
@@ -318,7 +318,14 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                 .forEach(ent -> {
                     List<RQRange> sub = ent.getValue();
                     Node dlg = sub.get(0).getNode();
-                    RQRequest<T> m = newChildInstance(dlg, sub);
+                    RQRequest<T> m = new RQRequest<>(RQRequest.this, dlg, sub, 
+                            (Throwable th) -> {
+                                RetransMode mode = opts.getRetransMode();
+                                if (mode == RetransMode.FAST || mode == RetransMode.RELIABLE) {
+                                    logger.debug("start fast retransmission! {}", sub);
+                                    rqDisseminate(sub);
+                                }
+                            });
                     logger.debug("send to child: {}", m);
                     this.childMsgs.add(m);
                     getLocalNode().post(m);
@@ -341,7 +348,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
          * 
          * @return a map of id and RQRanges
          */
-        protected Map<Id, List<RQRange>> assignDelegates() {
+        protected Map<Id, List<RQRange>> assignDelegates(List<RQRange> ranges) {
             LocalNode local = getLocalNode(); 
             List<List<Node>> allNodes = strategy.getRoutingEntries();
 
@@ -369,7 +376,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
 
             logger.debug("allNodes={}, actives={}, maybeFailed={}", allNodes,
                     actives, maybeFailedNodes);
-            return gaps.stream()
+            return ranges.stream()
                     .flatMap(range -> assignDelegate(range, actives, succRanges)
                             .stream())
                     .collect(Collectors.groupingBy((RQRange range)
@@ -449,21 +456,15 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         void replyReceived(RQReply<T> reply) {
             logger.debug("RQRequest: reply received: {}", reply);
             if (reply.isFinal) {
-                reply.req.cleanup(); // cleanup sender half
+                reply.req.cleanup(); // cleanup sender half of the reply
                 boolean rc = childMsgs.remove(reply.req);
                 assert rc;
             }
             addRemoteValues(reply.vals);
-            if (isCompleted()) {
-                cleanup();
-            }
         }
 
         void replyReceived(RQReplyDirect<T> reply) {
             addRemoteValues(reply.vals);
-            if (isCompleted()) {
-                cleanup();
-            }
         }
 
         /**
@@ -482,6 +483,9 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             }
             logger.debug("gaps={}", gaps);
             responder.onReceiveValues();
+            if (isCompleted()) {
+                cleanup();
+            }
 //            if (isCompleted() || opts.getResponseType() == ResponseType.DIRECT) {
 //                // transmit the collected results to the parent node
 //                flush();
@@ -578,7 +582,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             // results of locally-resolved ranges
             List<DKRangeRValue<T>> rvals = new ArrayList<>();
             if (ranges == null) {
-                return CompletableFuture.completedFuture(rvals);
+                return CompletableFuture.completedFuture(null);
             }
             @SuppressWarnings("unchecked")
             CompletableFuture<Void> futures = ranges.stream()
@@ -667,8 +671,12 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                     slowRetransTask = EventExecutor.sched(
                             "slowretrans-" + getEventId(),
                             retrans, retrans, () -> {
-                                logger.debug("start slow retransmit");
-                                rqDisseminate();
+                                List<RQRange> subst = gaps.stream().map(r -> 
+                                        new RQRange(r.getNode(), r.from, r.to)
+                                        .assignId())
+                                        .collect(Collectors.toList());
+                                logger.debug("start slow retransmit: gaps={}, subst={}", gaps, subst);
+                                rqDisseminate(subst);
                             });
                     cleanup.add(() -> {
                         slowRetransTask.cancel();
@@ -693,6 +701,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         class AggregateResponder extends Responder {
             TimerEvent flushTask;
             boolean flushed;
+            boolean isFirst = true;
             public AggregateResponder() {
                 if (isRoot) {
                     startSlowRetranstTask();
@@ -705,13 +714,16 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                     // just sending an ack.
                     if (!rvals.isEmpty()) {
                         flush();
-                    } else {
+                    } else if (isFirst) {
+                        // note that rqDisseminateFinish() might be called 
+                        // more than once when fast-retransmiting.
                         getLocalNode().post(new AckEvent(RQRequest.this, sender));
                     }
                 }
                 if (!isCompleted()) {
                     startExpirationTask();
                 }
+                isFirst = false;
             }
             @Override
             void onReceiveValues() {

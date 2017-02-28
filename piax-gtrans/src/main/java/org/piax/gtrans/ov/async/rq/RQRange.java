@@ -138,11 +138,12 @@ public class RQRange extends DdllKeyRange {
         return r;
     }
 
-    public void assignId() {
+    public RQRange assignId() {
         if (ids == null) {
             ids = new Integer[1];
             ids[0] = (int) (Math.random() * MAXID);
         }
+        return this;
     }
 
     public void assignSubId(RQRange parent) {

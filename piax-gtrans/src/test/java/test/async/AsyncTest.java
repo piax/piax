@@ -31,6 +31,7 @@ import org.piax.gtrans.Peer;
 import org.piax.gtrans.RemoteValue;
 import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.TransOptions.ResponseType;
+import org.piax.gtrans.TransOptions.RetransMode;
 import org.piax.gtrans.async.Event.RequestEvent;
 import org.piax.gtrans.async.EventException.TimeoutException;
 import org.piax.gtrans.async.EventExecutor;
@@ -500,9 +501,11 @@ public class AsyncTest {
     public void testRetransAggregateSuzaku() {
         TransOptions opts = new TransOptions();
         opts.setResponseType(ResponseType.AGGREGATE);
+        opts.setRetransMode(RetransMode.FAST);
+        opts.setTimeout(15*1000);
         testRetrans(new SuzakuNodeFactory(3), opts, new FastValueProvider(),
-                new Range<Integer>(200, true, 400, false),
-                Arrays.asList(300));
+                new Range<Integer>(100, true, 400, true),
+                Arrays.asList(100, 300, 400));
     }
 
     @Test

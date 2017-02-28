@@ -15,15 +15,22 @@ public class EventException extends Exception {
         }
     }
     public static class TimeoutException extends EventException {
+        public TimeoutException(String msg) {
+            super(msg);
+        }
         public TimeoutException() {
-            super("Timeout");
+            this("Timeout");
         }
     }
-    public static class AckTimeoutException extends EventException {
+    public static class AckTimeoutException extends TimeoutException {
         Node unresponsive;
         public AckTimeoutException(Node unresponsive) {
-            super("Ack Timeeout");
+            super("Ack Timeout");
             this.unresponsive = unresponsive;
+        }
+        @Override
+        public String toString() {
+            return "AckTimeoutException(" + unresponsive + ")";
         }
     }
     public static class RetriableException extends EventException {
