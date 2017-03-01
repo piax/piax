@@ -530,6 +530,7 @@ public class AsyncTest {
             checkMemoryLeakage(nodes);
         }
     }
+
     @Test
     public void testRetransDirectSuzaku() {
         TransOptions opts = new TransOptions();
@@ -540,10 +541,21 @@ public class AsyncTest {
     }
 
     @Test
-    public void testRetransAggregateSuzaku() {
+    public void testSlowRetransAggregateSuzaku() {
         TransOptions opts = new TransOptions();
         opts.setResponseType(ResponseType.AGGREGATE);
-        opts.setRetransMode(RetransMode.RELIABLE);
+        opts.setRetransMode(RetransMode.SLOW);
+        opts.setTimeout(15*1000);
+        testRetrans(new SuzakuNodeFactory(3), opts, new FastValueProvider(),
+                new Range<Integer>(100, true, 400, true),
+                Arrays.asList(100, 300, 400));
+    }
+
+    @Test
+    public void testFastRetransAggregateSuzaku() {
+        TransOptions opts = new TransOptions();
+        opts.setResponseType(ResponseType.AGGREGATE);
+        opts.setRetransMode(RetransMode.FAST);
         opts.setTimeout(15*1000);
         testRetrans(new SuzakuNodeFactory(3), opts, new FastValueProvider(),
                 new Range<Integer>(100, true, 400, true),

@@ -117,7 +117,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
     }
 
     /**
-     * create a sender-half of child RQRequest from this instance.
+     * create a sender-half of child RQRequest from parent instance.
      * <p>
      * this method is used both at intermediate nodes and at root node (in slow
      * retransmission case)
@@ -142,6 +142,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         this.provider = parent.provider;
         this.opts = parent.opts;
         this.obstacles = parent.obstacles;
+        this.catcher = parent.catcher;
     }
 
     @Override
@@ -202,8 +203,6 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                 int lastId = r.ids[r.ids.length - 1];
                 boolean received = history.contains(lastId);
                 return !received;
-            }).peek(r -> {
-                history.addAll(Arrays.asList(r.ids));
             }).collect(Collectors.toList());
         if (filtered.isEmpty()) {
             logger.debug("already received");
@@ -305,6 +304,9 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             logger.debug("rqDisseminate start: {}", this);
             logger.debug("                   : {}", RQRequest.this);
 
+            Set<Integer> history = strategy.queryHistory.get(qid);
+            ranges.stream().forEach(r -> history.addAll(Arrays.asList(r.ids)));
+
              // assign a delegate node for each range
             Map<Id, List<RQRange>> map = assignDelegates(ranges);
             logger.debug("aggregated: {}", map);
@@ -328,6 +330,10 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                             });
                     logger.debug("send to child: {}", m);
                     this.childMsgs.add(m);
+                    m.cleanup.add(() -> {
+                        boolean rc = this.childMsgs.remove(m);
+                        assert rc;
+                    });
                     getLocalNode().post(m);
                     cleanup.add(() -> m.cleanup());
                 });
@@ -456,9 +462,8 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         void replyReceived(RQReply<T> reply) {
             logger.debug("RQRequest: reply received: {}", reply);
             if (reply.isFinal) {
-                reply.req.cleanup(); // cleanup sender half of the reply
-                boolean rc = childMsgs.remove(reply.req);
-                assert rc;
+                // cleanup sender half of the corresponding request
+                reply.req.cleanup();
             }
             addRemoteValues(reply.vals);
         }
@@ -654,7 +659,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                         });
                 cleanup.add(() -> expirationTask.cancel());
             }
-            protected void startSlowRetranstTask() {
+            protected void startSlowRetransTask() {
                 assert isRoot;
                 assert slowRetransTask == null;
                 RetransMode rmode = opts.getRetransMode();
@@ -665,11 +670,13 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                     slowRetransTask = EventExecutor.sched(
                             "slowretrans-" + getEventId(),
                             retrans, retrans, () -> {
+                                // reassign ID!
                                 List<RQRange> subst = gaps.stream().map(r -> 
                                         new RQRange(r.getNode(), r.from, r.to)
                                         .assignId())
                                         .collect(Collectors.toList());
-                                logger.debug("start slow retransmit: gaps={}, subst={}", gaps, subst);
+                                logger.debug("start slow retransmit: subst={}",
+                                        subst);
                                 rqDisseminate(subst);
                             });
                     cleanup.add(() -> {
@@ -698,7 +705,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             boolean isFirst = true;
             public AggregateResponder() {
                 if (isRoot) {
-                    startSlowRetranstTask();
+                    startSlowRetransTask();
                 }
             }
             @Override
@@ -760,7 +767,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                     cleanup.add(() -> {
                         RequestEvent.removeRequestEvent(local, getEventId());
                     });
-                    startSlowRetranstTask();
+                    startSlowRetransTask();
                 }
             }
             @Override
