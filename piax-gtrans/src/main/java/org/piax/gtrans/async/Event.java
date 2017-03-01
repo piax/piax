@@ -352,12 +352,12 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
 
         // override if necessary
         protected long getAckTimeoutValue() {
-            return NetworkParams.NETWORK_TIMEOUT;
+            return NetworkParams.ACK_TIMEOUT;
         }
 
         // override if necessary
         protected long getReplyTimeoutValue() {
-            return NetworkParams.NETWORK_TIMEOUT;
+            return NetworkParams.REPLY_TIMEOUT;
         }
  
         private void prepareForAck(LocalNode n) {
@@ -401,7 +401,7 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
                             System.out.println("reply timed out: " + this);
                             this.failureCallback.run(new TimeoutException());
                         });
-                System.out.println("schedule reply timer: " + replyTimeoutEvent);
+                // System.out.println("schedule reply timer: " + replyTimeoutEvent);
                 cleanup.add(() -> EventExecutor.cancelEvent(replyTimeoutEvent));
             }
         }
@@ -467,7 +467,7 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
                 System.out.println("ReplyEvent#beforeRunHook: reqEventId=" + reqEventId + ": not found");
                 return false;
             }
-            System.out.println("ReplyEvent#beforeRunHook: reqEventId=" + reqEventId);
+            // System.out.println("ReplyEvent#beforeRunHook: reqEventId=" + reqEventId);
             this.req = (T)r;
             return true;
         }

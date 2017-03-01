@@ -21,6 +21,7 @@ import org.piax.common.TransportId;
 import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.Peer;
+import org.piax.gtrans.async.Event.Lookup;
 import org.piax.gtrans.async.EventException;
 import org.piax.gtrans.async.EventExecutor;
 import org.piax.gtrans.async.FailureCallback;
@@ -287,7 +288,7 @@ public class Sim {
         return createNode(factory, key, NetworkParams.HALFWAY_DELAY);
     }
 
-    private LocalNode createNode(NodeFactory factory, int key, int latency) {
+    private LocalNode createNode(NodeFactory factory, int key, long latency) {
         TransportId transId = new TransportId("SimTrans");
         if (netOpt.value()) {
             Peer peer = Peer.getInstance(new PeerId("P" + key));
@@ -303,7 +304,7 @@ public class Sim {
                 throw new Error("something wrong!", e);
             }
         } else {
-            UniqId p = new UniqId("P");
+            UniqId p = new UniqId("P" + key);
             DdllKey k = new DdllKey(key, p, "", null);
             try {
                 LocalNode n = factory.createNode(null, null, k);
@@ -327,6 +328,53 @@ public class Sim {
                     new InetSocketAddress("localhost", 10000 + vport));
         }
         return peerLocator;
+    }
+    
+    /**
+     * keyを検索し，統計情報を stat に追加する．
+     * 
+     * @param key
+     * @param stat
+     */
+    public static void lookup(LocalNode from, DdllKey key, LookupStat stat) {
+        System.out.println(from + " lookup " + key);
+        long start = EventExecutor.getVTime();
+        Lookup ev = new Lookup(from, key, from);
+        ev.getCompletableFuture().whenComplete((done, exc) -> {
+            if (exc != null) {
+                System.out.println("Lookup failed: " + exc);
+                return;
+            }
+            if (done.req.key.compareTo(done.pred.key) != 0) {
+                System.out.println("Lookup error: req.key=" + done.req.key
+                        + ", " + done.pred.key);
+                System.out.println(done.pred.toStringDetail());
+                //dispatcher.dump();
+                stat.lookupFailure.addSample(1);
+            } else {
+                stat.lookupFailure.addSample(0);
+            }
+            // 先頭と末尾は検索開始ノードなので2を減じる．
+            // ただし，検索開始ノード＝検索対象ノードの場合 0 ホップ
+            int h = Math.max(done.routeWithFailed.size() - 2, 0);
+            stat.hops.addSample(h);
+            int nfails = done.routeWithFailed.size() - done.route.size();
+            //stat.failedNodes.addSample(nfails);
+            stat.failedNodes.addSample(nfails > 0 ? 1 : 0);
+            long end = EventExecutor.getVTime();
+            long elapsed = (int) (end - start);
+            stat.time.addSample((double) elapsed);
+            if (nfails > 0) {
+                System.out.println("lookup done!: " + done.route + " (" + h
+                        + " hops, " + elapsed + ", actual route="
+                        + done.routeWithFailed + ", evid="
+                        + done.req.getEventId() + ")");
+            } else {
+                System.out.println("lookup done: " + done.route + " (" + h
+                        + " hops, " + elapsed + ")");
+            }
+        });
+        from.post(ev);
     }
 
     private void simpleTest(NodeFactory factory) {
@@ -508,7 +556,7 @@ public class Sim {
             dest = random().nextInt(nodes.length);
         } while (nodes[dest].mode != NodeMode.INSERTED
                 || (ignTo != null && ignTo[dest]));
-        nodes[from].lookup(nodes[dest].key, s);
+        lookup(nodes[from], nodes[dest].key, s);
     }
 
     Runnable lookupTestFull(LocalNode[] nodes, int start, int end, LookupStat s) {
@@ -518,7 +566,7 @@ public class Sim {
                 if (nodes[from].mode != NodeMode.INSERTED) continue;
                 for (int to = start; to < end; to++) {
                     if (nodes[to].mode != NodeMode.INSERTED) continue;
-                    nodes[from].lookup(nodes[to].key, s);
+                    lookup(nodes[from], nodes[to].key, s);
                 }
             }
         };
@@ -619,7 +667,7 @@ public class Sim {
                     });//);
         }
 
-        startSim(nodes, T * LOOKUP_TIMES + convertSecondsToVTime(4*60));
+        startSim(nodes, num * num * 1000 + T * LOOKUP_TIMES + convertSecondsToVTime(4*60));
         System.out.println("*****************************");
         dump(nodes);
         System.out.println("*****************************");
@@ -750,7 +798,7 @@ public class Sim {
         int num = initial + nLater;   // 全ノード数
         LocalNode[] allNodes = new LocalNode[num];
         for (int i = 0; i < allNodes.length; i++) {
-            allNodes[i] = createNode(factory, NetworkParams.HALFWAY_DELAY, i * 10);
+            allNodes[i] = createNode(factory, i * 10, NetworkParams.HALFWAY_DELAY);
         }
         List<LocalNode> aNodes = new ArrayList<LocalNode>();
         for (int i = 0; i < nLater; i++) {
@@ -1049,7 +1097,7 @@ public class Sim {
                         EventExecutor.sched(t, () -> {
                             for (int j = 0; j < num; j++) {
                                 LookupStat stat = alls[i0].getLookupStat(j);
-                                nodes[CENTER].lookup(nodes[j].key, stat);
+                                lookup(nodes[CENTER], nodes[j].key, stat);
                             }
                         });
                     }

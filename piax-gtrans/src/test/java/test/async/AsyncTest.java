@@ -72,12 +72,12 @@ public class AsyncTest {
         return createNode(factory, key, NetworkParams.HALFWAY_DELAY);
     }
 
-    private static LocalNode createNode(NodeFactory factory, int key, int latency) {
+    private static LocalNode createNode(NodeFactory factory, int key, long latency) {
         return createNode(factory, key, "P" + key, latency);
     }
 
     private static LocalNode createNode(NodeFactory factory, int key,
-            String peerIdStr, int latency) {
+            String peerIdStr, long latency) {
         TransportId transId = new TransportId("SimTrans");
         if (REALTIME) {
             Peer peer = Peer.getInstance(new PeerId(peerIdStr));

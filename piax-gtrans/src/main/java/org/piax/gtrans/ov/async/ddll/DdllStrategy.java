@@ -182,7 +182,7 @@ public class DdllStrategy extends NodeStrategy {
                     join(msg.pred, msg.succ, joinComplete, setRjob);
                 } else {
                     // DDLL without optimization
-                    int delay = 0;
+                    long delay = 0;
                     switch (retryMode.value()) {
                     case IMMED:
                         delay = 0;

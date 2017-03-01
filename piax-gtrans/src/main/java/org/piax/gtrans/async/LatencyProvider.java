@@ -4,18 +4,18 @@ import java.util.HashMap;
 import java.util.Map;
 
 public abstract class LatencyProvider {
-    abstract int latency(Node a, Node b);
+    abstract long latency(Node a, Node b);
 
     public static class StarLatencyProvider extends LatencyProvider {
-        Map<Node, Integer> map = new HashMap<>();
+        Map<Node, Long> map = new HashMap<>();
         
-        public void add(Node node, int latency) {
+        public void add(Node node, long latency) {
             map.put(node, latency);
         }
 
-        int latency(Node a, Node b) {
-            Integer l1 = map.get(a);
-            Integer l2 = map.get(b);
+        long latency(Node a, Node b) {
+            Long l1 = map.get(a);
+            Long l2 = map.get(b);
             //double jitter = 1.0 + (Sim.rand.nextDouble()
             //* 2 * NetworkParams.JITTER.value()) - NetworkParams.JITTER.value();
             return l1 + l2;

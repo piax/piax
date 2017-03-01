@@ -310,7 +310,7 @@ public class EventExecutor {
         latencyProvider = p;
     }
 
-    public static int latency(Node a, Node b) {
+    public static long latency(Node a, Node b) {
         if (EventExecutor.realtime.value()) {
             return 0;
         }

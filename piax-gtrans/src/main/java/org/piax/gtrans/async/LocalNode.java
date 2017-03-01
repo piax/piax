@@ -39,8 +39,6 @@ import org.piax.gtrans.ov.async.rq.RQValueProvider;
 import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.util.UniqId;
 
-import test.async.sim.Sim.LookupStat;
-
 public class LocalNode extends Node {
     public static final int INSERTION_DELETION_RETRY = 10; 
     public long insertionStartTime = -1L;
@@ -438,53 +436,6 @@ public class LocalNode extends Node {
      */
     public void handleLookup(Lookup lookup) {
         getTopStrategy().handleLookup(lookup);
-    }
-
-    /**
-     * keyを検索し，統計情報を stat に追加する．
-     * 
-     * @param key
-     * @param stat
-     */
-    public void lookup(DdllKey key, LookupStat stat) {
-        System.out.println(this + " lookup " + key);
-        long start = EventExecutor.getVTime();
-        Lookup ev = new Lookup(this, key, this);
-        ev.getCompletableFuture().whenComplete((done, exc) -> {
-            if (exc != null) {
-                System.out.println("Lookup failed: " + exc);
-                return;
-            }
-            if (done.req.key.compareTo(done.pred.key) != 0) {
-                System.out.println("Lookup error: req.key=" + done.req.key
-                        + ", " + done.pred.key);
-                System.out.println(done.pred.toStringDetail());
-                //dispatcher.dump();
-                stat.lookupFailure.addSample(1);
-            } else {
-                stat.lookupFailure.addSample(0);
-            }
-            // 先頭と末尾は検索開始ノードなので2を減じる．
-            // ただし，検索開始ノード＝検索対象ノードの場合 0 ホップ
-            int h = Math.max(done.routeWithFailed.size() - 2, 0);
-            stat.hops.addSample(h);
-            int nfails = done.routeWithFailed.size() - done.route.size();
-            //stat.failedNodes.addSample(nfails);
-            stat.failedNodes.addSample(nfails > 0 ? 1 : 0);
-            long end = EventExecutor.getVTime();
-            long elapsed = (int) (end - start);
-            stat.time.addSample((double) elapsed);
-            if (nfails > 0) {
-                System.out.println("lookup done!: " + done.route + " (" + h
-                        + " hops, " + elapsed + ", actual route="
-                        + done.routeWithFailed + ", evid="
-                        + done.req.getEventId() + ")");
-            } else {
-                System.out.println("lookup done: " + done.route + " (" + h
-                        + " hops, " + elapsed + ")");
-            }
-        });
-        this.post(ev);
     }
 
     public Node getClosestPredecessor(DdllKey k) {

@@ -163,7 +163,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         if (opts.getResponseType() == ResponseType.NO_RESPONSE) {
             return 0;
         } else {
-            return NetworkParams.NETWORK_TIMEOUT;
+            return NetworkParams.ACK_TIMEOUT;
         }
     }
 
