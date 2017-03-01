@@ -366,7 +366,7 @@ public class LocalNode extends Node {
                 getTopStrategy().join(results, future);
                 future.whenComplete((rc, exc2) -> {
                     if (exc2 != null) {
-                        Log.verbose(() -> this + ": joinAfterLookup failed:" + exc2
+                        Log.verbose(() -> this + ": joinAsync failed:" + exc2
                                 + ", count=" + count);
                         mode = NodeMode.OUT;
                         // reset insertionStartTime ?

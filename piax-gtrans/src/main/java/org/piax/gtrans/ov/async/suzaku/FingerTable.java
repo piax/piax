@@ -11,6 +11,8 @@
  */
 package org.piax.gtrans.ov.async.suzaku;
 
+import java.util.stream.Stream;
+
 import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.async.Node;
 import org.piax.gtrans.ov.ring.rq.FlexibleArray;
@@ -59,8 +61,8 @@ public class FingerTable {
     public void set(int index, FTEntry ent, boolean addtorev) {
         table.set(index, ent);
         // XXX: should replace other entries that points to the same node
-        if (addtorev && ent != null && ent.getLink() != null) {
-            tables.addReversePointer(ent.getLink());
+        if (addtorev && ent != null && ent.getNode() != null) {
+            tables.addReversePointer(ent.getNode());
         }
     }
 
@@ -69,9 +71,9 @@ public class FingerTable {
         //System.out.println(vnode + ": change: index=" + index + ", " + old + " to " + ent);
         set(index, ent, addtorev);
         if (old != null && ent != null) {
-            if (old.getLink() != null && old.getLink() != ent.getLink()) {
+            if (old.getNode() != null && old.getNode() != ent.getNode()) {
                 //System.out.println(vnode + ": ptr changed, index=" + index + " from " + old + " to " + ent);
-                suzakuStr.cleanRemoteRevPtr(old.getLink());
+                suzakuStr.cleanRemoteRevPtr(old.getNode());
             }
         }
     }
@@ -87,7 +89,7 @@ public class FingerTable {
         // because level 0 is managed by DDLL, we start iteration from level 1
         for (int i = 1; i < size; i++) {
             FTEntry ent = getFTEntry(i);
-            if (ent != null && ent.getLink() == node) {
+            if (ent != null && ent.getNode() == node) {
                 set(i, newEnt, true);
             }
         }
@@ -102,19 +104,12 @@ public class FingerTable {
         if (index == LOCALINDEX) {
             ent.updateLocalEntry(vnode);
         } else if (index == 0) {
-            // the successor and predecessor are managed by DDLL
-            /*
-             * successorはDDLLで管理しているのに対し，
-             * successor-listは，Chord#側で管理している．
-             * このため，successorが変更された後，新しいノードからsuccessor-listを取得
-             * するまでの期間は，successorとsuccessor-listとの間で齟齬が生じる可能性が
-             * あることに注意．
-             */
+            // successor and predecessor are managed by the lower layer
             Node latest = isBackward ? vnode.pred : vnode.succ;
             if (latest == null) {
                 return null;
             }
-            if (ent.getLink() != latest) {
+            if (ent.getNode() != latest) {
                 ent = new FTEntry(latest);
                 set(0, ent);
             }
@@ -122,11 +117,20 @@ public class FingerTable {
         return ent;
     }
 
+    Stream<FTEntry> stream() {
+        Stream.Builder<FTEntry> builder = Stream.builder();
+        int size = getFingerTableSize();
+        for (int i = 0; i < size; i++) {
+            builder.add(getFTEntry(i));
+        }
+        return builder.build();
+    }
+
     public void shrink(int index) {
         for (int i = getFingerTableSize() - 1; i >= index; i--) {
             FTEntry ent = getFTEntry(i);
-            if (ent != null && ent.getLink() != null) {
-                suzakuStr.cleanRemoteRevPtr(ent.getLink());
+            if (ent != null && ent.getNode() != null) {
+                suzakuStr.cleanRemoteRevPtr(ent.getNode());
             }
         }
         table.shrink(index);

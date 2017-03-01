@@ -325,6 +325,7 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
 
         public void receiveReply(U reply) {
             cleanup();
+            assert !future.isDone();
             future.complete(reply);
         }
 

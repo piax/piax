@@ -28,7 +28,7 @@ public class FingerTables {
 
     FTEntry getFTEntry(Node node) {
         Optional<FTEntry> match = stream()
-                .filter(ent -> ent != null && ent.getLink() == node)
+                .filter(ent -> ent != null && ent.getNode() == node)
                 .findAny();
         return match.orElse(null);
     }

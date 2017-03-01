@@ -33,11 +33,15 @@ public class FTEntry implements Cloneable, Serializable {
 
     @Override
     public String toString() {
-        return "[" + getLink() + ", nbrs=" + nodes + "]";
+        if (nodes.size() > 1) {
+            List<Node> nbrs = nodes.subList(1, nodes.size());
+            return "[" + getNode() + ", nbrs=" + nbrs + "]";
+        }
+        return "[" + getNode() + "]";
     }
 
     // XXX: suspectedなノードを考慮!!!
-    public Node getLink() {
+    public Node getNode() {
         if (nodes.size() > 0) {
             return nodes.get(0);
         }
@@ -58,7 +62,7 @@ public class FTEntry implements Cloneable, Serializable {
         // empty
     }
 
-    public List<Node> allLinks() {
+    public List<Node> allNodes() {
         return nodes;
     }
 
