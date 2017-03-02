@@ -1,6 +1,5 @@
 package org.piax.gtrans.ov.async.rq;
 
-import java.io.IOException;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -11,10 +10,7 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import org.piax.common.PeerId;
-import org.piax.common.TransportId;
 import org.piax.common.subspace.Range;
-import org.piax.gtrans.ChannelTransport;
-import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.RemoteValue;
 import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.async.Event.LocalEvent;
@@ -36,16 +32,13 @@ public class RQStrategy extends NodeStrategy {
             this.base = base;
         }
         @Override
-        public LocalNode createNode(TransportId transId,
-                ChannelTransport<?> trans, DdllKey key)
-                throws IOException, IdConflictException {
-            LocalNode node = base.createNode(transId, trans, key);
+        public void setupNode(LocalNode node) {
+            base.setupNode(node);
             node.pushStrategy(new RQStrategy());
-            return node;
         }
         @Override
-        public String name() {
-            return "RQ/" + base.name();
+        public String toString() {
+            return "RQ/" + base.toString();
         }
     }
 
@@ -96,31 +89,6 @@ public class RQStrategy extends NodeStrategy {
     public static RQStrategy getRQStrategy(LocalNode node) {
         return (RQStrategy)node.getStrategy(RQStrategy.class);
     }
-    
-
-    /**
-     * ftlist (非故障ノードリスト) から，指定されたkeyのclosest predecessorを求める．
-     * ただし，closest predecesorが自ノードになる場合で，自ノードのsuccessorの方が
-     * keyに近い場合(=ftlistにsuccessorが含まれない場合)，successorを返す．
-     * 
-     * @param key the key
-     * @param goodNodes the good nodes
-     * @param allNodes the all nodes.
-     * @param maybeFailed the nodes that may be failed.
-     * @return the closest predecessor.
-     */
-    /*protected Node getClosestPredecessor(DdllKey key, List<Node> actives) {
-        Node best = getClosestPredecessor0(key, actives);
-        if (best.key.getUniqId().equals(n.getPeerId())) {
-            Node best2 = getClosestPredecessor0(key, allNodes, null);
-            logger.debug("getClosestPredecessor: case1: key={}, return {}",
-                    key, best2);
-            return best2;
-        }
-        logger.debug("getClosestPredecessor: case2: key={}, return {}", key,
-                best);
-        return best;
-    }*/
 
     protected Node getClosestPredecessor(DdllKey key, List<Node> actives) {
         return actives.stream()

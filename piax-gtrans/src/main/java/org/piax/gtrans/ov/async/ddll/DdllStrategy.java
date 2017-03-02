@@ -1,6 +1,5 @@
 package org.piax.gtrans.ov.async.ddll;
 
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -9,9 +8,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-import org.piax.common.TransportId;
-import org.piax.gtrans.ChannelTransport;
-import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.async.Event.Lookup;
 import org.piax.gtrans.async.Event.LookupDone;
 import org.piax.gtrans.async.Event.TimerEvent;
@@ -34,20 +30,16 @@ import org.piax.gtrans.ov.async.ddll.DdllEvent.SetRAck;
 import org.piax.gtrans.ov.async.ddll.DdllEvent.SetRAckNak;
 import org.piax.gtrans.ov.async.ddll.DdllEvent.SetRJob;
 import org.piax.gtrans.ov.async.ddll.DdllEvent.SetRNak;
-import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.gtrans.ov.ddll.LinkNum;
 
 public class DdllStrategy extends NodeStrategy {
     public static class DdllNodeFactory extends NodeFactory {
         @Override
-        public LocalNode createNode(TransportId transId,
-                ChannelTransport<?> trans, DdllKey key)
-                throws IOException, IdConflictException {
-            return new LocalNode(transId, trans, key, new DdllStrategy());
+        public void setupNode(LocalNode node) {
+            node.pushStrategy(new DdllStrategy());
         }
-
         @Override
-        public String name() {
+        public String toString() {
             return "DDLL";
         }
     }
@@ -149,7 +141,7 @@ public class DdllStrategy extends NodeStrategy {
             setStatus(DdllStatus.OUT);
             joinComplete.completeExceptionally(exc);
         };
-        ev.getCompletableFuture().whenComplete((SetRAckNak msg0, Throwable exc) -> {
+        ev.onReply((SetRAckNak msg0, Throwable exc) -> {
             if (exc != null) {
                 joinfail.accept((EventException)exc);
             } else if (msg0 instanceof SetRAck) {
@@ -242,7 +234,7 @@ public class DdllStrategy extends NodeStrategy {
         setStatus(DdllStatus.DEL);
         SetR ev = new SetR(n.pred, SetRType.NORMAL, n.succ, n,
                 rseq.next(), setRjob);
-        ev.getCompletableFuture().whenComplete((msg0, exc) -> {
+        ev.onReply((msg0, exc) -> {
             if (exc != null) {
                 System.out.println(n + ": leave failed: " + exc);
                 if (!(exc instanceof RetriableException)) {
@@ -462,7 +454,7 @@ public class DdllStrategy extends NodeStrategy {
             last = n;
         }
         GetCandidates ev = new GetCandidates(last, n);
-        ev.getCompletableFuture().whenComplete((resp, exc) -> {
+        ev.onReply((resp, exc) -> {
             if (exc != null) {
                 // redo.  because the failed node should have been added to
                 // suspectedNode, it is safe to redo.
@@ -504,7 +496,7 @@ public class DdllStrategy extends NodeStrategy {
         }
         CompletableFuture<Boolean> future = new CompletableFuture<>();
         SetR ev = new SetR(left, type, n, leftSucc, lseq, null);
-        ev.getCompletableFuture().whenComplete((msg0, exc) -> {
+        ev.onReply((msg0, exc) -> {
             if (exc != null || msg0 instanceof SetRNak) {
                 // while fixing fails, retry fixing 
                 System.out.println(n + ": fix failed: "

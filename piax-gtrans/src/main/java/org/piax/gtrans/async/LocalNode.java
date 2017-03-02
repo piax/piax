@@ -76,13 +76,13 @@ public class LocalNode extends Node {
             NodeStrategy strategy) 
             throws IdConflictException, IOException {
         DdllKey ddllkey = new DdllKey(rawkey, new UniqId(trans.getPeerId()));
-        LocalNode node =
-                new LocalNode(transId, trans, ddllkey, strategy);
+        LocalNode node = new LocalNode(transId, trans, ddllkey);
+        node.pushStrategy(strategy);
         return node;
     }
 
     public LocalNode(TransportId transId, ChannelTransport<?> trans,
-            DdllKey ddllkey, NodeStrategy strategy)
+            DdllKey ddllkey)
             throws IdConflictException, IOException {
         super(ddllkey, trans == null ? null : trans.getEndpoint());
         assert getInstance(ddllkey) == this; 
@@ -101,7 +101,6 @@ public class LocalNode extends Node {
                 throw e;
             }
         }
-        pushStrategy(strategy);
     }
     
     /*
@@ -358,7 +357,7 @@ public class LocalNode extends Node {
         this.mode = NodeMode.INSERTING;
         this.introducer = introducer;
         Lookup ev = new Lookup(introducer, key, this);
-        ev.getCompletableFuture().whenComplete((results, exc) -> {
+        ev.onReply((results, exc) -> {
             if (exc != null) {
                 joinFuture.completeExceptionally(exc);
             } else {

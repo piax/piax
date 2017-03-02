@@ -65,7 +65,8 @@ public class AsyncTestBase {
             ChannelTransport<?> trans;
             try {
                 trans = peer.newBaseChannelTransport(loc);
-                LocalNode n = factory.createNode(transId, trans, k);
+                LocalNode n = new LocalNode(transId, trans, k);
+                factory.setupNode(n);
                 latencyProvider.add(n, latency);
                 return n;
             } catch (IOException | IdConflictException e) {
@@ -75,7 +76,8 @@ public class AsyncTestBase {
             UniqId p = new UniqId(peerIdStr);
             DdllKey k = new DdllKey(key, p, "", null);
             try {
-                LocalNode n = factory.createNode(null, null, k);
+                LocalNode n = new LocalNode(null, null, k);
+                factory.setupNode(n);
                 latencyProvider.add(n, latency);
                 return n;
             } catch (IOException | IdConflictException e) {

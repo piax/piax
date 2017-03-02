@@ -297,7 +297,8 @@ public class Sim {
             ChannelTransport<?> trans;
             try {
                 trans = peer.newBaseChannelTransport(loc);
-                LocalNode n = factory.createNode(transId, trans, k);
+                LocalNode n = new LocalNode(transId, trans, k);
+                factory.setupNode(n);
                 latencyProvider.add(n, latency);
                 return n;
             } catch (IOException | IdConflictException e) {
@@ -307,7 +308,8 @@ public class Sim {
             UniqId p = new UniqId("P" + key);
             DdllKey k = new DdllKey(key, p, "", null);
             try {
-                LocalNode n = factory.createNode(null, null, k);
+                LocalNode n = new LocalNode(null, null, k);
+                factory.setupNode(n);
                 latencyProvider.add(n, latency);
                 return n;
             } catch (IOException | IdConflictException e) {
@@ -340,7 +342,7 @@ public class Sim {
         System.out.println(from + " lookup " + key);
         long start = EventExecutor.getVTime();
         Lookup ev = new Lookup(from, key, from);
-        ev.getCompletableFuture().whenComplete((done, exc) -> {
+        ev.onReply((done, exc) -> {
             if (exc != null) {
                 System.out.println("Lookup failed: " + exc);
                 return;
@@ -1247,7 +1249,7 @@ public class Sim {
             time.outputFreqDist("time", 100, false);*/
             EventExecutor.dumpMessageCounters();
         }
-        String name = factory.name();
+        String name = factory.toString();
         istats.printBasicStat("insert:" + name);
         mstats.printBasicStat("msg:" + name);
         tstats.printBasicStat("time:" + name);
@@ -1352,7 +1354,7 @@ public class Sim {
             time.outputFreqDist("time", 100, false);*/
             EventExecutor.dumpMessageCounters();
         }
-        String name = factory.name();
+        String name = factory.toString();
         mstats.printBasicStat("msg:" + name);
         tstats.printBasicStat("time:" + name);
     }
@@ -1390,7 +1392,7 @@ public class Sim {
             time.outputFreqDist("time", 100, false);*/
             EventExecutor.dumpMessageCounters();
         }
-        String name = factory.name();
+        String name = factory.toString();
         istats.printBasicStat("ratio:" + name);
         
         istats.getStat(0).outputFreqDist("dist#0", 0.05, true);

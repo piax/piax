@@ -1,6 +1,5 @@
 package org.piax.gtrans.ov.async.suzaku;
 
-import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -13,9 +12,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.piax.common.TransportId;
-import org.piax.gtrans.ChannelTransport;
-import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.async.Event.Lookup;
 import org.piax.gtrans.async.Event.LookupDone;
 import org.piax.gtrans.async.Event.TimerEvent;
@@ -36,7 +32,6 @@ import org.piax.gtrans.ov.async.suzaku.SuzakuEvent.FTEntUpdateEvent;
 import org.piax.gtrans.ov.async.suzaku.SuzakuEvent.GetFTAllEvent;
 import org.piax.gtrans.ov.async.suzaku.SuzakuEvent.GetFTEntEvent;
 import org.piax.gtrans.ov.async.suzaku.SuzakuEvent.RemoveReversePointerEvent;
-import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.gtrans.ov.ring.rq.FlexibleArray;
 
 public class SuzakuStrategy extends NodeStrategy {
@@ -80,18 +75,12 @@ public class SuzakuStrategy extends NodeStrategy {
             }
         }
         @Override
-        public LocalNode createNode(TransportId transId,
-                ChannelTransport<?> trans, DdllKey key)
-                        throws IdConflictException, IOException {
-            NodeStrategy base = new DdllStrategy();
-            LocalNode n = new LocalNode(transId, trans, key, base);
-            SuzakuStrategy szk = new SuzakuStrategy();
-            n.pushStrategy(szk);
-            szk.setupLinkChangeListener(n);
-            return n;
+        public void setupNode(LocalNode node) {
+            node.pushStrategy(new DdllStrategy());
+            node.pushStrategy(new SuzakuStrategy());
         }
         @Override
-        public String name() {
+        public String toString() {
             return "Suzaku";
         }
     }
@@ -438,7 +427,7 @@ public class SuzakuStrategy extends NodeStrategy {
         if (COPY_FINGERTABLES) {
             // copy predecessor's finger table
             GetFTAllEvent ev = new GetFTAllEvent(n.pred);
-            ev.getCompletableFuture().whenComplete((rep, exc) -> {
+            ev.onReply((rep, exc) -> {
                 if (exc != null) {
                     System.out.println("getFTAll failed: " + exc);
                 } else {
@@ -992,7 +981,7 @@ public class SuzakuStrategy extends NodeStrategy {
         FingerTable opTab = isBackward ? table.forward : table.backward;
         GetFTEntEvent ev = new GetFTEntEvent(baseNode, isBackward, x, y, K, gift, gift2);
         System.out.println("p=" + p + " , index="+ index);
-        ev.getCompletableFuture().whenComplete((repl, exc) -> {
+        ev.onReply((repl, exc) -> {
             if (exc != null) {
                 System.out.println(n + ": getFingerTable0: TIMEOUT on " + baseNode);
                 Runnable job = () -> {
@@ -1067,11 +1056,6 @@ public class SuzakuStrategy extends NodeStrategy {
                 }
                 updateNext(p, isBackward, nextEnt2, nextEntX);
             }
-        }).exceptionally(exc -> {
-            System.err.println("EXCEPTION: " + exc);
-            exc.printStackTrace();
-            System.exit(1);
-            return null;
         });
         n.post(ev);
     }

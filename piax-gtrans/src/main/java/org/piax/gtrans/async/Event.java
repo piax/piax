@@ -4,6 +4,8 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import org.piax.gtrans.async.EventException.AckTimeoutException;
@@ -244,8 +246,9 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
         public StreamingRequestEvent(Node receiver, boolean isReceiverHalf) {
             super(receiver);
             this.isReceiverHalf = isReceiverHalf;
-            super.getCompletableFuture().whenComplete((rep, exc) -> {
-                System.out.println("SreamingRequestEvent: complete! " + rep + ", " + exc);
+            super.onReply((rep, exc) -> {
+                Log.verbose(() -> "SreamingRequestEvent: complete! " + rep
+                        + ", " + exc);
                 assert rep == null;
                 exceptionReceiver.accept(exc);
             });
@@ -261,10 +264,10 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
             this.exceptionReceiver = receiver;
         }
         
-        @Override
+        /*@Override
         public CompletableFuture<U> getCompletableFuture() {
             throw new UnsupportedOperationException("don't use getCompletableFuture()");
-        }
+        }*/
 
         @Override
         public void receiveReply(U reply) {
@@ -300,8 +303,34 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
             this.future = new CompletableFuture<U>();
         }
 
-        public CompletableFuture<U> getCompletableFuture() {
+        /*public CompletableFuture<U> getCompletableFuture() {
             return this.future;
+        }*/
+
+        /**
+         * assign a reply handler for this request.
+         *
+         * @param handler reply handler
+         */
+        public void onReply(BiConsumer<U, Throwable> handler) {
+            // change Throwable to EventException (?)
+            this.future.handle((rep, exc) -> {
+                handler.accept(rep, exc);
+                return false;
+            }).exceptionally(exc -> {
+                // CompletableFuture#handle(handler) conceals exceptions in
+                // handler.  Not to miss such exceptions and make it easy to 
+                // debug, we catch them and terminate the process here.
+                if (exc instanceof CompletionException) {
+                    exc = exc.getCause();
+                }
+                System.err.println("got exception in onReply handler: " + exc
+                        + ", req=" + this);
+                exc.printStackTrace();
+                System.err.println("exit");
+                System.exit(1);
+                return null;
+            });
         }
 
         @Override
