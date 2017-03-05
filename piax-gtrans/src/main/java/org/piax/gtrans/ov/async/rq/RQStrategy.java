@@ -18,6 +18,8 @@ import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.async.Node;
 import org.piax.gtrans.async.NodeFactory;
 import org.piax.gtrans.async.NodeStrategy;
+import org.piax.gtrans.ov.async.rq.RQValueProvider.InsertionPointProvider;
+import org.piax.gtrans.ov.async.rq.RQValueProvider.KeyProvider;
 import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.util.UniqId;
 import org.slf4j.Logger;
@@ -34,13 +36,22 @@ public class RQStrategy extends NodeStrategy {
         @Override
         public void setupNode(LocalNode node) {
             base.setupNode(node);
-            node.pushStrategy(new RQStrategy());
+            RQStrategy s = new RQStrategy();
+            node.pushStrategy(s);
+            s.registerValueProvider(new KeyProvider());
+            s.registerValueProvider(new InsertionPointProvider());
         }
         @Override
         public String toString() {
             return "RQ/" + base.toString();
         }
     }
+
+    /**
+     * registered RQValueProvider
+     */
+    private Map<Class<? extends RQValueProvider<?>>, RQValueProvider<?>> providers
+        = new HashMap<>();
 
     /**
      * query receipt history
@@ -94,5 +105,18 @@ public class RQStrategy extends NodeStrategy {
         return actives.stream()
                 .max(LocalNode.getComparator(key))
                 .orElse(null);
+    }
+
+    public void registerValueProvider(RQValueProvider<?> provider) {
+        @SuppressWarnings("unchecked")
+        Class<? extends RQValueProvider<?>> clazz =
+                (Class<? extends RQValueProvider<?>>) provider.getClass();
+        providers.put(clazz, provider);
+    }
+
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+    public <T> RQValueProvider<T>
+    getProvider(Class<? extends RQValueProvider> clazz) {
+        return (RQValueProvider<T>) providers.get(clazz);
     }
 }

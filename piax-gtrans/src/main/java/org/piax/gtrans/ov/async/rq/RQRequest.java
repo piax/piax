@@ -591,22 +591,43 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             }
             @SuppressWarnings("unchecked")
             CompletableFuture<Void> futures = ranges.stream()
-                .map(r -> {
-                    // 1) obtain a value from provider
-                    // XXX: consider the case where provider throws exception
-                    CompletableFuture<T> f
-                        = provider.getRaw((LocalNode)r.getNode(), r, qid);
-                    return f.thenAccept((T val) -> {
-                        // 2) on provider completion, adds the value to rvals 
-                        RemoteValue<T> rval = new RemoteValue<>(getLocalNode().peerId, val);
-                        rvals.add(new DKRangeRValue<T>(rval, r));
-                    });
-                })
+                .map(r -> invokeProvider(r, rvals)) // CompletableFuture<Void>
                 .reduce((a, b) -> a.runAfterBoth(b, () -> {}))
                 .orElse(null);
             CompletableFuture<List<DKRangeRValue<T>>> rc = new CompletableFuture<>();
             futures.thenRun(() -> rc.complete(rvals));
             return rc;
+        }
+
+        private CompletableFuture<Void> invokeProvider(
+                RQRange r, List<DKRangeRValue<T>> rvals) {
+            // obtain the registered provider
+            RQValueProvider<T> rprovider
+                = strategy.getProvider(provider.getClass());
+            CompletableFuture<T> f;
+            try {
+                f = rprovider.getRaw(provider, (LocalNode)r.getNode(), r, qid);
+            } catch (Throwable exc) {
+                // if getRaw terminates exceptionally...
+                RemoteValue<T> rval = new RemoteValue<>(getLocalNode().peerId, exc);
+                rvals.add(new DKRangeRValue<T>(rval, r));
+                return CompletableFuture.completedFuture(null);
+            }
+            return f.handle((T val, Throwable exc) -> {
+                // on provider completion, adds the value to rvals 
+                RemoteValue<T> rval;
+                if (exc != null) {
+                    rval = new RemoteValue<>(getLocalNode().peerId, exc);
+                } else {
+                    rval = new RemoteValue<>(getLocalNode().peerId, val);
+                }
+                rvals.add(new DKRangeRValue<T>(rval, r));
+                return null;
+            });
+        }
+
+        private CompletableFuture<Void> getCompletedVoid() {
+            return CompletableFuture.completedFuture(null);
         }
 
         /*

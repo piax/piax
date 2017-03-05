@@ -26,9 +26,11 @@ import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.async.Log;
 import org.piax.gtrans.async.NetworkParams;
 import org.piax.gtrans.async.NodeFactory;
+import org.piax.gtrans.async.NodeStrategy;
 import org.piax.gtrans.ov.async.ddll.DdllEvent.GetCandidates;
 import org.piax.gtrans.ov.async.ddll.DdllStrategy;
 import org.piax.gtrans.ov.async.ddll.DdllStrategy.SetRNakMode;
+import org.piax.gtrans.ov.async.rq.RQStrategy;
 import org.piax.gtrans.ov.async.rq.RQValueProvider;
 import org.piax.gtrans.ov.async.rq.RQValueProvider.CacheProvider;
 import org.piax.gtrans.ov.ddll.DdllKey;
@@ -60,7 +62,8 @@ public class AsyncTestBase {
         TransportId transId = new TransportId("SimTrans");
         if (REALTIME) {
             Peer peer = Peer.getInstance(new PeerId(peerIdStr));
-            DdllKey k = new DdllKey(key, new UniqId(peer.getPeerId()), "", null);
+            DdllKey k =
+                    new DdllKey(key, new UniqId(peer.getPeerId()), "", null);
             PeerLocator loc = newLocator("emu", key);
             ChannelTransport<?> trans;
             try {
@@ -128,7 +131,7 @@ public class AsyncTestBase {
         }
         DdllStrategy.pingPeriod.set(pingPeriod);
         DdllStrategy.setrnakmode.set(SetRNakMode.SETRNAK_OPT2);
-        
+
         // clear strong references to "Node" to cleanup Node.instances.
         EventExecutor.reset();
         if (nodes != null) {
@@ -140,11 +143,11 @@ public class AsyncTestBase {
             }
             nodes = null;
         }
-        latencyProvider = new StarLatencyProvider(); 
+        latencyProvider = new StarLatencyProvider();
         EventExecutor.setLatencyProvider(latencyProvider);
-        System.gc();  // force gc for cleaning Node.instances
+        System.gc(); // force gc for cleaning Node.instances
     }
-    
+
     public static void dump(LocalNode[] nodes) {
         System.out.println("node dump:");
         for (int i = 0; i < nodes.length; i++) {
@@ -169,27 +172,27 @@ public class AsyncTestBase {
 
     static void checkConsistent(LocalNode... nodes) {
         int s = nodes.length;
-        for (int i = 0; i < s ; i++) {
+        for (int i = 0; i < s; i++) {
             assertTrue(nodes[i].succ == nodes[(i + 1) % s]);
             assertTrue(nodes[i].pred == nodes[(i - 1 + s) % s]);
         }
     }
-    
+
     static void checkMemoryLeakage(LocalNode... nodes) {
         int s = nodes.length;
-        for (int i = 0; i < s ; i++) {
-            Map<Integer, RequestEvent<?, ?>> m1 = (Map)getPrivateField(nodes[i], "ongoingRequests");
+        for (int i = 0; i < s; i++) {
+            Map<Integer, RequestEvent<?, ?>> m1 =
+                    (Map) getPrivateField(nodes[i], "ongoingRequests");
             Optional<RequestEvent<?, ?>> o1 = m1.values().stream()
-                .filter(req -> !(req instanceof GetCandidates))
-                .findAny();
+                    .filter(req -> !(req instanceof GetCandidates)).findAny();
             if (o1.isPresent()) {
                 System.out.println(nodes[i] + ": ongoingRequests: " + m1);
                 fail();
             }
-            Map<Integer, RequestEvent<?, ?>> m2 = (Map)getPrivateField(nodes[i], "unAckedRequests");
+            Map<Integer, RequestEvent<?, ?>> m2 =
+                    (Map) getPrivateField(nodes[i], "unAckedRequests");
             Optional<RequestEvent<?, ?>> o2 = m2.values().stream()
-                    .filter(req -> !(req instanceof GetCandidates))
-                    .findAny();
+                    .filter(req -> !(req instanceof GetCandidates)).findAny();
             if (o2.isPresent()) {
                 System.out.println(nodes[i] + ": unAckedRequests: " + m2);
                 fail();
@@ -197,18 +200,28 @@ public class AsyncTestBase {
         }
     }
 
+    void createAndInsert(NodeFactory factory, int num,
+            RQValueProvider<?> provider) {
+        nodes = createNodes(factory, num);
+        for (LocalNode node: nodes) {
+            NodeStrategy s = node.getTopStrategy();
+            ((RQStrategy)s).registerValueProvider(provider);
+        }
+        insertAll(30 * 1000);
+    }
+
     void createAndInsert(NodeFactory factory, int num) {
         nodes = createNodes(factory, num);
-        insertAll(30*1000);
+        insertAll(30 * 1000);
     }
 
-    void createAndInsert(NodeFactory factory, int num, 
+    void createAndInsert(NodeFactory factory, int num,
             Function<Integer, String> mapper) {
         nodes = createNodes(factory, num, mapper);
-        insertAll(30*1000);
+        insertAll(30 * 1000);
     }
 
-    void insertAll(long duration) { 
+    void insertAll(long duration) {
         int num = nodes.length;
         nodes[0].joinInitialNode();
         @SuppressWarnings("unchecked")
@@ -235,19 +248,19 @@ public class AsyncTestBase {
             Field f = c.getDeclaredField(field);
             f.setAccessible(true);
             return f.get(target);
-        } catch (IllegalAccessException | IllegalArgumentException 
+        } catch (IllegalAccessException | IllegalArgumentException
                 | SecurityException | NoSuchFieldException e) {
             fail(e.toString());
             return null;
         }
     }
-    
+
     public static Object getPrivateField(Class<?> clazz, String field) {
         try {
             Field f = clazz.getDeclaredField(field);
             f.setAccessible(true);
             return f.get(null);
-        } catch (IllegalAccessException | IllegalArgumentException 
+        } catch (IllegalAccessException | IllegalArgumentException
                 | SecurityException | NoSuchFieldException e) {
             fail(e.toString());
             return null;
@@ -256,56 +269,78 @@ public class AsyncTestBase {
 
     public static class FastValueProvider extends RQValueProvider<Integer> {
         @Override
-        public CompletableFuture<Integer> get(LocalNode node, DdllKey key) {
+        public CompletableFuture<Integer> get(RQValueProvider<Integer> received,
+                DdllKey key) {
             return CompletableFuture.completedFuture(result(key));
         }
+
         int result(DdllKey key) {
-            int pkey = (int)key.getPrimaryKey();
+            int pkey = (int) key.getPrimaryKey();
             return pkey;
         }
     }
-    
+
     public static class SlowValueProvider extends RQValueProvider<Integer> {
         final int delay;
+
         public SlowValueProvider(int delay) {
             this.delay = delay;
         }
+
         @Override
-        public CompletableFuture<Integer> get(LocalNode node, DdllKey key) {
+        public CompletableFuture<Integer> get(RQValueProvider<Integer> received,
+                DdllKey key) {
+            SlowValueProvider r = (SlowValueProvider) received;
             CompletableFuture<Integer> f = new CompletableFuture<>();
-            EventExecutor.sched("slowvalueprovider", delay, () -> {
+            EventExecutor.sched("slowvalueprovider", r.delay, () -> {
                 System.out.println("provider finished: " + key);
                 f.complete(result(key));
             });
             return f;
         }
+
         int result(DdllKey key) {
-            int pkey = (int)key.getPrimaryKey();
+            int pkey = (int) key.getPrimaryKey();
             return pkey;
         }
     }
-    
+
+    // XXX
     public static class SlowCacheValueProvider extends CacheProvider<Integer> {
         int count;
         final int delay;
+
         public SlowCacheValueProvider(int delay) {
             super(30 * 1000);
             this.delay = delay;
         }
+
         @Override
-        public CompletableFuture<Integer> get(LocalNode node, DdllKey key) {
+        public CompletableFuture<Integer> get(RQValueProvider<Integer> received,
+                DdllKey key) {
+            SlowCacheValueProvider p = (SlowCacheValueProvider)received; 
             CompletableFuture<Integer> f = new CompletableFuture<>();
             int val = result(key);
-            EventExecutor.sched("slowvalueprovider", delay, () -> {
-                System.out.println("provider finished: " + key + ", count=" + count);
+            EventExecutor.sched("slowvalueprovider", p.delay, () -> {
+                System.out.println(
+                        "provider finished: " + key + ", count=" + p.count);
                 f.complete(val);
             });
             count++;
             return f;
         }
+
         int result(DdllKey key) {
-            int pkey = (int)key.getPrimaryKey();
+            int pkey = (int) key.getPrimaryKey();
             return count * 1000 + pkey;
+        }
+    }
+    
+    public static class ErrorProvider extends RQValueProvider<Integer> {
+        @Override
+        public CompletableFuture<Integer> get(RQValueProvider<Integer> received,
+                DdllKey key) {
+            throw new Error("Error(" + key + ")");
         }
     }
 }

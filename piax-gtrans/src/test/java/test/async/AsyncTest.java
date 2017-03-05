@@ -26,6 +26,7 @@ import org.piax.gtrans.async.EventExecutor;
 import org.piax.gtrans.async.Node;
 import org.piax.gtrans.async.NodeFactory;
 import org.piax.gtrans.ov.async.ddll.DdllStrategy.DdllNodeFactory;
+import org.piax.gtrans.ov.async.rq.RQStrategy;
 import org.piax.gtrans.ov.async.rq.RQStrategy.RQNodeFactory;
 import org.piax.gtrans.ov.async.rq.RQValueProvider;
 import org.piax.gtrans.ov.async.rq.RQValueProvider.InsertionPointProvider;
@@ -284,14 +285,31 @@ public class AsyncTest extends AsyncTestBase {
                 new Range<Integer>(200, true, 400, false),
                 Arrays.asList(200, 300));
     }
+    
+    @Test
+    public void testRQ1ExceptionInProvider() {
+        TransOptions opts = new TransOptions();
+        opts.setResponseType(ResponseType.AGGREGATE);
+        testRQ1(new DdllNodeFactory(), opts, new ErrorProvider(),
+                new Range<Integer>(0, true, 500, true),
+                Arrays.asList(), 
+                "[Error(0!P0), Error(100!P100), Error(200!P200), Error(300!P300), Error(400!P400)]");
+    }
+
 
     private void testRQ1(NodeFactory base, 
             TransOptions opts, RQValueProvider<Integer> provider,
             Range<Integer> range, List<Integer> expect) {
+        testRQ1(base, opts, provider, range, expect, "[]");
+    }
+
+    private void testRQ1(NodeFactory base, 
+            TransOptions opts, RQValueProvider<Integer> provider,
+            Range<Integer> range, List<Integer> expect, String expectedErr) {
         NodeFactory factory = new RQNodeFactory(base);
         System.out.println("** testRQ1");
         init();
-        createAndInsert(factory, 5);
+        createAndInsert(factory, 5, provider);
         {
             Collection<Range<Integer>> ranges = Collections.singleton(range);
             List<RemoteValue<Integer>> results = new ArrayList<>();
@@ -305,12 +323,21 @@ public class AsyncTest extends AsyncTestBase {
             assertTrue(results.get(results.size() - 1 ) == null);
             List<?> rvals = results.stream()
                     .filter(Objects::nonNull)
-                    .map(rv -> rv.getValue())   // extract Integer
+                    .filter(rv -> rv.getException() == null)
+                    .map(rv -> rv.getValue())
+                    .sorted()
+                    .collect(Collectors.toList());
+            List<?> evals = results.stream()
+                    .filter(Objects::nonNull)
+                    .filter(rv -> rv.getException() != null)
+                    .map(rv -> rv.getException().getMessage())
                     .sorted()
                     .collect(Collectors.toList());
             System.out.println("RVALS = " + rvals);
-            System.out.println("EXPECT = " + expect);
+            System.out.println("EXCEPTIONS = " + evals);
+            System.out.println("EXPECTED = " + expect);
             assertTrue(rvals.equals(expect));
+            assertTrue(evals.toString().equals(expectedErr));
             checkMemoryLeakage(nodes);
         }
     }
@@ -329,7 +356,7 @@ public class AsyncTest extends AsyncTestBase {
         NodeFactory factory = new RQNodeFactory(base);
         System.out.println("** testRQ2");
         init();
-        createAndInsert(factory, 5);
+        createAndInsert(factory, 5, provider);
         {
             Collection<Range<Integer>> ranges = Collections.singleton(range);
             List<RemoteValue<Node[]>> results = new ArrayList<>();
@@ -403,7 +430,7 @@ public class AsyncTest extends AsyncTestBase {
         NodeFactory factory = new RQNodeFactory(base);
         System.out.println("** testSlowRetrans");
         init();
-        createAndInsert(factory, 5);
+        createAndInsert(factory, 5, provider);
         {
             nodes[2].fail();
             Collection<Range<Integer>> ranges = Collections.singleton(range);

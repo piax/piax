@@ -24,36 +24,39 @@ public abstract class RQValueProvider<T> implements Serializable {
      * @return
      */
     @SuppressWarnings("unchecked")
-    protected CompletableFuture<T> getRaw(LocalNode localNode, 
-            DdllKeyRange range, long qid) {
+    protected CompletableFuture<T> getRaw(RQValueProvider<T> received,
+            LocalNode localNode, DdllKeyRange range, long qid) {
         if (!range.contains(localNode.key)) {
             // although SPECIAL.PADDING is not a type of T, using
             // it as T is safe because it is used just as a marker. 
-            return CompletableFuture.completedFuture((T)SPECIAL.PADDING);
+            return CompletableFuture.completedFuture((T) SPECIAL.PADDING);
         } else {
-            return get(localNode, localNode.key);
+            return get(received, localNode.key);
         }
     }
 
-    public abstract CompletableFuture<T> get(LocalNode localNode, DdllKey key);
+    public abstract CompletableFuture<T> get(RQValueProvider<T> received,
+            DdllKey key);
 
     public static class KeyProvider extends RQValueProvider<DdllKey> {
         @Override
-        public CompletableFuture<DdllKey> get(LocalNode localNode,
+        public CompletableFuture<DdllKey> get(RQValueProvider<DdllKey> received,
                 DdllKey key) {
             return CompletableFuture.completedFuture(key);
         }
     }
-    
+
     public static class InsertionPointProvider extends RQValueProvider<Node[]> {
         @Override
-        protected CompletableFuture<Node[]> getRaw(LocalNode localNode,
-                DdllKeyRange range, long qid) {
-            Node[] ret = new Node[]{localNode, localNode.succ};
+        protected CompletableFuture<Node[]> getRaw(RQValueProvider<Node[]> received,
+                LocalNode localNode, DdllKeyRange range, long qid) {
+            Node[] ret = new Node[] { localNode, localNode.succ };
             return CompletableFuture.completedFuture(ret);
         }
+
         @Override
-        public CompletableFuture<Node[]> get(LocalNode localNode, DdllKey key) {
+        public CompletableFuture<Node[]> get(RQValueProvider<Node[]> received,
+                DdllKey key) {
             return null; // dummy
         }
     }
@@ -68,17 +71,17 @@ public abstract class RQValueProvider<T> implements Serializable {
      */
     public abstract static class CacheProvider<T> extends RQValueProvider<T> {
         final long cachePeriod;
-        
+
         public CacheProvider(long cachePeriod) {
             this.cachePeriod = cachePeriod;
         }
 
         @SuppressWarnings("unchecked")
         @Override
-        protected CompletableFuture<T> getRaw(LocalNode localNode,
-                DdllKeyRange range, long qid) {
+        protected CompletableFuture<T> getRaw(RQValueProvider<T> received,
+                LocalNode localNode, DdllKeyRange range, long qid) {
             if (!range.contains(localNode.key)) {
-                return CompletableFuture.completedFuture((T)SPECIAL.PADDING);
+                return CompletableFuture.completedFuture((T) SPECIAL.PADDING);
             }
             RQStrategy s = RQStrategy.getRQStrategy(localNode);
             Map<PeerId, Map<Long, CompletableFuture<?>>> pmap = s.resultCache;
@@ -87,7 +90,7 @@ public abstract class RQValueProvider<T> implements Serializable {
             Log.verbose(() -> "getRaw: qid=" + qid);
             CompletableFuture<T> f = (CompletableFuture<T>) qmap.get(qid);
             if (f == null) {
-                f = get(localNode, localNode.key);
+                f = get(received, localNode.key);
                 qmap.put(qid, f);
                 f.thenRun(() -> {
                     EventExecutor.sched(
