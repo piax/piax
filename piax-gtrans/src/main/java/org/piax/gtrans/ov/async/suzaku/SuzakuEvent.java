@@ -26,10 +26,8 @@ public abstract class SuzakuEvent {
     public static class GetFTAllReplyEvent
         extends ReplyEvent<GetFTAllEvent, GetFTAllReplyEvent> {
         FTEntry[][] ents;
-        GetFTAllEvent req;
         public GetFTAllReplyEvent(GetFTAllEvent req, FTEntry[][] ents) {
             super(req);
-            this.req = req;
             this.ents = ents;
         }
     }
@@ -69,10 +67,8 @@ public abstract class SuzakuEvent {
     public static class GetFTEntReplyEvent
         extends ReplyEvent<GetFTEntEvent, GetFTEntReplyEvent> {
         FTEntrySet ent;
-        GetFTEntEvent req;
         public GetFTEntReplyEvent(GetFTEntEvent req, FTEntrySet ent) {
             super(req);
-            this.req = req;
             this.ent = ent;
         }
         @Override
