@@ -9,13 +9,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import org.piax.common.Id;
 import org.piax.common.PeerId;
@@ -227,14 +225,6 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         ev.catcher = null;
         return ev;
     }
-    
-    private static <T> Stream<T> streamopt(Optional<T> opt) {
-        if (opt.isPresent()) {
-            return Stream.of(opt.get());
-        } else {
-            return Stream.empty();
-        }
-    }
 
     /**
      * A class for storing results of a range query used by parent nodes.
@@ -356,32 +346,14 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
          */
         protected Map<Id, List<RQRange>> assignDelegates(List<RQRange> ranges) {
             LocalNode local = getLocalNode(); 
-            List<List<Node>> allNodes = strategy.getRoutingEntries();
-
             // collect [me, successor)
-            List<Node> successors = new ArrayList<>();
             List<RQRange> succRanges = new ArrayList<>();
             for (LocalNode v : local.getSiblings()) {
-                successors.add(v.succ);
                 succRanges.add(new RQRange(v, v.key, v.succ.key));
             }
-
-            // XXX: merge maybeFailedNode over siblings
-            Set<Node> maybeFailedNodes = local.maybeFailedNodes;
-            List<Node> actives = allNodes.stream()
-                    .flatMap(list -> {
-                        Optional<Node> p = list.stream()
-                                .filter(node -> 
-                                    (successors.contains(node)
-                                    || !maybeFailedNodes.contains(node))) 
-                                .findFirst();
-                        return streamopt(p);
-                    })
-                    .distinct()
+            List<Node> actives = local.getActiveNodeStream()
                     .collect(Collectors.toList());
-
-            logger.debug("allNodes={}, actives={}, maybeFailed={}", allNodes,
-                    actives, maybeFailedNodes);
+            logger.debug("actives={}", actives);
             return ranges.stream()
                     .flatMap(range -> assignDelegate(range, actives, succRanges)
                             .stream())
@@ -433,8 +405,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             Node first = included.isEmpty() ? null : included.get(0);
             if (first == null || queryRange.from.compareTo(first.key) != 0) {
                 // includedが空，もしくはincludedの最初のエントリがqueryRangeの途中
-                Node d = strategy.getClosestPredecessor(queryRange.from,
-                        actives);
+                Node d = getLocalNode().getClosestPredecessor(queryRange.from);
                 RQRange r = new RQRange(d, queryRange.from, 
                         (first == null ? queryRange.to : first.key),
                         queryRange.ids);
@@ -589,7 +560,6 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             if (ranges == null) {
                 return CompletableFuture.completedFuture(null);
             }
-            @SuppressWarnings("unchecked")
             CompletableFuture<Void> futures = ranges.stream()
                 .map(r -> invokeProvider(r, rvals)) // CompletableFuture<Void>
                 .reduce((a, b) -> a.runAfterBoth(b, () -> {}))
@@ -624,10 +594,6 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                 rvals.add(new DKRangeRValue<T>(rval, r));
                 return null;
             });
-        }
-
-        private CompletableFuture<Void> getCompletedVoid() {
-            return CompletableFuture.completedFuture(null);
         }
 
         /*

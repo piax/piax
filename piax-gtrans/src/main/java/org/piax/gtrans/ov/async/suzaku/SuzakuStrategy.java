@@ -4,7 +4,6 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -344,22 +343,17 @@ public class SuzakuStrategy extends NodeStrategy {
             }
             System.out.println("T=" + EventExecutor.getVTime() + ": " + n + ": handleLookup " + l.getEventId() + " " + next);
             n.forward(next, l, (exc) -> {
-                /* [相手ノード障害時]
-                 * - 障害ノード集合に追加
-                 * - getClosestPredecessorからやりなおす．
-                 *   - getClosestPredecessorでは，障害ノード集合を取り除く
-                 * - MessageにはLevelを入れておく
-                 * - Level != 0 ならば経路表修復のためのFTEntryを貰う 
-                */
-                table.addSuspectedNode(next);
+                /* 
+                 * 相手ノード障害時は，handleLookupを再実行する．．
+                 * getClosestPredecessorは障害ノード集合を取り除いて再送する．
+                 */
                 FTEntry ent = table.getFTEntry(next);
                 System.out.println("TIMEOUT: " + n + " sent a query to "
                         + next.key
                         + ", ftent = " + ent + "\n"
                         + n.toStringDetail() 
                         + "\n" + next.toStringDetail());
-                if (next == n.succ || next == n.pred) {
-                    // XXX: handle next == n.succ correctly
+                if (next == n.pred) {
                     CompletableFuture<Boolean> future = ddll.checkAndFix();
                     future.thenRun(() -> {
                         handleLookup(l, nRetry + 1);
@@ -490,50 +484,6 @@ public class SuzakuStrategy extends NodeStrategy {
         }
     }
 
-    //@Override
-//    public Node[] getAllLinks() {
-//        List<Node> links = new ArrayList<Node>();
-//        if (n.mode != NodeMode.INSERTED && n.mode != NodeMode.DELETING) {
-//            return links.toArray(new Node[links.size()]);
-//        }
-//        links.add(getLocalLink());
-//        Node pred = getPredecessor();
-//        if (pred != null) {
-//            links.add(getPredecessor());
-//        }
-//        for (int i = 0; i < getFingerTableSize(); i++) {
-//            FTEntry ent = getFingerTableEntry(i);
-//            if (ent != null) {
-//                links.add(ent.link);
-//            }
-//        }
-//        for (int i = 0; USE_BFT && i < getBackwardFingerTableSize(); i++) {
-//            FTEntry ent = getBackwardFingerTableEntry(i);
-//            if (ent != null) {
-//                links.add(ent.link);
-//            }
-//        }
-//        return links.toArray(new Node[links.size()]);
-//    }
-
-    public List<Node> getAllLinks2() {
-        List<Node> links = new ArrayList<>();
-        links.add(getLocalNode());
-        for (int i = 0; i < getFingerTableSize(); i++) {
-            FTEntry ent = getFingerTableEntry(i);
-            if (ent != null && ent.getNode() != null) {
-                links.add(ent.getNode());
-            }
-        }
-        for (int i = 0; USE_BFT && i < getBackwardFingerTableSize(); i++) {
-            FTEntry ent = getBackwardFingerTableEntry(i);
-            if (ent != null && ent.getNode() != null) {
-                links.add(ent.getNode());
-            }
-        }
-        return links;
-    }
-
     @Override
     public List<List<Node>> getRoutingEntries() {
         return getValidFTEntries().stream()
@@ -616,15 +566,6 @@ public class SuzakuStrategy extends NodeStrategy {
         return rc;
     }
 
-    
-    public Stream<Node> routingEntryStream() {
-        Stream<Node> s = table.stream()
-                .filter(ent -> (ent != null && ent.getNode() != null))
-                .map(ent -> ent.getNode())
-                .distinct();
-        return s;
-    }
-
     /*@SuppressWarnings("unused")
     private List<NodeAndIndex> sorted(int key) {
         Comparator<NodeAndIndex> comp = (NodeAndIndex a, NodeAndIndex b) -> {
@@ -702,12 +643,12 @@ public class SuzakuStrategy extends NodeStrategy {
      * @param x     parameter
      * @param y     parameter
      * @param k     parameter
-     * @param given finger table entries to give to the remote node
-     * @param gift2 another entry used only by SUZAKU3
+     * @param passive1 finger table entries used for passive update-1
+     * @param p2ent an entry used for passive update-2
      * @return list of finger table entries
      */
     public FTEntrySet getFingers(boolean isBackward, int x, int y, int k,
-            FTEntrySet given, FTEntry gift2 /* SUZAKU3 */) {
+            FTEntrySet passive1, FTEntry p2ent) {
         FTEntrySet set = new FTEntrySet();
         // {tk^x | 0 < t <= 2^y}
         // x = floor(p/b), y = p-bx = p % b
@@ -727,29 +668,29 @@ public class SuzakuStrategy extends NodeStrategy {
         if (USE_BFT) {
             int p = y + B.value() * x;
             FingerTable opTable = isBackward ? table.forward: table.backward;
-            if (gift2 != null) {
+            if (p2ent != null) {
                 assert PASSIVE_UPDATE_2;
                 // Passive Update 2
                 int index = FingerTable.getFTIndex(1 << (p + 1));
                 if (!NOTIFY_WITH_REVERSE_POINTER.value() || isBackward) {
                     // opTable = FFT
-                    opTable.change(index, gift2, !isBackward);
+                    opTable.change(index, p2ent, !isBackward);
                     if (false) System.out.println/*Node.verbose*/(n.key
-                            + ": use gift2 (" + gift2 + "), index="
+                            + ": use gift2 (" + p2ent + "), index="
                             + index + ", " + n.toStringDetail());
                 } else {
                     // opTable = BFT
-                    table.addReversePointer(gift2.getNode());
+                    table.addReversePointer(p2ent.getNode());
                 }
             }
-            if (given.ents.length > 0) {
+            if (passive1.ents.length > 0) {
                 // Passive Update 1
                 assert p > 0;
                 int index = FingerTable.getFTIndex(1 << p);
-                opTable.change(index, given.ents[0], true);
+                opTable.change(index, passive1.ents[0], true);
                 int index2 = FingerTable.getFTIndex(1 << (p - 1));
-                for (int i = 1; i < given.ents.length; i++) {
-                    opTable.change(index2 + i, given.ents[i], true);
+                for (int i = 1; i < passive1.ents.length; i++) {
+                    opTable.change(index2 + i, passive1.ents[i], true);
                 }
             }
             /*System.out.printf(n.id + ": getFingers(x=%d, y=%d, k=%d, given=%s) returns %s\n",
@@ -925,7 +866,7 @@ public class SuzakuStrategy extends NodeStrategy {
              *       = 2 ^ (⌊(p - 1) / B⌋ * B)
              *
              * K = 4 の場合のN0の経路表:
-             *                          (p-1)/B  K^floor((p-1)/B)
+             *                          (p-1)/B  delta=(K^⌊(p-1)/B⌋)
              *  N1  N2  N3      (p=0, 1)     0          1
              *  N4  N8 N12      (p=2, 3)     1          4
              * N16 N32 N48      (p=4, 5)     2          8
@@ -947,14 +888,13 @@ public class SuzakuStrategy extends NodeStrategy {
                     e = new FTEntry(e.getNode());
                 }
                 // 先頭が自ノード，以降は逆順になるようにリストに格納する．
-                // 上の例の場合，gives = {N, C, B, A} となる．
+                // 上の例の場合， {N, C, B, A} となる．
                 if (p1ents.size() == 0) {
                     p1ents.add(e);
                 } else {
                     p1ents.add(1, e);
                 }
             }
-            //System.out.println(n.id + " gives " + gives + " to " + ent.link.id);
             passive1.ents = p1ents.toArray(new FTEntry[p1ents.size()]);
         }
         // Passive Update 2のための引数を計算
@@ -974,8 +914,6 @@ public class SuzakuStrategy extends NodeStrategy {
         // 取得するエントリを指定するパラメータ (論文参照)
         int x = p / B;
         int y = p - B * x; // = p % B
-        Log.verbose(() -> "update: " + n.key + ", " + isBackward
-                + ", ent = " + baseEnt.getNode().key + ", p =" + p);
         // Q から，距離が t*k^x (0 <= t <= 2^y)離れたエントリを取得する．
         // y = p - B * (p / B)
         //   = (p - p以下のBの倍数で最大の数)
@@ -988,6 +926,8 @@ public class SuzakuStrategy extends NodeStrategy {
         //     B = 2, p = 2 -> x = 1, y = 0, ents=[0, 1*4^1=4]
         //     B = 2, p = 3 -> x = 1, y = 1, ents=[0, 1*4^1=4, 2*4^1=8]
         Node q = baseEnt.getNode();
+        Log.verbose(() -> "update: " + n.key + ", " + isBackward
+                + ", ent = " + q.key + ", p =" + p);
         GetFTEntEvent ev = new GetFTEntEvent(q, isBackward, x, y, K, passive1, p2ent);
         ev.onReply((repl, exc) -> {
             FingerTable tab = isBackward ? table.backward : table.forward;
@@ -995,7 +935,7 @@ public class SuzakuStrategy extends NodeStrategy {
             if (exc != null) {
                 System.out.println(n + ": getFingerTable0: TIMEOUT on " + q);
                 Runnable job = () -> {
-                    table.addSuspectedNode(q);
+                    // XXX: ここで，getNode() は suspectedNode を考慮していない! 
                     if (baseEnt.getNode() != null) {
                         // we have a backup node
                         updateFingerTable0(p, isBackward, baseEnt, nextEnt2);
@@ -1010,9 +950,8 @@ public class SuzakuStrategy extends NodeStrategy {
                         }
                     }
                 };
-                if (q == n.succ || q == n.pred) {
+                if (q == n.pred) {
                     // fix and retry
-                    // XXX: handle q == n.succ case correctly!
                     CompletableFuture<Boolean> future = ddll.checkAndFix();
                     future.thenRun(job);
                 } else {
@@ -1184,13 +1123,13 @@ public class SuzakuStrategy extends NodeStrategy {
             + ", " + (isBackward ? backwardUpdateCount : forwardUpdateCount) + "th" 
             + ", " + EventExecutor.getVTime()
             + "\n" + n.toStringDetail());
-        if (false && !isFirst) {
-            // truncate the finger tables
-            table.forward.shrink(level + 1);
-            if (USE_BFT) {
-                table.backward.shrink(level + 1);
-            }
-        }
+//        if (!isFirst) {
+//            // truncate the finger tables
+//            table.forward.shrink(level + 1);
+//            if (USE_BFT) {
+//                table.backward.shrink(level + 1);
+//            }
+//        }
         if (ZIGZAG_UPDATE || !isBackward) {
             forwardUpdateCount++;
             scheduleFTUpdate(isFirst);
@@ -1203,75 +1142,6 @@ public class SuzakuStrategy extends NodeStrategy {
     @Override
     public int getMessages4Join() {
         return joinMsgs;
-    }
-
-    /**
-     * 自ノードが指しているノードが自ノードを指している率を求める
-     * 
-     * @return 対称率
-     */
-    public double symmetricDegree() {
-        /*if (!USE_BFT) {
-            return 0.0;
-        }
-        int positive = 0;
-        int negative = 0;
-        for (int j = 0; j < 2; j++) {
-            boolean isBackward = j == 1;
-            for (int i = 1; i < getFingerTableSize(); i++) {
-                FTEntry ent = getFingerTableEntry(isBackward, i);
-                if (ent == null || ent.getLink() == null) {
-                    continue;
-                }
-                Node x = ent.getLink();
-                SuzakuStrategy xs = (SuzakuStrategy)x.topStrategy;
-                FTEntry ent2 = xs.getFingerTableEntry(!isBackward, i);
-                if (ent2 != null && ent2.getLink() == n) {
-                    positive++;
-                } else {
-                    negative++;
-                    Node.verbose(n + ": " + (isBackward?"BFT":"FFT") 
-                            + " level " + i + " points to " + x
-                            + " but it points to "
-                            + (ent2 == null ? null : ent2.getLink())); 
-                }
-            }
-        }
-        return (double)positive / (positive + negative);*/
-        return 0.0;
-    }
-
-    /**
-     * 自ノードを指しているすべてのノードのうち，自ノードが指している率を求める
-     * 
-     * @param nodes すべてのノードの配列
-     * @return 対称率
-     */
-    public double symmetricDegree2(Node[] nodes) {
-        /*if (!USE_BFT) {
-            return 0.0;
-        }
-        Set<Node> a = this.gatherRemoteLinks();
-        Set<Node> b = new HashSet<>();
-        for (Node node: nodes) {
-            if (node == n || (node.mode != NodeMode.INSERTED && node.mode != NodeMode.DELETING)) {
-                continue;
-            }
-            if (((SuzakuStrategy)node.topStrategy).doesPointTo(n)) {
-                b.add(node);
-            }
-        }
-        double denominator = b.size();
-        b.removeAll(a);
-        double nominator = b.size();
-        double degree = 1 - nominator / denominator;
-        System.out.println("Node " + n.id + ": symdegree=" + degree + " : " + b);
-        if (degree != 0.0 && b.size() == 1) {
-            System.out.println(n.toStringDetail());
-            System.out.println(b.toArray(new Node[1])[0].toStringDetail());
-        }
-        return degree;*/
-        return 0.0;
     }
 
     /**
@@ -1298,23 +1168,10 @@ public class SuzakuStrategy extends NodeStrategy {
     }
 
     private Set<Node> gatherRemoteLinks() {
-        Set<Node> set = new HashSet<>();
-        for (int i = 0; i < getFingerTableSize(); i++) {
-            FTEntry ent = getFingerTableEntry(i);
-            if (ent != null) {
-                set.add(ent.getNode());
-            }
-        }
-        if (USE_BFT) {
-            for (int i = 0; i < getBackwardFingerTableSize(); i++) {
-                FTEntry ent = getBackwardFingerTableEntry(i);
-                if (ent != null) {
-                    set.add(ent.getNode());
-                }
-            }
-        }
-        set.remove(n);
-        return set;
+        return table.stream()
+            .map(ent -> ent.getNode())
+            .filter(node -> node != n)
+            .collect(Collectors.toSet());
     }
 
     private boolean doesPointTo(Node x) {
@@ -1340,15 +1197,8 @@ public class SuzakuStrategy extends NodeStrategy {
         private static final long serialVersionUID = 1L;
         FTEntry[] ents;
 
-        //Link[] predecessors;
-        //Link[] successors;
-
         @Override
         public String toString() {
-            //return "[ents=" + Arrays.deepToString(ents) + ", predecessors="
-            //        + Arrays.toString(predecessors) + "]";
-            //return "[ents=" + Arrays.deepToString(ents) + ", successors="
-            //+ Arrays.toString(successors) + "]";
             return "[ents=" + Arrays.deepToString(ents) + "]";
         }
     }

@@ -40,7 +40,6 @@ public class FTEntry implements Cloneable, Serializable {
         return "[" + getNode() + "]";
     }
 
-    // XXX: suspectedなノードを考慮!!!
     public Node getNode() {
         if (nodes.size() > 0) {
             return nodes.get(0);

@@ -487,7 +487,7 @@ public class DdllStrategy extends NodeStrategy {
         lseq = lseq.gnext();
         SetRType type;
         if (left != leftSucc && Node.isOrdered(left.key, true, leftSucc.key, n.key, false)) {
-            System.out.println("seems " + leftSucc + " is dead");
+            System.out.println("seems " + left + " is dead");
             type = SetRType.LEFTONLY;
         } else {
             System.out.println("must join between " + left + " and " + leftSucc);

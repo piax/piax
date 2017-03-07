@@ -2,7 +2,6 @@ package org.piax.gtrans.ov.async.rq;
 
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -15,7 +14,6 @@ import org.piax.gtrans.RemoteValue;
 import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.async.Event.LocalEvent;
 import org.piax.gtrans.async.LocalNode;
-import org.piax.gtrans.async.Node;
 import org.piax.gtrans.async.NodeFactory;
 import org.piax.gtrans.async.NodeStrategy;
 import org.piax.gtrans.ov.async.rq.RQValueProvider.InsertionPointProvider;
@@ -99,12 +97,6 @@ public class RQStrategy extends NodeStrategy {
     
     public static RQStrategy getRQStrategy(LocalNode node) {
         return (RQStrategy)node.getStrategy(RQStrategy.class);
-    }
-
-    protected Node getClosestPredecessor(DdllKey key, List<Node> actives) {
-        return actives.stream()
-                .max(LocalNode.getComparator(key))
-                .orElse(null);
     }
 
     public void registerValueProvider(RQValueProvider<?> provider) {

@@ -1,6 +1,5 @@
 package org.piax.gtrans.async;
 
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -32,10 +31,6 @@ public abstract class NodeStrategy {
 
     public LocalNode getLocalNode() {
         return n;
-    }
-
-    public List<Node> getAllLinks2() {
-        return Arrays.asList(getSuccessor(), n, getPredecessor());
     }
 
     public List<List<Node>> getRoutingEntries() {

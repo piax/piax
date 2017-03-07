@@ -116,12 +116,18 @@ public class FingerTable {
         }
         return ent;
     }
-
+    
+    /**
+     * get a stream of valid FTEntry
+     * 
+     * @return stream of valid FTEntry
+     */
     Stream<FTEntry> stream() {
         Stream.Builder<FTEntry> builder = Stream.builder();
         int size = getFingerTableSize();
         for (int i = 0; i < size; i++) {
-            builder.add(getFTEntry(i));
+            FTEntry ent = getFTEntry(i); 
+            if (ent != null && ent.getNode() != null) builder.add(ent);
         }
         return builder.build();
     }

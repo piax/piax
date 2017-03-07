@@ -18,6 +18,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.piax.common.Endpoint;
 import org.piax.common.PeerId;
@@ -437,14 +438,42 @@ public class LocalNode extends Node {
         getTopStrategy().handleLookup(lookup);
     }
 
+    /**
+     * returns a stream of "active" nodes, that are nodes suitable for routing.
+     * @return stream of active nodes
+     */
+    public Stream<Node> getActiveNodeStream() {
+        List<List<Node>> allNodes = getTopStrategy().getRoutingEntries();
+
+        // collect [me, successor)
+        List<Node> successors = new ArrayList<>();
+        for (LocalNode v : getSiblings()) {
+            successors.add(v.succ);
+        }
+        // XXX: merge maybeFailedNode over siblings
+        return allNodes.stream()
+                .flatMap(list -> {
+                    Optional<Node> p = list.stream()
+                            .filter(node -> 
+                                (successors.contains(node)
+                                || !maybeFailedNodes.contains(node))) 
+                            .findFirst();
+                    return streamopt(p);
+                })
+                .distinct();
+    }
+
+    private static <T> Stream<T> streamopt(Optional<T> opt) {
+        if (opt.isPresent()) {
+            return Stream.of(opt.get());
+        } else {
+            return Stream.empty();
+        }
+    }
+
     public Node getClosestPredecessor(DdllKey k) {
         Comparator<Node> comp = getComparator(k);
-        List<Node> nodes = getTopStrategy().getAllLinks2();
-        //Collections.sort(nodes, comp);
-        //System.out.println("nodes = " + nodes);
-        Optional<Node> n = nodes.stream().max(comp);
-        //System.out.println("key = " + key);
-        //System.out.println("max = " + n);
+        Optional<Node> n = getActiveNodeStream().max(comp);
         return n.orElse(null);
     }
 
@@ -473,12 +502,13 @@ public class LocalNode extends Node {
      */
     public List<Node> getNodesForFix(DdllKey k) {
         Comparator<Node> comp = getComparator(k);
-        List<Node> nodes = getTopStrategy().getAllLinks2();
-        List<Node> cands = nodes.stream()
-                .filter(p -> Node.isOrdered(this.key, true, p.key, k, false))
-                .sorted(comp)
-                .distinct()
-                .collect(Collectors.toCollection(ArrayList::new));
+        List<List<Node>> all = getTopStrategy().getRoutingEntries();
+        List<Node> cands = all.stream()
+            .flatMap(list -> list.stream())
+            .filter(p -> Node.isOrdered(this.key, true, p.key, k, false))
+            .sorted(comp)
+            .distinct()
+            .collect(Collectors.toCollection(ArrayList::new));
         if (cands.get(cands.size() - 1) == this) {
             cands.remove(cands.size() - 1);
             cands.add(0, this);
