@@ -357,7 +357,7 @@ public class LocalNode extends Node {
         }
         this.mode = NodeMode.INSERTING;
         this.introducer = introducer;
-        Lookup ev = new Lookup(introducer, key, this);
+        Lookup ev = new Lookup(introducer, key);
         ev.onReply((results, exc) -> {
             if (exc != null) {
                 joinFuture.completeExceptionally(exc);

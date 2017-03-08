@@ -341,7 +341,7 @@ public class Sim {
     public static void lookup(LocalNode from, DdllKey key, LookupStat stat) {
         System.out.println(from + " lookup " + key);
         long start = EventExecutor.getVTime();
-        Lookup ev = new Lookup(from, key, from);
+        Lookup ev = new Lookup(from, key);
         ev.onReply((done, exc) -> {
             if (exc != null) {
                 System.out.println("Lookup failed: " + exc);

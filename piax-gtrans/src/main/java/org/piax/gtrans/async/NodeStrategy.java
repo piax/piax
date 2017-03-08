@@ -70,7 +70,7 @@ public abstract class NodeStrategy {
         getLower().forwardQueryLeft(range, num, provider, opts,
                 resultsReceiver);
     }
-
+    
     public void handleLookup(Lookup lookup) {
         getLower().handleLookup(lookup);
     }

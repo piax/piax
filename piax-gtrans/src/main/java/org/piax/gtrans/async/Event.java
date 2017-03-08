@@ -519,16 +519,14 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
 
     public static class Lookup extends RequestEvent<Lookup, LookupDone> {
         public DdllKey key;
-        public Node src;
         // true when the sender node is requesting the receiver node's local
         // FTEntry.
         public boolean fill;
         public StringBuilder trace;
 
-        public Lookup(Node receiver, DdllKey key, Node src) {
+        public Lookup(Node receiver, DdllKey key) {
             super(receiver);
             this.key = key;
-            this.src = src;
         }
 
         @Override
@@ -538,8 +536,7 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
 
         @Override
         public String toStringMessage() {
-            return "Lookup(key=" + key + ", src=" + src + ", index="
-                    + fill +")";
+            return "Lookup(key=" + key + ", fill=" + fill +")";
         }
     }
 
