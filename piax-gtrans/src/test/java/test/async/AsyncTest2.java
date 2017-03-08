@@ -132,7 +132,7 @@ public class AsyncTest2 extends AsyncTestBase {
             if (failNode >= 0) {
                 nodes[failNode].fail();
             }
-            nodes[0].forwardQueryLeft(range, 3, provider, 
+            nodes[0].forwardQueryLeftAsync(range, 3, provider, 
                     opts, ((RemoteValue<Integer> ret) -> {
                         System.out.println("GOT RESULT: " + ret);
                         results.add(ret);
