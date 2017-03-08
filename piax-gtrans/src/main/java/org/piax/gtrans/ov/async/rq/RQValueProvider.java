@@ -26,7 +26,7 @@ public abstract class RQValueProvider<T> implements Serializable {
     @SuppressWarnings("unchecked")
     protected CompletableFuture<T> getRaw(RQValueProvider<T> received,
             LocalNode localNode, DdllKeyRange range, long qid) {
-        if (!range.contains(localNode.key)) {
+        if (range != null && !range.contains(localNode.key)) {
             // although SPECIAL.PADDING is not a type of T, using
             // it as T is safe because it is used just as a marker. 
             return CompletableFuture.completedFuture((T) SPECIAL.PADDING);

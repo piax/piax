@@ -64,10 +64,17 @@ public abstract class NodeStrategy {
         getLower().rangeQuery(ranges, provider, opts, resultsReceiver);
     }
 
+    public <T> void forwardQueryLeft(Range<?> range, int num,
+            RQValueProvider<T> provider, TransOptions opts,
+            Consumer<RemoteValue<T>> resultsReceiver) {
+        getLower().forwardQueryLeft(range, num, provider, opts,
+                resultsReceiver);
+    }
+
     public void handleLookup(Lookup lookup) {
         getLower().handleLookup(lookup);
     }
-    
+
     public void foundMaybeFailedNode(Node node) {
         getLower().foundMaybeFailedNode(node);
     }

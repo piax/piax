@@ -117,8 +117,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
     /**
      * create a sender-half of child RQRequest from parent instance.
      * <p>
-     * this method is used both at intermediate nodes and at root node (in slow
-     * retransmission case)
+     * this method is used both at intermediate nodes and at root node.
      * 
      * @param parent
      * @param receiver
@@ -158,7 +157,9 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
 
     @Override
     protected long getAckTimeoutValue() {
-        if (opts.getResponseType() == ResponseType.NO_RESPONSE) {
+        if (opts.getResponseType() == ResponseType.NO_RESPONSE
+            || (opts.getRetransMode() == RetransMode.NONE
+                || opts.getRetransMode() == RetransMode.SLOW)) {
             return 0;
         } else {
             return NetworkParams.ACK_TIMEOUT;
@@ -167,7 +168,10 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
 
     @Override
     protected long getReplyTimeoutValue() {
-        if (opts.getResponseType() == ResponseType.NO_RESPONSE) {
+        if (opts.getResponseType() == ResponseType.NO_RESPONSE
+                ||
+            // in DIRECT mode, only root node receives RQReply
+            opts.getResponseType() == ResponseType.DIRECT && sender != root) {
             return 0;
         } else {
             // XXX: 再送時には短いタイムアウトで!
@@ -295,6 +299,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             logger.debug("                   : {}", RQRequest.this);
 
             Set<Integer> history = strategy.queryHistory.get(qid);
+            assert history != null;
             ranges.stream().forEach(r -> history.addAll(Arrays.asList(r.ids)));
 
              // assign a delegate node for each range
@@ -406,9 +411,13 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             if (first == null || queryRange.from.compareTo(first.key) != 0) {
                 // includedが空，もしくはincludedの最初のエントリがqueryRangeの途中
                 Node d = getLocalNode().getClosestPredecessor(queryRange.from);
-                RQRange r = new RQRange(d, queryRange.from, 
-                        (first == null ? queryRange.to : first.key),
-                        queryRange.ids);
+                RQRange r;
+                if (first == null) {
+                    // OK: covers the case where queryRange is just a point
+                    r = new RQRange(d, queryRange, queryRange.ids);
+                } else {
+                    r = new RQRange(d, queryRange.from, first.key, queryRange.ids);
+                }
                 list.add(r);
             }
 
@@ -561,7 +570,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                 return CompletableFuture.completedFuture(null);
             }
             CompletableFuture<Void> futures = ranges.stream()
-                .map(r -> invokeProvider(r, rvals)) // CompletableFuture<Void>
+                .map(r -> invoke(r, rvals)) // CompletableFuture<Void>
                 .reduce((a, b) -> a.runAfterBoth(b, () -> {}))
                 .orElse(null);
             CompletableFuture<List<DKRangeRValue<T>>> rc = new CompletableFuture<>();
@@ -569,31 +578,12 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             return rc;
         }
 
-        private CompletableFuture<Void> invokeProvider(
+        private CompletableFuture<Void> invoke(
                 RQRange r, List<DKRangeRValue<T>> rvals) {
-            // obtain the registered provider
-            RQValueProvider<T> rprovider
-                = strategy.getProvider(provider.getClass());
-            CompletableFuture<T> f;
-            try {
-                f = rprovider.getRaw(provider, (LocalNode)r.getNode(), r, qid);
-            } catch (Throwable exc) {
-                // if getRaw terminates exceptionally...
-                RemoteValue<T> rval = new RemoteValue<>(getLocalNode().peerId, exc);
-                rvals.add(new DKRangeRValue<T>(rval, r));
-                return CompletableFuture.completedFuture(null);
-            }
-            return f.handle((T val, Throwable exc) -> {
-                // on provider completion, adds the value to rvals 
-                RemoteValue<T> rval;
-                if (exc != null) {
-                    rval = new RemoteValue<>(getLocalNode().peerId, exc);
-                } else {
-                    rval = new RemoteValue<>(getLocalNode().peerId, val);
-                }
-                rvals.add(new DKRangeRValue<T>(rval, r));
-                return null;
-            });
+            return strategy.invokeProvider(provider,
+                    (LocalNode)r.getNode(), r, qid)
+                    // on provider completion, adds the value to rvals 
+                    .thenAccept(rval -> rvals.add(new DKRangeRValue<T>(rval, r)));
         }
 
         /*
@@ -760,6 +750,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             @Override
             void rqDisseminateFinish() {
                 if (!isRoot && !acked) {
+                    // XXX: consider retransMode == NONE or SLOW case!
                     // send empty RQReply to parent instead of Ack
                     Event ev = new RQReply<T>(RQRequest.this, null, true);
                     getLocalNode().post(ev);

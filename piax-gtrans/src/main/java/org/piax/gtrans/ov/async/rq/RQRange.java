@@ -22,6 +22,11 @@ public class RQRange extends DdllKeyRange {
         this(node, from, to, null);
     }
 
+    // a single point
+    public RQRange(Node node, DdllKey key) {
+        this(node, new Range<DdllKey>(key, true, key, true));
+    }
+
     public RQRange(Node node, DdllKey from, DdllKey to, Integer[] ids) {
         super(from, true, to, false);
         this.delegate = node;

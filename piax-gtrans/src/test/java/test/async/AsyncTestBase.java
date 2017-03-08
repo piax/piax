@@ -21,6 +21,7 @@ import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.Peer;
 import org.piax.gtrans.async.Event.RequestEvent;
 import org.piax.gtrans.async.EventExecutor;
+import org.piax.gtrans.async.Indirect;
 import org.piax.gtrans.async.LatencyProvider.StarLatencyProvider;
 import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.async.Log;
@@ -40,10 +41,6 @@ import org.piax.gtrans.raw.udp.UdpLocator;
 import org.piax.util.UniqId;
 
 public class AsyncTestBase {
-    public static class Indirect<U> {
-        U obj;
-    }
-
     static LocalNode[] nodes;
     static StarLatencyProvider latencyProvider;
 
@@ -98,7 +95,7 @@ public class AsyncTestBase {
         nodes = new LocalNode[num];
         for (int i = 0; i < num; i++) {
             int key = i * 100;
-            nodes[i] = createNode(factory, key, key2IdMapper.apply(key), 100);
+            nodes[i] = createNode(factory, key, key2IdMapper.apply(key), 50);
         }
         return nodes;
     }
@@ -202,12 +199,17 @@ public class AsyncTestBase {
 
     void createAndInsert(NodeFactory factory, int num,
             RQValueProvider<?> provider) {
+        createAndInsert(factory, num, provider, null);
+    }
+
+    void createAndInsert(NodeFactory factory, int num,
+            RQValueProvider<?> provider, Runnable after) {
         nodes = createNodes(factory, num);
         for (LocalNode node: nodes) {
             NodeStrategy s = node.getTopStrategy();
             ((RQStrategy)s).registerValueProvider(provider);
         }
-        insertAll(30 * 1000);
+        insertAll(30 * 1000, after);
     }
 
     void createAndInsert(NodeFactory factory, int num) {
@@ -222,24 +224,41 @@ public class AsyncTestBase {
     }
 
     void insertAll(long duration) {
+        insertAll(duration, null);
+    }
+    
+    void insertAll(long duration, Runnable after) {
         int num = nodes.length;
         nodes[0].joinInitialNode();
         @SuppressWarnings("unchecked")
         // insert all nodes sequentially
         CompletableFuture<Boolean>[] futures = new CompletableFuture[num];
         Indirect<Consumer<Integer>> job = new Indirect<>();
-        job.obj = (index) -> {
+        /*job.val = (index) -> {
             if (index < num) {
                 futures[index] = nodes[index].joinAsync(nodes[index - 1]);
-                futures[index].thenRun(() -> job.obj.accept(index + 1));
+                futures[index].thenRun(() -> job.val.accept(index + 1));
+            } else if (after != null) {
+                after.run();
             }
         };
-        job.obj.accept(1);
+        job.val.accept(1);*/
+        job.val = (index) -> {
+            if (index > 0) {
+                futures[index] = nodes[index].joinAsync(nodes[0]);
+                futures[index].thenRun(() -> job.val.accept(index - 1));
+            } else if (after != null) {
+                after.run();
+            }
+        };
+        job.val.accept(nodes.length - 1);
         EventExecutor.startSimulation(duration);
         for (int i = 1; i < num; i++) {
             checkCompleted(futures[i]);
         }
-        checkConsistent(nodes);
+        if (after == null) {
+            checkConsistent(nodes);
+        }
     }
 
     public static Object getPrivateField(Object target, String field) {

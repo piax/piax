@@ -16,6 +16,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.junit.Test;
+import org.piax.common.subspace.CircularRange;
 import org.piax.common.subspace.Range;
 import org.piax.gtrans.RemoteValue;
 import org.piax.gtrans.TransOptions;
@@ -23,10 +24,10 @@ import org.piax.gtrans.TransOptions.ResponseType;
 import org.piax.gtrans.TransOptions.RetransMode;
 import org.piax.gtrans.async.EventException.TimeoutException;
 import org.piax.gtrans.async.EventExecutor;
+import org.piax.gtrans.async.Indirect;
 import org.piax.gtrans.async.Node;
 import org.piax.gtrans.async.NodeFactory;
 import org.piax.gtrans.ov.async.ddll.DdllStrategy.DdllNodeFactory;
-import org.piax.gtrans.ov.async.rq.RQStrategy;
 import org.piax.gtrans.ov.async.rq.RQStrategy.RQNodeFactory;
 import org.piax.gtrans.ov.async.rq.RQValueProvider;
 import org.piax.gtrans.ov.async.rq.RQValueProvider.InsertionPointProvider;
@@ -158,11 +159,11 @@ public class AsyncTest extends AsyncTestBase {
             Indirect<CompletableFuture<Boolean>> f3 = new Indirect<>();
             EventExecutor.sched(10000, () -> {
                 nodes[1].fail();
-                f3.obj = nodes[2].leaveAsync();
+                f3.val = nodes[2].leaveAsync();
             });
             EventExecutor.startSimulation(30000);
-            assertNotNull(f3.obj);
-            checkCompleted(f1, f2, f3.obj);
+            assertNotNull(f3.val);
+            checkCompleted(f1, f2, f3.val);
             checkMemoryLeakage(nodes[2]);
             dump(nodes);
             checkConsistent(nodes[0]);
@@ -189,12 +190,12 @@ public class AsyncTest extends AsyncTestBase {
             Indirect<CompletableFuture<Boolean>> f2 = new Indirect<>();
             EventExecutor.sched(10000, () -> {
                 nodes[0].fail();
-                f2.obj = nodes[1].leaveAsync();
+                f2.val = nodes[1].leaveAsync();
             });
             EventExecutor.startSimulation(30000);
-            assertNotNull(f2.obj);
+            assertNotNull(f2.val);
             dump(nodes);
-            checkCompleted(f1, f2.obj);
+            checkCompleted(f1, f2.val);
             checkMemoryLeakage(nodes[1]);
         }
     }
@@ -440,7 +441,8 @@ public class AsyncTest extends AsyncTestBase {
                 System.out.println("GOT RESULT: " + ret);
                 results.add(ret);
             });
-            EventExecutor.startSimulation(30000);
+            // should be larger than the default TransOptions timeout. 
+            EventExecutor.startSimulation(60000);
             assertTrue(!results.isEmpty());
             assertTrue(results.get(results.size() - 1 ) == null);
             List<?> rvals = results.stream()
@@ -501,3 +503,4 @@ public class AsyncTest extends AsyncTestBase {
         }
     }
 }
+

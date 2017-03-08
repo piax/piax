@@ -416,6 +416,13 @@ public class LocalNode extends Node {
         getTopStrategy().rangeQuery(ranges, provider, opts, resultsReceiver);
     }
 
+    public <T> void forwardQueryLeft(Range<?> range, int num,
+            RQValueProvider<T> provider, TransOptions opts,
+            Consumer<RemoteValue<T>> resultsReceiver) {
+        getTopStrategy().forwardQueryLeft(range, num, provider, opts,
+                resultsReceiver);
+    }
+
     public void fail() {
         System.out.println("*** " + this + " fails");
         this.isFailed = true;
