@@ -357,6 +357,10 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
             assert !future.isDone();
             future.complete(reply);
         }
+        
+        public void sendAck(LocalNode n) {
+            n.post(new AckEvent(this, this.sender));
+        }
 
         @Override
         public boolean beforeRunHook(LocalNode n) {
@@ -377,7 +381,7 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
             prepareForAck(n);
             // when a request message is forwarded, we send AckEvent to the
             // sender node.
-            n.post(new AckEvent(this, this.sender));
+            sendAck(n);
         }
 
         // override if necessary
@@ -531,7 +535,7 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
 
         @Override
         public void run() {
-            ((LocalNode)receiver).handleLookup(this);
+            getLocalNode().getTopStrategy().handleLookup(this);
         }
 
         @Override

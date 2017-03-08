@@ -34,6 +34,7 @@ import org.piax.gtrans.async.Event.Lookup;
 import org.piax.gtrans.async.Event.RequestEvent;
 import org.piax.gtrans.async.EventException.RPCEventException;
 import org.piax.gtrans.async.EventException.RetriableException;
+import org.piax.gtrans.async.EventException.TimeoutException;
 import org.piax.gtrans.async.EventSender.EventSenderNet;
 import org.piax.gtrans.async.EventSender.EventSenderSim;
 import org.piax.gtrans.ov.async.rq.RQValueProvider;
@@ -201,7 +202,7 @@ public class LocalNode extends Node {
         if (ev instanceof RequestEvent && failure == null) {
             RequestEvent<?, ?> req = (RequestEvent<?, ?>)ev;
             failure = exc -> {
-                System.out.println("got exception: " + exc + ", " + ev);
+                Log.verbose(() -> "post: got exception: " + exc + ", " + ev);
                 req.future.completeExceptionally(exc);
             };
         }
@@ -245,6 +246,11 @@ public class LocalNode extends Node {
     }
 
     public void forward(Node dest, Event ev, FailureCallback failure) {
+        if (failure == null) {
+            failure = exc -> {
+                Log.verbose(() -> "forward: got exception: " + exc + ", " + ev);
+            };
+        }
         assert ev.origin != null;
         ev.beforeForwardHook(this);
         ev.sender = this;
@@ -357,24 +363,29 @@ public class LocalNode extends Node {
         }
         this.mode = NodeMode.INSERTING;
         this.introducer = introducer;
+        Consumer<Throwable> retry = (exc) -> {
+            Log.verbose(() -> this + ": joinAsync failed: " + exc
+                    + ", count=" + count);
+            // reset insertionStartTime ?
+            if (((exc instanceof RetriableException) 
+                    || (exc instanceof TimeoutException))
+                    && count > 1) {
+                joinAsync(introducer, count - 1, joinFuture);
+            } else {
+                joinFuture.completeExceptionally(exc);
+            }
+        };
         Lookup ev = new Lookup(introducer, key);
         ev.onReply((results, exc) -> {
             if (exc != null) {
-                joinFuture.completeExceptionally(exc);
+                retry.accept(exc);
             } else {
                 CompletableFuture<Boolean> future = new CompletableFuture<>();
                 getTopStrategy().join(results, future);
                 future.whenComplete((rc, exc2) -> {
                     if (exc2 != null) {
-                        Log.verbose(() -> this + ": joinAsync failed:" + exc2
-                                + ", count=" + count);
                         mode = NodeMode.OUT;
-                        // reset insertionStartTime ?
-                        if (exc2 instanceof RetriableException && count > 1) {
-                            joinAsync(introducer, count - 1, joinFuture);
-                        } else {
-                            joinFuture.completeExceptionally(exc2);
-                        }
+                        retry.accept(exc2);
                         return;
                     }
                     if (rc) {
@@ -435,14 +446,6 @@ public class LocalNode extends Node {
 
     public boolean isFailed() {
         return this.isFailed;
-    }
-
-    /**
-     * process a lookup event
-     * @param lookup
-     */
-    public void handleLookup(Lookup lookup) {
-        getTopStrategy().handleLookup(lookup);
     }
 
     /**

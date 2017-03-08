@@ -16,7 +16,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.junit.Test;
-import org.piax.common.subspace.CircularRange;
 import org.piax.common.subspace.Range;
 import org.piax.gtrans.RemoteValue;
 import org.piax.gtrans.TransOptions;
@@ -118,6 +117,7 @@ public class AsyncTest extends AsyncTestBase {
         testFix1(new SuzakuNodeFactory(3));
     }
 
+    // simple failure
     private void testFix1(NodeFactory factory) {
         System.out.println("** testFix");
         init();
@@ -148,6 +148,7 @@ public class AsyncTest extends AsyncTestBase {
         testFix2(new SuzakuNodeFactory(3));
     }
 
+    // leave and fail (3 nodes)
     private void testFix2(NodeFactory factory) {
         System.out.println("** testFix2");
         init();
@@ -180,6 +181,7 @@ public class AsyncTest extends AsyncTestBase {
         testFix3(new SuzakuNodeFactory(3));
     }
 
+    // leave and fail (2 nodes)
     private void testFix3(NodeFactory factory) {
         System.out.println("** testFix3");
         init();
@@ -200,9 +202,10 @@ public class AsyncTest extends AsyncTestBase {
         }
     }
     
+    // join and fail
     @Test
-    public void testDdllJoinFail() {
-        System.out.println("** testDdllJoinFail");
+    public void testDdllJoinFail1() {
+        System.out.println("** testDdllJoinFail1");
         init();
         nodes = createNodes(new DdllNodeFactory(), 2);
         nodes[0].joinInitialNode();
@@ -222,7 +225,52 @@ public class AsyncTest extends AsyncTestBase {
             }
         }
     }
+
+    // join and fail
+    @Test
+    public void testDdllJoinFail2() {
+        System.out.println("** testDdllJoinFail2");
+        init();
+        nodes = createNodes(new DdllNodeFactory(), 3);
+        nodes[0].joinInitialNode();
+        {
+            Indirect<CompletableFuture<Boolean>> f2 = new Indirect<>();
+            CompletableFuture<Boolean> f1 = nodes[1].joinAsync(nodes[0]);
+            f1.thenRun(() -> {
+                nodes[1].fail();
+                f2.val = nodes[2].joinAsync(nodes[0]);
+            });
+            EventExecutor.startSimulation(30000);
+            dump(nodes);
+            assertTrue(f1.isDone());
+            assertTrue(f2.val.isDone());
+            checkConsistent(nodes[0], nodes[2]);
+        }
+    }
     
+    // join and fail (RQStrategy)
+    @Test
+    public void testDdllJoinFail3() {
+        System.out.println("** testDdllJoinFail3");
+        init();
+        nodes = createNodes(new RQNodeFactory(new SuzakuNodeFactory(3)), 3);
+        nodes[0].joinInitialNode();
+        {
+            Indirect<CompletableFuture<Boolean>> f2 = new Indirect<>();
+            CompletableFuture<Boolean> f1 = nodes[1].joinAsync(nodes[0]);
+            f1.thenRun(() -> {
+                nodes[1].fail();
+                f2.val = nodes[2].joinAsync(nodes[0]);
+            });
+            EventExecutor.startSimulation(30000);
+            dump(nodes);
+            assertTrue(f1.isDone());
+            assertTrue(f2.val.isDone());
+            checkConsistent(nodes[0], nodes[2]);
+        }
+    }
+
+
     @Test
     public void testRQ1Aggregate() {
         TransOptions opts = new TransOptions();

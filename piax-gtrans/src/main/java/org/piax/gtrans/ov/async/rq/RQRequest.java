@@ -196,7 +196,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         Set<Integer> history = strategy.queryHistory.computeIfAbsent(qid,
                 q -> {
                     EventExecutor.sched("purge_qh-" + qid,
-                            opts.getTimeout(),
+                            opts.getTimeout() + RQManager.RQ_EXPIRATION_GRACE,
                             () -> strategy.queryHistory.remove(qid));
                     return new HashSet<>();
                 });

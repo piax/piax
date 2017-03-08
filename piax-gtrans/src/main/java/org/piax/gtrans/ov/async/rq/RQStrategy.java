@@ -16,8 +16,12 @@ import org.piax.common.PeerId;
 import org.piax.common.subspace.Range;
 import org.piax.gtrans.RemoteValue;
 import org.piax.gtrans.TransOptions;
+import org.piax.gtrans.TransOptions.ResponseType;
+import org.piax.gtrans.TransOptions.RetransMode;
 import org.piax.gtrans.async.Event;
 import org.piax.gtrans.async.Event.LocalEvent;
+import org.piax.gtrans.async.Event.Lookup;
+import org.piax.gtrans.async.Event.LookupDone;
 import org.piax.gtrans.async.Event.ReplyEvent;
 import org.piax.gtrans.async.Event.RequestEvent;
 import org.piax.gtrans.async.EventExecutor;
@@ -72,6 +76,28 @@ public class RQStrategy extends NodeStrategy {
      * {@link org.piax.gtrans.ov.async.rq.RQValueProvider.CacheProvider}
      *  */ 
     Map<PeerId, Map<Long, CompletableFuture<?>>> resultCache = new HashMap<>();
+
+    @Override
+    public void handleLookup(Lookup l) {
+        l.sendAck(getLocalNode());
+
+        RQRange r = new RQRange(null, l.key).assignId();
+        Indirect<Boolean> flag = new Indirect<>(false);
+        TransOptions opts = new TransOptions(ResponseType.DIRECT,
+                RetransMode.RELIABLE);
+        rangeQueryRQRange(Collections.singleton(r),
+                new InsertionPointProvider(), opts,
+                rval -> {
+                    if (flag.val) {
+                        return;
+                    }
+                    Log.verbose(() -> "handleLookup: rval = " + rval);
+                    Node[] nodes = rval.getValue();
+                    Event ev = new LookupDone(l, nodes[0], nodes[1]);
+                    n.post(ev);
+                    flag.val = true;
+                });
+    }
 
     @Override
     public <T> void rangeQuery(Collection<? extends Range<?>> ranges,
