@@ -161,8 +161,9 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
                     job.accept(this);
                 }
             } catch (Throwable e) {
-                System.out.println("TimerTask: got " + e + " while executing job");
+                System.err.println("TimerEvent: got " + e + " while executing job");
                 e.printStackTrace();
+                System.exit(1);
             } finally {
                 if (!canceled && period > 0) {
                     executed = false;

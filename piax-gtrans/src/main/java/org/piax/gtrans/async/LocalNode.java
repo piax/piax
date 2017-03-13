@@ -489,6 +489,7 @@ public class LocalNode extends Node {
 
     public static Comparator<Node> getComparator(DdllKey k) {
         Comparator<Node> comp = (Node a, Node b) -> {
+            assert a != b;
             // aの方がkに近ければ正の数，bの方がkeyに近ければ負の数を返す
             // [a, key, b) -> plus
             // [b, key, a) -> minus
@@ -516,8 +517,8 @@ public class LocalNode extends Node {
         List<Node> cands = all.stream()
             .flatMap(list -> list.stream())
             .filter(p -> Node.isOrdered(this.key, true, p.key, k, false))
-            .sorted(comp)
             .distinct()
+            .sorted(comp)
             .collect(Collectors.toCollection(ArrayList::new));
         if (cands.get(cands.size() - 1) == this) {
             cands.remove(cands.size() - 1);
