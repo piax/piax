@@ -118,7 +118,7 @@ public abstract class DdllEvent {
         public void run() {
             LocalNode n = getLocalNode();
             List<Node> candidates = n.getNodesForFix(node.key);
-            System.out.println("GetFixCandidates: returns " + candidates);
+            // System.out.println("GetFixCandidates: returns " + candidates);
             n.post(new GetCandidatesResponse(this, candidates, n.succ));
         }
     }

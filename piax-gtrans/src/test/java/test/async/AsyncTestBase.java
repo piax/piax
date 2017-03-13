@@ -244,6 +244,7 @@ public class AsyncTestBase {
         };
         job.val.accept(1);*/
         job.val = (index) -> {
+            System.out.println("T" + EventExecutor.getVTime() + ": inserting " + index);
             if (index > 0) {
                 futures[index] = nodes[index].joinAsync(nodes[0]);
                 futures[index].thenRun(() -> job.val.accept(index - 1));

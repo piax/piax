@@ -173,9 +173,9 @@ public class SuzakuStrategy extends NodeStrategy {
     @Override
     public void join(LookupDone lookupDone, 
             CompletableFuture<Boolean> joinFuture) {
-        System.out.println("Suzaku#join: " + lookupDone.route
+        Log.verbose(() -> "Suzaku#join: " + lookupDone.route
                 + ", " + lookupDone.hops() + " hops"); 
-        System.out.println("Suzaku#join: " + n.key + " joins between "
+        Log.verbose(() -> "Suzaku#join: " + n.key + " joins between "
                 + lookupDone.pred + " and " + lookupDone.succ);
         assert Node.isOrdered(lookupDone.pred.key, n.key, lookupDone.succ.key);
         joinMsgs += lookupDone.hops();
@@ -463,7 +463,7 @@ public class SuzakuStrategy extends NodeStrategy {
         updateSchedEvent = EventExecutor.sched(delay, () -> {
             updateFingerTable(false);
         });
-        System.out.println(n + ": add schedEvent: " + updateSchedEvent.getEventId());
+        Log.verbose(() -> n + ": add schedEvent: " + updateSchedEvent.getEventId());
     }
     
     /**
@@ -1093,7 +1093,7 @@ public class SuzakuStrategy extends NodeStrategy {
                 }
             } else {
                 nextLevel = p + 1;
-                System.out.println("nextLevel="+nextLevel +", nextEntX=" + nextEntX);
+                Log.verbose(() -> "nextLevel="+nextLevel +", nextEntX=" + nextEntX);
                 EventExecutor.sched(UPDATE_FINGER_PERIOD.value(),
                         () -> updateFingerTable0(p + 1, isBackward, nextEntX, null));
             }

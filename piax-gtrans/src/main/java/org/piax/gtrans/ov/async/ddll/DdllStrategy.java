@@ -153,7 +153,7 @@ public class DdllStrategy extends NodeStrategy {
                 leftNbrs.set(msg.nbrs);
                 // nbrs does not contain the immediate left node
                 leftNbrs.add(getPredecessor());
-                System.out.println(n + ": INSERTED, vtime = " + msg.vtime);
+                Log.verbose(() -> n + ": INSERTED, vtime = " + msg.vtime);
                 joinComplete.complete(true);
             } else if (msg0 instanceof SetRNak){
                 SetRNak msg = (SetRNak)msg0;
@@ -414,18 +414,18 @@ public class DdllStrategy extends NodeStrategy {
     }
     private CompletableFuture<Boolean> checkAndFix0() {
         fixState = FIXSTATE.CHECKING;
-        System.out.println("FIXSTATE=" + fixState);
+        Log.verbose(() -> "FIXSTATE=" + fixState);
         CompletableFuture<Boolean> future = getLiveLeft()
                 .thenCompose(nodes -> {
                     fixState = FIXSTATE.FIXING;
-                    System.out.println("FIXSTATE=" + fixState);
+                    Log.verbose(() -> "FIXSTATE=" + fixState);
                     return fix(nodes[0], nodes[1]);
                 }).thenCompose(rc -> {
                     if (!rc) {
                         return checkAndFix0();
                     } else {
                         fixState = FIXSTATE.IDLE;
-                        System.out.println("FIXSTATE=" + fixState);
+                        Log.verbose(() -> "FIXSTATE=" + fixState);
                         return CompletableFuture.completedFuture(true);
                     }
                 });
@@ -444,7 +444,8 @@ public class DdllStrategy extends NodeStrategy {
         Node last = candidates.stream()
                 .filter(q -> !n.maybeFailedNodes.contains(q))
                 .reduce((a, b) -> b).orElse(null);
-        System.out.println("left=" + left +", last=" + last
+        Node last0 = last;
+        Log.verbose(() -> "left=" + left +", last=" + last0
                 + ", suspect=" + n.maybeFailedNodes);
         if (last == left) {
             future.complete(new Node[]{left, leftSucc});
@@ -473,14 +474,14 @@ public class DdllStrategy extends NodeStrategy {
      * @return CompletableFuture
      */
     private CompletableFuture<Boolean> fix(Node left, Node leftSucc) {
-        System.out.println(n + ": fix(" + left
+        Log.verbose(() -> n + ": fix(" + left
                 + ", " + leftSucc + "): status=" + status);
         if (status != DdllStatus.IN) {
             System.out.println("not IN");
             return CompletableFuture.completedFuture(true);
         }
         if (leftSucc == n) {
-            System.out.println("no problem");
+            Log.verbose(() -> "no problem");
             return CompletableFuture.completedFuture(true);
         }
         n.setPred(left);
