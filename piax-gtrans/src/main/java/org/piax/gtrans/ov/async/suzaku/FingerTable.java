@@ -156,9 +156,7 @@ public class FingerTable {
             return LOCALINDEX;
         }
         for (int x = 0;; x++) {
-            int i = x / (SuzakuStrategy.K - 1);
-            int j = x - (SuzakuStrategy.K - 1) * i + 1;
-            int d = j * (1 << (SuzakuStrategy.B.value() * i));
+            int d = indexToDistance(x);
             if (distance == d) {
                 return x;
             }
@@ -166,5 +164,15 @@ public class FingerTable {
                 return x - 1;
             }
         }
+    }
+
+    public static int indexToDistance(int index) {
+        if (index == -1) {
+            return 0;
+        }
+        int i = index / (SuzakuStrategy.K - 1);
+        int j = index - (SuzakuStrategy.K - 1) * i + 1;
+        int d = j * (1 << (SuzakuStrategy.B.value() * i));
+        return d;
     }
 }

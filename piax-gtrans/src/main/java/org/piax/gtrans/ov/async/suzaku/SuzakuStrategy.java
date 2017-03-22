@@ -178,9 +178,9 @@ public class SuzakuStrategy extends NodeStrategy {
     @Override
     public void join(LookupDone lookupDone, 
             CompletableFuture<Boolean> joinFuture) {
-        System.out.println("Suzaku#join: " + lookupDone.route
+        Log.verbose(() -> "Suzaku#join: " + lookupDone.route
                 + ", " + lookupDone.hops() + " hops"); 
-        System.out.println("Suzaku#join: " + n.key + " joins between "
+        Log.verbose(() -> "Suzaku#join: " + n.key + " joins between "
                 + lookupDone.pred + " and " + lookupDone.succ);
         assert Node.isOrdered(lookupDone.pred.key, n.key, lookupDone.succ.key);
         joinMsgs += lookupDone.hops();
@@ -318,8 +318,7 @@ public class SuzakuStrategy extends NodeStrategy {
             }
         }
         if (l.fill) {
-            FTEntry ent = getFingerTableEntryForRemote(false,
-                    FingerTable.LOCALINDEX, 0);
+            FTEntry ent = getFingerTableEntryForRemote(0, 1);
             System.out.println("handleLookup: "
                     + n + " sends FTEntUpdateEvent: " + ent);
             n.post(new FTEntUpdateEvent(l.sender, ent));
@@ -660,21 +659,10 @@ public class SuzakuStrategy extends NodeStrategy {
         // t = 0 represents the local node and
         // t > 0 represents finger table entries
         for (int t = 0; t <= (1 << y); t++) {
-            // step: finger table上で，指定されたエントリが存在する行のステップ
-            int step = (1 << (B.value() * x)); // t*2^(Bx)
-            int d = t * step;
-            int index = FingerTable.getFTIndex(d);
-            int d2 = d + (isBackward ? -step : step);
-            FTEntry l;
-            if (d2 <= 0) {
-                int index2 = FingerTable.getFTIndex(-d2);
-                System.out.println(step + ", d=" + d + ", d2="+ d2 + ", index2=" + index2 + ", index=" + index);
-                l = getFingerTableEntryForRemote(false, index, index2);
-            } else {
-                int index2 = FingerTable.getFTIndex(d2);
-                System.out.println(step + ", d=" + d + ", d2="+ d2 + ", index2=" + index2 + ", index=" + index);
-                l = getFingerTableEntryForRemote(isBackward, index, index2);
-            }
+            int delta = (1 << (B.value() * x));
+            int d = t * delta * (isBackward ? -1 : 1); // t*2^(Bx)
+            int d2 = d + delta;
+            FTEntry l = getFingerTableEntryForRemote(d, d2);
             returnSet.ents[t] = l;
         }
         if (USE_BFT) {
@@ -727,13 +715,15 @@ public class SuzakuStrategy extends NodeStrategy {
         FTEntry[][] rc = new FTEntry[2][];
         rc[0] = new FTEntry[getFingerTableSize()];
         for (int i = 0; i < getFingerTableSize(); i++) {
-            FTEntry ent = getFingerTableEntryForRemote(false, i, 0);
+            int d = FingerTable.indexToDistance(i);
+            FTEntry ent = getFingerTableEntryForRemote(d, d);
             rc[0][i] = ent;
         }
         if (USE_BFT) {
             rc[1] = new FTEntry[getBackwardFingerTableSize()];
             for (int i = 0; i < getBackwardFingerTableSize(); i++) {
-                FTEntry ent = getFingerTableEntryForRemote(true, i, 0);
+                int d = FingerTable.indexToDistance(i);
+                FTEntry ent = getFingerTableEntryForRemote(-d, -d);
                 rc[1][i] = ent;
             }
         }
@@ -762,21 +752,18 @@ public class SuzakuStrategy extends NodeStrategy {
 
     /**
      * get a specified FTEntry for giving to a remote node.
-     * in aggregation chord#, the range [index, index2) is used as the 
+     * in aggregation chord#, the range [distance1, distance2) is used as the 
      * aggregation range.
-     * this method is intended to be overridden by subclasses.
      * 
-     * @param index     index of the entry
-     * @param index2    index of the next entry. 
+     * @param distance1     distance to the entry
+     * @param distance2     distance to the entry
      * @return the FTEntry
      */
-    protected FTEntry getFingerTableEntryForRemote(boolean isBackward, int index, int index2) {
-        if (isBackward && index2 < 0) {
-            System.out.println(index);
-            assert index == FingerTable.LOCALINDEX : "index=" + index + ", index2=" + index2;
-            isBackward = true;
-            index2 = -index2;
-        }
+    protected FTEntry getFingerTableEntryForRemote(int distance1, int distance2) {
+        boolean isBackward = distance1 < 0;
+        int index = FingerTable.getFTIndex(Math.abs(distance1));
+        int index2 = FingerTable.getFTIndex(Math.abs(distance2));
+
         FTEntry ent = getFingerTableEntry(isBackward, index);
         if (ent == null) {
             return null;
@@ -935,17 +922,29 @@ public class SuzakuStrategy extends NodeStrategy {
             max = 1 << p;//(p - 1);
         }
         {
-            List<FTEntry> p1ents = new ArrayList<>();
+            /* 
+             * |-------------------------------> distQ = 2^p
+             * |---------------> 2^(p - 1)
+             * |--> delta
+             * N==A==B==...====P===============Q
+             * 
+             * NがQに対してgetFingersを呼ぶ時，[A, B, ... P) を送る．
+             * delta = N-A間の距離
+             *       = K ^ ⌊(p - 1) / B⌋
+             *       = 2 ^ (B * ⌊(p - 1) / B⌋)
+             *       = 2 ^ (⌊(p - 1) / B⌋ * B)
+             *
+             * K = 4 (B = 2) の場合のN0の経路表:
+             *                        (p-1)/B  delta=(K^⌊(p-1)/B⌋)
+             *  N1  N2  N3  (p=0, 1)   N/A, 0      N/A, 1
+             *  N4  N8 N12  (p=2, 3)     0, 1        1, 4
+             * N16 N32 N48  (p=4, 5)     1, 2        4, 16
+             */
+            ArrayList<FTEntry> p1ents = new ArrayList<>();
             for (int d = 0; d < max; d += delta) {
-                int idx = FingerTable.getFTIndex(d);
-                FTEntry e;
-                if (d == 0 && isBackward) {
-                    int idx2 = FingerTable.getFTIndex(delta);
-                    e = getFingerTableEntryForRemote(false, idx, idx2);
-                } else {
-                    int idx2 = FingerTable.getFTIndex(d + (isBackward ? -delta : delta));
-                    e = getFingerTableEntryForRemote(isBackward, idx, idx2);
-                }
+                int dist1 = d * (isBackward ? -1 : 1);
+                int dist2 = dist1 + delta;
+                FTEntry e = getFingerTableEntryForRemote(dist1, dist2);
                 int dis = distQ - d;  // 当該エントリから Q までの距離
                 if (dis < K) {
                     // XXX: THINK!: remove neighbors part
@@ -962,9 +961,9 @@ public class SuzakuStrategy extends NodeStrategy {
         if (PASSIVE_UPDATE_2 && isFirst) {
             List<FTEntry> p2ents = new ArrayList<>();
             for (int d = delta; isBackward ? d <= distQ : d < distQ; d += delta) {
-                int idx = FingerTable.getFTIndex(d);
-                int idx2 = FingerTable.getFTIndex(d + (isBackward ? delta : -delta));
-                FTEntry e = getFingerTableEntryForRemote(!isBackward, idx, idx2);
+                int d0 = d * (isBackward ? 1 : -1);
+                int d1 = d0 + delta;
+                FTEntry e = getFingerTableEntryForRemote(d0, d1);
                 int dis = distQ - d;  // 当該エントリから Q までの距離
                 if (dis < K) {
                     // XXX: THINK!: remove neighbors part
@@ -1165,7 +1164,7 @@ public class SuzakuStrategy extends NodeStrategy {
                 }
             } else {
                 nextLevel = p + 1;
-                Log.verbose(() ->"nextLevel="+nextLevel +", nextEntX=" + nextEntX);
+                Log.verbose(() -> "nextLevel=" + nextLevel +" , nextEntX=" + nextEntX);
                 EventExecutor.sched(UPDATE_FINGER_PERIOD.value(),
                         () -> updateFingerTable0(p + 1, isBackward, nextEntX, null));
             }
