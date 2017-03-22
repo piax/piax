@@ -33,7 +33,7 @@ public abstract class NodeStrategy {
         return n;
     }
 
-    public List<List<Node>> getRoutingEntries() {
+    public List<FTEntry> getRoutingEntries() {
         return getLower().getRoutingEntries();
     }
 

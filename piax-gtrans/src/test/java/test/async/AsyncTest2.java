@@ -16,18 +16,16 @@ import org.piax.gtrans.RemoteValue;
 import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.TransOptions.RetransMode;
 import org.piax.gtrans.async.EventExecutor;
+import org.piax.gtrans.async.FTEntry;
 import org.piax.gtrans.async.Indirect;
 import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.async.Node;
 import org.piax.gtrans.async.NodeFactory;
 import org.piax.gtrans.ov.async.ddll.DdllStrategy.DdllNodeFactory;
-import org.piax.gtrans.ov.async.rq.RQValueProvider;
 import org.piax.gtrans.ov.async.rq.RQStrategy.RQNodeFactory;
-import org.piax.gtrans.ov.async.suzaku.FTEntry;
+import org.piax.gtrans.ov.async.rq.RQValueProvider;
 import org.piax.gtrans.ov.async.suzaku.SuzakuStrategy;
 import org.piax.gtrans.ov.async.suzaku.SuzakuStrategy.SuzakuNodeFactory;
-
-import test.async.AsyncTestBase.FastValueProvider;
 
 public class AsyncTest2 extends AsyncTestBase {
     @Test

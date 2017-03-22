@@ -6,6 +6,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.piax.gtrans.async.FTEntry;
 import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.async.Node;
 

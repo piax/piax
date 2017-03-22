@@ -3,6 +3,7 @@ package org.piax.gtrans.ov.async.suzaku;
 import java.util.List;
 
 import org.piax.gtrans.async.Event;
+import org.piax.gtrans.async.FTEntry;
 import org.piax.gtrans.async.Event.ReplyEvent;
 import org.piax.gtrans.async.Event.RequestEvent;
 import org.piax.gtrans.async.LocalNode;
@@ -38,29 +39,34 @@ public abstract class SuzakuEvent {
         final int x;
         final int y;
         final int k;
-        final FTEntrySet given;
-        final FTEntry gift2;    // SUZAKU3
+        final FTEntrySet passive1;
+        final FTEntrySet passive2;
         public GetFTEntEvent(Node receiver, boolean isBackward, int x, int y, int k,
-                FTEntrySet given, FTEntry gift2 /* for SUZAKU3 */) { 
+                FTEntrySet passive1, FTEntrySet passive2) { 
             super(receiver);
             this.isBackward = isBackward;
             this.x = x;
             this.y = y;
             this.k = k;
-            this.given = given;
-            this.gift2 = gift2;
+            this.passive1 = passive1;
+            this.passive2 = passive2;
         }
         @Override
         public void run() {
             LocalNode r = (LocalNode)receiver;
             SuzakuStrategy s = SuzakuStrategy.getSuzakuStrategy(r);
-            FTEntrySet ent = s.getFingers(isBackward, x, y, k, given, gift2);
-            r.post(new GetFTEntReplyEvent(this, ent));
+            FTEntrySet ent = s.getFingers(isBackward, x, y, k, passive1, passive2);
+            r.post(this.composeReply(ent));
         }
         @Override
         public String toStringMessage() {
             return getClass().getSimpleName() + "(isBackward=" + isBackward
-                    + ", x=" + x + ", y=" + y + ", given=" + given + ", gift2=" + gift2 + ")";
+                    + ", x=" + x + ", y=" + y
+                    + ", passive1=" + passive1 + ", passive2=" + passive2 + ")";
+        }
+        // to be overridden
+        public GetFTEntReplyEvent composeReply(FTEntrySet ent) {
+            return new GetFTEntReplyEvent(this, ent);
         }
     }
 

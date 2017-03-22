@@ -2,6 +2,7 @@ package org.piax.gtrans.ov.async.rq;
 
 import java.io.Serializable;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
@@ -13,6 +14,7 @@ import org.piax.gtrans.async.Log;
 import org.piax.gtrans.async.Node;
 import org.piax.gtrans.ov.async.rq.RQRequest.SPECIAL;
 import org.piax.gtrans.ov.ddll.DdllKey;
+import org.piax.gtrans.ov.ring.rq.DKRangeRValue;
 import org.piax.gtrans.ov.ring.rq.DdllKeyRange;
 
 public abstract class RQValueProvider<T> implements Serializable {
@@ -37,6 +39,18 @@ public abstract class RQValueProvider<T> implements Serializable {
 
     public abstract CompletableFuture<T> get(RQValueProvider<T> received,
             DdllKey key);
+    
+    public boolean select(RQRange range, T data) {
+        return true; // select all by default
+    }
+    
+    public boolean doReduce() {
+        return false;
+    }
+
+    public T reduce(T a, T b) {
+        return null; // don't reduce by default
+    }
 
     public static class KeyProvider extends RQValueProvider<DdllKey> {
         @Override

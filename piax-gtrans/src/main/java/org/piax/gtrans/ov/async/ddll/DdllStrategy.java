@@ -14,6 +14,7 @@ import org.piax.gtrans.async.Event.TimerEvent;
 import org.piax.gtrans.async.EventException;
 import org.piax.gtrans.async.EventException.RetriableException;
 import org.piax.gtrans.async.EventExecutor;
+import org.piax.gtrans.async.FTEntry;
 import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.async.Log;
 import org.piax.gtrans.async.NetworkParams;
@@ -108,10 +109,10 @@ public class DdllStrategy extends NodeStrategy {
     }
 
     @Override
-    public List<List<Node>> getRoutingEntries() {
+    public List<FTEntry> getRoutingEntries() {
         return Arrays.asList(n.pred, n, n.succ).stream()
                 .distinct()
-                .map(Collections::singletonList)
+                .map(FTEntry::new)
                 .collect(Collectors.toList());
     }
 

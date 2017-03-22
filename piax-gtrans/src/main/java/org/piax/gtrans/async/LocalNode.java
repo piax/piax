@@ -453,7 +453,7 @@ public class LocalNode extends Node {
      * @return stream of active nodes
      */
     public Stream<Node> getActiveNodeStream() {
-        List<List<Node>> allNodes = getTopStrategy().getRoutingEntries();
+        List<FTEntry> allNodes = getTopStrategy().getRoutingEntries();
 
         // collect [me, successor)
         List<Node> successors = new ArrayList<>();
@@ -462,6 +462,7 @@ public class LocalNode extends Node {
         }
         // XXX: merge maybeFailedNode over siblings
         return allNodes.stream()
+                .map(ent -> ent.allNodes())
                 .flatMap(list -> {
                     Optional<Node> p = list.stream()
                             .filter(node -> 
@@ -512,8 +513,9 @@ public class LocalNode extends Node {
      */
     public List<Node> getNodesForFix(DdllKey k) {
         Comparator<Node> comp = getComparator(k);
-        List<List<Node>> all = getTopStrategy().getRoutingEntries();
+        List<FTEntry> all = getTopStrategy().getRoutingEntries();
         List<Node> cands = all.stream()
+            .map(ent -> ent.allNodes())
             .flatMap(list -> list.stream())
             .filter(p -> Node.isOrdered(this.key, true, p.key, k, false))
             .sorted(comp)

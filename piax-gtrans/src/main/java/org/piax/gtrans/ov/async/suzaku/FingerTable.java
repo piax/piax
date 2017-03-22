@@ -13,6 +13,7 @@ package org.piax.gtrans.ov.async.suzaku;
 
 import java.util.stream.Stream;
 
+import org.piax.gtrans.async.FTEntry;
 import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.async.Node;
 import org.piax.gtrans.ov.ring.rq.FlexibleArray;
@@ -67,6 +68,7 @@ public class FingerTable {
     }
 
     public void change(int index, FTEntry ent, boolean addtorev) {
+        assert index != LOCALINDEX;
         FTEntry old = getFTEntry(index);
         //System.out.println(vnode + ": change: index=" + index + ", " + old + " to " + ent);
         set(index, ent, addtorev);
@@ -149,6 +151,7 @@ public class FingerTable {
     }
 
     public static int getFTIndex(int distance) {
+        assert distance >= 0;
         if (distance == 0) {
             return LOCALINDEX;
         }
