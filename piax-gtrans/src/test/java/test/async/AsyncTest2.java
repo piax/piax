@@ -27,8 +27,6 @@ import org.piax.gtrans.ov.async.suzaku.FTEntry;
 import org.piax.gtrans.ov.async.suzaku.SuzakuStrategy;
 import org.piax.gtrans.ov.async.suzaku.SuzakuStrategy.SuzakuNodeFactory;
 
-import test.async.AsyncTestBase.FastValueProvider;
-
 public class AsyncTest2 extends AsyncTestBase {
     @Test
     public void testSuzakuBase4() {
