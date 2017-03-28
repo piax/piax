@@ -7,10 +7,11 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.piax.common.PeerId;
 import org.piax.common.subspace.Range;
@@ -22,18 +23,20 @@ import org.piax.gtrans.async.Event;
 import org.piax.gtrans.async.Event.LocalEvent;
 import org.piax.gtrans.async.Event.Lookup;
 import org.piax.gtrans.async.Event.LookupDone;
-import org.piax.gtrans.async.Event.ReplyEvent;
-import org.piax.gtrans.async.Event.RequestEvent;
 import org.piax.gtrans.async.EventExecutor;
+import org.piax.gtrans.async.FTEntry;
 import org.piax.gtrans.async.Indirect;
 import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.async.Log;
 import org.piax.gtrans.async.Node;
 import org.piax.gtrans.async.NodeFactory;
 import org.piax.gtrans.async.NodeStrategy;
-import org.piax.gtrans.ov.async.rq.RQValueProvider.InsertionPointProvider;
-import org.piax.gtrans.ov.async.rq.RQValueProvider.KeyProvider;
+import org.piax.gtrans.ov.async.rq.RQEvent.GetLocalValueRequest;
+import org.piax.gtrans.ov.async.rq.RQFlavor.InsertionPointProvider;
+import org.piax.gtrans.ov.async.rq.RQFlavor.KeyProvider;
+import org.piax.gtrans.ov.async.suzaku.FingerTable;
 import org.piax.gtrans.ov.ddll.DdllKey;
+import org.piax.gtrans.ov.ring.rq.DdllKeyRange;
 import org.piax.util.UniqId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,8 +54,8 @@ public class RQStrategy extends NodeStrategy {
             base.setupNode(node);
             RQStrategy s = new RQStrategy();
             node.pushStrategy(s);
-            s.registerValueProvider(new KeyProvider());
-            s.registerValueProvider(new InsertionPointProvider());
+            s.registerFlavor(new KeyProvider(null));
+            s.registerFlavor(new InsertionPointProvider(null));
         }
         @Override
         public String toString() {
@@ -61,9 +64,9 @@ public class RQStrategy extends NodeStrategy {
     }
 
     /**
-     * registered RQValueProvider
+     * registered RQFlavor
      */
-    private Map<Class<? extends RQValueProvider<?>>, RQValueProvider<?>> providers
+    private Map<Class<? extends RQFlavor<?>>, RQFlavor<?>> flavors
         = new HashMap<>();
 
     /**
@@ -73,7 +76,7 @@ public class RQStrategy extends NodeStrategy {
 
     /**
      * query result cache used by
-     * {@link org.piax.gtrans.ov.async.rq.RQValueProvider.CacheProvider}
+     * {@link org.piax.gtrans.ov.async.rq.RQFlavor.CacheProvider}
      *  */ 
     Map<PeerId, Map<Long, CompletableFuture<?>>> resultCache = new HashMap<>();
 
@@ -86,8 +89,7 @@ public class RQStrategy extends NodeStrategy {
         TransOptions opts = new TransOptions(ResponseType.DIRECT,
                 RetransMode.RELIABLE);
         rangeQueryRQRange(Collections.singleton(r),
-                new InsertionPointProvider(), opts,
-                rval -> {
+                new InsertionPointProvider(rval -> {
                     if (flag.val) {
                         return;
                     }
@@ -96,15 +98,14 @@ public class RQStrategy extends NodeStrategy {
                     Event ev = new LookupDone(l, nodes[0], nodes[1]);
                     n.post(ev);
                     flag.val = true;
-                });
+                }), opts);
     }
 
     @Override
     public <T> void rangeQuery(Collection<? extends Range<?>> ranges,
-            RQValueProvider<T> provider, TransOptions opts,
-            Consumer<RemoteValue<T>> resultsReceiver) {
+            RQFlavor<T> flavor, TransOptions opts) {
         if (ranges.size() == 0) {
-            resultsReceiver.accept(null);
+            flavor.handleResult(null);
             return;
         }
         // convert ranges of Comparable<?> into Set<RQRange>
@@ -114,15 +115,13 @@ public class RQStrategy extends NodeStrategy {
             return sub;
         }).collect(Collectors.toSet());
 
-        rangeQueryRQRange(rqranges, provider, opts, resultsReceiver);
+        rangeQueryRQRange(rqranges, flavor, opts);
     }
 
     public <T> void rangeQueryRQRange(Collection<RQRange> ranges,
-            RQValueProvider<T> provider, TransOptions opts,
-            Consumer<RemoteValue<T>> resultsReceiver) {
+            RQFlavor<T> flavor, TransOptions opts) {
         n.post(new LocalEvent(n, () -> {
-            RQRequest<T> root = new RQRequest<>(n, ranges, provider, opts,
-                    resultsReceiver);
+            RQRequest<T> root = new RQRequest<>(n, ranges, flavor, opts);
             root.run();
         }));
     }
@@ -142,19 +141,97 @@ public class RQStrategy extends NodeStrategy {
         return (RQStrategy)node.getStrategy(RQStrategy.class);
     }
 
-    public void registerValueProvider(RQValueProvider<?> provider) {
-        @SuppressWarnings("unchecked")
-        Class<? extends RQValueProvider<?>> clazz =
-                (Class<? extends RQValueProvider<?>>) provider.getClass();
-        providers.put(clazz, provider);
+    public void registerFlavor(RQFlavor<?> flavor) {
+        Class<? extends RQFlavor<?>> clazz = flavor.getClazz();
+        assert flavors.get(clazz) == null;
+        flavors.put(clazz, flavor);
     }
 
     @SuppressWarnings({ "unchecked", "rawtypes" })
-    public <T> RQValueProvider<T>
-    getProvider(Class<? extends RQValueProvider> clazz) {
-        return (RQValueProvider<T>) providers.get(clazz);
+    public <T> RQFlavor<T> getFlavor(Class<? extends RQFlavor> clazz) {
+        return (RQFlavor<T>) flavors.get(clazz);
     }
-    
+
+    @SuppressWarnings({ "rawtypes", "unchecked" })
+    public Map<Class<? extends RQFlavor<?>>, Object> getLocalCollectedDataSet() {
+        Map<Class<? extends RQFlavor<?>>, Object> map = new HashMap<>();
+        for (Map.Entry f0 : flavors.entrySet()) {
+            Map.Entry<Class<? extends RQFlavor<Object>>, RQFlavor<Object>> f
+                    = (Map.Entry<Class<? extends RQFlavor<Object>>, RQFlavor<Object>>)f0;
+            RQFlavor<Object> flavor = f.getValue();
+            if (flavor.doReduce()) {
+                CompletableFuture<Object> future = flavor.get(null, n.key);
+                assert future.isDone();
+                Object o = future.getNow(null);
+                map.put(f.getKey(), o);
+            }
+        }
+        return map;
+    }
+
+    @Override
+    public FTEntry getFTEntryToSend(int fromDist, int toDist) {
+        FTEntry ent = getLower().getFTEntryToSend(fromDist, toDist);
+        if (ent == null) {
+            return null;
+        }
+        boolean isBackward = fromDist < 0;
+        int index = FingerTable.getFTIndex(Math.abs(fromDist));
+        int index2 = FingerTable.getFTIndex(Math.abs(toDist));
+        IntStream stream;
+        Indirect<DdllKey> from = new Indirect<>();
+        Indirect<DdllKey> to = new Indirect<>();
+        if (index < index2) {
+            stream = IntStream.rangeClosed(index, index2 - 1);
+        } else {
+            stream = IntStream.rangeClosed(index2 + 1, index);
+        }
+        System.out.println("chk0: isB=" + isBackward + ", index=" + index + ", index2=" + index2);
+        boolean isBackward0 = isBackward;
+        Map<Class<? extends RQFlavor<?>>, List<Object>> tmp = 
+        stream.mapToObj(i ->
+            {
+                if (i == FingerTable.LOCALINDEX) {
+                    if (from.val == null) from.val = n.key;
+                    to.val = n.succ.key;
+                    return getLocalCollectedDataSet();
+                } else {
+                    FTEntry e = getFingerTableEntry(isBackward0, i);
+                    if (e != null) {
+                        if (e.range != null) {
+                            if (from.val == null) from.val = e.range.from;
+                            to.val = e.range.to;
+                        }
+                        return e.getCollectedDataSet();
+                    } else {
+                        return null;
+                    }
+                }
+                // Map<Class<? extends RQFlavor<?>>, Object>
+            }).filter(Objects::nonNull)
+            .flatMap(map -> map.entrySet().stream())
+            // Map.Entry<Class<? extends RQFlavor<?>>, Object>
+            .collect(Collectors.groupingBy(e -> e.getKey(),
+                    Collectors.mapping(e -> e.getValue(), Collectors.toList())));
+
+        ent.range = new DdllKeyRange(from.val, true, to.val, false);
+        for (Map.Entry<Class<? extends RQFlavor<?>>, List<Object>> e: tmp.entrySet()) {
+            Class<? extends RQFlavor<Object>> clazz
+                    = (Class<? extends RQFlavor<Object>>)e.getKey();
+            RQFlavor<Object> flavor = getFlavor(clazz);
+            if (flavor.doReduce()) {
+                Object reduced = e.getValue().stream()
+                        .reduce((a, b) -> flavor.reduce(a, b))
+                        .orElse(null);
+                ent.putCollectedData(clazz, reduced);
+                System.out.println(n + ": getFTEntryToSend: fromD=" + fromDist + ", toD=" + toDist
+                        + ", ent=" + ent + ", REDUCED=" + reduced);
+            }
+        }
+
+        return ent;
+    }
+
     /*
      * forwadQueryLeft:
      * 
@@ -190,8 +267,7 @@ public class RQStrategy extends NodeStrategy {
      */
     @Override
     public <T> void forwardQueryLeft(Range<?> range, int num,
-            RQValueProvider<T> provider, TransOptions opts,
-            Consumer<RemoteValue<T>> resultsReceiver) {
+            RQFlavor<T> flavor, TransOptions opts) {
         if (num <= 0) {
             throw new IllegalArgumentException("num <= 0");
         }
@@ -200,9 +276,8 @@ public class RQStrategy extends NodeStrategy {
             p.qid = EventExecutor.random().nextLong();
             p.num = num;
             p.rq = convertToRQRange(range);
-            p.provider = provider;
+            p.flavor = flavor;
             p.opts = opts;
-            p.resultsReceiver = resultsReceiver;
         }
         List<Node> visited = new ArrayList<>();
         startForwardQueryLeft(p, visited);
@@ -213,9 +288,8 @@ public class RQStrategy extends NodeStrategy {
         long qid;
         int num;
         RQRange rq;
-        RQValueProvider<T> provider;
+        RQFlavor<T> flavor;
         TransOptions opts;
-        Consumer<RemoteValue<T>> resultsReceiver;
     }
 
     private <T> void startForwardQueryLeft(FQLParams<T> p, List<Node> visited) {
@@ -224,24 +298,23 @@ public class RQStrategy extends NodeStrategy {
         Indirect<Boolean> flag = new Indirect<>(false);
         // get the right-most node within the range
         rangeQueryRQRange(Collections.singleton(rEnd),
-                new InsertionPointProvider(), p.opts,
-                rval -> {
+                new InsertionPointProvider(rval -> {
                     Log.verbose(() -> "startFQL rq rval = " + rval);
                     if (rval != null) {
                         flag.val = true;
                         Node[] nodes = rval.getValue();
                         if (!p.rq.contains(nodes[0].key)) {
-                            p.resultsReceiver.accept(null); // finish!
+                            p.flavor.handleResult(null); // finish!
                             return;
                         }
                         forwardQueryLeft0(p, nodes[0], nodes[1], trace, visited);
                     } else {
                         if (!flag.val) {
                             System.err.println("forwardQueryLeft: couldn't find the start node");
-                            p.resultsReceiver.accept(null);
+                            p.flavor.handleResult(null);
                         }
                     }
-                });
+                }), p.opts);
     }
 
     final static long RETRANS_INTERVAL = 1000;
@@ -257,8 +330,8 @@ public class RQStrategy extends NodeStrategy {
             logger.debug("forwardQueryLeft: finish (circulated)");
             return;
         }
-        InvokeProviderRequest<T> ev = new InvokeProviderRequest<>(current, 
-                expectedRight, p.provider, p.qid);
+        GetLocalValueRequest<T> ev = new GetLocalValueRequest<>(current, 
+                expectedRight, p.flavor, p.qid);
         n.post(ev);
         ev.onReply((rep, exc) -> {
             if (exc != null) {
@@ -282,10 +355,10 @@ public class RQStrategy extends NodeStrategy {
                     trace.add(current);
                     if (rep.result != null) { // not special case
                         visited.add(current);
-                        p.resultsReceiver.accept(rep.result);
+                        p.flavor.handleResult(rep.result);
                     }
                     if (visited.size() >= p.num || !p.rq.contains(rep.pred.key)) {
-                        p.resultsReceiver.accept(null); // finish!
+                        p.flavor.handleResult(null); // finish!
                         return;
                     }
                     forwardQueryLeft0(p, rep.pred, current, trace, visited);
@@ -302,17 +375,16 @@ public class RQStrategy extends NodeStrategy {
         });
     }
 
-    <T> CompletableFuture<RemoteValue<T>> invokeProvider(
-            RQValueProvider<T> received, LocalNode localNode, RQRange r,
-            long qid) {
-        // obtain the registered provider
-        RQValueProvider<T> rprovider = getProvider(received.getClass());
+    <T> CompletableFuture<RemoteValue<T>> getLocalValue(
+            RQFlavor<T> received, LocalNode localNode, RQRange r, long qid) {
+        // obtain the registered flavor
+        RQFlavor<T> rflavor = getFlavor(received.getClass());
         CompletableFuture<T> f;
         try {
-            f = rprovider.getRaw(received, localNode, r, qid);
+            f = rflavor.getRaw(received, localNode, r, qid);
         } catch (Throwable exc) {
             // if getRaw terminates exceptionally...
-            System.err.println("invokeProvider: got " + exc);
+            System.err.println("invokeflavor: got " + exc);
             exc.printStackTrace();
             RemoteValue<T> rval = new RemoteValue<>(getLocalNode().peerId, exc);
             return CompletableFuture.completedFuture(rval);
@@ -326,63 +398,5 @@ public class RQStrategy extends NodeStrategy {
             }
             return rval;
         });
-    }
-    
-    /*
-     * classes for forwardQueryLeft
-     */
-    public static class InvokeProviderRequest<T>
-    extends RequestEvent<InvokeProviderRequest<T>, InvokeProviderReply<T>> {
-        final RQValueProvider<T> provider;
-        final Node expectedSucc;
-        final long qid;
-        public InvokeProviderRequest(Node receiver, Node expectedSucc,
-                RQValueProvider<T> provider, long qid) {
-            super(receiver);
-            this.expectedSucc = expectedSucc;
-            this.provider = provider;
-            this.qid = qid;
-        }
-        @Override
-        public void run() {
-            LocalNode local = getLocalNode();
-            if (expectedSucc == null) {
-                // special case
-                Event ev = new InvokeProviderReply<>(this, null, true,
-                        local.pred, local.succ);
-                getLocalNode().post(ev);
-                return;
-            }
-            if (expectedSucc == getLocalNode().succ) {
-                RQStrategy strategy = RQStrategy.getRQStrategy(getLocalNode());
-                CompletableFuture<RemoteValue<T>> f
-                    = strategy.invokeProvider(provider, getLocalNode(), null, qid);
-                f.thenAccept(rval -> {
-                    InvokeProviderReply<T> ev = new InvokeProviderReply<>(this,
-                            rval, true, local.pred, local.succ);
-                    getLocalNode().post(ev);
-                });
-            } else {
-                Event ev = new InvokeProviderReply<>(this, null, false,
-                        local.pred, local.succ);
-                getLocalNode().post(ev);
-            }
-        }
-    }
-    
-    public static class InvokeProviderReply<T>
-    extends ReplyEvent<InvokeProviderRequest<T>, InvokeProviderReply<T>> {
-        final Node pred;
-        final Node succ;
-        final RemoteValue<T> result;
-        final boolean success;
-        public InvokeProviderReply(InvokeProviderRequest<T> req,
-                RemoteValue<T> result, boolean success, Node pred, Node succ) {
-            super(req);
-            this.pred = pred;
-            this.succ = succ;
-            this.result = result;
-            this.success = success;
-        }
     }
 }

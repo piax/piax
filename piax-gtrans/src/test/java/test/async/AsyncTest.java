@@ -12,6 +12,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -28,11 +30,13 @@ import org.piax.gtrans.async.Node;
 import org.piax.gtrans.async.NodeFactory;
 import org.piax.gtrans.ov.async.ddll.DdllStrategy.DdllNodeFactory;
 import org.piax.gtrans.ov.async.rq.RQStrategy.RQNodeFactory;
-import org.piax.gtrans.ov.async.rq.RQValueProvider;
-import org.piax.gtrans.ov.async.rq.RQValueProvider.InsertionPointProvider;
-import org.piax.gtrans.ov.async.rq.RQValueProvider.KeyProvider;
+import org.piax.gtrans.ov.async.rq.RQFlavor;
+import org.piax.gtrans.ov.async.rq.RQFlavor.InsertionPointProvider;
+import org.piax.gtrans.ov.async.rq.RQFlavor.KeyProvider;
 import org.piax.gtrans.ov.async.suzaku.SuzakuStrategy.SuzakuNodeFactory;
 import org.piax.gtrans.ov.ddll.DdllKey;
+
+import test.async.AsyncTestBase.FastValueProvider;
 
 public class AsyncTest extends AsyncTestBase {
     @Test
@@ -275,7 +279,8 @@ public class AsyncTest extends AsyncTestBase {
     public void testRQ1Aggregate() {
         TransOptions opts = new TransOptions();
         opts.setResponseType(ResponseType.AGGREGATE);
-        testRQ1(new DdllNodeFactory(), opts, new FastValueProvider(),
+        testRQ1(new DdllNodeFactory(), opts,
+                (receiver) -> new FastValueProvider(receiver),
                 new Range<Integer>(0, true, 500, true),
                 Arrays.asList(0, 100, 200, 300, 400));
     }
@@ -284,7 +289,8 @@ public class AsyncTest extends AsyncTestBase {
     public void testRQ1Direct() {
         TransOptions opts = new TransOptions();
         opts.setResponseType(ResponseType.DIRECT);
-        testRQ1(new DdllNodeFactory(), opts, new FastValueProvider(),
+        testRQ1(new DdllNodeFactory(), opts, 
+                (receiver) -> new FastValueProvider(receiver),
                 new Range<Integer>(200, true, 400, false),
                 Arrays.asList(200, 300));
     }
@@ -293,7 +299,8 @@ public class AsyncTest extends AsyncTestBase {
     public void testRQ1NoResponse() {
         TransOptions opts = new TransOptions();
         opts.setResponseType(ResponseType.NO_RESPONSE);
-        testRQ1(new DdllNodeFactory(), opts, new FastValueProvider(),
+        testRQ1(new DdllNodeFactory(), opts, 
+                (receiver) -> new FastValueProvider(receiver),
                 new Range<Integer>(200, true, 400, false),
                 Arrays.asList());
     }
@@ -302,7 +309,8 @@ public class AsyncTest extends AsyncTestBase {
     public void testRQ1AggregateSlow() {
         TransOptions opts = new TransOptions();
         opts.setResponseType(ResponseType.AGGREGATE);
-        testRQ1(new DdllNodeFactory(), opts, new SlowValueProvider(2000),
+        testRQ1(new DdllNodeFactory(), opts,
+                (receiver) -> new SlowValueProvider(receiver, 2000),
                 new Range<Integer>(200, true, 400, false),
                 Arrays.asList(200, 300));
     }
@@ -312,7 +320,8 @@ public class AsyncTest extends AsyncTestBase {
         TransOptions opts = new TransOptions();
         opts.setResponseType(ResponseType.DIRECT);
         opts.setTimeout(10000);
-        testRQ1(new DdllNodeFactory(), opts, new SlowValueProvider(20000),
+        testRQ1(new DdllNodeFactory(), opts,
+                (receiver) -> new SlowValueProvider(receiver, 20000),
                 new Range<Integer>(200, true, 400, false),
                 Arrays.asList());
     }
@@ -321,7 +330,8 @@ public class AsyncTest extends AsyncTestBase {
     public void testRQ1AggregateSuzaku() {
         TransOptions opts = new TransOptions();
         opts.setResponseType(ResponseType.AGGREGATE);
-        testRQ1(new SuzakuNodeFactory(3), opts, new FastValueProvider(),
+        testRQ1(new SuzakuNodeFactory(3), opts,
+                (receiver) -> new FastValueProvider(receiver),
                 new Range<Integer>(200, true, 400, false),
                 Arrays.asList(200, 300));
     }
@@ -330,7 +340,8 @@ public class AsyncTest extends AsyncTestBase {
     public void testRQ1DirectSuzaku() {
         TransOptions opts = new TransOptions();
         opts.setResponseType(ResponseType.DIRECT);
-        testRQ1(new SuzakuNodeFactory(3), opts, new FastValueProvider(),
+        testRQ1(new SuzakuNodeFactory(3), opts,
+                (receiver) -> new FastValueProvider(receiver),
                 new Range<Integer>(200, true, 400, false),
                 Arrays.asList(200, 300));
     }
@@ -339,7 +350,8 @@ public class AsyncTest extends AsyncTestBase {
     public void testRQ1ExceptionInProvider() {
         TransOptions opts = new TransOptions();
         opts.setResponseType(ResponseType.AGGREGATE);
-        testRQ1(new DdllNodeFactory(), opts, new ErrorProvider(),
+        testRQ1(new DdllNodeFactory(), opts, 
+                receiver -> new ErrorProvider(receiver),
                 new Range<Integer>(0, true, 500, true),
                 Arrays.asList(), 
                 "[Error(0!P0), Error(100!P100), Error(200!P200), Error(300!P300), Error(400!P400)]");
@@ -347,26 +359,29 @@ public class AsyncTest extends AsyncTestBase {
 
 
     private void testRQ1(NodeFactory base, 
-            TransOptions opts, RQValueProvider<Integer> provider,
+            TransOptions opts,
+            Function<Consumer<RemoteValue<Integer>>, RQFlavor<Integer>> providerFactory,
             Range<Integer> range, List<Integer> expect) {
-        testRQ1(base, opts, provider, range, expect, "[]");
+        testRQ1(base, opts, providerFactory, range, expect, "[]");
     }
 
     private void testRQ1(NodeFactory base, 
-            TransOptions opts, RQValueProvider<Integer> provider,
+            TransOptions opts,
+            Function<Consumer<RemoteValue<Integer>>, RQFlavor<Integer>> providerFactory,
             Range<Integer> range, List<Integer> expect, String expectedErr) {
         NodeFactory factory = new RQNodeFactory(base);
         System.out.println("** testRQ1");
         init();
-        createAndInsert(factory, 5, provider);
+        RQFlavor<Integer> nodeProvider = providerFactory.apply(null);
+        createAndInsert(factory, 5, nodeProvider);
         {
             Collection<Range<Integer>> ranges = Collections.singleton(range);
             List<RemoteValue<Integer>> results = new ArrayList<>();
-            nodes[0].rangeQueryAsync(ranges, provider, 
-                    opts, (ret) -> {
+            RQFlavor<Integer> provider = providerFactory.apply((ret) -> {
                 System.out.println("GOT RESULT: " + ret);
                 results.add(ret);
             });
+            nodes[0].rangeQueryAsync(ranges, provider, opts); 
             EventExecutor.startSimulation(30000);
             assertTrue(!results.isEmpty());
             assertTrue(results.get(results.size() - 1 ) == null);
@@ -395,25 +410,29 @@ public class AsyncTest extends AsyncTestBase {
     public void testRQInsertionPointProvider() {
         TransOptions opts = new TransOptions();
         opts.setResponseType(ResponseType.DIRECT);
-        testRQ2(new SuzakuNodeFactory(3), opts, new InsertionPointProvider(),
+        testRQ2(new SuzakuNodeFactory(3), opts,
+                (receiver) -> new InsertionPointProvider(receiver),
                 new Range<Integer>(150), "[N100!P100, N200!P200]");
     }
 
-    private void testRQ2(NodeFactory base, 
-            TransOptions opts, RQValueProvider<Node[]> provider,
+    private void testRQ2(NodeFactory base, TransOptions opts,
+            Function<Consumer<RemoteValue<Node[]>>, RQFlavor<Node[]>> providerFactory,
             Range<Integer> range, String expect) {
         NodeFactory factory = new RQNodeFactory(base);
         System.out.println("** testRQ2");
         init();
-        createAndInsert(factory, 5, provider);
+        RQFlavor<Node[]> baseProvider = providerFactory.apply(null);
+        createAndInsert(factory, 5, baseProvider);
         {
             Collection<Range<Integer>> ranges = Collections.singleton(range);
             List<RemoteValue<Node[]>> results = new ArrayList<>();
-            nodes[0].rangeQueryAsync(ranges, provider, 
-                    opts, (ret) -> {
-                System.out.println("GOT RESULT: " + ret);
-                results.add(ret);
-            });
+            RQFlavor<Node[]> provider = providerFactory.apply(
+                    ret -> {
+                        System.out.println("GOT RESULT: " + ret);
+                        results.add(ret);
+                    });
+
+            nodes[0].rangeQueryAsync(ranges, provider, opts); 
             EventExecutor.startSimulation(30000);
             assertTrue(!results.isEmpty());
             assertTrue(results.get(results.size() - 1 ) == null);
@@ -435,7 +454,8 @@ public class AsyncTest extends AsyncTestBase {
     public void testRetransDirectSuzaku() {
         TransOptions opts = new TransOptions();
         opts.setResponseType(ResponseType.DIRECT);
-        testRetrans(new SuzakuNodeFactory(3), opts, new FastValueProvider(),
+        testRetrans(new SuzakuNodeFactory(3), opts,
+                receiver -> new FastValueProvider(receiver),
                 new Range<Integer>(200, true, 400, false),
                 Arrays.asList(300));
     }
@@ -446,7 +466,8 @@ public class AsyncTest extends AsyncTestBase {
         opts.setResponseType(ResponseType.AGGREGATE);
         opts.setRetransMode(RetransMode.SLOW);
         opts.setTimeout(15*1000);
-        testRetrans(new SuzakuNodeFactory(3), opts, new FastValueProvider(),
+        testRetrans(new SuzakuNodeFactory(3), opts, 
+                receiver -> new FastValueProvider(receiver),
                 new Range<Integer>(100, true, 400, true),
                 Arrays.asList(100, 300, 400));
     }
@@ -457,7 +478,8 @@ public class AsyncTest extends AsyncTestBase {
         opts.setResponseType(ResponseType.AGGREGATE);
         opts.setRetransMode(RetransMode.FAST);
         opts.setTimeout(15*1000);
-        testRetrans(new SuzakuNodeFactory(3), opts, new FastValueProvider(),
+        testRetrans(new SuzakuNodeFactory(3), opts,
+                receiver -> new FastValueProvider(receiver),
                 new Range<Integer>(100, true, 400, true),
                 Arrays.asList(100, 300, 400));
     }
@@ -467,28 +489,31 @@ public class AsyncTest extends AsyncTestBase {
         TransOptions opts = new TransOptions();
         opts.setResponseType(ResponseType.AGGREGATE);
         testRetrans(new SuzakuNodeFactory(3), opts, 
-                new SlowCacheValueProvider(10000),
+                receiver -> new SlowCacheValueProvider(receiver, 10000),
                 new Range<Integer>(200, true, 400, false),
                 Arrays.asList(300));
         System.out.println(getPrivateField(EventExecutor.class, "timeq"));
     }
 
     private void testRetrans(NodeFactory base,
-            TransOptions opts, RQValueProvider<Integer> provider,
+            TransOptions opts, 
+            Function<Consumer<RemoteValue<Integer>>, RQFlavor<Integer>> providerFactory,
             Range<Integer> range, List<Integer> expect) {
         NodeFactory factory = new RQNodeFactory(base);
         System.out.println("** testSlowRetrans");
         init();
-        createAndInsert(factory, 5, provider);
+        RQFlavor<Integer> baseProvider = providerFactory.apply(null);
+        createAndInsert(factory, 5, baseProvider);
         {
             nodes[2].fail();
             Collection<Range<Integer>> ranges = Collections.singleton(range);
             List<RemoteValue<Integer>> results = new ArrayList<>();
-            nodes[0].rangeQueryAsync(ranges, provider, 
-                    opts, (ret) -> {
+            RQFlavor<Integer> p = providerFactory.apply(ret -> {
                 System.out.println("GOT RESULT: " + ret);
                 results.add(ret);
+                
             });
+            nodes[0].rangeQueryAsync(ranges, p, opts); 
             // should be larger than the default TransOptions timeout. 
             EventExecutor.startSimulation(60000);
             assertTrue(!results.isEmpty());
@@ -509,13 +534,14 @@ public class AsyncTest extends AsyncTestBase {
     public void testMultikeySuzaku() {
         TransOptions opts = new TransOptions();
         opts.setResponseType(ResponseType.AGGREGATE);
-        testMultikey(new SuzakuNodeFactory(3), opts, new KeyProvider(),
+        testMultikey(new SuzakuNodeFactory(3), opts,
+                receiver -> new KeyProvider(receiver),
                 new Range<Integer>(0, true, 500, false),
                 Arrays.asList(0, 100, 200, 300, 400));
     }
 
-    private void testMultikey(NodeFactory base,
-            TransOptions opts, RQValueProvider<DdllKey> provider,
+    private void testMultikey(NodeFactory base, TransOptions opts,
+            Function<Consumer<RemoteValue<DdllKey>>, RQFlavor<DdllKey>> providerFactory,
             Range<Integer> range, List<Integer> expect) {
         NodeFactory factory = new RQNodeFactory(base);
         System.out.println("** testMultikey");
@@ -530,11 +556,11 @@ public class AsyncTest extends AsyncTestBase {
         {
             Collection<Range<Integer>> ranges = Collections.singleton(range);
             List<RemoteValue<DdllKey>> results = new ArrayList<>();
-            nodes[0].rangeQueryAsync(ranges, provider, 
-                    opts, (ret) -> {
+            RQFlavor<DdllKey> p = providerFactory.apply(ret -> {
                 System.out.println("GOT RESULT: " + ret);
                 results.add(ret);
             });
+            nodes[0].rangeQueryAsync(ranges, p, opts);
             EventExecutor.startSimulation(30000);
             assertTrue(!results.isEmpty());
             assertTrue(results.get(results.size() - 1 ) == null);

@@ -17,15 +17,17 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.piax.gtrans.ov.async.rq.RQValueProvider;
+import org.piax.gtrans.ov.async.rq.RQFlavor;
 import org.piax.gtrans.ov.async.suzaku.SuzakuStrategy;
+import org.piax.gtrans.ov.ring.rq.DdllKeyRange;
 
 /**
  * an entry of a finger table
  */
 public class FTEntry implements Cloneable, Serializable {
     private List<Node> nodes = new ArrayList<>();
-    private Map<Class<? extends RQValueProvider<?>>, Object> extData = null;
+    public DdllKeyRange range;
+    private Map<Class<? extends RQFlavor<?>>, Object> extData = null;
 
     public FTEntry(Node node) {
         nodes.add(node);
@@ -36,7 +38,7 @@ public class FTEntry implements Cloneable, Serializable {
     }
     
     public <T> void putCollectedData(
-            Class<? extends RQValueProvider<T>> ext, T data) {
+            Class<? extends RQFlavor<T>> ext, T data) {
         if (extData == null) {
             extData = new HashMap<>();
         }
@@ -45,14 +47,14 @@ public class FTEntry implements Cloneable, Serializable {
 
     @SuppressWarnings("unchecked")
     public <T> T getCollectedData(
-            Class<? extends RQValueProvider<T>> clazz) {
+            Class<? extends RQFlavor<T>> clazz) {
         if (extData == null) {
             return null;
         }
         return (T) extData.get(clazz);
     }
     
-    public Map<Class<? extends RQValueProvider<?>>, Object> getCollectedDataAll() {
+    public Map<Class<? extends RQFlavor<?>>, Object> getCollectedDataSet() {
         return extData;
     }
 
@@ -60,9 +62,15 @@ public class FTEntry implements Cloneable, Serializable {
     public String toString() {
         if (nodes.size() > 1) {
             List<Node> nbrs = nodes.subList(1, nodes.size());
-            return "[" + getNode() + ", nbrs=" + nbrs + "]";
+            return "[" + getNode() + ", nbrs=" + nbrs
+                    + ", range=" + range
+                    + ", data=" + extData
+                    + "]";
         }
-        return "[" + getNode() + "]";
+        return "[" + getNode()
+            + ", range=" + range
+            + ", data=" + extData
+            + "]";
     }
 
     public Node getNode() {

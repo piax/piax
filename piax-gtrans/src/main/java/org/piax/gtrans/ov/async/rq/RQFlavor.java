@@ -5,10 +5,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 
 import org.piax.common.PeerId;
+import org.piax.gtrans.RemoteValue;
 import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.async.EventExecutor;
+import org.piax.gtrans.async.FTEntry;
 import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.async.Log;
 import org.piax.gtrans.async.Node;
@@ -17,7 +20,18 @@ import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.gtrans.ov.ring.rq.DKRangeRValue;
 import org.piax.gtrans.ov.ring.rq.DdllKeyRange;
 
-public abstract class RQValueProvider<T> implements Serializable {
+public abstract class RQFlavor<T> implements Serializable {
+    transient protected final Consumer<RemoteValue<T>> resultsReceiver;
+    public RQFlavor(Consumer<RemoteValue<T>> resultsReceiver) {
+        this.resultsReceiver = resultsReceiver;
+    }
+
+    public Class<? extends RQFlavor<T>> getClazz() {
+        @SuppressWarnings("unchecked")
+        Class<? extends RQFlavor<T>> clazz
+                = (Class<? extends RQFlavor<T>>)getClass();
+        return clazz;
+    }
     /**
      * @param localNode   the node that receives the request
      * @param range       the range that should be handled by this node
@@ -26,7 +40,7 @@ public abstract class RQValueProvider<T> implements Serializable {
      * @return
      */
     @SuppressWarnings("unchecked")
-    protected CompletableFuture<T> getRaw(RQValueProvider<T> received,
+    protected CompletableFuture<T> getRaw(RQFlavor<T> received,
             LocalNode localNode, DdllKeyRange range, long qid) {
         if (range != null && !range.contains(localNode.key)) {
             // although SPECIAL.PADDING is not a type of T, using
@@ -37,39 +51,59 @@ public abstract class RQValueProvider<T> implements Serializable {
         }
     }
 
-    public abstract CompletableFuture<T> get(RQValueProvider<T> received,
+    public abstract CompletableFuture<T> get(RQFlavor<T> received,
             DdllKey key);
-    
-    public boolean select(RQRange range, T data) {
-        return true; // select all by default
+
+    /**
+     * modify the behavior of <code>RQRequest#rqDisseminate()</code>
+     * 
+     * @param queryRanges list of query range
+     * @param ftents list of finger table entry
+     * @param locallyResolved an initially empty list to store ranges that
+     *                        are not necessary to ask child nodes.
+     * @return 子ノードに処理を委譲する範囲のリスト
+     */
+    public List<RQRange> preprocess(List<RQRange> queryRanges,
+            List<FTEntry> ftents, List<DKRangeRValue<T>> locallyResolved) {
+        return queryRanges;
     }
-    
+
+    public void handleResult(RemoteValue<T> result) {
+        this.resultsReceiver.accept(result);
+    }
+
     public boolean doReduce() {
-        return false;
+        return false; // do not reduce by default
     }
 
     public T reduce(T a, T b) {
-        return null; // don't reduce by default
+        return null;
     }
 
-    public static class KeyProvider extends RQValueProvider<DdllKey> {
+    public static class KeyProvider extends RQFlavor<DdllKey> {
+        public KeyProvider(Consumer<RemoteValue<DdllKey>> resultsReceiver) {
+            super(resultsReceiver);
+        }
         @Override
-        public CompletableFuture<DdllKey> get(RQValueProvider<DdllKey> received,
+        public CompletableFuture<DdllKey> get(RQFlavor<DdllKey> received,
                 DdllKey key) {
             return CompletableFuture.completedFuture(key);
         }
     }
 
-    public static class InsertionPointProvider extends RQValueProvider<Node[]> {
+    public static class InsertionPointProvider extends RQFlavor<Node[]> {
+        public InsertionPointProvider(Consumer<RemoteValue<Node[]>> resultsReceiver) {
+            super(resultsReceiver);
+        }
         @Override
-        protected CompletableFuture<Node[]> getRaw(RQValueProvider<Node[]> received,
+        protected CompletableFuture<Node[]> getRaw(RQFlavor<Node[]> received,
                 LocalNode localNode, DdllKeyRange range, long qid) {
             Node[] ret = new Node[] { localNode, localNode.succ };
             return CompletableFuture.completedFuture(ret);
         }
 
         @Override
-        public CompletableFuture<Node[]> get(RQValueProvider<Node[]> received,
+        public CompletableFuture<Node[]> get(RQFlavor<Node[]> received,
                 DdllKey key) {
             return null; // dummy
         }
@@ -83,16 +117,18 @@ public abstract class RQValueProvider<T> implements Serializable {
      *  
      * @param <T> type of the value
      */
-    public abstract static class CacheProvider<T> extends RQValueProvider<T> {
+    public abstract static class CacheProvider<T> extends RQFlavor<T> {
         final long cachePeriod;
 
-        public CacheProvider(long cachePeriod) {
+        public CacheProvider(Consumer<RemoteValue<T>> resultsReceiver,
+                long cachePeriod) {
+            super(resultsReceiver);
             this.cachePeriod = cachePeriod;
         }
 
         @SuppressWarnings("unchecked")
         @Override
-        protected CompletableFuture<T> getRaw(RQValueProvider<T> received,
+        protected CompletableFuture<T> getRaw(RQFlavor<T> received,
                 LocalNode localNode, DdllKeyRange range, long qid) {
             if (!range.contains(localNode.key)) {
                 return CompletableFuture.completedFuture((T) SPECIAL.PADDING);

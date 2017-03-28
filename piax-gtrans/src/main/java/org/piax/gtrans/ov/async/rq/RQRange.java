@@ -2,6 +2,7 @@ package org.piax.gtrans.ov.async.rq;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
@@ -95,7 +96,7 @@ public class RQRange extends DdllKeyRange {
     /**
      * this rangeから [a, b) を削除した残りの範囲を返す．
      */
-    public RQRange[] retainRanges(DdllKey a, DdllKey b) {
+    public List<RQRange> retainRanges(DdllKey a, DdllKey b) {
         if (keyComp.compare(a, b) != 0 && keyComp.isOrdered(from, b, a)
                 && keyComp.compare(from, a) != 0
                 && keyComp.isOrdered(b, a, to)
@@ -105,9 +106,9 @@ public class RQRange extends DdllKeyRange {
             //       -----b   a------
             // (keyComp.compare(from, a) != 0) がないと，
             // a = from && b = to の場合も真になってしまう．
-            return new RQRange[]{ new RQRange(delegate, b, a)};
+            return Collections.singletonList(new RQRange(delegate, b, a));
         }
-        List<RQRange> retains = new ArrayList<RQRange>();
+        List<RQRange> retains = new ArrayList<>();
         if (this.contains(a) && keyComp.compare(a, this.from) != 0) {
             // Range   [---------)
             //             a----..
@@ -118,10 +119,7 @@ public class RQRange extends DdllKeyRange {
             //         ..-----b
             retains.add(new RQRange(delegate, b, to));
         }
-        if (retains.isEmpty()) {
-            return null;
-        }
-        return retains.toArray(new RQRange[retains.size()]);
+        return retains;
     }
 
     /**

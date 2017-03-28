@@ -3,14 +3,12 @@ package org.piax.gtrans.async;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Consumer;
 
 import org.piax.common.subspace.Range;
-import org.piax.gtrans.RemoteValue;
 import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.async.Event.Lookup;
 import org.piax.gtrans.async.Event.LookupDone;
-import org.piax.gtrans.ov.async.rq.RQValueProvider;
+import org.piax.gtrans.ov.async.rq.RQFlavor;
 import org.piax.gtrans.ov.ddll.DdllKey;
 
 public abstract class NodeStrategy {
@@ -59,16 +57,13 @@ public abstract class NodeStrategy {
     }
 
     public <T> void rangeQuery(Collection<? extends Range<?>> ranges,
-            RQValueProvider<T> provider, TransOptions opts,
-            Consumer<RemoteValue<T>> resultsReceiver) {
-        getLower().rangeQuery(ranges, provider, opts, resultsReceiver);
+            RQFlavor<T> flavor, TransOptions opts) {
+        getLower().rangeQuery(ranges, flavor, opts);
     }
 
     public <T> void forwardQueryLeft(Range<?> range, int num,
-            RQValueProvider<T> provider, TransOptions opts,
-            Consumer<RemoteValue<T>> resultsReceiver) {
-        getLower().forwardQueryLeft(range, num, provider, opts,
-                resultsReceiver);
+            RQFlavor<T> flavor, TransOptions opts) {
+        getLower().forwardQueryLeft(range, num, flavor, opts);
     }
     
     public void handleLookup(Lookup lookup) {
@@ -77,6 +72,22 @@ public abstract class NodeStrategy {
 
     public void foundMaybeFailedNode(Node node) {
         getLower().foundMaybeFailedNode(node);
+    }
+
+    /**
+     * get a (cloned) FTEntry for sending to a remote node.
+     * 
+     * @param fromDist
+     * @param toDist
+     * @return a FTEntry
+     */
+    public FTEntry getFTEntryToSend(int fromDist, int toDist) {
+        return getLower().getFTEntryToSend(fromDist, toDist);
+    }
+
+    // tentative solution
+    public FTEntry getFingerTableEntry(boolean isBackward, int index) {
+        return getLower().getFingerTableEntry(isBackward, index);
     }
 
     public int getMessages4Join() {

@@ -27,6 +27,7 @@ import org.piax.gtrans.TransOptions.RetransMode;
 import org.piax.gtrans.async.Event;
 import org.piax.gtrans.async.Event.StreamingRequestEvent;
 import org.piax.gtrans.async.EventExecutor;
+import org.piax.gtrans.async.FTEntry;
 import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.async.NetworkParams;
 import org.piax.gtrans.async.Node;
@@ -59,10 +60,9 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
     // XXX: note that wrap-around query ranges such as [10, 5) do not work
     // for now (k-abe)
     protected final Collection<RQRange> targetRanges;
-    final RQValueProvider<T> provider;
+    final RQFlavor<T> provider;
     final TransOptions opts;
     final boolean isRoot;
-    transient Consumer<RemoteValue<T>> resultsReceiver;  // root only
 
     /**
      * failed links. this field is used for avoiding and repairing dead links.
@@ -81,21 +81,18 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
      * @param ranges set of query ranges
      * @param query an object sent to all the nodes within the query ranges
      * @param opts the transport options.
-     * @param resultReceiver
      */
     /*
      * isRoot -> isReceiverHalf
      * isRoot <-> resultReceiver != null
      * !isReceiverHalf -> resultReceiver == null
      */
-    RQRequest(Node receiver, 
-            Collection<RQRange> ranges,
-            RQValueProvider<T> provider, TransOptions opts,
-            Consumer<RemoteValue<T>> resultsReceiver) {
+    RQRequest(Node receiver, Collection<RQRange> ranges,
+            RQFlavor<T> flavor, TransOptions opts) {
         super(receiver, true);
-        this.isRoot = resultsReceiver != null;
-        assert !isRoot || isReceiverHalf; // isRoot -> isReceiverHalf
-        assert isReceiverHalf || !isRoot; // !isReceiverHalf -> !isRoot
+        this.isRoot = true;
+        assert flavor.resultsReceiver != null;
+        assert isReceiverHalf; // isRoot -> isReceiverHalf
 
         super.setReplyReceiver((RQReply<T> rep) -> {
             assert false;
@@ -107,9 +104,8 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         this.qid = EventExecutor.random().nextLong();
         this.root = null;  // overridden by DirectResponder at root node
         this.rootEventId = 0; // overridden by DirectResponder at root node
-        this.resultsReceiver = resultsReceiver;
         this.targetRanges = Collections.unmodifiableCollection(ranges);
-        this.provider = provider;
+        this.provider = flavor;
         this.opts = opts;
         this.obstacles = new HashSet<>();
     }
@@ -134,7 +130,6 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         this.qid = parent.qid;
         this.root = parent.root;
         this.rootEventId = parent.rootEventId;
-        this.resultsReceiver = parent.resultsReceiver;
         this.targetRanges = newRanges;
         this.provider = parent.provider;
         this.opts = parent.opts;
@@ -225,7 +220,6 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
     @Override
     protected Event clone() {
         RQRequest<?> ev = (RQRequest<?>)super.clone();
-        ev.resultsReceiver = null;
         ev.catcher = null;
         return ev;
     }
@@ -302,7 +296,42 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             assert history != null;
             ranges.stream().forEach(r -> history.addAll(Arrays.asList(r.ids)));
 
-             // assign a delegate node for each range
+            /* [フィルタ付き範囲検索]
+             * E = {} // entries to use
+             * Q = クエリ範囲の集合
+             * while (Q != empty) {
+             *   Qから要素を1つ取り出し(削除)，qとする．
+             *   // すべてのFTEntryで，qをカバーするものがあれば
+             *   boolean found = false;
+             *   foreach (FTEntry e) {
+             *     if (provider.match(q, e)) { // eにマッチする
+             *       eをEに加える
+             *       qからeの範囲を削除し，残った範囲をQに追加する．
+             *       found = true;
+             *       break
+             *     }
+             *   }
+             *   if (!found) {
+             *       addRemoteValue(q, null)
+             *   }
+             * }
+             * Eの各エントリに対してRQRequestを送信する．
+             * 
+             * [provider API]
+             *   preprocess()
+             *     input: List<RQRange>, List<FTEntry>
+             *     output: List<RQRange> // 子ノードに任せる範囲の集合
+             *     side effects: ローカルに済む範囲はaddRemoteValueを呼び出す
+             */
+            List<FTEntry> ftents = getTopStrategy().getRoutingEntries();
+            List<DKRangeRValue<T>> locallyResolved = new ArrayList<>();
+            ranges = provider.preprocess(ranges, ftents, locallyResolved);
+            assert gaps != null && !gaps.isEmpty();
+            locallyResolved.stream().forEach(dkr -> {
+                addRemoteValue(dkr.getRemoteValue(), dkr);
+            });
+
+            // assign a delegate node for each range
             Map<Id, List<RQRange>> map = assignDelegates(ranges);
             logger.debug("aggregated: {}", map);
             PeerId peerId = getLocalNode().getPeerId();
@@ -539,11 +568,8 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         }
         
         private void notifyResult(RemoteValue<T> rval) {
-            if (resultsReceiver == null) {
-                return;
-            }
             if (rval == null || rval.getValue() != SPECIAL.PADDING) {
-                resultsReceiver.accept(rval);
+                provider.handleResult(rval);
             }
         }
 
@@ -580,7 +606,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
 
         private CompletableFuture<Void> invoke(
                 RQRange r, List<DKRangeRValue<T>> rvals) {
-            return strategy.invokeProvider(provider,
+            return strategy.getLocalValue(provider,
                     (LocalNode)r.getNode(), r, qid)
                     // on provider completion, adds the value to rvals 
                     .thenAccept(rval -> rvals.add(new DKRangeRValue<T>(rval, r)));

@@ -27,7 +27,6 @@ import org.piax.common.subspace.Range;
 import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.RPCException;
-import org.piax.gtrans.RemoteValue;
 import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.async.Event.LocalEvent;
 import org.piax.gtrans.async.Event.Lookup;
@@ -37,7 +36,7 @@ import org.piax.gtrans.async.EventException.RetriableException;
 import org.piax.gtrans.async.EventException.TimeoutException;
 import org.piax.gtrans.async.EventSender.EventSenderNet;
 import org.piax.gtrans.async.EventSender.EventSenderSim;
-import org.piax.gtrans.ov.async.rq.RQValueProvider;
+import org.piax.gtrans.ov.async.rq.RQFlavor;
 import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.util.UniqId;
 
@@ -422,16 +421,13 @@ public class LocalNode extends Node {
     }
     
     public <T> void rangeQueryAsync(Collection<? extends Range<?>> ranges,
-            RQValueProvider<T> provider, TransOptions opts,
-            Consumer<RemoteValue<T>> resultsReceiver) {
-        getTopStrategy().rangeQuery(ranges, provider, opts, resultsReceiver);
+            RQFlavor<T> flavor, TransOptions opts) {
+        getTopStrategy().rangeQuery(ranges, flavor, opts);
     }
 
     public <T> void forwardQueryLeftAsync(Range<?> range, int num,
-            RQValueProvider<T> provider, TransOptions opts,
-            Consumer<RemoteValue<T>> resultsReceiver) {
-        getTopStrategy().forwardQueryLeft(range, num, provider, opts,
-                resultsReceiver);
+            RQFlavor<T> flavor, TransOptions opts) {
+        getTopStrategy().forwardQueryLeft(range, num, flavor, opts);
     }
 
     public void fail() {

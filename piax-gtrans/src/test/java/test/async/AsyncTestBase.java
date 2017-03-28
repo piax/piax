@@ -19,6 +19,7 @@ import org.piax.common.TransportId;
 import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.Peer;
+import org.piax.gtrans.RemoteValue;
 import org.piax.gtrans.async.Event.RequestEvent;
 import org.piax.gtrans.async.EventExecutor;
 import org.piax.gtrans.async.Indirect;
@@ -32,8 +33,9 @@ import org.piax.gtrans.ov.async.ddll.DdllEvent.GetCandidates;
 import org.piax.gtrans.ov.async.ddll.DdllStrategy;
 import org.piax.gtrans.ov.async.ddll.DdllStrategy.SetRNakMode;
 import org.piax.gtrans.ov.async.rq.RQStrategy;
-import org.piax.gtrans.ov.async.rq.RQValueProvider;
-import org.piax.gtrans.ov.async.rq.RQValueProvider.CacheProvider;
+import org.piax.gtrans.ov.async.suzaku.SuzakuEvent.GetFTEntEvent;
+import org.piax.gtrans.ov.async.rq.RQFlavor;
+import org.piax.gtrans.ov.async.rq.RQFlavor.CacheProvider;
 import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.gtrans.raw.emu.EmuLocator;
 import org.piax.gtrans.raw.tcp.TcpLocator;
@@ -174,6 +176,16 @@ public class AsyncTestBase {
             assertTrue(nodes[i].pred == nodes[(i - 1 + s) % s]);
         }
     }
+    
+    static boolean isTransientRequest(RequestEvent<?, ?> req) {
+        if (req instanceof GetCandidates) {
+            return true;
+        }
+        if (req instanceof GetFTEntEvent) {
+            return true;
+        }
+        return false;
+    }
 
     static void checkMemoryLeakage(LocalNode... nodes) {
         int s = nodes.length;
@@ -181,7 +193,7 @@ public class AsyncTestBase {
             Map<Integer, RequestEvent<?, ?>> m1 =
                     (Map) getPrivateField(nodes[i], "ongoingRequests");
             Optional<RequestEvent<?, ?>> o1 = m1.values().stream()
-                    .filter(req -> !(req instanceof GetCandidates)).findAny();
+                    .filter(req -> !isTransientRequest(req)).findAny();
             if (o1.isPresent()) {
                 System.out.println(nodes[i] + ": ongoingRequests: " + m1);
                 fail();
@@ -189,7 +201,7 @@ public class AsyncTestBase {
             Map<Integer, RequestEvent<?, ?>> m2 =
                     (Map) getPrivateField(nodes[i], "unAckedRequests");
             Optional<RequestEvent<?, ?>> o2 = m2.values().stream()
-                    .filter(req -> !(req instanceof GetCandidates)).findAny();
+                    .filter(req -> !isTransientRequest(req)).findAny();
             if (o2.isPresent()) {
                 System.out.println(nodes[i] + ": unAckedRequests: " + m2);
                 fail();
@@ -198,18 +210,23 @@ public class AsyncTestBase {
     }
 
     void createAndInsert(NodeFactory factory, int num,
-            RQValueProvider<?> provider) {
-        createAndInsert(factory, num, provider, null);
+            RQFlavor<?> flavor) {
+        createAndInsert(factory, num, flavor, null);
+    }
+    
+    void createAndInsert(NodeFactory factory, int num,
+            RQFlavor<?> flavor, Runnable after) {
+        createAndInsert(factory, num, flavor, after, 30*1000);
     }
 
     void createAndInsert(NodeFactory factory, int num,
-            RQValueProvider<?> provider, Runnable after) {
+            RQFlavor<?> flavor, Runnable after, long duration) {
         nodes = createNodes(factory, num);
         for (LocalNode node: nodes) {
             NodeStrategy s = node.getTopStrategy();
-            ((RQStrategy)s).registerValueProvider(provider);
+            ((RQStrategy)s).registerFlavor(flavor);
         }
-        insertAll(30 * 1000, after);
+        insertAll(duration, after);
     }
 
     void createAndInsert(NodeFactory factory, int num) {
@@ -287,9 +304,12 @@ public class AsyncTestBase {
         }
     }
 
-    public static class FastValueProvider extends RQValueProvider<Integer> {
+    public static class FastValueProvider extends RQFlavor<Integer> {
+        public FastValueProvider(Consumer<RemoteValue<Integer>> resultsReceiver) {
+            super(resultsReceiver);
+        }
         @Override
-        public CompletableFuture<Integer> get(RQValueProvider<Integer> received,
+        public CompletableFuture<Integer> get(RQFlavor<Integer> received,
                 DdllKey key) {
             return CompletableFuture.completedFuture(result(key));
         }
@@ -300,15 +320,16 @@ public class AsyncTestBase {
         }
     }
 
-    public static class SlowValueProvider extends RQValueProvider<Integer> {
+    public static class SlowValueProvider extends RQFlavor<Integer> {
         final int delay;
 
-        public SlowValueProvider(int delay) {
+        public SlowValueProvider(Consumer<RemoteValue<Integer>> resultsReceiver, int delay) {
+            super(resultsReceiver);
             this.delay = delay;
         }
 
         @Override
-        public CompletableFuture<Integer> get(RQValueProvider<Integer> received,
+        public CompletableFuture<Integer> get(RQFlavor<Integer> received,
                 DdllKey key) {
             SlowValueProvider r = (SlowValueProvider) received;
             CompletableFuture<Integer> f = new CompletableFuture<>();
@@ -330,13 +351,13 @@ public class AsyncTestBase {
         int count;
         final int delay;
 
-        public SlowCacheValueProvider(int delay) {
-            super(30 * 1000);
+        public SlowCacheValueProvider(Consumer<RemoteValue<Integer>> resultsReceiver, int delay) {
+            super(resultsReceiver, 30 * 1000);
             this.delay = delay;
         }
 
         @Override
-        public CompletableFuture<Integer> get(RQValueProvider<Integer> received,
+        public CompletableFuture<Integer> get(RQFlavor<Integer> received,
                 DdllKey key) {
             SlowCacheValueProvider p = (SlowCacheValueProvider)received; 
             CompletableFuture<Integer> f = new CompletableFuture<>();
@@ -356,9 +377,12 @@ public class AsyncTestBase {
         }
     }
     
-    public static class ErrorProvider extends RQValueProvider<Integer> {
+    public static class ErrorProvider extends RQFlavor<Integer> {
+        public ErrorProvider(Consumer<RemoteValue<Integer>> resultsReceiver) {
+            super(resultsReceiver);
+        }
         @Override
-        public CompletableFuture<Integer> get(RQValueProvider<Integer> received,
+        public CompletableFuture<Integer> get(RQFlavor<Integer> received,
                 DdllKey key) {
             throw new Error("Error(" + key + ")");
         }
