@@ -60,7 +60,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
     // XXX: note that wrap-around query ranges such as [10, 5) do not work
     // for now (k-abe)
     protected final Collection<RQRange> targetRanges;
-    final RQFlavor<T> provider;
+    final RQAdapter<T> adapter;
     final TransOptions opts;
     final boolean isRoot;
 
@@ -88,10 +88,10 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
      * !isReceiverHalf -> resultReceiver == null
      */
     RQRequest(Node receiver, Collection<RQRange> ranges,
-            RQFlavor<T> flavor, TransOptions opts) {
+            RQAdapter<T> adapter, TransOptions opts) {
         super(receiver, true);
         this.isRoot = true;
-        assert flavor.resultsReceiver != null;
+        assert adapter.resultsReceiver != null;
         assert isReceiverHalf; // isRoot -> isReceiverHalf
 
         super.setReplyReceiver((RQReply<T> rep) -> {
@@ -105,7 +105,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         this.root = null;  // overridden by DirectResponder at root node
         this.rootEventId = 0; // overridden by DirectResponder at root node
         this.targetRanges = Collections.unmodifiableCollection(ranges);
-        this.provider = flavor;
+        this.adapter = adapter;
         this.opts = opts;
         this.obstacles = new HashSet<>();
     }
@@ -131,7 +131,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         this.root = parent.root;
         this.rootEventId = parent.rootEventId;
         this.targetRanges = newRanges;
-        this.provider = parent.provider;
+        this.adapter = parent.adapter;
         this.opts = parent.opts;
         this.obstacles = parent.obstacles;
         this.catcher = parent.catcher;
@@ -325,7 +325,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
              */
             List<FTEntry> ftents = getTopStrategy().getRoutingEntries();
             List<DKRangeRValue<T>> locallyResolved = new ArrayList<>();
-            ranges = provider.preprocess(ranges, ftents, locallyResolved);
+            ranges = adapter.preprocess(ranges, ftents, locallyResolved);
             assert gaps != null && !gaps.isEmpty();
             locallyResolved.stream().forEach(dkr -> {
                 addRemoteValue(dkr.getRemoteValue(), dkr);
@@ -569,7 +569,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         
         private void notifyResult(RemoteValue<T> rval) {
             if (rval == null || rval.getValue() != SPECIAL.PADDING) {
-                provider.handleResult(rval);
+                adapter.handleResult(rval);
             }
         }
 
@@ -606,7 +606,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
 
         private CompletableFuture<Void> invoke(
                 RQRange r, List<DKRangeRValue<T>> rvals) {
-            return strategy.getLocalValue(provider,
+            return strategy.getLocalValue(adapter,
                     (LocalNode)r.getNode(), r, qid)
                     // on provider completion, adds the value to rvals 
                     .thenAccept(rval -> rvals.add(new DKRangeRValue<T>(rval, r)));

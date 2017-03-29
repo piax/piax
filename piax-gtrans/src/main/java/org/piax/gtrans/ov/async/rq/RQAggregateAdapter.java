@@ -2,21 +2,23 @@ package org.piax.gtrans.ov.async.rq;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 import org.piax.gtrans.RemoteValue;
 import org.piax.gtrans.async.FTEntry;
+import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.ov.ring.rq.DKRangeRValue;
 import org.piax.gtrans.ov.ring.rq.DdllKeyRange;
 
 /**
- * a flavor for aggregate query
+ * an adapter for aggregate query
  *
  * @param <T> the type of aggregate value
  */
-public abstract class RQAggregateFlavor<T> extends RQFlavor<T> {
+public abstract class RQAggregateAdapter<T> extends RQAdapter<T> {
     protected T current;
-    public RQAggregateFlavor(Consumer<RemoteValue<T>> resultsReceiver) {
+    public RQAggregateAdapter(Consumer<RemoteValue<T>> resultsReceiver) {
         super(resultsReceiver);
     }
     /*
@@ -43,8 +45,7 @@ public abstract class RQAggregateFlavor<T> extends RQFlavor<T> {
     @Override
     public List<RQRange> preprocess(List<RQRange> queryRanges,
             List<FTEntry> ftents, List<DKRangeRValue<T>> locallyResolved) {
-        Class<? extends RQFlavor<T>> clazz
-                = (Class<? extends RQFlavor<T>>)this.getClass();
+        Class<? extends RQAdapter<T>> clazz = this.getClazz();
         List<RQRange> rcopy = new ArrayList<>(queryRanges);
         List<RQRange> remain = new ArrayList<>();
         outer: while (!rcopy.isEmpty()) {
@@ -80,11 +81,25 @@ public abstract class RQAggregateFlavor<T> extends RQFlavor<T> {
             current = reduce(current, result.getValue());
         }
     }
+    
+    @Override
+    public Object getCollectedData(LocalNode localNode) {
+        CompletableFuture<T> future = get(null, localNode.key);
+        assert future.isDone();
+        Object o = future.getNow(null);
+        return o;
+    }
 
     @Override
-    public boolean doReduce() {
-        return true;
+    public Object reduceCollectedData(List<?> value) {
+        List<T> vals = (List<T>)value;
+        Object reduced = vals.stream()
+                .reduce((a, b) -> reduce(a, b))
+                .orElse(null);
+        return reduced;
     }
+
+    public abstract T reduce(T a, T b);
 
     public abstract boolean match(RQRange queryRange,
             DdllKeyRange range, T val);

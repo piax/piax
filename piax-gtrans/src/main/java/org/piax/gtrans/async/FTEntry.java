@@ -16,8 +16,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
-import org.piax.gtrans.ov.async.rq.RQFlavor;
+import org.piax.gtrans.ov.async.rq.RQAdapter;
 import org.piax.gtrans.ov.async.suzaku.SuzakuStrategy;
 import org.piax.gtrans.ov.ring.rq.DdllKeyRange;
 
@@ -27,7 +29,7 @@ import org.piax.gtrans.ov.ring.rq.DdllKeyRange;
 public class FTEntry implements Cloneable, Serializable {
     private List<Node> nodes = new ArrayList<>();
     public DdllKeyRange range;
-    private Map<Class<? extends RQFlavor<?>>, Object> extData = null;
+    private Map<Class<? extends RQAdapter<?>>, Object> extData = null;
 
     public FTEntry(Node node) {
         nodes.add(node);
@@ -38,7 +40,7 @@ public class FTEntry implements Cloneable, Serializable {
     }
     
     public <T> void putCollectedData(
-            Class<? extends RQFlavor<T>> ext, T data) {
+            Class<? extends RQAdapter<T>> ext, T data) {
         if (extData == null) {
             extData = new HashMap<>();
         }
@@ -47,14 +49,14 @@ public class FTEntry implements Cloneable, Serializable {
 
     @SuppressWarnings("unchecked")
     public <T> T getCollectedData(
-            Class<? extends RQFlavor<T>> clazz) {
+            Class<? extends RQAdapter<T>> clazz) {
         if (extData == null) {
             return null;
         }
         return (T) extData.get(clazz);
     }
     
-    public Map<Class<? extends RQFlavor<?>>, Object> getCollectedDataSet() {
+    public Map<Class<? extends RQAdapter<?>>, Object> getCollectedDataSet() {
         return extData;
     }
 
@@ -64,13 +66,31 @@ public class FTEntry implements Cloneable, Serializable {
             List<Node> nbrs = nodes.subList(1, nodes.size());
             return "[" + getNode() + ", nbrs=" + nbrs
                     + ", range=" + range
-                    + ", data=" + extData
+                    + ", data=" + toStringExtData()
                     + "]";
         }
         return "[" + getNode()
             + ", range=" + range
-            + ", data=" + extData
+            + ", data=" + toStringExtData()
             + "]";
+    }
+    
+    private String toStringExtData() {
+        if (extData == null) {
+            return "null";
+        }
+        List<String> list = extData.entrySet().stream()
+            .map(e -> {
+                if (e.getValue() == null) {
+                    return null;
+                }
+                String s = e.getKey().getSimpleName();
+                s = s.substring(0, Math.min(6, s.length()));
+                return s + "->" + e.getValue();
+            })
+            .filter(Objects::nonNull)
+            .collect(Collectors.toList());
+        return "[" + String.join(", ", list) + "]";
     }
 
     public Node getNode() {

@@ -20,16 +20,16 @@ import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.gtrans.ov.ring.rq.DKRangeRValue;
 import org.piax.gtrans.ov.ring.rq.DdllKeyRange;
 
-public abstract class RQFlavor<T> implements Serializable {
+public abstract class RQAdapter<T> implements Serializable {
     transient protected final Consumer<RemoteValue<T>> resultsReceiver;
-    public RQFlavor(Consumer<RemoteValue<T>> resultsReceiver) {
+    public RQAdapter(Consumer<RemoteValue<T>> resultsReceiver) {
         this.resultsReceiver = resultsReceiver;
     }
 
-    public Class<? extends RQFlavor<T>> getClazz() {
+    public Class<? extends RQAdapter<T>> getClazz() {
         @SuppressWarnings("unchecked")
-        Class<? extends RQFlavor<T>> clazz
-                = (Class<? extends RQFlavor<T>>)getClass();
+        Class<? extends RQAdapter<T>> clazz
+                = (Class<? extends RQAdapter<T>>)getClass();
         return clazz;
     }
     /**
@@ -40,7 +40,7 @@ public abstract class RQFlavor<T> implements Serializable {
      * @return
      */
     @SuppressWarnings("unchecked")
-    protected CompletableFuture<T> getRaw(RQFlavor<T> received,
+    protected CompletableFuture<T> getRaw(RQAdapter<T> received,
             LocalNode localNode, DdllKeyRange range, long qid) {
         if (range != null && !range.contains(localNode.key)) {
             // although SPECIAL.PADDING is not a type of T, using
@@ -51,7 +51,7 @@ public abstract class RQFlavor<T> implements Serializable {
         }
     }
 
-    public abstract CompletableFuture<T> get(RQFlavor<T> received,
+    public abstract CompletableFuture<T> get(RQAdapter<T> received,
             DdllKey key);
 
     /**
@@ -72,38 +72,38 @@ public abstract class RQFlavor<T> implements Serializable {
         this.resultsReceiver.accept(result);
     }
 
-    public boolean doReduce() {
-        return false; // do not reduce by default
-    }
-
-    public T reduce(T a, T b) {
+    public Object getCollectedData(LocalNode localNode) {
         return null;
     }
 
-    public static class KeyProvider extends RQFlavor<DdllKey> {
-        public KeyProvider(Consumer<RemoteValue<DdllKey>> resultsReceiver) {
+    public Object reduceCollectedData(List<?> value) {
+        return null;
+    }
+
+    public static class KeyAdapter extends RQAdapter<DdllKey> {
+        public KeyAdapter(Consumer<RemoteValue<DdllKey>> resultsReceiver) {
             super(resultsReceiver);
         }
         @Override
-        public CompletableFuture<DdllKey> get(RQFlavor<DdllKey> received,
+        public CompletableFuture<DdllKey> get(RQAdapter<DdllKey> received,
                 DdllKey key) {
             return CompletableFuture.completedFuture(key);
         }
     }
 
-    public static class InsertionPointProvider extends RQFlavor<Node[]> {
-        public InsertionPointProvider(Consumer<RemoteValue<Node[]>> resultsReceiver) {
+    public static class InsertionPointAdapter extends RQAdapter<Node[]> {
+        public InsertionPointAdapter(Consumer<RemoteValue<Node[]>> resultsReceiver) {
             super(resultsReceiver);
         }
         @Override
-        protected CompletableFuture<Node[]> getRaw(RQFlavor<Node[]> received,
+        protected CompletableFuture<Node[]> getRaw(RQAdapter<Node[]> received,
                 LocalNode localNode, DdllKeyRange range, long qid) {
             Node[] ret = new Node[] { localNode, localNode.succ };
             return CompletableFuture.completedFuture(ret);
         }
 
         @Override
-        public CompletableFuture<Node[]> get(RQFlavor<Node[]> received,
+        public CompletableFuture<Node[]> get(RQAdapter<Node[]> received,
                 DdllKey key) {
             return null; // dummy
         }
@@ -117,10 +117,10 @@ public abstract class RQFlavor<T> implements Serializable {
      *  
      * @param <T> type of the value
      */
-    public abstract static class CacheProvider<T> extends RQFlavor<T> {
+    public abstract static class CacheAdapter<T> extends RQAdapter<T> {
         final long cachePeriod;
 
-        public CacheProvider(Consumer<RemoteValue<T>> resultsReceiver,
+        public CacheAdapter(Consumer<RemoteValue<T>> resultsReceiver,
                 long cachePeriod) {
             super(resultsReceiver);
             this.cachePeriod = cachePeriod;
@@ -128,7 +128,7 @@ public abstract class RQFlavor<T> implements Serializable {
 
         @SuppressWarnings("unchecked")
         @Override
-        protected CompletableFuture<T> getRaw(RQFlavor<T> received,
+        protected CompletableFuture<T> getRaw(RQAdapter<T> received,
                 LocalNode localNode, DdllKeyRange range, long qid) {
             if (!range.contains(localNode.key)) {
                 return CompletableFuture.completedFuture((T) SPECIAL.PADDING);

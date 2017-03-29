@@ -32,10 +32,12 @@ import org.piax.gtrans.async.NodeStrategy;
 import org.piax.gtrans.ov.async.ddll.DdllEvent.GetCandidates;
 import org.piax.gtrans.ov.async.ddll.DdllStrategy;
 import org.piax.gtrans.ov.async.ddll.DdllStrategy.SetRNakMode;
+import org.piax.gtrans.ov.async.rq.RQAdapter;
+import org.piax.gtrans.ov.async.rq.RQAdapter.CacheAdapter;
+import org.piax.gtrans.ov.async.rq.RQAdapter.InsertionPointAdapter;
+import org.piax.gtrans.ov.async.rq.RQAdapter.KeyAdapter;
 import org.piax.gtrans.ov.async.rq.RQStrategy;
 import org.piax.gtrans.ov.async.suzaku.SuzakuEvent.GetFTEntEvent;
-import org.piax.gtrans.ov.async.rq.RQFlavor;
-import org.piax.gtrans.ov.async.rq.RQFlavor.CacheProvider;
 import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.gtrans.raw.emu.EmuLocator;
 import org.piax.gtrans.raw.tcp.TcpLocator;
@@ -210,21 +212,24 @@ public class AsyncTestBase {
     }
 
     void createAndInsert(NodeFactory factory, int num,
-            RQFlavor<?> flavor) {
-        createAndInsert(factory, num, flavor, null);
+            RQAdapter<?> adapter) {
+        createAndInsert(factory, num, adapter, null);
     }
     
     void createAndInsert(NodeFactory factory, int num,
-            RQFlavor<?> flavor, Runnable after) {
-        createAndInsert(factory, num, flavor, after, 30*1000);
+            RQAdapter<?> adapter, Runnable after) {
+        createAndInsert(factory, num, adapter, after, 30*1000);
     }
 
     void createAndInsert(NodeFactory factory, int num,
-            RQFlavor<?> flavor, Runnable after, long duration) {
+            RQAdapter<?> adapter, Runnable after, long duration) {
         nodes = createNodes(factory, num);
         for (LocalNode node: nodes) {
             NodeStrategy s = node.getTopStrategy();
-            ((RQStrategy)s).registerFlavor(flavor);
+            if (!(adapter instanceof InsertionPointAdapter 
+                    || adapter instanceof KeyAdapter)) {
+                ((RQStrategy)s).registerAdapter(adapter);
+            }
         }
         insertAll(duration, after);
     }
@@ -304,12 +309,12 @@ public class AsyncTestBase {
         }
     }
 
-    public static class FastValueProvider extends RQFlavor<Integer> {
+    public static class FastValueProvider extends RQAdapter<Integer> {
         public FastValueProvider(Consumer<RemoteValue<Integer>> resultsReceiver) {
             super(resultsReceiver);
         }
         @Override
-        public CompletableFuture<Integer> get(RQFlavor<Integer> received,
+        public CompletableFuture<Integer> get(RQAdapter<Integer> received,
                 DdllKey key) {
             return CompletableFuture.completedFuture(result(key));
         }
@@ -320,7 +325,7 @@ public class AsyncTestBase {
         }
     }
 
-    public static class SlowValueProvider extends RQFlavor<Integer> {
+    public static class SlowValueProvider extends RQAdapter<Integer> {
         final int delay;
 
         public SlowValueProvider(Consumer<RemoteValue<Integer>> resultsReceiver, int delay) {
@@ -329,7 +334,7 @@ public class AsyncTestBase {
         }
 
         @Override
-        public CompletableFuture<Integer> get(RQFlavor<Integer> received,
+        public CompletableFuture<Integer> get(RQAdapter<Integer> received,
                 DdllKey key) {
             SlowValueProvider r = (SlowValueProvider) received;
             CompletableFuture<Integer> f = new CompletableFuture<>();
@@ -347,7 +352,7 @@ public class AsyncTestBase {
     }
 
     // XXX
-    public static class SlowCacheValueProvider extends CacheProvider<Integer> {
+    public static class SlowCacheValueProvider extends CacheAdapter<Integer> {
         int count;
         final int delay;
 
@@ -357,7 +362,7 @@ public class AsyncTestBase {
         }
 
         @Override
-        public CompletableFuture<Integer> get(RQFlavor<Integer> received,
+        public CompletableFuture<Integer> get(RQAdapter<Integer> received,
                 DdllKey key) {
             SlowCacheValueProvider p = (SlowCacheValueProvider)received; 
             CompletableFuture<Integer> f = new CompletableFuture<>();
@@ -377,12 +382,12 @@ public class AsyncTestBase {
         }
     }
     
-    public static class ErrorProvider extends RQFlavor<Integer> {
+    public static class ErrorProvider extends RQAdapter<Integer> {
         public ErrorProvider(Consumer<RemoteValue<Integer>> resultsReceiver) {
             super(resultsReceiver);
         }
         @Override
-        public CompletableFuture<Integer> get(RQFlavor<Integer> received,
+        public CompletableFuture<Integer> get(RQAdapter<Integer> received,
                 DdllKey key) {
             throw new Error("Error(" + key + ")");
         }

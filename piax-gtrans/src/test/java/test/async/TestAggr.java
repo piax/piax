@@ -21,8 +21,8 @@ import org.piax.gtrans.TransOptions.ResponseType;
 import org.piax.gtrans.async.EventExecutor;
 import org.piax.gtrans.async.NodeFactory;
 import org.piax.gtrans.ov.async.ddll.DdllStrategy;
-import org.piax.gtrans.ov.async.rq.RQAggregateFlavor;
-import org.piax.gtrans.ov.async.rq.RQFlavor;
+import org.piax.gtrans.ov.async.rq.RQAggregateAdapter;
+import org.piax.gtrans.ov.async.rq.RQAdapter;
 import org.piax.gtrans.ov.async.rq.RQRange;
 import org.piax.gtrans.ov.async.rq.RQStrategy.RQNodeFactory;
 import org.piax.gtrans.ov.async.suzaku.SuzakuStrategy;
@@ -57,18 +57,18 @@ public class TestAggr extends AsyncTestBase {
 
     private void testRQ1(NodeFactory base, 
             TransOptions opts, 
-            Function<Consumer<RemoteValue<Integer>>, RQFlavor<Integer>> flavorFactory,
+            Function<Consumer<RemoteValue<Integer>>, RQAdapter<Integer>> adapterFactory,
             Range<Integer> range, List<Integer> expect, String expectedErr) {
         NodeFactory factory = new RQNodeFactory(base);
         System.out.println("** testRQ1");
         init();
-        RQFlavor<Integer> flavor = flavorFactory.apply(null);
-        System.out.println("flavor=" + flavor);
-        createAndInsert(factory, 5, flavor, null, 10*60*1000);
+        RQAdapter<Integer> adapter = adapterFactory.apply(null);
+        System.out.println("adapter=" + adapter);
+        createAndInsert(factory, 5, adapter, null, 10*60*1000);
         {
             List<RemoteValue<Integer>> results = new ArrayList<>();
             Collection<Range<Integer>> ranges = Collections.singleton(range);
-            RQFlavor<Integer> f = flavorFactory.apply(ret -> {
+            RQAdapter<Integer> f = adapterFactory.apply(ret -> {
                 System.out.println("GOT RESULT: " + ret);
                 results.add(ret);
             });
@@ -98,13 +98,13 @@ public class TestAggr extends AsyncTestBase {
         }
     }
 
-    public static class AggrProvider extends RQAggregateFlavor<Integer> {
+    public static class AggrProvider extends RQAggregateAdapter<Integer> {
         public AggrProvider(Consumer<RemoteValue<Integer>> resultReceiver) {
             super(resultReceiver);
         }
 
         @Override
-        public CompletableFuture<Integer> get(RQFlavor<Integer> received,
+        public CompletableFuture<Integer> get(RQAdapter<Integer> received,
                 DdllKey key) {
             //  key     value
             //    0  ->     1

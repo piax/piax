@@ -15,14 +15,14 @@ public abstract class RQEvent {
      */
     public static class GetLocalValueRequest<T>
     extends RequestEvent<GetLocalValueRequest<T>, GetLocalValueReply<T>> {
-        final RQFlavor<T> flavor;
+        final RQAdapter<T> adapter;
         final Node expectedSucc;
         final long qid;
         public GetLocalValueRequest(Node receiver, Node expectedSucc,
-                RQFlavor<T> flavor, long qid) {
+                RQAdapter<T> adapter, long qid) {
             super(receiver);
             this.expectedSucc = expectedSucc;
-            this.flavor = flavor;
+            this.adapter = adapter;
             this.qid = qid;
         }
         @Override
@@ -38,7 +38,7 @@ public abstract class RQEvent {
             if (expectedSucc == getLocalNode().succ) {
                 RQStrategy strategy = RQStrategy.getRQStrategy(getLocalNode());
                 CompletableFuture<RemoteValue<T>> f
-                    = strategy.getLocalValue(flavor, getLocalNode(), null, qid);
+                    = strategy.getLocalValue(adapter, getLocalNode(), null, qid);
                 f.thenAccept(rval -> {
                     GetLocalValueReply<T> ev = new GetLocalValueReply<>(this,
                             rval, true, local.pred, local.succ);

@@ -30,9 +30,9 @@ import org.piax.gtrans.async.Node;
 import org.piax.gtrans.async.NodeFactory;
 import org.piax.gtrans.ov.async.ddll.DdllStrategy.DdllNodeFactory;
 import org.piax.gtrans.ov.async.rq.RQStrategy.RQNodeFactory;
-import org.piax.gtrans.ov.async.rq.RQFlavor;
-import org.piax.gtrans.ov.async.rq.RQFlavor.InsertionPointProvider;
-import org.piax.gtrans.ov.async.rq.RQFlavor.KeyProvider;
+import org.piax.gtrans.ov.async.rq.RQAdapter;
+import org.piax.gtrans.ov.async.rq.RQAdapter.InsertionPointAdapter;
+import org.piax.gtrans.ov.async.rq.RQAdapter.KeyAdapter;
 import org.piax.gtrans.ov.async.suzaku.SuzakuStrategy.SuzakuNodeFactory;
 import org.piax.gtrans.ov.ddll.DdllKey;
 
@@ -360,24 +360,24 @@ public class AsyncTest extends AsyncTestBase {
 
     private void testRQ1(NodeFactory base, 
             TransOptions opts,
-            Function<Consumer<RemoteValue<Integer>>, RQFlavor<Integer>> providerFactory,
+            Function<Consumer<RemoteValue<Integer>>, RQAdapter<Integer>> providerFactory,
             Range<Integer> range, List<Integer> expect) {
         testRQ1(base, opts, providerFactory, range, expect, "[]");
     }
 
     private void testRQ1(NodeFactory base, 
             TransOptions opts,
-            Function<Consumer<RemoteValue<Integer>>, RQFlavor<Integer>> providerFactory,
+            Function<Consumer<RemoteValue<Integer>>, RQAdapter<Integer>> providerFactory,
             Range<Integer> range, List<Integer> expect, String expectedErr) {
         NodeFactory factory = new RQNodeFactory(base);
         System.out.println("** testRQ1");
         init();
-        RQFlavor<Integer> nodeProvider = providerFactory.apply(null);
+        RQAdapter<Integer> nodeProvider = providerFactory.apply(null);
         createAndInsert(factory, 5, nodeProvider);
         {
             Collection<Range<Integer>> ranges = Collections.singleton(range);
             List<RemoteValue<Integer>> results = new ArrayList<>();
-            RQFlavor<Integer> provider = providerFactory.apply((ret) -> {
+            RQAdapter<Integer> provider = providerFactory.apply((ret) -> {
                 System.out.println("GOT RESULT: " + ret);
                 results.add(ret);
             });
@@ -411,22 +411,22 @@ public class AsyncTest extends AsyncTestBase {
         TransOptions opts = new TransOptions();
         opts.setResponseType(ResponseType.DIRECT);
         testRQ2(new SuzakuNodeFactory(3), opts,
-                (receiver) -> new InsertionPointProvider(receiver),
+                (receiver) -> new InsertionPointAdapter(receiver),
                 new Range<Integer>(150), "[N100!P100, N200!P200]");
     }
 
     private void testRQ2(NodeFactory base, TransOptions opts,
-            Function<Consumer<RemoteValue<Node[]>>, RQFlavor<Node[]>> providerFactory,
+            Function<Consumer<RemoteValue<Node[]>>, RQAdapter<Node[]>> providerFactory,
             Range<Integer> range, String expect) {
         NodeFactory factory = new RQNodeFactory(base);
         System.out.println("** testRQ2");
         init();
-        RQFlavor<Node[]> baseProvider = providerFactory.apply(null);
+        RQAdapter<Node[]> baseProvider = providerFactory.apply(null);
         createAndInsert(factory, 5, baseProvider);
         {
             Collection<Range<Integer>> ranges = Collections.singleton(range);
             List<RemoteValue<Node[]>> results = new ArrayList<>();
-            RQFlavor<Node[]> provider = providerFactory.apply(
+            RQAdapter<Node[]> provider = providerFactory.apply(
                     ret -> {
                         System.out.println("GOT RESULT: " + ret);
                         results.add(ret);
@@ -497,18 +497,18 @@ public class AsyncTest extends AsyncTestBase {
 
     private void testRetrans(NodeFactory base,
             TransOptions opts, 
-            Function<Consumer<RemoteValue<Integer>>, RQFlavor<Integer>> providerFactory,
+            Function<Consumer<RemoteValue<Integer>>, RQAdapter<Integer>> providerFactory,
             Range<Integer> range, List<Integer> expect) {
         NodeFactory factory = new RQNodeFactory(base);
         System.out.println("** testSlowRetrans");
         init();
-        RQFlavor<Integer> baseProvider = providerFactory.apply(null);
+        RQAdapter<Integer> baseProvider = providerFactory.apply(null);
         createAndInsert(factory, 5, baseProvider);
         {
             nodes[2].fail();
             Collection<Range<Integer>> ranges = Collections.singleton(range);
             List<RemoteValue<Integer>> results = new ArrayList<>();
-            RQFlavor<Integer> p = providerFactory.apply(ret -> {
+            RQAdapter<Integer> p = providerFactory.apply(ret -> {
                 System.out.println("GOT RESULT: " + ret);
                 results.add(ret);
                 
@@ -535,13 +535,13 @@ public class AsyncTest extends AsyncTestBase {
         TransOptions opts = new TransOptions();
         opts.setResponseType(ResponseType.AGGREGATE);
         testMultikey(new SuzakuNodeFactory(3), opts,
-                receiver -> new KeyProvider(receiver),
+                receiver -> new KeyAdapter(receiver),
                 new Range<Integer>(0, true, 500, false),
                 Arrays.asList(0, 100, 200, 300, 400));
     }
 
     private void testMultikey(NodeFactory base, TransOptions opts,
-            Function<Consumer<RemoteValue<DdllKey>>, RQFlavor<DdllKey>> providerFactory,
+            Function<Consumer<RemoteValue<DdllKey>>, RQAdapter<DdllKey>> providerFactory,
             Range<Integer> range, List<Integer> expect) {
         NodeFactory factory = new RQNodeFactory(base);
         System.out.println("** testMultikey");
@@ -556,7 +556,7 @@ public class AsyncTest extends AsyncTestBase {
         {
             Collection<Range<Integer>> ranges = Collections.singleton(range);
             List<RemoteValue<DdllKey>> results = new ArrayList<>();
-            RQFlavor<DdllKey> p = providerFactory.apply(ret -> {
+            RQAdapter<DdllKey> p = providerFactory.apply(ret -> {
                 System.out.println("GOT RESULT: " + ret);
                 results.add(ret);
             });

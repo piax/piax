@@ -8,7 +8,7 @@ import org.piax.common.subspace.Range;
 import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.async.Event.Lookup;
 import org.piax.gtrans.async.Event.LookupDone;
-import org.piax.gtrans.ov.async.rq.RQFlavor;
+import org.piax.gtrans.ov.async.rq.RQAdapter;
 import org.piax.gtrans.ov.ddll.DdllKey;
 
 public abstract class NodeStrategy {
@@ -57,13 +57,13 @@ public abstract class NodeStrategy {
     }
 
     public <T> void rangeQuery(Collection<? extends Range<?>> ranges,
-            RQFlavor<T> flavor, TransOptions opts) {
-        getLower().rangeQuery(ranges, flavor, opts);
+            RQAdapter<T> adapter, TransOptions opts) {
+        getLower().rangeQuery(ranges, adapter, opts);
     }
 
     public <T> void forwardQueryLeft(Range<?> range, int num,
-            RQFlavor<T> flavor, TransOptions opts) {
-        getLower().forwardQueryLeft(range, num, flavor, opts);
+            RQAdapter<T> adapter, TransOptions opts) {
+        getLower().forwardQueryLeft(range, num, adapter, opts);
     }
     
     public void handleLookup(Lookup lookup) {

@@ -25,7 +25,7 @@ import org.piax.gtrans.async.Node;
 import org.piax.gtrans.async.NodeFactory;
 import org.piax.gtrans.ov.async.ddll.DdllStrategy.DdllNodeFactory;
 import org.piax.gtrans.ov.async.rq.RQStrategy.RQNodeFactory;
-import org.piax.gtrans.ov.async.rq.RQFlavor;
+import org.piax.gtrans.ov.async.rq.RQAdapter;
 import org.piax.gtrans.ov.async.suzaku.SuzakuStrategy;
 import org.piax.gtrans.ov.async.suzaku.SuzakuStrategy.SuzakuNodeFactory;
 
@@ -126,7 +126,7 @@ public class AsyncTest2 extends AsyncTestBase {
 
     private void testFQLeft(NodeFactory base, 
             TransOptions opts,
-            Function<Consumer<RemoteValue<Integer>>, RQFlavor<Integer>> providerFactory,
+            Function<Consumer<RemoteValue<Integer>>, RQAdapter<Integer>> providerFactory,
             Range<Integer> range, List<Integer> expect, String expectedErr,
             int failNode) {
         NodeFactory factory = new RQNodeFactory(base);
@@ -135,7 +135,7 @@ public class AsyncTest2 extends AsyncTestBase {
         Indirect<Long> startTime = new Indirect<>(EventExecutor.getVTime());
         Indirect<Long> endTime = new Indirect<>();
         List<RemoteValue<Integer>> results = new ArrayList<>();
-        RQFlavor<Integer> provider = providerFactory
+        RQAdapter<Integer> provider = providerFactory
                 .apply((RemoteValue<Integer> ret) -> {
                     System.out.println("GOT RESULT: " + ret);
                     results.add(ret);

@@ -36,7 +36,7 @@ import org.piax.gtrans.async.EventException.RetriableException;
 import org.piax.gtrans.async.EventException.TimeoutException;
 import org.piax.gtrans.async.EventSender.EventSenderNet;
 import org.piax.gtrans.async.EventSender.EventSenderSim;
-import org.piax.gtrans.ov.async.rq.RQFlavor;
+import org.piax.gtrans.ov.async.rq.RQAdapter;
 import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.util.UniqId;
 
@@ -421,13 +421,13 @@ public class LocalNode extends Node {
     }
     
     public <T> void rangeQueryAsync(Collection<? extends Range<?>> ranges,
-            RQFlavor<T> flavor, TransOptions opts) {
-        getTopStrategy().rangeQuery(ranges, flavor, opts);
+            RQAdapter<T> adapter, TransOptions opts) {
+        getTopStrategy().rangeQuery(ranges, adapter, opts);
     }
 
     public <T> void forwardQueryLeftAsync(Range<?> range, int num,
-            RQFlavor<T> flavor, TransOptions opts) {
-        getTopStrategy().forwardQueryLeft(range, num, flavor, opts);
+            RQAdapter<T> adapter, TransOptions opts) {
+        getTopStrategy().forwardQueryLeft(range, num, adapter, opts);
     }
 
     public void fail() {

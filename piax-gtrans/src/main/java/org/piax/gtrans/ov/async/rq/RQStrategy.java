@@ -32,8 +32,8 @@ import org.piax.gtrans.async.Node;
 import org.piax.gtrans.async.NodeFactory;
 import org.piax.gtrans.async.NodeStrategy;
 import org.piax.gtrans.ov.async.rq.RQEvent.GetLocalValueRequest;
-import org.piax.gtrans.ov.async.rq.RQFlavor.InsertionPointProvider;
-import org.piax.gtrans.ov.async.rq.RQFlavor.KeyProvider;
+import org.piax.gtrans.ov.async.rq.RQAdapter.InsertionPointAdapter;
+import org.piax.gtrans.ov.async.rq.RQAdapter.KeyAdapter;
 import org.piax.gtrans.ov.async.suzaku.FingerTable;
 import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.gtrans.ov.ring.rq.DdllKeyRange;
@@ -54,8 +54,8 @@ public class RQStrategy extends NodeStrategy {
             base.setupNode(node);
             RQStrategy s = new RQStrategy();
             node.pushStrategy(s);
-            s.registerFlavor(new KeyProvider(null));
-            s.registerFlavor(new InsertionPointProvider(null));
+            s.registerAdapter(new KeyAdapter(null));
+            s.registerAdapter(new InsertionPointAdapter(null));
         }
         @Override
         public String toString() {
@@ -64,9 +64,9 @@ public class RQStrategy extends NodeStrategy {
     }
 
     /**
-     * registered RQFlavor
+     * registered RQadapter
      */
-    private Map<Class<? extends RQFlavor<?>>, RQFlavor<?>> flavors
+    private Map<Class<? extends RQAdapter<?>>, RQAdapter<?>> adapters
         = new HashMap<>();
 
     /**
@@ -76,7 +76,7 @@ public class RQStrategy extends NodeStrategy {
 
     /**
      * query result cache used by
-     * {@link org.piax.gtrans.ov.async.rq.RQFlavor.CacheProvider}
+     * {@link org.piax.gtrans.ov.async.rq.RQAdapter.CacheAdapter}
      *  */ 
     Map<PeerId, Map<Long, CompletableFuture<?>>> resultCache = new HashMap<>();
 
@@ -89,7 +89,7 @@ public class RQStrategy extends NodeStrategy {
         TransOptions opts = new TransOptions(ResponseType.DIRECT,
                 RetransMode.RELIABLE);
         rangeQueryRQRange(Collections.singleton(r),
-                new InsertionPointProvider(rval -> {
+                new InsertionPointAdapter(rval -> {
                     if (flag.val) {
                         return;
                     }
@@ -103,9 +103,9 @@ public class RQStrategy extends NodeStrategy {
 
     @Override
     public <T> void rangeQuery(Collection<? extends Range<?>> ranges,
-            RQFlavor<T> flavor, TransOptions opts) {
+            RQAdapter<T> adapter, TransOptions opts) {
         if (ranges.size() == 0) {
-            flavor.handleResult(null);
+            adapter.handleResult(null);
             return;
         }
         // convert ranges of Comparable<?> into Set<RQRange>
@@ -115,13 +115,13 @@ public class RQStrategy extends NodeStrategy {
             return sub;
         }).collect(Collectors.toSet());
 
-        rangeQueryRQRange(rqranges, flavor, opts);
+        rangeQueryRQRange(rqranges, adapter, opts);
     }
 
     public <T> void rangeQueryRQRange(Collection<RQRange> ranges,
-            RQFlavor<T> flavor, TransOptions opts) {
+            RQAdapter<T> adapter, TransOptions opts) {
         n.post(new LocalEvent(n, () -> {
-            RQRequest<T> root = new RQRequest<>(n, ranges, flavor, opts);
+            RQRequest<T> root = new RQRequest<>(n, ranges, adapter, opts);
             root.run();
         }));
     }
@@ -141,30 +141,25 @@ public class RQStrategy extends NodeStrategy {
         return (RQStrategy)node.getStrategy(RQStrategy.class);
     }
 
-    public void registerFlavor(RQFlavor<?> flavor) {
-        Class<? extends RQFlavor<?>> clazz = flavor.getClazz();
-        assert flavors.get(clazz) == null;
-        flavors.put(clazz, flavor);
+    public void registerAdapter(RQAdapter<?> adapter) {
+        Class<? extends RQAdapter<?>> clazz = adapter.getClazz();
+        assert adapters.get(clazz) == null : "duplicate! " + adapter;
+        adapters.put(clazz, adapter);
     }
 
     @SuppressWarnings({ "unchecked", "rawtypes" })
-    public <T> RQFlavor<T> getFlavor(Class<? extends RQFlavor> clazz) {
-        return (RQFlavor<T>) flavors.get(clazz);
+    public <T> RQAdapter<T> getRegisteredAdapter(Class<? extends RQAdapter> clazz) {
+        return (RQAdapter<T>) adapters.get(clazz);
     }
 
     @SuppressWarnings({ "rawtypes", "unchecked" })
-    public Map<Class<? extends RQFlavor<?>>, Object> getLocalCollectedDataSet() {
-        Map<Class<? extends RQFlavor<?>>, Object> map = new HashMap<>();
-        for (Map.Entry f0 : flavors.entrySet()) {
-            Map.Entry<Class<? extends RQFlavor<Object>>, RQFlavor<Object>> f
-                    = (Map.Entry<Class<? extends RQFlavor<Object>>, RQFlavor<Object>>)f0;
-            RQFlavor<Object> flavor = f.getValue();
-            if (flavor.doReduce()) {
-                CompletableFuture<Object> future = flavor.get(null, n.key);
-                assert future.isDone();
-                Object o = future.getNow(null);
-                map.put(f.getKey(), o);
-            }
+    public Map<Class<? extends RQAdapter<?>>, Object> getLocalCollectedDataSet() {
+        Map<Class<? extends RQAdapter<?>>, Object> map = new HashMap<>();
+        for (Map.Entry f0 : adapters.entrySet()) {
+            Map.Entry<Class<? extends RQAdapter<Object>>, RQAdapter<Object>> f
+                    = (Map.Entry<Class<? extends RQAdapter<Object>>, RQAdapter<Object>>)f0;
+            RQAdapter<Object> adapter = f.getValue();
+            map.put(f.getKey(), adapter.getCollectedData(n));
         }
         return map;
     }
@@ -188,7 +183,7 @@ public class RQStrategy extends NodeStrategy {
         }
         System.out.println("chk0: isB=" + isBackward + ", index=" + index + ", index2=" + index2);
         boolean isBackward0 = isBackward;
-        Map<Class<? extends RQFlavor<?>>, List<Object>> tmp = 
+        Map<Class<? extends RQAdapter<?>>, List<Object>> tmp = 
         stream.mapToObj(i ->
             {
                 if (i == FingerTable.LOCALINDEX) {
@@ -207,26 +202,19 @@ public class RQStrategy extends NodeStrategy {
                         return null;
                     }
                 }
-                // Map<Class<? extends RQFlavor<?>>, Object>
+                // Map<Class<? extends RQadapter<?>>, Object>
             }).filter(Objects::nonNull)
             .flatMap(map -> map.entrySet().stream())
-            // Map.Entry<Class<? extends RQFlavor<?>>, Object>
+            // Map.Entry<Class<? extends RQadapter<?>>, Object>
             .collect(Collectors.groupingBy(e -> e.getKey(),
                     Collectors.mapping(e -> e.getValue(), Collectors.toList())));
 
         ent.range = new DdllKeyRange(from.val, true, to.val, false);
-        for (Map.Entry<Class<? extends RQFlavor<?>>, List<Object>> e: tmp.entrySet()) {
-            Class<? extends RQFlavor<Object>> clazz
-                    = (Class<? extends RQFlavor<Object>>)e.getKey();
-            RQFlavor<Object> flavor = getFlavor(clazz);
-            if (flavor.doReduce()) {
-                Object reduced = e.getValue().stream()
-                        .reduce((a, b) -> flavor.reduce(a, b))
-                        .orElse(null);
-                ent.putCollectedData(clazz, reduced);
-                System.out.println(n + ": getFTEntryToSend: fromD=" + fromDist + ", toD=" + toDist
-                        + ", ent=" + ent + ", REDUCED=" + reduced);
-            }
+        for (Map.Entry<Class<? extends RQAdapter<?>>, List<Object>> e: tmp.entrySet()) {
+            Class<? extends RQAdapter<Object>> clazz
+                    = (Class<? extends RQAdapter<Object>>)e.getKey();
+            RQAdapter<Object> adapter = getRegisteredAdapter(clazz);
+            ent.putCollectedData(clazz, adapter.reduceCollectedData(e.getValue()));
         }
 
         return ent;
@@ -267,7 +255,7 @@ public class RQStrategy extends NodeStrategy {
      */
     @Override
     public <T> void forwardQueryLeft(Range<?> range, int num,
-            RQFlavor<T> flavor, TransOptions opts) {
+            RQAdapter<T> adapter, TransOptions opts) {
         if (num <= 0) {
             throw new IllegalArgumentException("num <= 0");
         }
@@ -276,7 +264,7 @@ public class RQStrategy extends NodeStrategy {
             p.qid = EventExecutor.random().nextLong();
             p.num = num;
             p.rq = convertToRQRange(range);
-            p.flavor = flavor;
+            p.adapter = adapter;
             p.opts = opts;
         }
         List<Node> visited = new ArrayList<>();
@@ -288,7 +276,7 @@ public class RQStrategy extends NodeStrategy {
         long qid;
         int num;
         RQRange rq;
-        RQFlavor<T> flavor;
+        RQAdapter<T> adapter;
         TransOptions opts;
     }
 
@@ -298,20 +286,20 @@ public class RQStrategy extends NodeStrategy {
         Indirect<Boolean> flag = new Indirect<>(false);
         // get the right-most node within the range
         rangeQueryRQRange(Collections.singleton(rEnd),
-                new InsertionPointProvider(rval -> {
+                new InsertionPointAdapter(rval -> {
                     Log.verbose(() -> "startFQL rq rval = " + rval);
                     if (rval != null) {
                         flag.val = true;
                         Node[] nodes = rval.getValue();
                         if (!p.rq.contains(nodes[0].key)) {
-                            p.flavor.handleResult(null); // finish!
+                            p.adapter.handleResult(null); // finish!
                             return;
                         }
                         forwardQueryLeft0(p, nodes[0], nodes[1], trace, visited);
                     } else {
                         if (!flag.val) {
                             System.err.println("forwardQueryLeft: couldn't find the start node");
-                            p.flavor.handleResult(null);
+                            p.adapter.handleResult(null);
                         }
                     }
                 }), p.opts);
@@ -331,7 +319,7 @@ public class RQStrategy extends NodeStrategy {
             return;
         }
         GetLocalValueRequest<T> ev = new GetLocalValueRequest<>(current, 
-                expectedRight, p.flavor, p.qid);
+                expectedRight, p.adapter, p.qid);
         n.post(ev);
         ev.onReply((rep, exc) -> {
             if (exc != null) {
@@ -355,10 +343,10 @@ public class RQStrategy extends NodeStrategy {
                     trace.add(current);
                     if (rep.result != null) { // not special case
                         visited.add(current);
-                        p.flavor.handleResult(rep.result);
+                        p.adapter.handleResult(rep.result);
                     }
                     if (visited.size() >= p.num || !p.rq.contains(rep.pred.key)) {
-                        p.flavor.handleResult(null); // finish!
+                        p.adapter.handleResult(null); // finish!
                         return;
                     }
                     forwardQueryLeft0(p, rep.pred, current, trace, visited);
@@ -376,15 +364,15 @@ public class RQStrategy extends NodeStrategy {
     }
 
     <T> CompletableFuture<RemoteValue<T>> getLocalValue(
-            RQFlavor<T> received, LocalNode localNode, RQRange r, long qid) {
-        // obtain the registered flavor
-        RQFlavor<T> rflavor = getFlavor(received.getClass());
+            RQAdapter<T> received, LocalNode localNode, RQRange r, long qid) {
+        // obtain the registered adapter
+        RQAdapter<T> rAdapter = getRegisteredAdapter(received.getClass());
         CompletableFuture<T> f;
         try {
-            f = rflavor.getRaw(received, localNode, r, qid);
+            f = rAdapter.getRaw(received, localNode, r, qid);
         } catch (Throwable exc) {
             // if getRaw terminates exceptionally...
-            System.err.println("invokeflavor: got " + exc);
+            System.err.println("invokeadapter: got " + exc);
             exc.printStackTrace();
             RemoteValue<T> rval = new RemoteValue<>(getLocalNode().peerId, exc);
             return CompletableFuture.completedFuture(rval);
