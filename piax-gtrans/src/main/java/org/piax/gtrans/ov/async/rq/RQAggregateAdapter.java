@@ -51,11 +51,13 @@ public abstract class RQAggregateAdapter<T> extends RQAdapter<T> {
         outer: while (!rcopy.isEmpty()) {
             RQRange queryRange = rcopy.remove(0);
             for (FTEntry ent: ftents) {
-                T val = ent.getCollectedData(clazz);
-                if (val != null && match(queryRange, ent.range, val)) {
-                    DKRangeRValue<T> rv = new DKRangeRValue<>(new RemoteValue<T>(null, val), ent.range);
+                @SuppressWarnings("unchecked")
+                T val = (T) ent.getLocalCollectedData(clazz);
+                DdllKeyRange range = ent.getRange();
+                if (val != null && match(queryRange, range, val)) {
+                    DKRangeRValue<T> rv = new DKRangeRValue<>(new RemoteValue<T>(null, val), range);
                     locallyResolved.add(rv);
-                    List<RQRange> remains = queryRange.retainRanges(ent.range.from, ent.range.to);
+                    List<RQRange> remains = queryRange.retainRanges(range.from, range.to);
                     remains.stream().forEach(r -> {
                         r.assignSubId(queryRange);
                         rcopy.add(r);
@@ -101,6 +103,9 @@ public abstract class RQAggregateAdapter<T> extends RQAdapter<T> {
 
     public abstract T reduce(T a, T b);
 
-    public abstract boolean match(RQRange queryRange,
-            DdllKeyRange range, T val);
+    // default implementation
+    public boolean match(RQRange queryRange,
+            DdllKeyRange range, T val) {
+        return queryRange.contains(range);
+    }
 }

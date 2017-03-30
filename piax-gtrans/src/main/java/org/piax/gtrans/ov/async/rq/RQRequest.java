@@ -296,36 +296,12 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             assert history != null;
             ranges.stream().forEach(r -> history.addAll(Arrays.asList(r.ids)));
 
-            /* [フィルタ付き範囲検索]
-             * E = {} // entries to use
-             * Q = クエリ範囲の集合
-             * while (Q != empty) {
-             *   Qから要素を1つ取り出し(削除)，qとする．
-             *   // すべてのFTEntryで，qをカバーするものがあれば
-             *   boolean found = false;
-             *   foreach (FTEntry e) {
-             *     if (provider.match(q, e)) { // eにマッチする
-             *       eをEに加える
-             *       qからeの範囲を削除し，残った範囲をQに追加する．
-             *       found = true;
-             *       break
-             *     }
-             *   }
-             *   if (!found) {
-             *       addRemoteValue(q, null)
-             *   }
-             * }
-             * Eの各エントリに対してRQRequestを送信する．
-             * 
-             * [provider API]
-             *   preprocess()
-             *     input: List<RQRange>, List<FTEntry>
-             *     output: List<RQRange> // 子ノードに任せる範囲の集合
-             *     side effects: ローカルに済む範囲はaddRemoteValueを呼び出す
-             */
             List<FTEntry> ftents = getTopStrategy().getRoutingEntries();
+            System.out.println("rqd#ftents=" + ftents);
             List<DKRangeRValue<T>> locallyResolved = new ArrayList<>();
             ranges = adapter.preprocess(ranges, ftents, locallyResolved);
+            System.out.println("rqd#ranges=" + ranges);
+            System.out.println("rqd#locally=" + locallyResolved);
             assert gaps != null && !gaps.isEmpty();
             locallyResolved.stream().forEach(dkr -> {
                 addRemoteValue(dkr.getRemoteValue(), dkr);
@@ -536,10 +512,10 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             }
             // delete the range r from gaps
             gaps.remove(gap);
-            List<CircularRange<DdllKey>> retains = gap.retain(range, null);
+            List<Range<DdllKey>> retains = gap.retain(range, null);
             // add the remaining ranges to gaps
             if (retains != null) {
-                for (CircularRange<DdllKey> p : retains) {
+                for (Range<DdllKey> p : retains) {
                     RQRange s = new RQRange(gap.getNode(), p.from, p.to, gap.ids);
                     gaps.add(s);
                 }

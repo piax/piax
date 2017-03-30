@@ -506,7 +506,7 @@ public class SuzakuStrategy extends NodeStrategy {
             v2 = vnodes.get(k % vnodes.size());
             List<FTEntry> flist = new ArrayList<>();
             List<FTEntry> blist = new ArrayList<>();
-            FTEntry me = v1.getLocalFTEnetry();
+            FTEntry me = v1.getFingerTableEntry(FingerTable.LOCALINDEX);
             flist.add(me);
             FTEntry fent = null;
             FTEntry bent = null;
@@ -621,9 +621,9 @@ public class SuzakuStrategy extends NodeStrategy {
     }
 
     // to be overridden
-    protected FTEntry getLocalFTEnetry() {
-        return new FTEntry(getLocalNode());
-    }
+//    protected FTEntry getLocalFTEnetry() {
+//        return new FTEntry(getLocalNode());
+//    }
 
     public int getFingerTableSize() {
         return table.forward.getFingerTableSize();

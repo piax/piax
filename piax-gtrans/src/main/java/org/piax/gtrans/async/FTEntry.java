@@ -27,37 +27,56 @@ import org.piax.gtrans.ov.ring.rq.DdllKeyRange;
  * an entry of a finger table
  */
 public class FTEntry implements Cloneable, Serializable {
+    final boolean isLocal;
     private List<Node> nodes = new ArrayList<>();
-    public DdllKeyRange range;
+    private DdllKeyRange range;
     private Map<Class<? extends RQAdapter<?>>, Object> extData = null;
+
+    public FTEntry(LocalNode node, boolean isLocal) {
+        nodes.add(node);
+        this.isLocal = true;
+    }
 
     public FTEntry(Node node) {
         nodes.add(node);
+        this.isLocal = false;
     }
 
     public FTEntry(List<Node> nodes) {
         this.nodes.addAll(nodes);
+        this.isLocal = false;
     }
     
-    public <T> void putCollectedData(
-            Class<? extends RQAdapter<T>> ext, T data) {
+    // XXX: このクラスでRQAdapterを使うのは良くない
+    public void putCollectedData(Class<? extends RQAdapter<?>> clazz,
+            Object data) {
         if (extData == null) {
             extData = new HashMap<>();
         }
-        extData.put(ext, data);
+        extData.put(clazz, data);
     }
 
-    @SuppressWarnings("unchecked")
-    public <T> T getCollectedData(
-            Class<? extends RQAdapter<T>> clazz) {
+    public Object getLocalCollectedData(Class<? extends RQAdapter<?>> clazz) {
+        if (isLocal) {
+            LocalNode local = (LocalNode)getNode();
+            return local.getTopStrategy().getLocalCollectedData(clazz);
+        }
         if (extData == null) {
             return null;
         }
-        return (T) extData.get(clazz);
+        return extData.get(clazz);
     }
-    
-    public Map<Class<? extends RQAdapter<?>>, Object> getCollectedDataSet() {
-        return extData;
+
+    public DdllKeyRange getRange() {
+        if (isLocal) {
+            LocalNode local = (LocalNode)getNode();
+            return new DdllKeyRange(local.key, true, local.succ.key, false);
+        }
+        return range;
+    }
+
+    public void setRange(DdllKeyRange range) {
+        this.range = range;
     }
 
     @Override
@@ -103,15 +122,6 @@ public class FTEntry implements Cloneable, Serializable {
     // XXX:
     public boolean needUpdate() {
         return (nodes.size() < SuzakuStrategy.SUCCESSOR_LIST_SIZE);
-    }
-
-    /**
-     * update this entry as the local entry (where its index == LOCALINDEX).
-     * 
-     * @param vnode
-     */
-    public void updateLocalEntry(Node vnode) {
-        // empty
     }
 
     public List<Node> allNodes() {

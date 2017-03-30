@@ -152,16 +152,10 @@ public class RQStrategy extends NodeStrategy {
         return (RQAdapter<T>) adapters.get(clazz);
     }
 
-    @SuppressWarnings({ "rawtypes", "unchecked" })
-    public Map<Class<? extends RQAdapter<?>>, Object> getLocalCollectedDataSet() {
-        Map<Class<? extends RQAdapter<?>>, Object> map = new HashMap<>();
-        for (Map.Entry f0 : adapters.entrySet()) {
-            Map.Entry<Class<? extends RQAdapter<Object>>, RQAdapter<Object>> f
-                    = (Map.Entry<Class<? extends RQAdapter<Object>>, RQAdapter<Object>>)f0;
-            RQAdapter<Object> adapter = f.getValue();
-            map.put(f.getKey(), adapter.getCollectedData(n));
-        }
-        return map;
+    @Override
+    public Object getLocalCollectedData(Class<? extends RQAdapter<?>> clazz) {
+        RQAdapter<?> adapter = getRegisteredAdapter(clazz);
+        return adapter.getCollectedData(n);
     }
 
     @Override
@@ -170,53 +164,45 @@ public class RQStrategy extends NodeStrategy {
         if (ent == null) {
             return null;
         }
-        boolean isBackward = fromDist < 0;
+        final boolean isBackward = fromDist < 0;
         int index = FingerTable.getFTIndex(Math.abs(fromDist));
         int index2 = FingerTable.getFTIndex(Math.abs(toDist));
-        IntStream stream;
         Indirect<DdllKey> from = new Indirect<>();
         Indirect<DdllKey> to = new Indirect<>();
-        if (index < index2) {
-            stream = IntStream.rangeClosed(index, index2 - 1);
-        } else {
-            stream = IntStream.rangeClosed(index2 + 1, index);
-        }
-        System.out.println("chk0: isB=" + isBackward + ", index=" + index + ", index2=" + index2);
-        boolean isBackward0 = isBackward;
-        Map<Class<? extends RQAdapter<?>>, List<Object>> tmp = 
-        stream.mapToObj(i ->
-            {
-                if (i == FingerTable.LOCALINDEX) {
-                    if (from.val == null) from.val = n.key;
-                    to.val = n.succ.key;
-                    return getLocalCollectedDataSet();
-                } else {
-                    FTEntry e = getFingerTableEntry(isBackward0, i);
-                    if (e != null) {
-                        if (e.range != null) {
-                            if (from.val == null) from.val = e.range.from;
-                            to.val = e.range.to;
-                        }
-                        return e.getCollectedDataSet();
-                    } else {
-                        return null;
+        // System.out.println("chk0: isB=" + isBackward + ", index=" + index + ", index2=" + index2);
+        // index から index2 までのFTEntryを集約し，FTEntryに格納する
+        for (Map.Entry<Class<? extends RQAdapter<?>>, RQAdapter<?>> aEnt
+                : adapters.entrySet()) {
+            Class<? extends RQAdapter<?>> clazz = aEnt.getKey();
+            RQAdapter<?> adapter = aEnt.getValue();
+            IntStream stream;
+            if (index < index2) {
+                stream = IntStream.rangeClosed(index, index2 - 1);
+            } else {
+                stream = IntStream.rangeClosed(index2 + 1, index);
+            }
+            List<Object> vals = stream.mapToObj(i -> {
+                // XXX: getFIngerTableEntryの実体はSuzakuStrategyにある．
+                // RQStrategyがSuzakuStrategyと密接に関連しているので，
+                // RQStrategy extends SuzakuStrategyとしたほうが素直かもしれない．
+                // (k-abe)
+                FTEntry e = getFingerTableEntry(isBackward, i);
+                if (e != null) {
+                    DdllKeyRange range = e.getRange();
+                    if (range != null) {
+                        if (from.val == null) from.val = range.from;
+                        to.val = range.to;
                     }
+                    return e.getLocalCollectedData(adapter.getClazz());
+                } else {
+                    return null;
                 }
-                // Map<Class<? extends RQadapter<?>>, Object>
             }).filter(Objects::nonNull)
-            .flatMap(map -> map.entrySet().stream())
-            // Map.Entry<Class<? extends RQadapter<?>>, Object>
-            .collect(Collectors.groupingBy(e -> e.getKey(),
-                    Collectors.mapping(e -> e.getValue(), Collectors.toList())));
-
-        ent.range = new DdllKeyRange(from.val, true, to.val, false);
-        for (Map.Entry<Class<? extends RQAdapter<?>>, List<Object>> e: tmp.entrySet()) {
-            Class<? extends RQAdapter<Object>> clazz
-                    = (Class<? extends RQAdapter<Object>>)e.getKey();
-            RQAdapter<Object> adapter = getRegisteredAdapter(clazz);
-            ent.putCollectedData(clazz, adapter.reduceCollectedData(e.getValue()));
+            .collect(Collectors.toList());
+            // it is not necessary to do every iteration...
+            ent.setRange(new DdllKeyRange(from.val, true, to.val, false));
+            ent.putCollectedData(clazz, adapter.reduceCollectedData(vals));
         }
-
         return ent;
     }
 

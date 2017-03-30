@@ -28,6 +28,11 @@ public class RQRange extends DdllKeyRange {
         this(node, new Range<DdllKey>(key, true, key, true));
     }
 
+    // a single point
+    public RQRange(Node node, DdllKey key, Integer[] ids) {
+        this(node, new Range<DdllKey>(key, true, key, true), ids);
+    }
+
     public RQRange(Node node, DdllKey from, DdllKey to, Integer[] ids) {
         super(from, true, to, false);
         this.delegate = node;
@@ -43,7 +48,16 @@ public class RQRange extends DdllKeyRange {
         this.delegate = node;
         this.ids = ids;
     }
-    
+
+    @Override
+    public RQRange newRange(DdllKey from, boolean fromInclusive,
+            DdllKey to, boolean toInclusive) {
+        if (isSingleton()) {
+            return new RQRange(delegate, from).assignSubId(this);
+        }
+        return new RQRange(delegate, from, to, ids).assignSubId(this);
+    }
+
     public Node getNode() {
         return delegate;
     }
@@ -149,7 +163,7 @@ public class RQRange extends DdllKeyRange {
         return this;
     }
 
-    public void assignSubId(RQRange parent) {
+    public RQRange assignSubId(RQRange parent) {
         if (!isSameRange(parent)) {
             Integer[] ids = new Integer[parent.ids.length + 1];
             System.arraycopy(parent.ids, 0, ids, 0, parent.ids.length);
@@ -158,5 +172,6 @@ public class RQRange extends DdllKeyRange {
         } else {
             this.ids = parent.ids; // no copy ok?
         }
+        return this;
     }
 }

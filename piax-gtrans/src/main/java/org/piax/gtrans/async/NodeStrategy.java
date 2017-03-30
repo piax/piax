@@ -89,6 +89,11 @@ public abstract class NodeStrategy {
     public FTEntry getFingerTableEntry(boolean isBackward, int index) {
         return getLower().getFingerTableEntry(isBackward, index);
     }
+    
+    // tentative solution
+    public Object getLocalCollectedData(Class<? extends RQAdapter<?>> clazz) {
+        return getLower().getLocalCollectedData(clazz);
+    }
 
     public int getMessages4Join() {
         return getLower().getMessages4Join();

@@ -47,7 +47,7 @@ public class FingerTable {
         this.table = new FlexibleArray<FTEntry>(LOCALINDEX);
         // we have to use distinct instances, local1 and local2, because
         // they will be modified.
-        FTEntry local1 = new FTEntry(vnode);
+        FTEntry local1 = new FTEntry(vnode, true);
         // -1th entry is the local node 
         set(LOCALINDEX, local1);
         FTEntry local2 = new FTEntry(vnode);
@@ -103,9 +103,7 @@ public class FingerTable {
 
     FTEntry getFTEntry(int index) {
         FTEntry ent = table.get(index);
-        if (index == LOCALINDEX) {
-            ent.updateLocalEntry(vnode);
-        } else if (index == 0) {
+        if (index == 0) {
             // successor and predecessor are managed by the lower layer
             Node latest = isBackward ? vnode.pred : vnode.succ;
             if (latest == null) {

@@ -19,11 +19,12 @@ import org.piax.gtrans.RemoteValue;
 import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.TransOptions.ResponseType;
 import org.piax.gtrans.async.EventExecutor;
+import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.async.NodeFactory;
 import org.piax.gtrans.ov.async.ddll.DdllStrategy;
-import org.piax.gtrans.ov.async.rq.RQAggregateAdapter;
 import org.piax.gtrans.ov.async.rq.RQAdapter;
-import org.piax.gtrans.ov.async.rq.RQRange;
+import org.piax.gtrans.ov.async.rq.RQAggregateAdapter;
+import org.piax.gtrans.ov.async.rq.RQConditionalAdapter;
 import org.piax.gtrans.ov.async.rq.RQStrategy.RQNodeFactory;
 import org.piax.gtrans.ov.async.suzaku.SuzakuStrategy;
 import org.piax.gtrans.ov.async.suzaku.SuzakuStrategy.SuzakuNodeFactory;
@@ -38,7 +39,7 @@ public class TestAggr extends AsyncTestBase {
         TransOptions opts = new TransOptions();
         opts.setResponseType(ResponseType.AGGREGATE);
         testRQ1(new SuzakuNodeFactory(3), opts,
-                receiver -> new AggrProvider(receiver),
+                receiver -> new AggrTestAdapter(receiver),
                 new Range<Integer>(100, true, 400, false),
                 Arrays.asList(1110), "[]");
     }
@@ -50,9 +51,21 @@ public class TestAggr extends AsyncTestBase {
         TransOptions opts = new TransOptions();
         opts.setResponseType(ResponseType.DIRECT);
         testRQ1(new SuzakuNodeFactory(3), opts,
-                receiver -> new AggrProvider(receiver),
+                receiver -> new AggrTestAdapter(receiver),
                 new Range<Integer>(0, true, 500, true),
                 Arrays.asList(11111), "[]");
+    }
+
+    @Test
+    public void testCondQuery1() {
+        SuzakuStrategy.UPDATE_FINGER_PERIOD.set(10*1000);
+        DdllStrategy.pingPeriod.set(0);
+        TransOptions opts = new TransOptions();
+        opts.setResponseType(ResponseType.AGGREGATE);
+        testRQ1(new SuzakuNodeFactory(3), opts,
+                receiver -> new CondTestAdapter(receiver, 0b10101),
+                new Range<Integer>(0, true, 500, true),
+                Arrays.asList(0, 200, 400), "[]");
     }
 
     private void testRQ1(NodeFactory base, 
@@ -98,8 +111,8 @@ public class TestAggr extends AsyncTestBase {
         }
     }
 
-    public static class AggrProvider extends RQAggregateAdapter<Integer> {
-        public AggrProvider(Consumer<RemoteValue<Integer>> resultReceiver) {
+    public static class AggrTestAdapter extends RQAggregateAdapter<Integer> {
+        public AggrTestAdapter(Consumer<RemoteValue<Integer>> resultReceiver) {
             super(resultReceiver);
         }
 
@@ -116,14 +129,45 @@ public class TestAggr extends AsyncTestBase {
             return CompletableFuture.completedFuture(k);
         }
         @Override
-        public boolean match(RQRange queryRange, DdllKeyRange range,
-                Integer val) {
-            return queryRange.contains(range);
-        }
-        @Override
         public Integer reduce(Integer a, Integer b) {
             System.out.println("REDUCE: " + a + " and " + b);
             return a + b;
+        }
+    }
+
+    public static class CondTestAdapter extends RQConditionalAdapter<Integer, Integer> {
+        int bitmap;
+        public CondTestAdapter(Consumer<RemoteValue<Integer>> resultReceiver, int bitmap) {
+            super(resultReceiver);
+            this.bitmap = bitmap;
+        }
+
+        @Override
+        public CompletableFuture<Integer> get(RQAdapter<Integer> received,
+                DdllKey key) {
+            int k = (int)key.getPrimaryKey();
+            return CompletableFuture.completedFuture(k);
+        }
+        @Override
+        public Integer getCollectedData(LocalNode localNode) {
+            //  key     value (in binrary)
+            //    0  ->     1
+            //  100  ->    10
+            //  200  ->   100
+            //  300  ->  1000
+            int k = (int)(localNode.key.getPrimaryKey()) / 100;
+            return 1 << k;
+        }
+        @Override
+        public boolean match(DdllKeyRange range, Integer val) {
+            boolean rc = (this.bitmap & val) != 0;
+            System.out.println("bitmap=" + bitmap
+                    + ", val=" + val + ", range=" + range + ", rc=" + rc);
+            return rc;
+        }
+        @Override
+        public Integer reduce(Integer a, Integer b) {
+            return a | b;
         }
     }
 }
