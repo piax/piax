@@ -81,7 +81,7 @@ public class RPCBench extends Util {
      
 
     public static <E extends PeerLocator> void main(String[] args) {
-        Net ntype = Net.EMU;//.UDP;
+        Net ntype = Net.NETTY;
         printf("- start -%n");
         printf("- locator type: %s%n", ntype);
 

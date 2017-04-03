@@ -8,14 +8,8 @@
 
 package test.chordsharp;
 
-import java.io.IOException;
-
 import org.piax.common.PeerLocator;
-import org.piax.common.TransportId;
-import org.piax.gtrans.ChannelTransport;
-import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.ov.ring.RingManager;
-import org.piax.gtrans.ov.sg.UnavailableException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

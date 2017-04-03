@@ -28,25 +28,25 @@ public class NodeArray4Test {
     
     static Node left(int n) {
         Node node = nodes[n];
-        int l = (Integer) node.left.key.primaryKey;
+        int l = (Integer) node.left.key.rawKey;
         return nodes[l];
     }
     
     static Node right(int n) {
         Node node = nodes[n];
-        int r = (Integer) node.right.key.primaryKey;
+        int r = (Integer) node.right.key.rawKey;
         return nodes[r];
     }
     
     static Node leftRight(int n) {
-        int l = (Integer) nodes[n].left.key.primaryKey;
-        int r = (Integer) nodes[l].right.key.primaryKey;
+        int l = (Integer) nodes[n].left.key.rawKey;
+        int r = (Integer) nodes[l].right.key.rawKey;
         return nodes[r];
     }
     
     static Node rightLeft(int n) {
-        int r = (Integer) nodes[n].right.key.primaryKey;
-        int l = (Integer) nodes[r].left.key.primaryKey;
+        int r = (Integer) nodes[n].right.key.rawKey;
+        int l = (Integer) nodes[r].left.key.rawKey;
         return nodes[l];
     }
 
@@ -72,7 +72,7 @@ public class NodeArray4Test {
             x += ", left failed or deleted";
         } else if (leftRight(n) != node) {
             x += ", left inconsistent (left's right = "
-                    + leftRight(n).key.primaryKey + ")";
+                    + leftRight(n).key.rawKey + ")";
         } else if (left(n).rNum == null || !left(n).rNum.equals(node.lNum)) {
             x += ", num inconsistent with left";
         }
@@ -80,7 +80,7 @@ public class NodeArray4Test {
             x += ", right failed or deleted";
         } else if (rightLeft(n) != node) {
             x += ", right inconsistent (right's left = "
-                    + rightLeft(n).key.primaryKey + ")";
+                    + rightLeft(n).key.rawKey + ")";
         } else if (! right(n).lNum.equals(node.rNum)) {
             x += ", num inconsistent with right";
         }
@@ -164,7 +164,7 @@ public class NodeArray4Test {
     }
     
     public static Stat getLiveLeftStat(Node me) {
-        int kk = (Integer) me.key.primaryKey;
+        int kk = (Integer) me.key.rawKey;
         int lIx = (kk - 1 + nodes.length) % nodes.length;
         while (!isAlive(nodes[lIx])) {
             lIx = (lIx - 1 + nodes.length) % nodes.length;
@@ -180,7 +180,7 @@ public class NodeArray4Test {
     public static InsertPoint findLiveLeft2(Node me) {
         Node n = me;
         for (int i = 0; i < NeighborSet.getDefaultNeighborSetSize(); i++) {
-            int ix = (Integer) n.left.key.primaryKey;
+            int ix = (Integer) n.left.key.rawKey;
             n = nodes[ix];
             if (n.isOnline() && n.getMode() != Mode.OUT) {
                 return new InsertPoint(n.me, n.right);

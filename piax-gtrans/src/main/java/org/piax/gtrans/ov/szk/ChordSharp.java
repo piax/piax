@@ -103,7 +103,7 @@ public class ChordSharp<E extends Endpoint> extends RQManager<E> implements
     public FTEntrySet getFingers(DdllKey key, int x, int y, int k,
             FTEntrySet given) throws NoSuchKeyException {
         ChordSharpVNode<E> vnode =
-                (ChordSharpVNode<E>) keyHash.get(key.getPrimaryKey());
+                (ChordSharpVNode<E>) keyHash.get(key.getRawKey());
         if (vnode == null) {
             throw new NoSuchKeyException("getFingers: no such key: " + key);
         }
@@ -113,7 +113,7 @@ public class ChordSharp<E extends Endpoint> extends RQManager<E> implements
     @Override
     public FTEntry[][] getFingerTable(DdllKey key) throws NoSuchKeyException {
         ChordSharpVNode<E> vnode =
-                (ChordSharpVNode<E>) keyHash.get(key.getPrimaryKey());
+                (ChordSharpVNode<E>) keyHash.get(key.getRawKey());
         if (vnode == null) {
             throw new NoSuchKeyException("getFingerTable: no such key: " + key);
         }
@@ -139,11 +139,13 @@ public class ChordSharp<E extends Endpoint> extends RQManager<E> implements
             else {
                 e = vnode.backwardTable.getFTEntry(level);
             }
-            ret.add(e.link);
-            if (e.successors != null) {
-                Arrays.stream(e.successors).forEach((link) -> {
-                    ret.add(link);
-                });
+            if (e != null) {
+                ret.add(e.link);
+                if (e.successors != null) {
+                    Arrays.stream(e.successors).forEach((link) -> {
+                        ret.add(link);
+                    });
+                }
             }
             return ret.toArray(new Link[0]);
         }
@@ -215,7 +217,7 @@ public class ChordSharp<E extends Endpoint> extends RQManager<E> implements
         for (SubRange range : req.subRanges) {
             // check the specified key's existence
             Link link = range.getLink();
-            ChordSharpVNode<?> vn = getVNode(link.key.getPrimaryKey());
+            ChordSharpVNode<?> vn = getVNode(link.key.getRawKey());
             if (vn == null || !vn.getLocalLink().equals(link)) {
                 req.unavailableKeys.add(link.key);
                 continue;
@@ -465,7 +467,7 @@ public class ChordSharp<E extends Endpoint> extends RQManager<E> implements
                 if (!queryRange.contains(me) && queryRange.contains(succ)
                         && queryRange.from.compareTo(succ) != 0) {
                     SubRange dkr =
-                            new SubRange(getVNode(me.getPrimaryKey())
+                            new SubRange(getVNode(me.getRawKey())
                                     .getLocalLink(), queryRange.from,
                                     queryRange.fromInclusive, succ, false);
                     dkr.assignSubId(queryRange);

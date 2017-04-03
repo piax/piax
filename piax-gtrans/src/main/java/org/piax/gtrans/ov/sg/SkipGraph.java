@@ -18,7 +18,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Deque;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -833,9 +832,9 @@ public class SkipGraph<E extends Endpoint> extends RPCInvoker<SkipGraphIf<E>, E>
             // 実行するかどうかを決定する．
             // find()で求めた左端のノードnでは，n.keyはrangeには含まれていないため，
             // range.isInでチェックしてアクションの実行を省略する．
-            boolean doAction = range.contains((Comparable<?>)n.key.getPrimaryKey());
+            boolean doAction = range.contains((Comparable<?>)n.key.getRawKey());
             try {
-                eqr = stub.invokeExecQuery(n.key.getPrimaryKey(), null, qid,
+                eqr = stub.invokeExecQuery(n.key.getRawKey(), null, qid,
                                 doAction, query);
             } catch (Throwable e) {
                 assert e instanceof NoSuchKeyException
@@ -963,7 +962,7 @@ public class SkipGraph<E extends Endpoint> extends RPCInvoker<SkipGraphIf<E>, E>
             }
             // 例えば key 0 しか存在しないときに，find() で -1 を検索すると，一周して
             // key 0 が帰ってくる．この場合はクエリ対象が存在しないので終了する．
-            if (!wrapAround && keyComp.compare(rawFromKey, n.key.getPrimaryKey()) < 0) {
+            if (!wrapAround && keyComp.compare(rawFromKey, n.key.getRawKey()) < 0) {
                 logger.debug("forwardQueryLeft: finish (no node is smaller than rawFromKey)");
                 break;
             }
@@ -975,7 +974,7 @@ public class SkipGraph<E extends Endpoint> extends RPCInvoker<SkipGraphIf<E>, E>
             // 実行するかどうかを決定する．
             boolean doAction = true;
             try {
-                eqr = stub.invokeExecQuery(n.key.getPrimaryKey(), nRight,
+                eqr = stub.invokeExecQuery(n.key.getRawKey(), nRight,
                                 qid, doAction, query);
             } catch (RightNodeMismatch e) {
                 // XXX: not tested
