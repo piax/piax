@@ -1380,8 +1380,8 @@ public class SuzakuStrategy extends NodeStrategy {
             if (lnk == null) {
                 return false;
             }
-            int key = (int)(n.key.getPrimaryKey());
-            int lnkkey = (int)(lnk.key.getPrimaryKey());
+            int key = (int)(n.key.getRawKey());
+            int lnkkey = (int)(lnk.key.getRawKey());
             if ((key / 10 + d) % nodes.length != lnkkey / 10) {
                 return false;
             }

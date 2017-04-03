@@ -35,6 +35,7 @@ import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.async.NetworkParams;
 import org.piax.gtrans.async.NodeFactory;
 import org.piax.gtrans.async.Sim;
+import org.piax.gtrans.netty.NettyLocator;
 import org.piax.gtrans.ov.async.ddll.DdllStrategy;
 import org.piax.gtrans.ov.async.ddll.DdllStrategy.DdllNodeFactory;
 import org.piax.gtrans.ov.async.ddll.DdllStrategy.SetRNakMode;
@@ -62,8 +63,8 @@ public class AsyncTest {
         TransportId transId = new TransportId("SimTrans");
         if (REALTIME) {
             Peer peer = Peer.getInstance(new PeerId("P" + key));
-            DdllKey k = new DdllKey(key, new UniqId(peer.getPeerId()), "", null);
-            PeerLocator loc = newLocator("emu", key);
+            DdllKey k = new DdllKey(key, peer.getPeerId(), "", null);
+            PeerLocator loc = newLocator("netty", key);
             ChannelTransport<?> trans;
             try {
                 trans = peer.newBaseChannelTransport(loc);
@@ -88,6 +89,9 @@ public class AsyncTest {
             peerLocator = new EmuLocator(vport);
         } else if (locatorType.equals("udp")) {
             peerLocator = new UdpLocator(
+                    new InetSocketAddress("localhost", 10000 + vport));
+        } else if (locatorType.equals("netty")){
+            peerLocator = new NettyLocator(
                     new InetSocketAddress("localhost", 10000 + vport));
         } else {
             peerLocator = new TcpLocator(
@@ -391,7 +395,7 @@ public class AsyncTest {
             List<?> rvals = results.stream()
                     .filter(Objects::nonNull)
                     .map(rv -> rv.getValue())   // extract DdllKey
-                    .map(rv -> rv.getPrimaryKey()) // extract Comparable
+                    .map(rv -> rv.getRawKey()) // extract Comparable
                     .sorted()
                     .collect(Collectors.toList());
             System.out.println("RVAL=" + rvals);

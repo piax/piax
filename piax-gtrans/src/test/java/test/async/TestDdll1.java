@@ -199,7 +199,7 @@ public class TestDdll1 {
             System.exit(-1);
         }
 
-        locatorType = "emu";
+        locatorType = "netty";
         numNode = 5;
         if (args.length == 1) {
             numNode = Integer.parseInt(args[0]);
