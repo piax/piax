@@ -1,9 +1,6 @@
 package org.piax.gtrans.netty.loctrans;
 
-import io.netty.bootstrap.ServerBootstrap;
-
 import java.io.IOException;
-import java.net.InetSocketAddress;
 
 import org.piax.common.PeerId;
 import org.piax.common.TransportId;
@@ -14,9 +11,6 @@ import org.piax.gtrans.netty.NettyChannelTransport;
 import org.piax.gtrans.netty.NettyLocator;
 import org.piax.gtrans.netty.NettyMessage;
 import org.piax.gtrans.netty.NettyRawChannel;
-import org.piax.gtrans.netty.bootstrap.SslBootstrap;
-import org.piax.gtrans.netty.bootstrap.TcpBootstrap;
-import org.piax.gtrans.netty.bootstrap.UdtBootstrap;
 
 public class LocatorChannelTransport extends NettyChannelTransport<NettyLocator> {
     

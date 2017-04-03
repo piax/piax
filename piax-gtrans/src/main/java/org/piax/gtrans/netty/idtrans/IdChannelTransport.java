@@ -112,7 +112,7 @@ public class IdChannelTransport extends NettyChannelTransport<PrimaryKey> {
         }
         return ret;
     }
-    
+
     private NettyLocator getUnmarkedAndMarkLocator(List<LocatorEntry> list) {
         NettyLocator ret = null;
         for(ListIterator<LocatorEntry> it=list.listIterator(list.size()); it.hasPrevious();){
@@ -130,7 +130,7 @@ public class IdChannelTransport extends NettyChannelTransport<PrimaryKey> {
         // find the node itself or the adjacent neighbor node, then get raw channel for it.
         return null; // XXX not implemented yet.
     }
-    
+
     private NettyRawChannel<PrimaryKey> getIndirectRawChannel(PrimaryKey key) throws IOException {
      // if there is only indirect candidate
         NettyRawChannel<PrimaryKey> raw = getExistingRawChannel(key.getNeighbors());
