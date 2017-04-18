@@ -70,9 +70,10 @@ public class SGMessagingFramework<E extends Endpoint> {
 
     private void removeExpiredFromMsgStore() {
         final long now = System.currentTimeMillis();
-        for (Iterator<Integer> it = msgStore.keySet().iterator(); it.hasNext();) {
-            int msgId = it.next();
-            SGRequestMessage<E> entry = msgStore.get(msgId);
+        for (Iterator<Map.Entry<Integer, SGRequestMessage<E>>> it = msgStore.entrySet().iterator(); it.hasNext();) {
+            Map.Entry<Integer, SGRequestMessage<E>> map_entry = it.next();
+            int msgId = map_entry.getKey();
+            SGRequestMessage<E> entry = map_entry.getValue();
 
             if (entry.timestamp < (now - entry.expire)) {
                 logger.debug("removing expired: {}", msgId);
