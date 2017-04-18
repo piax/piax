@@ -1,6 +1,6 @@
 /*
  * SGMessagingFramework.java - SGMessagingFramework implementation of SkipGraph.
- * 
+ *
  * Copyright (c) 2015 Kota Abe / PIAX development team
  *
  * You can redistribute it and/or modify it under either the terms of
@@ -57,33 +57,33 @@ public class SGMessagingFramework<E extends Endpoint> {
     final private SkipGraph<E> sg;
     public static int MSGSTORE_EXPIRATION_TASK_PERIOD = 60 * 1000; // 60sec
     TimerTask cleaner;
-    
+
     public SGMessagingFramework(SkipGraph<E> sg) {
         this.sg = sg;
         this.myLocator = sg.myLocator;
         sg.timer.schedule(cleaner = new TimerTask() {
-        		public void run() {
-        			removeExpiredFromMsgStore();
-        		}
+            public void run() {
+                removeExpiredFromMsgStore();
+            }
         }, MSGSTORE_EXPIRATION_TASK_PERIOD, MSGSTORE_EXPIRATION_TASK_PERIOD);
     }
-    
-    	private void removeExpiredFromMsgStore() {
-    		final long now = System.currentTimeMillis();
-    		for (Iterator<Integer> it = msgStore.keySet().iterator(); it.hasNext();) {
-    			int msgId = it.next();
-    			SGRequestMessage<E> entry = msgStore.get(msgId);
 
-    			if (entry.timestamp < (now - entry.expire)) {
-    				logger.debug("removing expired: {}", msgId);
-    				it.remove();
-    			}
-    		}
-    	}
-    	    
-    	public void fin() {
-    		cleaner.cancel();
-    	}
+    private void removeExpiredFromMsgStore() {
+        final long now = System.currentTimeMillis();
+        for (Iterator<Integer> it = msgStore.keySet().iterator(); it.hasNext();) {
+            int msgId = it.next();
+            SGRequestMessage<E> entry = msgStore.get(msgId);
+
+            if (entry.timestamp < (now - entry.expire)) {
+                logger.debug("removing expired: {}", msgId);
+                it.remove();
+            }
+        }
+    }
+
+    public void fin() {
+        cleaner.cancel();
+    }
 
 
     int getNextMsgId() {
@@ -111,12 +111,12 @@ public class SGMessagingFramework<E extends Endpoint> {
             boolean expectAck) {
         prepareReceivingReply(msg, expectAck, false);
     }
-    
+
     /**
      * prepare for receiving a reply for this message.
      * register this message to {@link SGMessagingFramework#msgStore} and
      * schedule a timer for ack timeout.
-     * 
+     *
      * @param msg
      * @param expectAck
      *            timeout for the Ack in msec
@@ -232,7 +232,7 @@ public class SGMessagingFramework<E extends Endpoint> {
 
     /**
      * a base class for a request message.
-     * 
+     *
      * @author k-abe
      */
     public static abstract class SGRequestMessage<E extends Endpoint> implements Serializable {
@@ -253,7 +253,7 @@ public class SGMessagingFramework<E extends Endpoint> {
 
         /**
          * create a SGRequestMessage instance.
-         * 
+         *
          * @param sgmf the messaging framework.
          * @param isRoot indicate whether this message is root.
          * @param isDirectReturn
@@ -305,7 +305,7 @@ public class SGMessagingFramework<E extends Endpoint> {
 
         /**
          * create a SGRequestMessage instance.
-         * 
+         *
          * @param msg   copy source
          */
         public SGRequestMessage(SGRequestMessage<E> msg) {
@@ -326,7 +326,7 @@ public class SGMessagingFramework<E extends Endpoint> {
         /**
          * send this message to the specified destination.
          * <p>
-         * when this message is arrived at the destination node, 
+         * when this message is arrived at the destination node,
          * an ACK message is automatically sent to the sender node and
          * {@link #execute(SkipGraph)} is called at the destination node.
          * <p>
@@ -336,16 +336,16 @@ public class SGMessagingFramework<E extends Endpoint> {
          * <p>
          * if we do not receive an ACK message
          * within {@link SGMessagingFramework#ACK_TIMEOUT_THRES},
-         * {@link #onTimeOut(SkipGraph)} is called. 
+         * {@link #onTimeOut(SkipGraph)} is called.
          * <p>
          * Note:
          * the message is stored in SGMessagingFramework#msgStore
          * for handling ACK and reply messages.
-         * <p> 
+         * <p>
          * the message is removed when (1) ACK is received (if
          * isDirectReturn==true), or (2) a reply message is received
          * (otherwise).
-         * 
+         *
          * @param dst   destination node
          */
         @SuppressWarnings("unchecked")
@@ -357,16 +357,16 @@ public class SGMessagingFramework<E extends Endpoint> {
         }
 
         /**
-         * returns if we have not received any ACK within 
+         * returns if we have not received any ACK within
          * {@link SGMessagingFramework#ACK_TIMEOUT_THRES}.
-         * 
+         *
          * @return true if ACK is timed-out.
          */
         public boolean isAckTimedOut() {
             if (ackReceived) {
                 return false;
             }
-            return (timestamp != 0 && (System.currentTimeMillis() - timestamp > 
+            return (timestamp != 0 && (System.currentTimeMillis() - timestamp >
                     ACK_TIMEOUT_THRES));
         }
 
@@ -389,7 +389,7 @@ public class SGMessagingFramework<E extends Endpoint> {
         /**
          * this method is called when this message is received at the receiver
          * node.
-         *  
+         *
          * @param sg    an instance of SkipGraph
          */
         public abstract void execute(SkipGraph<E> sg);
@@ -397,7 +397,7 @@ public class SGMessagingFramework<E extends Endpoint> {
         /**
          * this method is called when a reply message is received at the sender
          * node.
-         * 
+         *
          * @param sg    an instance of SkipGraph
          * @param reply the reply message
          * @return true if this instance is no longer required at the sender
@@ -407,7 +407,7 @@ public class SGMessagingFramework<E extends Endpoint> {
                 SGReplyMessage<E> reply);
 
         /**
-         * this method is called when the ack for this message is timed out. 
+         * this method is called when the ack for this message is timed out.
          *
          * @param sg    an instance of SkipGraph
          */
@@ -416,7 +416,7 @@ public class SGMessagingFramework<E extends Endpoint> {
 
     /**
      * a base class for a reply message.
-     * 
+     *
      * @author k-abe
      */
     public static abstract class SGReplyMessage<E extends Endpoint> implements Serializable {
@@ -433,10 +433,10 @@ public class SGMessagingFramework<E extends Endpoint> {
 
         /**
          * compose a reply message against the specified SGRequestMessage.
-         * 
+         *
          * @param sg        Skip Graph instance
          * @param received  the SGRequestMessage for which this reply message
-         *                  is sent 
+         *                  is sent
          */
         public SGReplyMessage(SkipGraph<E> sg, SGRequestMessage<E> received) {
             this.sender = sg.myLocator;
