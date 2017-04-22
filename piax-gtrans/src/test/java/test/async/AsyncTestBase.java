@@ -48,7 +48,7 @@ public class AsyncTestBase {
     static LocalNode[] nodes;
     static StarLatencyProvider latencyProvider;
 
-    static boolean REALTIME = false;
+    static boolean REALTIME = true;
 
     static LocalNode createNode(NodeFactory factory, int key) {
         return createNode(factory, key, NetworkParams.HALFWAY_DELAY);
@@ -315,12 +315,12 @@ public class AsyncTestBase {
         }
         @Override
         public CompletableFuture<Integer> get(RQAdapter<Integer> received,
-                DdllKey key) {
-            return CompletableFuture.completedFuture(result(key));
+                LocalNode node) {
+            return CompletableFuture.completedFuture(result(node.key));
         }
 
         int result(DdllKey key) {
-            int pkey = (int) key.getPrimaryKey();
+            int pkey = (int) key.getRawKey();
             return pkey;
         }
     }
@@ -335,18 +335,18 @@ public class AsyncTestBase {
 
         @Override
         public CompletableFuture<Integer> get(RQAdapter<Integer> received,
-                DdllKey key) {
+                LocalNode node) {
             SlowValueProvider r = (SlowValueProvider) received;
             CompletableFuture<Integer> f = new CompletableFuture<>();
             EventExecutor.sched("slowvalueprovider", r.delay, () -> {
-                System.out.println("provider finished: " + key);
-                f.complete(result(key));
+                System.out.println("provider finished: " + node.key);
+                f.complete(result(node.key));
             });
             return f;
         }
 
         int result(DdllKey key) {
-            int pkey = (int) key.getPrimaryKey();
+            int pkey = (int) key.getRawKey();
             return pkey;
         }
     }
@@ -363,13 +363,13 @@ public class AsyncTestBase {
 
         @Override
         public CompletableFuture<Integer> get(RQAdapter<Integer> received,
-                DdllKey key) {
+                LocalNode node) {
             SlowCacheValueProvider p = (SlowCacheValueProvider)received; 
             CompletableFuture<Integer> f = new CompletableFuture<>();
-            int val = result(key);
+            int val = result(node.key);
             EventExecutor.sched("slowvalueprovider", p.delay, () -> {
                 System.out.println(
-                        "provider finished: " + key + ", count=" + p.count);
+                        "provider finished: " + node.key + ", count=" + p.count);
                 f.complete(val);
             });
             count++;
@@ -377,7 +377,7 @@ public class AsyncTestBase {
         }
 
         int result(DdllKey key) {
-            int pkey = (int) key.getPrimaryKey();
+            int pkey = (int) key.getRawKey();
             return count * 1000 + pkey;
         }
     }
@@ -388,8 +388,8 @@ public class AsyncTestBase {
         }
         @Override
         public CompletableFuture<Integer> get(RQAdapter<Integer> received,
-                DdllKey key) {
-            throw new Error("Error(" + key + ")");
+                LocalNode node) {
+            throw new Error("Error(" + node.key + ")");
         }
     }
 }

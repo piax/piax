@@ -74,6 +74,7 @@ public class EventExecutor {
                     if (rem <= 0) {
                         Event ev0 = timeq.poll();
                         assert ev == ev0;
+                        System.out.println("got event:" + ev);
                         return ev;
                     }
                 }

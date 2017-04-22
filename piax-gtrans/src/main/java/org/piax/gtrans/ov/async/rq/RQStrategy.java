@@ -1,5 +1,6 @@
 package org.piax.gtrans.ov.async.rq;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -31,9 +32,9 @@ import org.piax.gtrans.async.Log;
 import org.piax.gtrans.async.Node;
 import org.piax.gtrans.async.NodeFactory;
 import org.piax.gtrans.async.NodeStrategy;
-import org.piax.gtrans.ov.async.rq.RQEvent.GetLocalValueRequest;
 import org.piax.gtrans.ov.async.rq.RQAdapter.InsertionPointAdapter;
 import org.piax.gtrans.ov.async.rq.RQAdapter.KeyAdapter;
+import org.piax.gtrans.ov.async.rq.RQEvent.GetLocalValueRequest;
 import org.piax.gtrans.ov.async.suzaku.FingerTable;
 import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.gtrans.ov.ring.rq.DdllKeyRange;

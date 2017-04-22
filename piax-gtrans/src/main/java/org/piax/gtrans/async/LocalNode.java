@@ -21,12 +21,15 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.piax.common.Endpoint;
+import org.piax.common.ObjectId;
 import org.piax.common.PeerId;
 import org.piax.common.TransportId;
 import org.piax.common.subspace.Range;
 import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.RPCException;
+import org.piax.gtrans.RPCIf;
+import org.piax.gtrans.RPCInvoker;
 import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.async.Event.LocalEvent;
 import org.piax.gtrans.async.Event.Lookup;
@@ -50,6 +53,8 @@ public class LocalNode extends Node {
     public Node succ, pred;
     public NodeMode mode = NodeMode.OUT;
     private boolean isFailed = false;   // for simulation
+    
+    Object appData;
 
     // to support multi-keys
     private static Map<PeerId, SortedSet<LocalNode>> localNodeMap
@@ -97,7 +102,14 @@ public class LocalNode extends Node {
             this.sender = EventSenderSim.getInstance();
         } else {
             try {
-                this.sender = new EventSenderNet(transId, trans);
+                // XXX it should be raw transport.
+                EventSenderNet ev = (EventSenderNet)trans.getPeer().getRPCObject(RPCInvoker.createObjId(trans, transId));
+                if (ev == null) {
+                    this.sender = new EventSenderNet(transId, trans);
+                }
+                else {
+                    this.sender = ev;
+                }
             } catch (IdConflictException | IOException e) {
                 throw e;
             }
@@ -422,6 +434,7 @@ public class LocalNode extends Node {
     
     public <T> void rangeQueryAsync(Collection<? extends Range<?>> ranges,
             RQAdapter<T> adapter, TransOptions opts) {
+        System.out.println("top=" + getTopStrategy());
         getTopStrategy().rangeQuery(ranges, adapter, opts);
     }
 
@@ -527,5 +540,13 @@ public class LocalNode extends Node {
 
     public void cleanup() {
         localNodeMap.get(peerId).remove(this);
+    }
+
+    public void setAppData(Object appData) {
+        this.appData = appData;
+    }
+
+    public Object getAppData() {
+        return appData;
     }
 }

@@ -59,7 +59,7 @@ public class TestOverlay {
     static int seq = 0;
 
     // Test targets
-    static final Net net = Net.NETTY;
+    static final Net net = Net.EMU;//Net.NETTY;
     static final Ov ov = Ov.SZK;
 
     public String newId() {

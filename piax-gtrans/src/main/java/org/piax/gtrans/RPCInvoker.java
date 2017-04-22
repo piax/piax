@@ -254,7 +254,7 @@ public class RPCInvoker<T extends RPCIf, E extends Endpoint> implements RPCIf {
 
     // TODO think!
     // objIdの作成方法
-    private ObjectId createObjId(ChannelTransport<? super E> trans,
+    public static ObjectId createObjId(ChannelTransport<?> trans,
             ObjectId rpcId) {
         return new ObjectId(trans.getTransportIdPath().toString()
                 + ":" + rpcId.toString());
