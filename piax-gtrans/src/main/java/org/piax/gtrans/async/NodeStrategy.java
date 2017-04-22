@@ -1,17 +1,14 @@
 package org.piax.gtrans.async;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Consumer;
 
 import org.piax.common.subspace.Range;
-import org.piax.gtrans.RemoteValue;
 import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.async.Event.Lookup;
 import org.piax.gtrans.async.Event.LookupDone;
+import org.piax.gtrans.ov.async.rq.RQAdapter;
 import org.piax.gtrans.ov.ddll.DdllKey;
 
 public abstract class NodeStrategy {
@@ -34,11 +31,7 @@ public abstract class NodeStrategy {
         return n;
     }
 
-    public List<Node> getAllLinks2() {
-        return Arrays.asList(getSuccessor(), n, getPredecessor());
-    }
-
-    public List<List<Node>> getRoutingEntries() {
+    public List<FTEntry> getRoutingEntries() {
         return getLower().getRoutingEntries();
     }
 
@@ -54,27 +47,52 @@ public abstract class NodeStrategy {
         getLower().initInitialNode();
     }
 
-    public void joinAfterLookup(LookupDone lookupDone,
+    public void join(LookupDone lookupDone,
             CompletableFuture<Boolean> joinFuture) {
-        getLower().joinAfterLookup(lookupDone, joinFuture);
+        getLower().join(lookupDone, joinFuture);
     }
 
     public void leave(CompletableFuture<Boolean> leaveComplete) {
         getLower().leave(leaveComplete);
     }
-    
 
-    public void rangeQuery(Collection<? extends Range<?>> ranges, Object query,
-            TransOptions opts, Consumer<RemoteValue<?>> resultsReceiver) {
-        getLower().rangeQuery(ranges, query, opts, resultsReceiver);
+    public <T> void rangeQuery(Collection<? extends Range<?>> ranges,
+            RQAdapter<T> adapter, TransOptions opts) {
+        getLower().rangeQuery(ranges, adapter, opts);
     }
 
+    public <T> void forwardQueryLeft(Range<?> range, int num,
+            RQAdapter<T> adapter, TransOptions opts) {
+        getLower().forwardQueryLeft(range, num, adapter, opts);
+    }
+    
     public void handleLookup(Lookup lookup) {
         getLower().handleLookup(lookup);
     }
+
+    public void foundMaybeFailedNode(Node node) {
+        getLower().foundMaybeFailedNode(node);
+    }
+
+    /**
+     * get a (cloned) FTEntry for sending to a remote node.
+     * 
+     * @param fromDist
+     * @param toDist
+     * @return a FTEntry
+     */
+    public FTEntry getFTEntryToSend(int fromDist, int toDist) {
+        return getLower().getFTEntryToSend(fromDist, toDist);
+    }
+
+    // tentative solution
+    public FTEntry getFingerTableEntry(boolean isBackward, int index) {
+        return getLower().getFingerTableEntry(isBackward, index);
+    }
     
-    public void foundFailedNode(Node node) {
-        getLower().foundFailedNode(node);
+    // tentative solution
+    public Object getLocalCollectedData(Class<? extends RQAdapter<?>> clazz) {
+        return getLower().getLocalCollectedData(clazz);
     }
 
     public int getMessages4Join() {

@@ -117,7 +117,7 @@ import org.slf4j.LoggerFactory;
  * 詳細は、各メソッドの説明を見て欲しい。
  * 
  */
-public class RPCInvoker<T extends RPCIf, E extends Endpoint> implements RPCIf, Serializable {
+public class RPCInvoker<T extends RPCIf, E extends Endpoint> implements RPCIf {
 	/*--- logger ---*/
     private static final Logger logger = 
             LoggerFactory.getLogger(RPCInvoker.class);

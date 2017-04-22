@@ -57,4 +57,10 @@ public class DdllKeyRange extends CircularRange<DdllKey> {
     public String toString() {
         return rangeString();
     }
+
+    @Override
+    public Range<DdllKey> newRange(DdllKey from, boolean fromInclusive,
+            DdllKey to, boolean toInclusive) {
+        return new DdllKeyRange(from, fromInclusive, to, toInclusive);
+    }
 }

@@ -23,8 +23,8 @@ import java.util.NavigableSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
 
-import org.piax.gtrans.async.Node;
 import org.piax.gtrans.async.LocalNode;
+import org.piax.gtrans.async.Node;
 import org.piax.gtrans.async.Option.IntegerOption;
 import org.piax.gtrans.ov.async.ddll.DdllEvent.PropagateNeighbors;
 import org.piax.gtrans.ov.ddll.DdllKey;

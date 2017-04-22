@@ -6,30 +6,37 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.piax.common.Endpoint;
+import org.piax.common.PeerId;
 import org.piax.common.TransportId;
 import org.piax.common.subspace.Range;
 import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.RPCException;
-import org.piax.gtrans.RemoteValue;
 import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.async.Event.LocalEvent;
 import org.piax.gtrans.async.Event.Lookup;
 import org.piax.gtrans.async.Event.RequestEvent;
 import org.piax.gtrans.async.EventException.RPCEventException;
 import org.piax.gtrans.async.EventException.RetriableException;
+import org.piax.gtrans.async.EventException.TimeoutException;
 import org.piax.gtrans.async.EventSender.EventSenderNet;
 import org.piax.gtrans.async.EventSender.EventSenderSim;
-import org.piax.gtrans.async.Sim.LookupStat;
+import org.piax.gtrans.ov.async.rq.RQAdapter;
 import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.util.UniqId;
 
@@ -44,6 +51,10 @@ public class LocalNode extends Node {
     public NodeMode mode = NodeMode.OUT;
     private boolean isFailed = false;   // for simulation
 
+    // to support multi-keys
+    private static Map<PeerId, SortedSet<LocalNode>> localNodeMap
+        = new ConcurrentHashMap<>();
+
     // stackable strategies
     ArrayList<NodeStrategy> strategies = new ArrayList<>();
     Map<Class<? extends NodeStrategy>, NodeStrategy> strategyMap = new HashMap<>();
@@ -55,21 +66,33 @@ public class LocalNode extends Node {
     Map<Integer, RequestEvent<?, ?>> ongoingRequests = new HashMap<>();
     // requests that are not ack'ed
     Map<Integer, RequestEvent<?, ?>> unAckedRequests = new HashMap<>();
+    
+    // maybe-failed nodes
+    // TODO: purge entries by timer!
+    // TODO: define accessors!
+    public Set<Node> maybeFailedNodes = new HashSet<>();
 
     public static LocalNode newLocalNode(TransportId transId,
             ChannelTransport<?> trans, Comparable<?> rawkey,
-            NodeStrategy strategy, int latency)
+            NodeStrategy strategy) 
             throws IdConflictException, IOException {
         DdllKey ddllkey = new DdllKey(rawkey, new UniqId(trans.getPeerId()));
-        LocalNode node =
-                new LocalNode(transId, trans, ddllkey, strategy, latency);
+        LocalNode node = new LocalNode(transId, trans, ddllkey);
+        node.pushStrategy(strategy);
         return node;
     }
 
     public LocalNode(TransportId transId, ChannelTransport<?> trans,
-            DdllKey ddllkey, NodeStrategy strategy, int latency)
+            DdllKey ddllkey)
             throws IdConflictException, IOException {
-        super(ddllkey, trans == null ? null : trans.getEndpoint(), latency);
+        super(ddllkey, trans == null ? null : trans.getEndpoint());
+        assert getInstance(ddllkey) == this; 
+        assert trans == null || this.peerId.equals(trans.getPeerId());
+
+        // to support multi-keys
+        localNodeMap.computeIfAbsent(peerId, k -> new TreeSet<>())
+            .add(this);
+
         if (trans == null) {
             this.sender = EventSenderSim.getInstance();
         } else {
@@ -79,9 +102,11 @@ public class LocalNode extends Node {
                 throw e;
             }
         }
-        pushStrategy(strategy);
     }
-
+    
+    /*
+     * strategy
+     */
     public void pushStrategy(NodeStrategy s) {
         strategies.add(s);
         strategyMap.put(s.getClass(), s);
@@ -123,7 +148,7 @@ public class LocalNode extends Node {
      * @throws ObjectStreamException
      */
     private Object writeReplace() {
-        Node repl = new Node(this.key, this.addr, this.latency);
+        Node repl = new Node(this.key, this.addr);
         return repl;
     }
 
@@ -133,12 +158,6 @@ public class LocalNode extends Node {
         this.succChange = succChange;
     }
 
-    public static void verbose(String s) {
-        if (Sim.verbose) {
-            System.out.println(s);
-        }
-    }
-    
     @Override
     public String toString() {
         return super.toString() + (isFailed ? "(failed)" : ""); 
@@ -165,6 +184,11 @@ public class LocalNode extends Node {
         }
     }
 
+    public List<LocalNode> getSiblings() {
+        SortedSet<LocalNode> set = localNodeMap.get(peerId);
+        return new ArrayList<>(set);
+    }
+
     /**
      * post a event
      * @param ev
@@ -176,7 +200,10 @@ public class LocalNode extends Node {
     public void post(Event ev, FailureCallback failure) {
         if (ev instanceof RequestEvent && failure == null) {
             RequestEvent<?, ?> req = (RequestEvent<?, ?>)ev;
-            failure = exc -> req.future.completeExceptionally(exc);
+            failure = exc -> {
+                Log.verbose(() -> "post: got exception: " + exc + ", " + ev);
+                req.future.completeExceptionally(exc);
+            };
         }
         ev.sender = ev.origin = this;
         ev.route.add(this);
@@ -184,11 +211,11 @@ public class LocalNode extends Node {
             ev.routeWithFailed.add(this);
         }
         if (ev.delay == Node.NETWORK_LATENCY) {
-            ev.delay = latency(ev.receiver);
+            ev.delay = EventExecutor.latency(this, ev.receiver);
         }
         ev.failureCallback = failure;
         ev.vtime = EventExecutor.getVTime() + ev.delay;
-        if (Sim.verbose) {
+        if (Log.verbose) {
             if (ev.delay != 0) {
                 System.out.println(this + "|send event " + ev + ", (arrive at T"
                         + ev.vtime + ")");
@@ -201,31 +228,37 @@ public class LocalNode extends Node {
             try {
                 sender.send(ev);
             } catch (RPCException e) {
-                verbose(this + " got exception: " + e);
+                Log.verbose(() -> this + " got exception: " + e);
                 failure.run(new RPCEventException(e));
             }
         }
     }
 
     /**
-     * post an Event to a node
-     * @param dest
-     * @param ev
+     * forward the event to the specified node.
+     * 
+     * @param dest  destination node
+     * @param ev    event
      */
     public void forward(Node dest, Event ev) {
         this.forward(dest, ev, null);
     }
 
     public void forward(Node dest, Event ev, FailureCallback failure) {
+        if (failure == null) {
+            failure = exc -> {
+                Log.verbose(() -> "forward: got exception: " + exc + ", " + ev);
+            };
+        }
         assert ev.origin != null;
         ev.beforeForwardHook(this);
         ev.sender = this;
         ev.failureCallback = failure;
         if (ev.delay == Node.NETWORK_LATENCY) {
-            ev.delay = latency(dest);
+            ev.delay = EventExecutor.latency(this, dest);
         }
         ev.receiver = dest;
-        if (Sim.verbose) {
+        if (Log.verbose) {
             if (ev.delay != 0) {
                 System.out.println(this + "|forward to " + dest + ", " + ev
                         + ", (arrive at T" + ev.vtime + ")");
@@ -237,7 +270,7 @@ public class LocalNode extends Node {
             try {
                 sender.forward(ev);
             } catch (RPCException e) {
-                verbose(this + " got exception: " + e);
+                Log.verbose(()-> this + " got exception: " + e);
                 failure.run(new RPCEventException(e));
             }
         }
@@ -256,6 +289,11 @@ public class LocalNode extends Node {
 
     public int getMessages4Join() {
         return getTopStrategy().getMessages4Join();
+    }
+
+    public void addMaybeFailedNode(Node node) {
+        maybeFailedNodes.add(node);
+        getTopStrategy().foundMaybeFailedNode(node);
     }
 
     /**
@@ -324,24 +362,29 @@ public class LocalNode extends Node {
         }
         this.mode = NodeMode.INSERTING;
         this.introducer = introducer;
-        Lookup ev = new Lookup(introducer, key, this);
-        ev.getCompletableFuture().whenComplete((results, exc) -> {
-            if (exc != null) {
+        Consumer<Throwable> retry = (exc) -> {
+            Log.verbose(() -> this + ": joinAsync failed: " + exc
+                    + ", count=" + count);
+            // reset insertionStartTime ?
+            if (((exc instanceof RetriableException) 
+                    || (exc instanceof TimeoutException))
+                    && count > 1) {
+                joinAsync(introducer, count - 1, joinFuture);
+            } else {
                 joinFuture.completeExceptionally(exc);
+            }
+        };
+        Lookup ev = new Lookup(introducer, key);
+        ev.onReply((results, exc) -> {
+            if (exc != null) {
+                retry.accept(exc);
             } else {
                 CompletableFuture<Boolean> future = new CompletableFuture<>();
-                getTopStrategy().joinAfterLookup(results, future);
+                getTopStrategy().join(results, future);
                 future.whenComplete((rc, exc2) -> {
                     if (exc2 != null) {
-                        verbose(this + ": joinAfterLookup failed:" + exc2
-                                + ", count=" + count);
                         mode = NodeMode.OUT;
-                        // reset insertionStartTime ?
-                        if (exc2 instanceof RetriableException && count > 1) {
-                            joinAsync(introducer, count - 1, joinFuture);
-                        } else {
-                            joinFuture.completeExceptionally(exc2);
-                        }
+                        retry.accept(exc2);
                         return;
                     }
                     if (rc) {
@@ -355,10 +398,12 @@ public class LocalNode extends Node {
         post(ev);
     }
 
-    public CompletableFuture<Boolean> leaveAsync() throws IllegalStateException {
+    public CompletableFuture<Boolean> leaveAsync() {
         System.out.println("Node " + this + " leaves");
         if (mode != NodeMode.INSERTED) {
-           throw new IllegalStateException("not inserted");
+            CompletableFuture<Boolean> f = new CompletableFuture<>();
+            f.completeExceptionally(new IllegalStateException("not inserted"));
+            return f;
         }
         mode = NodeMode.DELETING;
         CompletableFuture<Boolean> future = new CompletableFuture<>();
@@ -366,13 +411,23 @@ public class LocalNode extends Node {
             getTopStrategy().leave(future);
         });
         post(ev);
-        return future;
+        CompletableFuture<Boolean> f = future.thenApply(rc -> {
+            if (rc) {
+                cleanup();
+            }
+            return rc;
+        });
+        return f;
     }
     
-    public void rangeQueryAsync(Collection<? extends Range<?>> ranges,
-            Object query, TransOptions opts,
-            Consumer<RemoteValue<?>> resultsReceiver) {
-        getTopStrategy().rangeQuery(ranges, query, opts, resultsReceiver);
+    public <T> void rangeQueryAsync(Collection<? extends Range<?>> ranges,
+            RQAdapter<T> adapter, TransOptions opts) {
+        getTopStrategy().rangeQuery(ranges, adapter, opts);
+    }
+
+    public <T> void forwardQueryLeftAsync(Range<?> range, int num,
+            RQAdapter<T> adapter, TransOptions opts) {
+        getTopStrategy().forwardQueryLeft(range, num, adapter, opts);
     }
 
     public void fail() {
@@ -390,73 +445,48 @@ public class LocalNode extends Node {
     }
 
     /**
-     * process a lookup event
-     * @param lookup
+     * returns a stream of "active" nodes, that are nodes suitable for routing.
+     * @return stream of active nodes
      */
-    public void handleLookup(Lookup lookup) {
-        getTopStrategy().handleLookup(lookup);
+    public Stream<Node> getActiveNodeStream() {
+        List<FTEntry> allNodes = getTopStrategy().getRoutingEntries();
+
+        // collect [me, successor)
+        List<Node> successors = new ArrayList<>();
+        for (LocalNode v : getSiblings()) {
+            successors.add(v.succ);
+        }
+        // XXX: merge maybeFailedNode over siblings
+        return allNodes.stream()
+                .map(ent -> ent.allNodes())
+                .flatMap(list -> {
+                    Optional<Node> p = list.stream()
+                            .filter(node -> 
+                                (successors.contains(node)
+                                || !maybeFailedNodes.contains(node))) 
+                            .findFirst();
+                    return streamopt(p);
+                })
+                .distinct();
     }
 
-    /**
-     * keyを検索し，統計情報を stat に追加する．
-     * 
-     * @param key
-     * @param stat
-     */
-    public void lookup(DdllKey key, LookupStat stat) {
-        System.out.println(this + " lookup " + key);
-        long start = EventExecutor.getVTime();
-        Lookup ev = new Lookup(this, key, this);
-        ev.getCompletableFuture().whenComplete((done, exc) -> {
-            if (exc != null) {
-                System.out.println("Lookup failed: " + exc);
-                return;
-            }
-            if (done.req.key.compareTo(done.pred.key) != 0) {
-                System.out.println("Lookup error: req.key=" + done.req.key
-                        + ", " + done.pred.key);
-                System.out.println(done.pred.toStringDetail());
-                //dispatcher.dump();
-                stat.lookupFailure.addSample(1);
-            } else {
-                stat.lookupFailure.addSample(0);
-            }
-            // 先頭と末尾は検索開始ノードなので2を減じる．
-            // ただし，検索開始ノード＝検索対象ノードの場合 0 ホップ
-            int h = Math.max(done.routeWithFailed.size() - 2, 0);
-            stat.hops.addSample(h);
-            int nfails = done.routeWithFailed.size() - done.route.size();
-            //stat.failedNodes.addSample(nfails);
-            stat.failedNodes.addSample(nfails > 0 ? 1 : 0);
-            long end = EventExecutor.getVTime();
-            long elapsed = (int) (end - start);
-            stat.time.addSample((double) elapsed);
-            if (nfails > 0) {
-                System.out.println("lookup done!: " + done.route + " (" + h
-                        + " hops, " + elapsed + ", actual route="
-                        + done.routeWithFailed + ", evid="
-                        + done.req.getEventId() + ")");
-            } else {
-                System.out.println("lookup done: " + done.route + " (" + h
-                        + " hops, " + elapsed + ")");
-            }
-        });
-        this.post(ev);
+    private static <T> Stream<T> streamopt(Optional<T> opt) {
+        if (opt.isPresent()) {
+            return Stream.of(opt.get());
+        } else {
+            return Stream.empty();
+        }
     }
 
     public Node getClosestPredecessor(DdllKey k) {
         Comparator<Node> comp = getComparator(k);
-        List<Node> nodes = getTopStrategy().getAllLinks2();
-        //Collections.sort(nodes, comp);
-        //System.out.println("nodes = " + nodes);
-        Optional<Node> n = nodes.stream().max(comp);
-        //System.out.println("key = " + key);
-        //System.out.println("max = " + n);
+        Optional<Node> n = getActiveNodeStream().max(comp);
         return n.orElse(null);
     }
 
     public static Comparator<Node> getComparator(DdllKey k) {
         Comparator<Node> comp = (Node a, Node b) -> {
+            assert a != b;
             // aの方がkに近ければ正の数，bの方がkeyに近ければ負の数を返す
             // [a, key, b) -> plus
             // [b, key, a) -> minus
@@ -480,31 +510,22 @@ public class LocalNode extends Node {
      */
     public List<Node> getNodesForFix(DdllKey k) {
         Comparator<Node> comp = getComparator(k);
-        List<Node> nodes = getTopStrategy().getAllLinks2();
-        List<Node> cands = nodes.stream()
-                .filter(p -> Node.isOrdered(this.key, true, p.key, k, false))
-                .sorted(comp)
-                .distinct()
-                .collect(Collectors.toCollection(ArrayList::new));
+        List<FTEntry> all = getTopStrategy().getRoutingEntries();
+        List<Node> cands = all.stream()
+            .map(ent -> ent.allNodes())
+            .flatMap(list -> list.stream())
+            .filter(p -> Node.isOrdered(this.key, true, p.key, k, false))
+            .distinct()
+            .sorted(comp)
+            .collect(Collectors.toCollection(ArrayList::new));
         if (cands.get(cands.size() - 1) == this) {
             cands.remove(cands.size() - 1);
             cands.add(0, this);
         }
         return cands;
     }
-    
-    /*public static void main(String args[]) {
-        DdllKey k0 = new DdllKey(0, new UniqId("0"));
-        DdllKey k1 = new DdllKey(1, new UniqId("1"));
-        DdllKey k2 = new DdllKey(2, new UniqId("2"));
-        DdllKey k3 = new DdllKey(3, new UniqId("3"));
-        Node n0 = new Node(k0, null, 0);
-        Node n1 = new Node(k1, null, 0);
-        Node n2 = new Node(k2, null, 0);
-        Comparator<Node> comp = LocalNode.getComparator(k1);
-        Node[] nodes = new Node[]{n0, n1, n2};
-        List<Node> x = Arrays.asList(nodes).stream()
-                .sorted(comp).collect(Collectors.toList());
-        System.out.println(x);
-    }*/
+
+    public void cleanup() {
+        localNodeMap.get(peerId).remove(this);
+    }
 }

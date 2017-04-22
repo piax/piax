@@ -1,4 +1,6 @@
-package org.piax.gtrans.async;
+package test.async.sim;
+
+import static org.piax.gtrans.async.EventExecutor.random;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -7,7 +9,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -20,13 +21,25 @@ import org.piax.common.TransportId;
 import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.Peer;
+import org.piax.gtrans.async.Event.Lookup;
+import org.piax.gtrans.async.EventException;
+import org.piax.gtrans.async.EventExecutor;
+import org.piax.gtrans.async.FailureCallback;
+import org.piax.gtrans.async.LatencyProvider.StarLatencyProvider;
+import org.piax.gtrans.async.LocalNode;
+import org.piax.gtrans.async.Log;
+import org.piax.gtrans.async.NetworkParams;
+import org.piax.gtrans.async.Node;
 import org.piax.gtrans.async.Node.NodeMode;
+import org.piax.gtrans.async.NodeFactory;
+import org.piax.gtrans.async.Option;
 import org.piax.gtrans.async.Option.BooleanOption;
 import org.piax.gtrans.async.Option.DoubleOption;
 import org.piax.gtrans.async.Option.EnumOption;
 import org.piax.gtrans.async.Option.IntegerOption;
 import org.piax.gtrans.ov.async.ddll.DdllStrategy;
 import org.piax.gtrans.ov.async.ddll.DdllStrategy.DdllNodeFactory;
+import org.piax.gtrans.ov.async.ddll.DdllStrategy.RetryMode;
 import org.piax.gtrans.ov.async.suzaku.SuzakuStrategy;
 import org.piax.gtrans.ov.async.suzaku.SuzakuStrategy.SuzakuNodeFactory;
 import org.piax.gtrans.ov.ddll.DdllKey;
@@ -55,10 +68,6 @@ public class Sim {
         private Algorithm(GetFactory method) {
             this.method = method;
         }
-    }
-
-    public enum RetryMode {
-        IMMED, CONST, RANDOM
     }
 
     @FunctionalInterface
@@ -120,9 +129,8 @@ public class Sim {
         });
 
     public static LocalNode[] nodes;
-    public static boolean verbose = false;
     public static BooleanOption verbOpt = new BooleanOption(false, "-verbose",
-            val -> {Sim.verbose = val;});
+            val -> {Log.verbose = val;});
     public static EnumOption<Algorithm> algorithm
         = new EnumOption<>(Algorithm.class, Algorithm.DDLL, "-algorithm");
     // use PIAX network as the underlying network
@@ -130,17 +138,15 @@ public class Sim {
     public static BooleanOption netOpt = new BooleanOption(false, "-net");
     public static EnumOption<ExpType> exptype
         = new EnumOption<>(ExpType.class, ExpType.CONCURRENTJOIN, "-type");
-    public static Random rand = new MersenneTwister();
     @SuppressWarnings("unused")
     private static IntegerOption seedOption = new IntegerOption(-1, "-seed", val -> {
         if (val == -1) {
-            rand = new MersenneTwister();
+            EventExecutor.setRandom(new MersenneTwister());
         } else {
-            rand = new MersenneTwister(val);
+            EventExecutor.setRandom(new MersenneTwister(val));
         }
     });
-    public static EnumOption<RetryMode> retryMode
-        = new EnumOption<>(RetryMode.class, RetryMode.IMMED, "-retrymode");
+ 
     public static EnumOption<InsertOrder> insOrder
         = new EnumOption<InsertOrder>(InsertOrder.class, InsertOrder.RANDOM,
                 "-insorder");
@@ -151,7 +157,8 @@ public class Sim {
         = new DoubleOption(convertSecondsToVTime(15*60), "-avelife");
     public static DoubleOption failRate
         = new DoubleOption(0.0, "-failRate");
-
+    StarLatencyProvider latencyProvider = new StarLatencyProvider();
+    
     public static void main(String[] args) {
         // force load to initialize Options
         EventExecutor.load();
@@ -183,6 +190,7 @@ public class Sim {
     }
 
     private void sim(Algorithm algorithm, ExpType exptype) {
+        EventExecutor.setLatencyProvider(latencyProvider);
         NodeFactory factory = algorithm.method.getFactory();
         exptype.method.run(this, factory);
     }
@@ -261,8 +269,7 @@ public class Sim {
         int c = 0;
         for (int i = 0; i < nodes.length; i++) {
             if (nodes[i].mode == NodeMode.INSERTED) {
-                System.out.println(i + ": " + nodes[i].toStringDetail()
-                        + ", latency=" + nodes[i].latency);
+                System.out.println(i + ": " + nodes[i].toStringDetail());
                 c++;
             }
         }
@@ -281,7 +288,7 @@ public class Sim {
         return createNode(factory, key, NetworkParams.HALFWAY_DELAY);
     }
 
-    private LocalNode createNode(NodeFactory factory, int key, int latency) {
+    private LocalNode createNode(NodeFactory factory, int key, long latency) {
         TransportId transId = new TransportId("SimTrans");
         if (netOpt.value()) {
             Peer peer = Peer.getInstance(new PeerId("P" + key));
@@ -290,15 +297,21 @@ public class Sim {
             ChannelTransport<?> trans;
             try {
                 trans = peer.newBaseChannelTransport(loc);
-                return factory.createNode(transId, trans, k, latency);
+                LocalNode n = new LocalNode(transId, trans, k);
+                factory.setupNode(n);
+                latencyProvider.add(n, latency);
+                return n;
             } catch (IOException | IdConflictException e) {
                 throw new Error("something wrong!", e);
             }
         } else {
-            UniqId p = new UniqId("P");
+            UniqId p = new UniqId("P" + key);
             DdllKey k = new DdllKey(key, p, "", null);
             try {
-                return factory.createNode(null, null, k, latency);
+                LocalNode n = new LocalNode(null, null, k);
+                factory.setupNode(n);
+                latencyProvider.add(n, latency);
+                return n;
             } catch (IOException | IdConflictException e) {
                 throw new Error("something wrong!", e);
             }
@@ -317,6 +330,53 @@ public class Sim {
                     new InetSocketAddress("localhost", 10000 + vport));
         }
         return peerLocator;
+    }
+    
+    /**
+     * keyを検索し，統計情報を stat に追加する．
+     * 
+     * @param key
+     * @param stat
+     */
+    public static void lookup(LocalNode from, DdllKey key, LookupStat stat) {
+        System.out.println(from + " lookup " + key);
+        long start = EventExecutor.getVTime();
+        Lookup ev = new Lookup(from, key);
+        ev.onReply((done, exc) -> {
+            if (exc != null) {
+                System.out.println("Lookup failed: " + exc);
+                return;
+            }
+            if (done.req.key.compareTo(done.pred.key) != 0) {
+                System.out.println("Lookup error: req.key=" + done.req.key
+                        + ", " + done.pred.key);
+                System.out.println(done.pred.toStringDetail());
+                //dispatcher.dump();
+                stat.lookupFailure.addSample(1);
+            } else {
+                stat.lookupFailure.addSample(0);
+            }
+            // 先頭と末尾は検索開始ノードなので2を減じる．
+            // ただし，検索開始ノード＝検索対象ノードの場合 0 ホップ
+            int h = Math.max(done.routeWithFailed.size() - 2, 0);
+            stat.hops.addSample(h);
+            int nfails = done.routeWithFailed.size() - done.route.size();
+            //stat.failedNodes.addSample(nfails);
+            stat.failedNodes.addSample(nfails > 0 ? 1 : 0);
+            long end = EventExecutor.getVTime();
+            long elapsed = (int) (end - start);
+            stat.time.addSample((double) elapsed);
+            if (nfails > 0) {
+                System.out.println("lookup done!: " + done.route + " (" + h
+                        + " hops, " + elapsed + ", actual route="
+                        + done.routeWithFailed + ", evid="
+                        + done.req.getEventId() + ")");
+            } else {
+                System.out.println("lookup done: " + done.route + " (" + h
+                        + " hops, " + elapsed + ")");
+            }
+        });
+        from.post(ev);
     }
 
     private void simpleTest(NodeFactory factory) {
@@ -392,7 +452,7 @@ public class Sim {
             long delay2, Runnable after) {
         List<Integer> order = new ArrayList<>();
         IntStream.range(from,  to).forEach(order::add);
-        Collections.shuffle(order, rand);
+        Collections.shuffle(order, EventExecutor.random());
         insertSeq(nodes, order, 0, delay1, delay2, after);
     }
 
@@ -480,7 +540,7 @@ public class Sim {
     private void distLookupTest(LocalNode[] nodes, LookupStat s, long tFrom,
             int tWidth, boolean[] ignFrom, boolean[] ignTo, int nquery) {
         for (int i = 0; i < nquery; i++) {
-            long t = tFrom + rand.nextInt(tWidth);
+            long t = tFrom + random().nextInt(tWidth);
             EventExecutor.sched(t, () -> {
                 lookup1(nodes, s, ignFrom, ignTo);
             });
@@ -491,14 +551,14 @@ public class Sim {
             boolean[] ignFrom, boolean[] ignTo) {
         int from, dest;
         do {
-            from = rand.nextInt(nodes.length);
+            from = random().nextInt(nodes.length);
         } while (nodes[from].mode != NodeMode.INSERTED
                 || (ignFrom != null && ignFrom[from]));
         do {
-            dest = rand.nextInt(nodes.length);
+            dest = random().nextInt(nodes.length);
         } while (nodes[dest].mode != NodeMode.INSERTED
                 || (ignTo != null && ignTo[dest]));
-        nodes[from].lookup(nodes[dest].key, s);
+        lookup(nodes[from], nodes[dest].key, s);
     }
 
     Runnable lookupTestFull(LocalNode[] nodes, int start, int end, LookupStat s) {
@@ -508,7 +568,7 @@ public class Sim {
                 if (nodes[from].mode != NodeMode.INSERTED) continue;
                 for (int to = start; to < end; to++) {
                     if (nodes[to].mode != NodeMode.INSERTED) continue;
-                    nodes[from].lookup(nodes[to].key, s);
+                    lookup(nodes[from], nodes[to].key, s);
                 }
             }
         };
@@ -600,7 +660,7 @@ public class Sim {
                         for (int i = 0; i < nFail; i++) {
                             int r;
                             do {
-                                r = Sim.rand.nextInt(num);
+                                r = random().nextInt(num);
                             } while (failed[r]);
                             failed[r] = true; 
                             //nodes[r].fail();
@@ -609,7 +669,7 @@ public class Sim {
                     });//);
         }
 
-        startSim(nodes, T * LOOKUP_TIMES + convertSecondsToVTime(4*60));
+        startSim(nodes, num * num * 1000 + T * LOOKUP_TIMES + convertSecondsToVTime(4*60));
         System.out.println("*****************************");
         dump(nodes);
         System.out.println("*****************************");
@@ -679,7 +739,7 @@ public class Sim {
                 for (int i = 0; i < ndel; i++) {
                     int r;
                     do {
-                        r = Sim.rand.nextInt(ndel);
+                        r = random().nextInt(ndel);
                     } while (failed[r]);
                     failed[r] = true; 
                     CompletableFuture<Boolean> future = nodes[delStart + r].leaveAsync();
@@ -725,9 +785,9 @@ public class Sim {
         StatSet msgset = new StatSet();
         int ITER = 60;
         long T = convertSecondsToVTime(30);
-        int seed = rand.nextInt();
+        int seed = random().nextInt();
         for (int i = 1; i < ITER; i++) {
-            rand.setSeed(seed);
+            random().setSeed(seed);
             msgs4Join(factory, i * T, msgset.getStat(i));
         }
         msgset.printBasicStat("joinmsgs");
@@ -740,11 +800,11 @@ public class Sim {
         int num = initial + nLater;   // 全ノード数
         LocalNode[] allNodes = new LocalNode[num];
         for (int i = 0; i < allNodes.length; i++) {
-            allNodes[i] = createNode(factory, NetworkParams.HALFWAY_DELAY, i * 10);
+            allNodes[i] = createNode(factory, i * 10, NetworkParams.HALFWAY_DELAY);
         }
         List<LocalNode> aNodes = new ArrayList<LocalNode>();
         for (int i = 0; i < nLater; i++) {
-            int j = Sim.rand.nextInt(num);
+            int j = random().nextInt(num);
             if (j == 0 || aNodes.contains(allNodes[j])) {
                 i--;
                 continue;
@@ -803,7 +863,7 @@ public class Sim {
         for (int i = 1; i < num; i++) {
             rest.add(i);
         }
-        Collections.shuffle(rest, rand);
+        Collections.shuffle(rest, random());
         ArrayList<Integer> inserted = new ArrayList<>();
         int base = 1;
         for (int i = base; i < initial; i++) {
@@ -816,7 +876,7 @@ public class Sim {
         for (int j = 1; j < 10; j += 2) {
             for (int i = 0; i < diff; i++) {
                 if (inserted.size() > 0) {
-                    int r = Sim.rand.nextInt(inserted.size());
+                    int r = random().nextInt(inserted.size());
                     int index = inserted.get(r);
                     inserted.remove(r);
                     long t = j * 10 * T;
@@ -884,7 +944,7 @@ public class Sim {
         nodes[0].joinInitialNode();
         List<Integer> order = new ArrayList<>();
         IntStream.range(1, NEND).forEach(order::add);
-        Collections.shuffle(order, rand);
+        Collections.shuffle(order, random());
         for (int i = 0; i < order.size(); i++) {
             joinLater(nodes[order.get(i)], nodes[0], i * DELTA, null);
         }
@@ -928,13 +988,13 @@ public class Sim {
         boolean[] graceful = new boolean[num];
         for (int i = 0; i < nodes.length; i++) {
             nodes[i] = createNode(factory, i * 10, NetworkParams.HALFWAY_DELAY);
-            graceful[i]= rand.nextDouble() > failRate.value();
+            graceful[i]= random().nextDouble() > failRate.value();
         }
         nodes[0].joinInitialNode();
         long T = convertSecondsToVTime(60); // 1分
         for (int i = 1; i < nodes.length; i++) {
             long s, e;
-            s = (long)(rand.nextDouble() * 100 * T);
+            s = (long)(random().nextDouble() * 100 * T);
             double dur = exponentialDist(1.0/(aveLifeTime.value()));
             e = s + (long)dur;
             LocalNode x = nodes[i];
@@ -1039,7 +1099,7 @@ public class Sim {
                         EventExecutor.sched(t, () -> {
                             for (int j = 0; j < num; j++) {
                                 LookupStat stat = alls[i0].getLookupStat(j);
-                                nodes[CENTER].lookup(nodes[j].key, stat);
+                                lookup(nodes[CENTER], nodes[j].key, stat);
                             }
                         });
                     }
@@ -1075,7 +1135,7 @@ public class Sim {
      * 指数分布に従う乱数を返す
      */
     private static double exponentialDist(double lambda) {
-        return -Math.log(1.0 - rand.nextDouble()) / lambda;
+        return -Math.log(1.0 - random().nextDouble()) / lambda;
     }
 
     /**
@@ -1189,7 +1249,7 @@ public class Sim {
             time.outputFreqDist("time", 100, false);*/
             EventExecutor.dumpMessageCounters();
         }
-        String name = factory.name();
+        String name = factory.toString();
         istats.printBasicStat("insert:" + name);
         mstats.printBasicStat("msg:" + name);
         tstats.printBasicStat("time:" + name);
@@ -1216,7 +1276,7 @@ public class Sim {
         for (int i = 0; i < n; i++) {
             int r;
             do {
-                r = rand.nextInt(MAXID);
+                r = random().nextInt(MAXID);
             } while (iset.contains(r));
             iset.add(r);
             if (i < nSlowNodes) {
@@ -1263,7 +1323,7 @@ public class Sim {
      * @param cons
      */
     private void retransTest(NodeFactory factory) {
-        if (retryMode.value() != RetryMode.RANDOM) {
+        if (DdllStrategy.retryMode.value() != RetryMode.RANDOM) {
             System.err.println("specify -retrymode RANDOM");
             System.exit(1);
         }
@@ -1294,7 +1354,7 @@ public class Sim {
             time.outputFreqDist("time", 100, false);*/
             EventExecutor.dumpMessageCounters();
         }
-        String name = factory.name();
+        String name = factory.toString();
         mstats.printBasicStat("msg:" + name);
         tstats.printBasicStat("time:" + name);
     }
@@ -1332,7 +1392,7 @@ public class Sim {
             time.outputFreqDist("time", 100, false);*/
             EventExecutor.dumpMessageCounters();
         }
-        String name = factory.name();
+        String name = factory.toString();
         istats.printBasicStat("ratio:" + name);
         
         istats.getStat(0).outputFreqDist("dist#0", 0.05, true);

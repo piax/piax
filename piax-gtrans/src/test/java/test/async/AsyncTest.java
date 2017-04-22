@@ -4,165 +4,39 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import java.io.IOException;
-import java.lang.reflect.Field;
-import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.junit.Test;
-import org.piax.common.PeerId;
-import org.piax.common.PeerLocator;
-import org.piax.common.TransportId;
 import org.piax.common.subspace.Range;
-import org.piax.gtrans.ChannelTransport;
-import org.piax.gtrans.IdConflictException;
-import org.piax.gtrans.Peer;
 import org.piax.gtrans.RemoteValue;
 import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.TransOptions.ResponseType;
+import org.piax.gtrans.TransOptions.RetransMode;
 import org.piax.gtrans.async.EventException.TimeoutException;
 import org.piax.gtrans.async.EventExecutor;
-import org.piax.gtrans.async.LocalNode;
-import org.piax.gtrans.async.NetworkParams;
+import org.piax.gtrans.async.Indirect;
+import org.piax.gtrans.async.Node;
 import org.piax.gtrans.async.NodeFactory;
-import org.piax.gtrans.async.Sim;
-import org.piax.gtrans.netty.NettyLocator;
-import org.piax.gtrans.ov.async.ddll.DdllStrategy;
 import org.piax.gtrans.ov.async.ddll.DdllStrategy.DdllNodeFactory;
-import org.piax.gtrans.ov.async.ddll.DdllStrategy.SetRNakMode;
+import org.piax.gtrans.ov.async.rq.RQAdapter;
+import org.piax.gtrans.ov.async.rq.RQAdapter.InsertionPointAdapter;
+import org.piax.gtrans.ov.async.rq.RQAdapter.KeyAdapter;
 import org.piax.gtrans.ov.async.rq.RQStrategy.RQNodeFactory;
 import org.piax.gtrans.ov.async.suzaku.SuzakuStrategy.SuzakuNodeFactory;
 import org.piax.gtrans.ov.ddll.DdllKey;
-import org.piax.gtrans.raw.emu.EmuLocator;
-import org.piax.gtrans.raw.tcp.TcpLocator;
-import org.piax.gtrans.raw.udp.UdpLocator;
-import org.piax.util.UniqId;
 
-public class AsyncTest {
-    public static class Indirect<U> {
-        U obj;
-    }
-
-    static LocalNode[] nodes;
-    static boolean REALTIME = false;
-
-    private static LocalNode createNode(NodeFactory factory, int key) {
-        return createNode(factory, key, NetworkParams.HALFWAY_DELAY);
-    }
-
-    private static LocalNode createNode(NodeFactory factory, int key, int latency) {
-        TransportId transId = new TransportId("SimTrans");
-        if (REALTIME) {
-            Peer peer = Peer.getInstance(new PeerId("P" + key));
-            DdllKey k = new DdllKey(key, peer.getPeerId(), "", null);
-            PeerLocator loc = newLocator("netty", key);
-            ChannelTransport<?> trans;
-            try {
-                trans = peer.newBaseChannelTransport(loc);
-                return factory.createNode(transId, trans, k, latency);
-            } catch (IOException | IdConflictException e) {
-                throw new Error("something wrong!", e);
-            }
-        } else {
-            UniqId p = new UniqId("P" + key);
-            DdllKey k = new DdllKey(key, p, "", null);
-            try {
-                return factory.createNode(null, null, k, latency);
-            } catch (IOException | IdConflictException e) {
-                throw new Error("something wrong!", e);
-            }
-        }
-    }
-
-    static PeerLocator newLocator(String locatorType, int vport) {
-        PeerLocator peerLocator;
-        if (locatorType.equals("emu")) {
-            peerLocator = new EmuLocator(vport);
-        } else if (locatorType.equals("udp")) {
-            peerLocator = new UdpLocator(
-                    new InetSocketAddress("localhost", 10000 + vport));
-        } else if (locatorType.equals("netty")){
-            peerLocator = new NettyLocator(
-                    new InetSocketAddress("localhost", 10000 + vport));
-        } else {
-            peerLocator = new TcpLocator(
-                    new InetSocketAddress("localhost", 10000 + vport));
-        }
-        return peerLocator;
-    }
-    
-    public static void init() {
-        Sim.verbose = true;
-        if (REALTIME) {
-            EventExecutor.realtime.set(true);
-        }
-        DdllStrategy.pingPeriod.set(10000);
-        DdllStrategy.setrnakmode.set(SetRNakMode.SETRNAK_OPT2);
-        EventExecutor.reset();
-    }
-    
-    static LocalNode[] createNodes(NodeFactory factory, int num) {
-        nodes = new LocalNode[num];
-        for (int i = 0; i < num; i++) {
-            nodes[i] = createNode(factory, i * 100, 100);
-        }
-        return nodes;
-    }
-    
-    public static void dump(LocalNode[] nodes) {
-        System.out.println("node dump:");
-        for (int i = 0; i < nodes.length; i++) {
-            System.out.println(i + ": " + nodes[i].toStringDetail()
-                    + ", latency=" + nodes[i].latency);
-        }
-    }
-
-    @SafeVarargs
-    final void checkCompleted(CompletableFuture<Boolean>... futures) {
-        for (int i = 0; i < futures.length; i++) {
-            CompletableFuture<Boolean> f = futures[i];
-            assertTrue(f.isDone());
-            try {
-                assertTrue(f.get());
-            } catch (InterruptedException | ExecutionException e) {
-                fail(e.toString());
-            }
-        }
-    }
-
-    void checkConsistent(LocalNode... nodes) {
-        int s = nodes.length;
-        for (int i = 0; i < s ; i++) {
-            assertTrue(nodes[i].succ == nodes[(i + 1) % s]);
-            assertTrue(nodes[i].pred == nodes[(i - 1 + s) % s]);
-        }
-    }
-    
-    void checkMemoryLeakage(LocalNode... nodes) {
-        int s = nodes.length;
-        for (int i = 0; i < s ; i++) {
-            Map<?, ?> m1 = (Map<?, ?>)getPrivateField(nodes[i], "ongoingRequests");
-            if (!m1.isEmpty()) {
-                System.out.println(nodes[i] + ": ongoingRequests: " + m1);
-                fail();
-            }
-            Map<?, ?> m2 = (Map<?, ?>)getPrivateField(nodes[i], "unAckedRequests");
-            if (!m2.isEmpty()) {
-                System.out.println(nodes[i] + ": unAckedRequests: " + m2);
-                fail();
-            }
-        }
-    }
-
+public class AsyncTest extends AsyncTestBase {
     @Test
     public void testDdllBasicInsDel() {
         testBasicInsDel(new DdllNodeFactory());
@@ -245,6 +119,7 @@ public class AsyncTest {
         testFix1(new SuzakuNodeFactory(3));
     }
 
+    // simple failure
     private void testFix1(NodeFactory factory) {
         System.out.println("** testFix");
         init();
@@ -275,6 +150,7 @@ public class AsyncTest {
         testFix2(new SuzakuNodeFactory(3));
     }
 
+    // leave and fail (3 nodes)
     private void testFix2(NodeFactory factory) {
         System.out.println("** testFix2");
         init();
@@ -286,11 +162,11 @@ public class AsyncTest {
             Indirect<CompletableFuture<Boolean>> f3 = new Indirect<>();
             EventExecutor.sched(10000, () -> {
                 nodes[1].fail();
-                f3.obj = nodes[2].leaveAsync();
+                f3.val = nodes[2].leaveAsync();
             });
             EventExecutor.startSimulation(30000);
-            assertNotNull(f3.obj);
-            checkCompleted(f1, f2, f3.obj);
+            assertNotNull(f3.val);
+            checkCompleted(f1, f2, f3.val);
             checkMemoryLeakage(nodes[2]);
             dump(nodes);
             checkConsistent(nodes[0]);
@@ -307,6 +183,7 @@ public class AsyncTest {
         testFix3(new SuzakuNodeFactory(3));
     }
 
+    // leave and fail (2 nodes)
     private void testFix3(NodeFactory factory) {
         System.out.println("** testFix3");
         init();
@@ -317,19 +194,20 @@ public class AsyncTest {
             Indirect<CompletableFuture<Boolean>> f2 = new Indirect<>();
             EventExecutor.sched(10000, () -> {
                 nodes[0].fail();
-                f2.obj = nodes[1].leaveAsync();
+                f2.val = nodes[1].leaveAsync();
             });
             EventExecutor.startSimulation(30000);
-            assertNotNull(f2.obj);
+            assertNotNull(f2.val);
             dump(nodes);
-            checkCompleted(f1, f2.obj);
+            checkCompleted(f1, f2.val);
             checkMemoryLeakage(nodes[1]);
         }
     }
     
+    // join and fail
     @Test
-    public void testDdllJoinFail() {
-        System.out.println("** testDdllJoinFail");
+    public void testDdllJoinFail1() {
+        System.out.println("** testDdllJoinFail1");
         init();
         nodes = createNodes(new DdllNodeFactory(), 2);
         nodes[0].joinInitialNode();
@@ -349,48 +227,340 @@ public class AsyncTest {
             }
         }
     }
+
+    // join and fail
+    @Test
+    public void testDdllJoinFail2() {
+        System.out.println("** testDdllJoinFail2");
+        init();
+        nodes = createNodes(new DdllNodeFactory(), 3);
+        nodes[0].joinInitialNode();
+        {
+            Indirect<CompletableFuture<Boolean>> f2 = new Indirect<>();
+            CompletableFuture<Boolean> f1 = nodes[1].joinAsync(nodes[0]);
+            f1.thenRun(() -> {
+                nodes[1].fail();
+                f2.val = nodes[2].joinAsync(nodes[0]);
+            });
+            EventExecutor.startSimulation(30000);
+            dump(nodes);
+            assertTrue(f1.isDone());
+            assertTrue(f2.val.isDone());
+            checkConsistent(nodes[0], nodes[2]);
+        }
+    }
     
+    // join and fail (RQStrategy)
+    @Test
+    public void testDdllJoinFail3() {
+        System.out.println("** testDdllJoinFail3");
+        init();
+        nodes = createNodes(new RQNodeFactory(new SuzakuNodeFactory(3)), 3);
+        nodes[0].joinInitialNode();
+        {
+            Indirect<CompletableFuture<Boolean>> f2 = new Indirect<>();
+            CompletableFuture<Boolean> f1 = nodes[1].joinAsync(nodes[0]);
+            f1.thenRun(() -> {
+                nodes[1].fail();
+                f2.val = nodes[2].joinAsync(nodes[0]);
+            });
+            EventExecutor.startSimulation(30000);
+            dump(nodes);
+            assertTrue(f1.isDone());
+            assertTrue(f2.val.isDone());
+            checkConsistent(nodes[0], nodes[2]);
+        }
+    }
+
+
     @Test
     public void testRQ1Aggregate() {
         TransOptions opts = new TransOptions();
         opts.setResponseType(ResponseType.AGGREGATE);
-        testRQ1(opts);
+        testRQ1(new DdllNodeFactory(), opts,
+                (receiver) -> new FastValueProvider(receiver),
+                new Range<Integer>(0, true, 500, true),
+                Arrays.asList(0, 100, 200, 300, 400));
     }
 
     @Test
     public void testRQ1Direct() {
         TransOptions opts = new TransOptions();
         opts.setResponseType(ResponseType.DIRECT);
-        testRQ1(opts);
+        testRQ1(new DdllNodeFactory(), opts, 
+                (receiver) -> new FastValueProvider(receiver),
+                new Range<Integer>(200, true, 400, false),
+                Arrays.asList(200, 300));
     }
     
-    private void testRQ1(TransOptions opts) {
-        NodeFactory factory = new RQNodeFactory(new DdllNodeFactory());
+    @Test
+    public void testRQ1NoResponse() {
+        TransOptions opts = new TransOptions();
+        opts.setResponseType(ResponseType.NO_RESPONSE);
+        testRQ1(new DdllNodeFactory(), opts, 
+                (receiver) -> new FastValueProvider(receiver),
+                new Range<Integer>(200, true, 400, false),
+                Arrays.asList());
+    }
+
+    @Test
+    public void testRQ1AggregateSlow() {
+        TransOptions opts = new TransOptions();
+        opts.setResponseType(ResponseType.AGGREGATE);
+        testRQ1(new DdllNodeFactory(), opts,
+                (receiver) -> new SlowValueProvider(receiver, 2000),
+                new Range<Integer>(200, true, 400, false),
+                Arrays.asList(200, 300));
+    }
+
+    @Test
+    public void testRQ1Timeout() {
+        TransOptions opts = new TransOptions();
+        opts.setResponseType(ResponseType.DIRECT);
+        opts.setTimeout(10000);
+        testRQ1(new DdllNodeFactory(), opts,
+                (receiver) -> new SlowValueProvider(receiver, 20000),
+                new Range<Integer>(200, true, 400, false),
+                Arrays.asList());
+    }
+
+    @Test
+    public void testRQ1AggregateSuzaku() {
+        TransOptions opts = new TransOptions();
+        opts.setResponseType(ResponseType.AGGREGATE);
+        testRQ1(new SuzakuNodeFactory(3), opts,
+                (receiver) -> new FastValueProvider(receiver),
+                new Range<Integer>(200, true, 400, false),
+                Arrays.asList(200, 300));
+    }
+
+    @Test
+    public void testRQ1DirectSuzaku() {
+        TransOptions opts = new TransOptions();
+        opts.setResponseType(ResponseType.DIRECT);
+        testRQ1(new SuzakuNodeFactory(3), opts,
+                (receiver) -> new FastValueProvider(receiver),
+                new Range<Integer>(200, true, 400, false),
+                Arrays.asList(200, 300));
+    }
+    
+    @Test
+    public void testRQ1ExceptionInProvider() {
+        TransOptions opts = new TransOptions();
+        opts.setResponseType(ResponseType.AGGREGATE);
+        testRQ1(new DdllNodeFactory(), opts, 
+                receiver -> new ErrorProvider(receiver),
+                new Range<Integer>(0, true, 500, true),
+                Arrays.asList(), 
+                "[Error(0!P0), Error(100!P100), Error(200!P200), Error(300!P300), Error(400!P400)]");
+    }
+
+
+    private void testRQ1(NodeFactory base, 
+            TransOptions opts,
+            Function<Consumer<RemoteValue<Integer>>, RQAdapter<Integer>> providerFactory,
+            Range<Integer> range, List<Integer> expect) {
+        testRQ1(base, opts, providerFactory, range, expect, "[]");
+    }
+
+    private void testRQ1(NodeFactory base, 
+            TransOptions opts,
+            Function<Consumer<RemoteValue<Integer>>, RQAdapter<Integer>> providerFactory,
+            Range<Integer> range, List<Integer> expect, String expectedErr) {
+        NodeFactory factory = new RQNodeFactory(base);
         System.out.println("** testRQ1");
         init();
-        nodes = createNodes(factory, 5);
-        nodes[0].joinInitialNode();
+        RQAdapter<Integer> nodeProvider = providerFactory.apply(null);
+        createAndInsert(factory, 5, nodeProvider);
         {
-            CompletableFuture<Boolean> f1 = nodes[1].joinAsync(nodes[0]);
-            CompletableFuture<Boolean> f2 = nodes[2].joinAsync(nodes[0]);
-            CompletableFuture<Boolean> f3 = nodes[3].joinAsync(nodes[0]);
-            CompletableFuture<Boolean> f4 = nodes[4].joinAsync(nodes[0]);
-            EventExecutor.startSimulation(30000);
-            checkCompleted(f1, f2, f3, f4);
-        }
-        checkConsistent(nodes);
-
-        {
-            Range<Integer> range = new Range<>(200, true, 400, false);
             Collection<Range<Integer>> ranges = Collections.singleton(range);
-            Object query = "Q";
-            List<RemoteValue<DdllKey>> results = new ArrayList<>();
-            nodes[0].rangeQueryAsync(ranges, query, opts, (ret) -> {
-                System.out.println("RESULT:" + ret);
-                results.add((RemoteValue<DdllKey>)ret);
+            List<RemoteValue<Integer>> results = new ArrayList<>();
+            RQAdapter<Integer> provider = providerFactory.apply((ret) -> {
+                System.out.println("GOT RESULT: " + ret);
+                results.add(ret);
             });
+            nodes[0].rangeQueryAsync(ranges, provider, opts); 
             EventExecutor.startSimulation(30000);
-            assertTrue(results.size() == 3);
+            assertTrue(!results.isEmpty());
+            assertTrue(results.get(results.size() - 1 ) == null);
+            List<?> rvals = results.stream()
+                    .filter(Objects::nonNull)
+                    .filter(rv -> rv.getException() == null)
+                    .map(rv -> rv.getValue())
+                    .sorted()
+                    .collect(Collectors.toList());
+            List<?> evals = results.stream()
+                    .filter(Objects::nonNull)
+                    .filter(rv -> rv.getException() != null)
+                    .map(rv -> rv.getException().getMessage())
+                    .sorted()
+                    .collect(Collectors.toList());
+            System.out.println("RVALS = " + rvals);
+            System.out.println("EXCEPTIONS = " + evals);
+            System.out.println("EXPECTED = " + expect);
+            assertTrue(rvals.equals(expect));
+            assertTrue(evals.toString().equals(expectedErr));
+            checkMemoryLeakage(nodes);
+        }
+    }
+    
+    @Test
+    public void testRQInsertionPointProvider() {
+        TransOptions opts = new TransOptions();
+        opts.setResponseType(ResponseType.DIRECT);
+        testRQ2(new SuzakuNodeFactory(3), opts,
+                (receiver) -> new InsertionPointAdapter(receiver),
+                new Range<Integer>(150), "[N100!P100, N200!P200]");
+    }
+
+    private void testRQ2(NodeFactory base, TransOptions opts,
+            Function<Consumer<RemoteValue<Node[]>>, RQAdapter<Node[]>> providerFactory,
+            Range<Integer> range, String expect) {
+        NodeFactory factory = new RQNodeFactory(base);
+        System.out.println("** testRQ2");
+        init();
+        RQAdapter<Node[]> baseProvider = providerFactory.apply(null);
+        createAndInsert(factory, 5, baseProvider);
+        {
+            Collection<Range<Integer>> ranges = Collections.singleton(range);
+            List<RemoteValue<Node[]>> results = new ArrayList<>();
+            RQAdapter<Node[]> provider = providerFactory.apply(
+                    ret -> {
+                        System.out.println("GOT RESULT: " + ret);
+                        results.add(ret);
+                    });
+
+            nodes[0].rangeQueryAsync(ranges, provider, opts); 
+            EventExecutor.startSimulation(30000);
+            assertTrue(!results.isEmpty());
+            assertTrue(results.get(results.size() - 1 ) == null);
+            List<Node> rvals = results.stream()
+                    .filter(Objects::nonNull)
+                    .map(rv -> rv.getValue())   // extract Node[]
+                    .flatMap((Node[] ns) -> Stream.of(ns))
+                    .collect(Collectors.toList());
+            assertTrue(rvals.size() == 2);
+            String rstr = rvals.toString();
+            System.out.println("RVALS = " + rstr);
+            System.out.println("EXPECT = " + expect);
+            assertTrue(rstr.toString().equals(expect));
+            checkMemoryLeakage(nodes);
+        }
+    }
+
+    @Test
+    public void testRetransDirectSuzaku() {
+        TransOptions opts = new TransOptions();
+        opts.setResponseType(ResponseType.DIRECT);
+        testRetrans(new SuzakuNodeFactory(3), opts,
+                receiver -> new FastValueProvider(receiver),
+                new Range<Integer>(200, true, 400, false),
+                Arrays.asList(300));
+    }
+
+    @Test
+    public void testSlowRetransAggregateSuzaku() {
+        TransOptions opts = new TransOptions();
+        opts.setResponseType(ResponseType.AGGREGATE);
+        opts.setRetransMode(RetransMode.SLOW);
+        opts.setTimeout(15*1000);
+        testRetrans(new SuzakuNodeFactory(3), opts, 
+                receiver -> new FastValueProvider(receiver),
+                new Range<Integer>(100, true, 400, true),
+                Arrays.asList(100, 300, 400));
+    }
+
+    @Test
+    public void testFastRetransAggregateSuzaku() {
+        TransOptions opts = new TransOptions();
+        opts.setResponseType(ResponseType.AGGREGATE);
+        opts.setRetransMode(RetransMode.FAST);
+        opts.setTimeout(15*1000);
+        testRetrans(new SuzakuNodeFactory(3), opts,
+                receiver -> new FastValueProvider(receiver),
+                new Range<Integer>(100, true, 400, true),
+                Arrays.asList(100, 300, 400));
+    }
+
+    @Test
+    public void testCache() {
+        TransOptions opts = new TransOptions();
+        opts.setResponseType(ResponseType.AGGREGATE);
+        testRetrans(new SuzakuNodeFactory(3), opts, 
+                receiver -> new SlowCacheValueProvider(receiver, 10000),
+                new Range<Integer>(200, true, 400, false),
+                Arrays.asList(300));
+        System.out.println(getPrivateField(EventExecutor.class, "timeq"));
+    }
+
+    private void testRetrans(NodeFactory base,
+            TransOptions opts, 
+            Function<Consumer<RemoteValue<Integer>>, RQAdapter<Integer>> providerFactory,
+            Range<Integer> range, List<Integer> expect) {
+        NodeFactory factory = new RQNodeFactory(base);
+        System.out.println("** testSlowRetrans");
+        init();
+        RQAdapter<Integer> baseProvider = providerFactory.apply(null);
+        createAndInsert(factory, 5, baseProvider);
+        {
+            nodes[2].fail();
+            Collection<Range<Integer>> ranges = Collections.singleton(range);
+            List<RemoteValue<Integer>> results = new ArrayList<>();
+            RQAdapter<Integer> p = providerFactory.apply(ret -> {
+                System.out.println("GOT RESULT: " + ret);
+                results.add(ret);
+                
+            });
+            nodes[0].rangeQueryAsync(ranges, p, opts); 
+            // should be larger than the default TransOptions timeout. 
+            EventExecutor.startSimulation(60000);
+            assertTrue(!results.isEmpty());
+            assertTrue(results.get(results.size() - 1 ) == null);
+            List<?> rvals = results.stream()
+                    .filter(Objects::nonNull)
+                    .map(rv -> rv.getValue())   // extract Integer
+                    .sorted()
+                    .collect(Collectors.toList());
+            System.out.println("RVALS = " + rvals);
+            System.out.println("EXPECT = " + expect);
+            assertTrue(rvals.equals(expect));
+            checkMemoryLeakage(nodes[0], nodes[1], nodes[3], nodes[4]);
+        }
+    }
+    
+    @Test
+    public void testMultikeySuzaku() {
+        TransOptions opts = new TransOptions();
+        opts.setResponseType(ResponseType.AGGREGATE);
+        testMultikey(new SuzakuNodeFactory(3), opts,
+                receiver -> new KeyAdapter(receiver),
+                new Range<Integer>(0, true, 500, false),
+                Arrays.asList(0, 100, 200, 300, 400));
+    }
+
+    private void testMultikey(NodeFactory base, TransOptions opts,
+            Function<Consumer<RemoteValue<DdllKey>>, RQAdapter<DdllKey>> providerFactory,
+            Range<Integer> range, List<Integer> expect) {
+        NodeFactory factory = new RQNodeFactory(base);
+        System.out.println("** testMultikey");
+        init();
+        createAndInsert(factory, 5, k -> {
+            if (k == 300 || k == 400) {
+                return "P100";
+            } else {
+                return "P" + k;
+            }
+        });
+        {
+            Collection<Range<Integer>> ranges = Collections.singleton(range);
+            List<RemoteValue<DdllKey>> results = new ArrayList<>();
+            RQAdapter<DdllKey> p = providerFactory.apply(ret -> {
+                System.out.println("GOT RESULT: " + ret);
+                results.add(ret);
+            });
+            nodes[0].rangeQueryAsync(ranges, p, opts);
+            EventExecutor.startSimulation(30000);
+            assertTrue(!results.isEmpty());
             assertTrue(results.get(results.size() - 1 ) == null);
             List<?> rvals = results.stream()
                     .filter(Objects::nonNull)
@@ -398,22 +568,11 @@ public class AsyncTest {
                     .map(rv -> rv.getRawKey()) // extract Comparable
                     .sorted()
                     .collect(Collectors.toList());
-            System.out.println("RVAL=" + rvals);
-            assertTrue(rvals.equals(Arrays.asList(200, 300)));
-        }
-        checkConsistent(nodes);
-    }
-
-    public static Object getPrivateField(Object target, String field) {
-        try {
-            Class<?> c = target.getClass();
-            Field f = c.getDeclaredField(field);
-            f.setAccessible(true);
-            return f.get(target);
-        } catch (IllegalAccessException | IllegalArgumentException 
-                | SecurityException | NoSuchFieldException e) {
-            fail(e.toString());
-            return null;
+            System.out.println("RVALS = " + rvals);
+            System.out.println("EXPECT = " + expect);
+            assertTrue(rvals.equals(expect));
+            checkMemoryLeakage(nodes[0], nodes[1], nodes[3], nodes[4]);
         }
     }
 }
+

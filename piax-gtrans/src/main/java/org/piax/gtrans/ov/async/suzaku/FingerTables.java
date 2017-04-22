@@ -6,6 +6,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.piax.gtrans.async.FTEntry;
 import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.async.Node;
 
@@ -13,7 +14,6 @@ public class FingerTables {
     final FingerTable forward;
     final FingerTable backward;
     Set<Node> reversePointers = new HashSet<>();
-    Set<Node> suspectedNodes = new HashSet<>();
     LocalNode n;
 
     public FingerTables(LocalNode n) {
@@ -28,7 +28,7 @@ public class FingerTables {
 
     FTEntry getFTEntry(Node node) {
         Optional<FTEntry> match = stream()
-                .filter(ent -> ent != null && ent.getLink() == node)
+                .filter(ent -> ent != null && ent.getNode() == node)
                 .findAny();
         return match.orElse(null);
     }
@@ -40,25 +40,12 @@ public class FingerTables {
                 + n.toStringDetail());
     }
 
-    void addSuspectedNode(Node node) {
-        suspectedNodes.add(node);
-    }
-    
-    void removeSuspectedNode(Node node) {
-        suspectedNodes.remove(node);
-    }
-
     Stream<FTEntry> stream() {
-        Stream.Builder<FTEntry> s = Stream.builder();
-        int fsize = forward.getFingerTableSize();
-        for (int i = FingerTable.LOCALINDEX; i < fsize; i++) {
-            s.add(forward.getFTEntry(i));
+        if (SuzakuStrategy.USE_BFT) {
+            return Stream.concat(forward.stream(), backward.stream());
+        } else {
+            return forward.stream();
         }
-        int bsize = backward.getFingerTableSize();
-        for (int i = 0; i < bsize; i++) {
-            s.add(backward.getFTEntry(i));
-        }
-        return s.build();
     }
 
     /**

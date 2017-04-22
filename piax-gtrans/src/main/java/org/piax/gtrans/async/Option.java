@@ -30,6 +30,7 @@ public abstract class Option<E> {
     public abstract void parse(List<String> args);
     public void set(E val) {
         this.value = val;
+        invokeCallback();
     }
     public void invokeCallback() {
         if (this.run != null) {

@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
+import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
@@ -16,6 +17,7 @@ import org.piax.gtrans.async.Event.TimerEvent;
 import org.piax.gtrans.async.EventException.GraceStateException;
 import org.piax.gtrans.async.Node.NodeMode;
 import org.piax.gtrans.async.Option.BooleanOption;
+import org.piax.util.MersenneTwister;
 
 public class EventExecutor {
     // run in real-time
@@ -29,7 +31,11 @@ public class EventExecutor {
     private static ReentrantLock lock = new ReentrantLock();
     private static Condition cond = lock.newCondition();
     private static PriorityQueue<Event> timeq = new PriorityQueue<>();
+    private static LatencyProvider latencyProvider;
     private static Map<String, Count> counter = new HashMap<String, Count>();
+
+    // consistent random generator
+    private static Random rand = new MersenneTwister();
 
     public static class Count {
         int count;
@@ -131,10 +137,6 @@ public class EventExecutor {
         timeq.clear();
     }
 
-    public static void resetMessageCounters() {
-        counter.clear();
-    }
-
     public static long getVTime() {
         if (realtime.value()) {
             return System.currentTimeMillis() - startTime;
@@ -149,6 +151,24 @@ public class EventExecutor {
         String s = "Queue:" + timeq;
         lock.unlock();
         return s;
+    }
+    
+    /*
+     * Consistent Random
+     */
+    public static Random random() {
+        return rand;
+    }
+
+    public static void setRandom(Random rand) {
+        EventExecutor.rand = rand;
+    }
+    
+    /*
+     * Message Counters
+     */
+    public static void resetMessageCounters() {
+        counter.clear();
     }
 
     public static void dumpMessageCounters() {
@@ -177,6 +197,9 @@ public class EventExecutor {
         return cnt.count;
     }
 
+    /*
+     * Event Executor
+     */
     private static Thread thread;
     public static void startExecutorThread() {
         synchronized (EventExecutor.class) {
@@ -218,7 +241,7 @@ public class EventExecutor {
                 nmsgs++;
             }
             addCounter(ev.getType());
-            if (Sim.verbose) {
+            if (Log.verbose) {
                 String s;
                 if (ev.receiver != null) {
                     s = ev.receiver + " receives " + ev + " from " + ev.sender;
@@ -255,8 +278,9 @@ public class EventExecutor {
                         receiver + ": received in grace period: " + ev);
                 if (ev instanceof Lookup) {
                     addToRoute(ev.route, receiver);
-                    ev.beforeRunHook(receiver);
-                    ev.run();
+                    if (ev.beforeRunHook(receiver)) {
+                        ev.run();
+                    }
                 } else if (ev instanceof RequestEvent) {
                     receiver.post(new ErrorEvent((RequestEvent<?, ?>)ev, 
                             new GraceStateException()));
@@ -266,8 +290,9 @@ public class EventExecutor {
                 System.out.println("message received by deleted or failed node: " + ev);
             } else {
                 addToRoute(ev.route, receiver);
-                ev.beforeRunHook(receiver);
-                ev.run();
+                if (ev.beforeRunHook(receiver)) {
+                    ev.run();
+                }
             }
         }
     }
@@ -276,5 +301,25 @@ public class EventExecutor {
         if (route.isEmpty() || route.get(route.size() - 1) != next) {
             route.add(next);
         }
+    }
+
+    /*
+     * Latency Management
+     */
+    public static void setLatencyProvider(LatencyProvider p) {
+        latencyProvider = p;
+    }
+
+    public static long latency(Node a, Node b) {
+        if (EventExecutor.realtime.value()) {
+            return 0;
+        }
+        if (a == b) {
+            return 0;
+        }
+        if (latencyProvider == null) {
+            return 100;
+        }
+        return latencyProvider.latency(a, b);
     }
 }

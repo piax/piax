@@ -371,9 +371,9 @@ public class RQReturn {
         CircularRange<DdllKey> gap = ent.getValue();
         // delete the range r from gaps
         gaps.remove(ent.getKey());
-        List<CircularRange<DdllKey>> retains = gap.retain(r, null);
+        List<Range<DdllKey>> retains = gap.retain(r, null);
         if (retains != null) {
-            for (CircularRange<DdllKey> p : retains) {
+            for (Range<DdllKey> p : retains) {
                 SubRange s = new SubRange(p.from, p.fromInclusive, p.to,
                         p.toInclusive);
                 gaps.put(s.from, s);

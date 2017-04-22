@@ -1,33 +1,28 @@
 package org.piax.gtrans.ov.async.ddll;
 
-import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-import org.piax.common.TransportId;
-import org.piax.gtrans.ChannelTransport;
-import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.async.Event.Lookup;
 import org.piax.gtrans.async.Event.LookupDone;
 import org.piax.gtrans.async.Event.TimerEvent;
 import org.piax.gtrans.async.EventException;
 import org.piax.gtrans.async.EventException.RetriableException;
 import org.piax.gtrans.async.EventExecutor;
+import org.piax.gtrans.async.FTEntry;
 import org.piax.gtrans.async.LocalNode;
+import org.piax.gtrans.async.Log;
 import org.piax.gtrans.async.NetworkParams;
 import org.piax.gtrans.async.Node;
 import org.piax.gtrans.async.NodeFactory;
 import org.piax.gtrans.async.NodeStrategy;
 import org.piax.gtrans.async.Option.EnumOption;
 import org.piax.gtrans.async.Option.IntegerOption;
-import org.piax.gtrans.async.Sim;
 import org.piax.gtrans.ov.async.ddll.DdllEvent.GetCandidates;
 import org.piax.gtrans.ov.async.ddll.DdllEvent.PropagateNeighbors;
 import org.piax.gtrans.ov.async.ddll.DdllEvent.SetL;
@@ -36,21 +31,16 @@ import org.piax.gtrans.ov.async.ddll.DdllEvent.SetRAck;
 import org.piax.gtrans.ov.async.ddll.DdllEvent.SetRAckNak;
 import org.piax.gtrans.ov.async.ddll.DdllEvent.SetRJob;
 import org.piax.gtrans.ov.async.ddll.DdllEvent.SetRNak;
-import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.gtrans.ov.ddll.LinkNum;
 
 public class DdllStrategy extends NodeStrategy {
     public static class DdllNodeFactory extends NodeFactory {
         @Override
-        public LocalNode createNode(TransportId transId,
-                ChannelTransport<?> trans, DdllKey key, int latency)
-                throws IOException, IdConflictException {
-            return new LocalNode(transId, trans, key, new DdllStrategy(),
-                    latency);
+        public void setupNode(LocalNode node) {
+            node.pushStrategy(new DdllStrategy());
         }
-
         @Override
-        public String name() {
+        public String toString() {
             return "DDLL";
         }
     }
@@ -61,15 +51,15 @@ public class DdllStrategy extends NodeStrategy {
 
     public static int JOIN_RETRY_DELAY = 2;
 
-    // SETRNAKOPT: SetRNakメッセージにsuccessor, predecessor情報を入れる．
-    // joinリトライ時にそれをそのまま使ってSetR送信．
-    //public static boolean SETRNAKOPT = false;
-    // SETRNAKOPT2: SetRNakメッセージにsuccessor, predecessor情報を入れる．
-    // joinリトライ時，predecessorに変化がなければそのまま使ってSetR送信．
-    // 変わっていればSetRを送っても無駄なので再検索する．
-    //public static boolean SETRNAKOPT2 = false;
     public enum SetRNakMode {
-        SETRNAK_NONE, SETRNAK_OPT1, SETRNAK_OPT2
+        SETRNAK_NONE,
+        /** SetRNakメッセージにsuccessor, predecessor情報を入れる．
+            joinリトライ時にそれをそのまま使ってSetRを送信．*/
+        SETRNAK_OPT1, 
+        /** SetRNakメッセージにsuccessor, predecessor情報を入れる．
+            joinリトライ時，predecessorに変化がなければそのまま使ってSetR送信．
+            変わっていればSetRを送っても無駄なので再検索する．*/
+        SETRNAK_OPT2
     };
 
     public enum SetRType {
@@ -78,6 +68,13 @@ public class DdllStrategy extends NodeStrategy {
 
     public static EnumOption<SetRNakMode> setrnakmode = new EnumOption<>(
             SetRNakMode.class, SetRNakMode.SETRNAK_NONE, "-setrnak");
+
+    public enum RetryMode {
+        IMMED, CONST, RANDOM
+    }
+    public static EnumOption<RetryMode> retryMode
+        = new EnumOption<>(RetryMode.class, RetryMode.IMMED, "-retrymode");
+
     // pinging is off by default
     public static IntegerOption pingPeriod =
             new IntegerOption(0, "-pingperiod");
@@ -88,10 +85,6 @@ public class DdllStrategy extends NodeStrategy {
     /** neighbor node set */
     public NeighborSet leftNbrs;
 
-    // TODO: purge entries by timer! 2017/02/09
-    Set<Node> suspectedNodes = new HashSet<>();
-
-    public int joinTime = -1;
     private int joinMsgs = 0;
 
     public static void load() {
@@ -116,10 +109,10 @@ public class DdllStrategy extends NodeStrategy {
     }
 
     @Override
-    public List<List<Node>> getRoutingEntries() {
+    public List<FTEntry> getRoutingEntries() {
         return Arrays.asList(n.pred, n, n.succ).stream()
                 .distinct()
-                .map(Collections::singletonList)
+                .map(FTEntry::new)
                 .collect(Collectors.toList());
     }
 
@@ -132,7 +125,7 @@ public class DdllStrategy extends NodeStrategy {
     }
 
     @Override
-    public void joinAfterLookup(LookupDone l, 
+    public void join(LookupDone l, 
             CompletableFuture<Boolean> joinFuture) {
         join(l.pred, l.succ, joinFuture, null);
     }
@@ -149,7 +142,7 @@ public class DdllStrategy extends NodeStrategy {
             setStatus(DdllStatus.OUT);
             joinComplete.completeExceptionally(exc);
         };
-        ev.getCompletableFuture().whenComplete((SetRAckNak msg0, Throwable exc) -> {
+        ev.onReply((SetRAckNak msg0, Throwable exc) -> {
             if (exc != null) {
                 joinfail.accept((EventException)exc);
             } else if (msg0 instanceof SetRAck) {
@@ -161,15 +154,14 @@ public class DdllStrategy extends NodeStrategy {
                 leftNbrs.set(msg.nbrs);
                 // nbrs does not contain the immediate left node
                 leftNbrs.add(getPredecessor());
-                System.out.println(n + ": INSERTED, vtime = " + msg.vtime
-                        + ", latency=" + n.latency);
+                Log.verbose(() -> n + ": INSERTED, vtime = " + msg.vtime);
                 joinComplete.complete(true);
             } else if (msg0 instanceof SetRNak){
                 SetRNak msg = (SetRNak)msg0;
                 joinMsgs += 2; // SetR and SetRNak
                 setStatus(DdllStatus.OUT);
                 // retry!
-                LocalNode.verbose("receive SetRNak: join retry, pred=" + msg.pred
+                Log.verbose(() -> "receive SetRNak: join retry, pred=" + msg.pred
                         + ", succ=" + msg.succ);
                 if (setrnakmode.value() == SetRNakMode.SETRNAK_OPT2) {
                     // DDLLopt2
@@ -183,13 +175,13 @@ public class DdllStrategy extends NodeStrategy {
                     join(msg.pred, msg.succ, joinComplete, setRjob);
                 } else {
                     // DDLL without optimization
-                    int delay = 0;
-                    switch (Sim.retryMode.value()) {
+                    long delay = 0;
+                    switch (retryMode.value()) {
                     case IMMED:
                         delay = 0;
                         break;
                     case RANDOM:
-                        delay = Sim.rand.nextInt(JOIN_RETRY_DELAY)
+                        delay = EventExecutor.random().nextInt(JOIN_RETRY_DELAY)
                                 * NetworkParams.HALFWAY_DELAY;
                         break;
                     case CONST:
@@ -243,7 +235,7 @@ public class DdllStrategy extends NodeStrategy {
         setStatus(DdllStatus.DEL);
         SetR ev = new SetR(n.pred, SetRType.NORMAL, n.succ, n,
                 rseq.next(), setRjob);
-        ev.getCompletableFuture().whenComplete((msg0, exc) -> {
+        ev.onReply((msg0, exc) -> {
             if (exc != null) {
                 System.out.println(n + ": leave failed: " + exc);
                 if (!(exc instanceof RetriableException)) {
@@ -257,15 +249,14 @@ public class DdllStrategy extends NodeStrategy {
                 }
             } else if (msg0 instanceof SetRAck) {
                 setStatus(DdllStatus.OUT);
-                System.out.println(n + ": DELETED, vtime = " + msg0.vtime
-                        + ", latency=" + n.latency);
+                System.out.println(n + ": DELETED, vtime = " + msg0.vtime);
                 leaveComplete.complete(true);
             } else if (msg0 instanceof SetRNak) {
                 setStatus(DdllStatus.IN);
                 System.out.println(n + ": retry deletion:" + this.toStringDetail());
                 System.out.println("pred: " + getPredecessor().toStringDetail());
                 long delay =
-                        (long) (NetworkParams.ONEWAY_DELAY * Sim.rand.nextDouble());
+                        (long) (NetworkParams.ONEWAY_DELAY * EventExecutor.random().nextDouble());
                 EventExecutor.sched(delay, () -> {
                     leave(leaveComplete, setRjob);
                 });
@@ -369,9 +360,8 @@ public class DdllStrategy extends NodeStrategy {
     }
 
     @Override
-    public void foundFailedNode(Node node) {
+    public void foundMaybeFailedNode(Node node) {
         System.out.println(n + ": foundFailedNode: " + node);
-        suspectedNodes.add(node);
     }
 
     @Override
@@ -425,18 +415,18 @@ public class DdllStrategy extends NodeStrategy {
     }
     private CompletableFuture<Boolean> checkAndFix0() {
         fixState = FIXSTATE.CHECKING;
-        System.out.println("FIXSTATE=" + fixState);
+        Log.verbose(() -> "FIXSTATE=" + fixState);
         CompletableFuture<Boolean> future = getLiveLeft()
                 .thenCompose(nodes -> {
                     fixState = FIXSTATE.FIXING;
-                    System.out.println("FIXSTATE=" + fixState);
+                    Log.verbose(() -> "FIXSTATE=" + fixState);
                     return fix(nodes[0], nodes[1]);
                 }).thenCompose(rc -> {
                     if (!rc) {
                         return checkAndFix0();
                     } else {
                         fixState = FIXSTATE.IDLE;
-                        System.out.println("FIXSTATE=" + fixState);
+                        Log.verbose(() -> "FIXSTATE=" + fixState);
                         return CompletableFuture.completedFuture(true);
                     }
                 });
@@ -453,10 +443,11 @@ public class DdllStrategy extends NodeStrategy {
     private void getLiveLeft(Node left, Node leftSucc, List<Node> candidates,
             CompletableFuture<Node[]> future) {
         Node last = candidates.stream()
-                .filter(q -> !suspectedNodes.contains(q))
+                .filter(q -> !n.maybeFailedNodes.contains(q))
                 .reduce((a, b) -> b).orElse(null);
-        System.out.println("left=" + left +", last=" + last
-                + ", suspect=" + suspectedNodes);
+        Node last0 = last;
+        Log.verbose(() -> "left=" + left +", last=" + last0
+                + ", suspect=" + n.maybeFailedNodes);
         if (last == left) {
             future.complete(new Node[]{left, leftSucc});
             return;
@@ -465,7 +456,7 @@ public class DdllStrategy extends NodeStrategy {
             last = n;
         }
         GetCandidates ev = new GetCandidates(last, n);
-        ev.getCompletableFuture().whenComplete((resp, exc) -> {
+        ev.onReply((resp, exc) -> {
             if (exc != null) {
                 // redo.  because the failed node should have been added to
                 // suspectedNode, it is safe to redo.
@@ -484,21 +475,21 @@ public class DdllStrategy extends NodeStrategy {
      * @return CompletableFuture
      */
     private CompletableFuture<Boolean> fix(Node left, Node leftSucc) {
-        System.out.println(n + ": fix(" + left
+        Log.verbose(() -> n + ": fix(" + left
                 + ", " + leftSucc + "): status=" + status);
         if (status != DdllStatus.IN) {
             System.out.println("not IN");
             return CompletableFuture.completedFuture(true);
         }
         if (leftSucc == n) {
-            System.out.println("no problem");
+            Log.verbose(() -> "no problem");
             return CompletableFuture.completedFuture(true);
         }
         n.setPred(left);
         lseq = lseq.gnext();
         SetRType type;
         if (left != leftSucc && Node.isOrdered(left.key, true, leftSucc.key, n.key, false)) {
-            System.out.println("seems " + leftSucc + " is dead");
+            System.out.println("seems " + left + " is dead");
             type = SetRType.LEFTONLY;
         } else {
             System.out.println("must join between " + left + " and " + leftSucc);
@@ -507,7 +498,7 @@ public class DdllStrategy extends NodeStrategy {
         }
         CompletableFuture<Boolean> future = new CompletableFuture<>();
         SetR ev = new SetR(left, type, n, leftSucc, lseq, null);
-        ev.getCompletableFuture().whenComplete((msg0, exc) -> {
+        ev.onReply((msg0, exc) -> {
             if (exc != null || msg0 instanceof SetRNak) {
                 // while fixing fails, retry fixing 
                 System.out.println(n + ": fix failed: "

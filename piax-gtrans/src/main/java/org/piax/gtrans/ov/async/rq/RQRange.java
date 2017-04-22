@@ -2,6 +2,7 @@ package org.piax.gtrans.ov.async.rq;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
@@ -22,6 +23,16 @@ public class RQRange extends DdllKeyRange {
         this(node, from, to, null);
     }
 
+    // a single point
+    public RQRange(Node node, DdllKey key) {
+        this(node, new Range<DdllKey>(key, true, key, true));
+    }
+
+    // a single point
+    public RQRange(Node node, DdllKey key, Integer[] ids) {
+        this(node, new Range<DdllKey>(key, true, key, true), ids);
+    }
+
     public RQRange(Node node, DdllKey from, DdllKey to, Integer[] ids) {
         super(from, true, to, false);
         this.delegate = node;
@@ -37,7 +48,16 @@ public class RQRange extends DdllKeyRange {
         this.delegate = node;
         this.ids = ids;
     }
-    
+
+    @Override
+    public RQRange newRange(DdllKey from, boolean fromInclusive,
+            DdllKey to, boolean toInclusive) {
+        if (isSingleton()) {
+            return new RQRange(delegate, from).assignSubId(this);
+        }
+        return new RQRange(delegate, from, to, ids).assignSubId(this);
+    }
+
     public Node getNode() {
         return delegate;
     }
@@ -90,7 +110,7 @@ public class RQRange extends DdllKeyRange {
     /**
      * this rangeから [a, b) を削除した残りの範囲を返す．
      */
-    public RQRange[] retainRanges(DdllKey a, DdllKey b) {
+    public List<RQRange> retainRanges(DdllKey a, DdllKey b) {
         if (keyComp.compare(a, b) != 0 && keyComp.isOrdered(from, b, a)
                 && keyComp.compare(from, a) != 0
                 && keyComp.isOrdered(b, a, to)
@@ -100,9 +120,9 @@ public class RQRange extends DdllKeyRange {
             //       -----b   a------
             // (keyComp.compare(from, a) != 0) がないと，
             // a = from && b = to の場合も真になってしまう．
-            return new RQRange[]{ new RQRange(delegate, b, a)};
+            return Collections.singletonList(new RQRange(delegate, b, a));
         }
-        List<RQRange> retains = new ArrayList<RQRange>();
+        List<RQRange> retains = new ArrayList<>();
         if (this.contains(a) && keyComp.compare(a, this.from) != 0) {
             // Range   [---------)
             //             a----..
@@ -113,10 +133,7 @@ public class RQRange extends DdllKeyRange {
             //         ..-----b
             retains.add(new RQRange(delegate, b, to));
         }
-        if (retains.isEmpty()) {
-            return null;
-        }
-        return retains.toArray(new RQRange[retains.size()]);
+        return retains;
     }
 
     /**
@@ -138,14 +155,15 @@ public class RQRange extends DdllKeyRange {
         return r;
     }
 
-    public void assignId() {
+    public RQRange assignId() {
         if (ids == null) {
             ids = new Integer[1];
             ids[0] = (int) (Math.random() * MAXID);
         }
+        return this;
     }
 
-    public void assignSubId(RQRange parent) {
+    public RQRange assignSubId(RQRange parent) {
         if (!isSameRange(parent)) {
             Integer[] ids = new Integer[parent.ids.length + 1];
             System.arraycopy(parent.ids, 0, ids, 0, parent.ids.length);
@@ -154,5 +172,6 @@ public class RQRange extends DdllKeyRange {
         } else {
             this.ids = parent.ids; // no copy ok?
         }
+        return this;
     }
 }

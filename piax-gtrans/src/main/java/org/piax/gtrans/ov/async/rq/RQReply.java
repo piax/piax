@@ -5,12 +5,12 @@ import java.util.Collection;
 import org.piax.gtrans.async.Event.ReplyEvent;
 import org.piax.gtrans.ov.ring.rq.DKRangeRValue;
 
-public class RQReply extends ReplyEvent<RQRequest, RQReply> {
-    protected final Collection<DKRangeRValue<?>> vals;
+public class RQReply<T> extends ReplyEvent<RQRequest<T>, RQReply<T>> {
+    protected final Collection<DKRangeRValue<T>> vals;
     /** is final reply? */
     protected final boolean isFinal;
     
-    public RQReply(RQRequest req, Collection<DKRangeRValue<?>> vals,
+    public RQReply(RQRequest<T> req, Collection<DKRangeRValue<T>> vals,
             boolean isFinal) {
         super(req);
         this.vals = vals;
@@ -35,7 +35,7 @@ public class RQReply extends ReplyEvent<RQRequest, RQReply> {
         if (val) {
             return name;
         } else {
-            return "";
+            return "!" + name;
         }
     }
 }
