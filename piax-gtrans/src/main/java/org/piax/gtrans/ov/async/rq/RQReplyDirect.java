@@ -1,5 +1,7 @@
 package org.piax.gtrans.ov.async.rq;
 
+import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Collection;
 
 import org.piax.gtrans.async.Event;
@@ -13,7 +15,11 @@ public class RQReplyDirect<T> extends Event {
     public RQReplyDirect(RQRequest<T> req, Collection<DKRangeRValue<T>> vals) {
         super(req.root);
         this.rootEventId = req.rootEventId;
-        this.vals = vals;
+        if (vals == null || vals instanceof Serializable) {
+            this.vals = vals;
+        } else {
+            this.vals = new ArrayList<>(vals); 
+        }
     }
 
     @Override

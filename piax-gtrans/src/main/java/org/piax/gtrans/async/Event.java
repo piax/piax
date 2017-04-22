@@ -368,6 +368,7 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
             super.beforeRunHook(n);
             this.isReceiverHalf = true;
             this.local = n;
+            this.cleanup = new ArrayList<>();
             return true;
         }
 

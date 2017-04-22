@@ -1,5 +1,7 @@
 package org.piax.gtrans.ov.async.rq;
 
+import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Collection;
 
 import org.piax.gtrans.async.Event.ReplyEvent;
@@ -13,7 +15,11 @@ public class RQReply<T> extends ReplyEvent<RQRequest<T>, RQReply<T>> {
     public RQReply(RQRequest<T> req, Collection<DKRangeRValue<T>> vals,
             boolean isFinal) {
         super(req);
-        this.vals = vals;
+        if (vals == null || vals instanceof Serializable) {
+            this.vals = vals;
+        } else {
+            this.vals = new ArrayList<>(vals); 
+        }
         this.isFinal = isFinal;
     }
     
@@ -31,6 +37,7 @@ public class RQReply<T> extends ReplyEvent<RQRequest<T>, RQReply<T>> {
             return o.toString();
         }
     }
+
     protected String bool(boolean val, String name) {
         if (val) {
             return name;
