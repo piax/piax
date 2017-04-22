@@ -12,6 +12,7 @@ import org.piax.gtrans.RPCIf;
 import org.piax.gtrans.RPCInvoker;
 import org.piax.gtrans.RemoteCallable;
 import org.piax.gtrans.RemoteCallable.Type;
+import org.piax.gtrans.async.Event.LocalEvent;
 
 public interface EventSender {
     void send(Event ev) throws RPCException;
@@ -56,16 +57,22 @@ public interface EventSender {
         public static TransportId DEFAULT_TRANSPORT_ID =
                 new TransportId("GTEvent");
 
-        public EventSenderNet(TransportId transId, ChannelTransport<E> trans)
+        public EventSenderNet(TransportId transId,
+                ChannelTransport<E> trans)
                 throws IdConflictException, IOException {
             super(transId, trans);
         }
 
         @Override
         public void send(Event ev) throws RPCException {
-            EventReceiverIf stub = getStub((E) ev.receiver.addr,
-                    GTransConfigValues.rpcTimeout);
-            stub.recv(ev);
+            if (ev instanceof LocalEvent) {
+                // not to get NotSerializableException
+                recv(ev);
+            } else {
+                EventReceiverIf stub = getStub((E) ev.receiver.addr,
+                        GTransConfigValues.rpcTimeout);
+                stub.recv(ev);
+            }
         }
 
         @Override

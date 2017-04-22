@@ -74,6 +74,8 @@ public class AsyncTestBase {
                 latencyProvider.add(n, latency);
                 return n;
             } catch (IOException | IdConflictException e) {
+                System.out.println("***** got " + e);
+                e.printStackTrace();
                 throw new Error("something wrong!", e);
             }
         } else {
