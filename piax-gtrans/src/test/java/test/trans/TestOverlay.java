@@ -243,11 +243,11 @@ public class TestOverlay {
         tr1.join(loc);
         tr2.join(loc);
         tr3.join(loc);
-        Thread.sleep(500);
+//        Thread.sleep(1000);
         tr1.addKey(new StringKey("tera"));
         tr2.addKey(new StringKey("ishi"));
         tr3.addKey(new StringKey("yos"));
-        Thread.sleep(500);
+//        Thread.sleep(500);
 
         // It fails!
         List<Object> l = Arrays.asList(tr1

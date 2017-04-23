@@ -86,7 +86,7 @@ public abstract class RQAggregateAdapter<T> extends RQAdapter<T> {
     
     @Override
     public Object getCollectedData(LocalNode localNode) {
-        CompletableFuture<T> future = get(null, localNode);
+        CompletableFuture<T> future = get(null, localNode.key);
         assert future.isDone();
         Object o = future.getNow(null);
         return o;

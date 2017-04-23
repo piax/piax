@@ -47,12 +47,12 @@ public abstract class RQAdapter<T> implements Serializable {
             // it as T is safe because it is used just as a marker. 
             return CompletableFuture.completedFuture((T) SPECIAL.PADDING);
         } else {
-            return get(received, localNode);
+            return get(received, localNode.key);
         }
     }
 
     public abstract CompletableFuture<T> get(RQAdapter<T> received,
-            LocalNode node);
+            DdllKey key);
 
     /**
      * modify the behavior of <code>RQRequest#rqDisseminate()</code>
@@ -86,8 +86,8 @@ public abstract class RQAdapter<T> implements Serializable {
         }
         @Override
         public CompletableFuture<DdllKey> get(RQAdapter<DdllKey> received,
-                LocalNode node) {
-            return CompletableFuture.completedFuture(node.key);
+                DdllKey key) {
+            return CompletableFuture.completedFuture(key);
         }
     }
 
@@ -104,7 +104,7 @@ public abstract class RQAdapter<T> implements Serializable {
 
         @Override
         public CompletableFuture<Node[]> get(RQAdapter<Node[]> received,
-                LocalNode node) {
+                DdllKey key) {
             return null; // dummy
         }
     }
@@ -140,7 +140,7 @@ public abstract class RQAdapter<T> implements Serializable {
             Log.verbose(() -> "getRaw: qid=" + qid);
             CompletableFuture<T> f = (CompletableFuture<T>) qmap.get(qid);
             if (f == null) {
-                f = get(received, localNode);
+                f = get(received, localNode.key);
                 qmap.put(qid, f);
                 f.thenRun(() -> {
                     EventExecutor.sched(

@@ -46,6 +46,7 @@ import org.piax.gtrans.ov.OverlayListener;
 import org.piax.gtrans.ov.OverlayReceivedMessage;
 import org.piax.gtrans.ov.RoutingTableAccessor;
 import org.piax.gtrans.ov.async.rq.RQAdapter;
+import org.piax.gtrans.ov.async.rq.RQStrategy;
 import org.piax.gtrans.ov.async.rq.RQStrategy.RQNodeFactory;
 import org.piax.gtrans.ov.async.suzaku.SuzakuStrategy.SuzakuNodeFactory;
 import org.piax.gtrans.ov.compound.CompoundOverlay.SpecialKey;
@@ -104,16 +105,20 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         return request3(sender, receiver, new KeyRanges<K>(dst), msg, opts);
     }
     
-    public static class ExecQueryAdapter extends RQAdapter<FutureQueue<?>> implements Serializable {
+    public static class ExecQueryAdapter extends RQAdapter<FutureQueue<Object>> implements Serializable {
         public NestedMessage nmsg;
-        public ExecQueryAdapter(ObjectId objId, NestedMessage nmsg, Consumer<RemoteValue<FutureQueue<?>>> resultsReceiver) {
+        public Suzaku szk;
+        public ExecQueryAdapter(ObjectId objId, NestedMessage nmsg, Consumer<RemoteValue<FutureQueue<Object>>> resultsReceiver) {
             super(resultsReceiver);
             this.nmsg = nmsg;
         }
+        public ExecQueryAdapter(Suzaku szk) { // for executor side.
+            super(null);
+            this.szk = szk;
+        }
         @Override
-        public CompletableFuture<FutureQueue<?>> get(RQAdapter<FutureQueue<?>> received, LocalNode node) {
-            Suzaku szk = (Suzaku)node.getAppData();
-            return CompletableFuture.completedFuture(szk.onReceiveRequest(node.key, ((ExecQueryAdapter)received).nmsg));
+        public CompletableFuture<FutureQueue<Object>> get(RQAdapter<FutureQueue<Object>> received, DdllKey key) {
+            return CompletableFuture.completedFuture(szk.onReceiveRequest(key, ((ExecQueryAdapter)received).nmsg));
         }
     }
     
@@ -126,29 +131,33 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
     public FutureQueue<?> request3(ObjectId sender, ObjectId receiver,
             KeyRanges<K> dst, Object msg, TransOptions opts)
             throws ProtocolUnsupportedException, IOException {
-        
+        if (opts == null) {
+            opts = new TransOptions();
+        }
         Collection<KeyRange<K>> ranges = dst.getRanges();
         if (msg != null && msg instanceof NestedMessage
                 && ((NestedMessage) msg).passthrough == SpecialKey.WILDCARD) {
             ranges.add(new KeyRange(SpecialKey.WILDCARD));
         }
         NestedMessage nmsg = new NestedMessage(sender, receiver, null, peerId, msg);
-
+        
         FutureQueue<Object> fq = new FutureQueue<>();
         getEntryPoint()
         .rangeQueryAsync(ranges, new ExecQueryAdapter(receiver, nmsg, (ret)-> {
             try {
-                for (RemoteValue<?> r : ret.get()) {
-                    fq.add((RemoteValue<Object>) r.get());
+                if (ret == null) {
+                    fq.setEOFuture();
+                }
+                else {
+                    FutureQueue<Object> o = ret.get();
+                    for (RemoteValue<Object> r : o) {
+                        fq.add(r);
+                    }
                 }
             } catch (Exception e) {
                 e.printStackTrace();
             }
         }), opts);
-        fq.setEOFuture();
-        //if (TransOptions.responseType(opts) == ResponseType.NO_RESPONSE) {
-        //		return FutureQueue.emptyQueue();
-        //}
         return fq;
     }
 
@@ -333,6 +342,9 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
             
             LocalNode node = new LocalNode(transId, (ChannelTransport<Endpoint>)lowerTrans, dk);
             factory.setupNode(node);
+            RQStrategy s = (RQStrategy)node.getTopStrategy();
+            s.registerAdapter(new ExecQueryAdapter(this));
+            
             if (seed == null) {
                 node.joinInitialNode();
             }

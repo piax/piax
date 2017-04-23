@@ -118,13 +118,13 @@ public class TestAggr extends AsyncTestBase {
 
         @Override
         public CompletableFuture<Integer> get(RQAdapter<Integer> received,
-                LocalNode node) {
+                DdllKey key) {
             //  key     value
             //    0  ->     1
             //  100  ->    10
             //  200  ->   100
             //  300  ->  1000
-            int k = (int)(node.key.getRawKey()) / 100;
+            int k = (int)(key.getRawKey()) / 100;
             k = (int)Math.pow(10, k);
             return CompletableFuture.completedFuture(k);
         }
@@ -144,8 +144,8 @@ public class TestAggr extends AsyncTestBase {
 
         @Override
         public CompletableFuture<Integer> get(RQAdapter<Integer> received,
-                LocalNode node) {
-            int k = (int)node.key.getRawKey();
+                DdllKey key) {
+            int k = (int)key.getRawKey();
             return CompletableFuture.completedFuture(k);
         }
         @Override

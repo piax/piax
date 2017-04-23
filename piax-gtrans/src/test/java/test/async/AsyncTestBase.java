@@ -317,8 +317,8 @@ public class AsyncTestBase {
         }
         @Override
         public CompletableFuture<Integer> get(RQAdapter<Integer> received,
-                LocalNode node) {
-            return CompletableFuture.completedFuture(result(node.key));
+                DdllKey key) {
+            return CompletableFuture.completedFuture(result(key));
         }
 
         int result(DdllKey key) {
@@ -337,12 +337,12 @@ public class AsyncTestBase {
 
         @Override
         public CompletableFuture<Integer> get(RQAdapter<Integer> received,
-                LocalNode node) {
+                DdllKey key) {
             SlowValueProvider r = (SlowValueProvider) received;
             CompletableFuture<Integer> f = new CompletableFuture<>();
             EventExecutor.sched("slowvalueprovider", r.delay, () -> {
-                System.out.println("provider finished: " + node.key);
-                f.complete(result(node.key));
+                System.out.println("provider finished: " + key);
+                f.complete(result(key));
             });
             return f;
         }
@@ -365,13 +365,13 @@ public class AsyncTestBase {
 
         @Override
         public CompletableFuture<Integer> get(RQAdapter<Integer> received,
-                LocalNode node) {
+                DdllKey key) {
             SlowCacheValueProvider p = (SlowCacheValueProvider)received; 
             CompletableFuture<Integer> f = new CompletableFuture<>();
-            int val = result(node.key);
+            int val = result(key);
             EventExecutor.sched("slowvalueprovider", p.delay, () -> {
                 System.out.println(
-                        "provider finished: " + node.key + ", count=" + p.count);
+                        "provider finished: " + key + ", count=" + p.count);
                 f.complete(val);
             });
             count++;
@@ -390,8 +390,8 @@ public class AsyncTestBase {
         }
         @Override
         public CompletableFuture<Integer> get(RQAdapter<Integer> received,
-                LocalNode node) {
-            throw new Error("Error(" + node.key + ")");
+                DdllKey key) {
+            throw new Error("Error(" + key + ")");
         }
     }
 }
