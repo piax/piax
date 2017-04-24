@@ -19,6 +19,8 @@ public interface EventSender {
 
     void forward(Event ev) throws RPCException;
 
+    Endpoint getEndpoint();
+
     public static class EventSenderSim implements EventSender {
         private static EventSenderSim instance = new EventSenderSim();
 
@@ -27,6 +29,11 @@ public interface EventSender {
 
         public static EventSenderSim getInstance() {
             return instance;
+        }
+
+        @Override
+        public Endpoint getEndpoint() {
+            return null;
         }
 
         @Override
@@ -57,11 +64,12 @@ public interface EventSender {
         public static TransportId DEFAULT_TRANSPORT_ID =
                 new TransportId("GTEvent");
 
-        public EventSenderNet(TransportId transId,
-                ChannelTransport<E> trans)
+        public EventSenderNet(TransportId transId, ChannelTransport<E> trans)
                 throws IdConflictException, IOException {
             super(transId, trans);
         }
+
+        // getEndpoint() is implemented in the super class, RPCInvoker.
 
         @Override
         public void send(Event ev) throws RPCException {
