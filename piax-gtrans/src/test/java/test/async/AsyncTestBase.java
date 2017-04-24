@@ -6,6 +6,7 @@ import static org.junit.Assert.fail;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -22,6 +23,9 @@ import org.piax.gtrans.Peer;
 import org.piax.gtrans.RemoteValue;
 import org.piax.gtrans.async.Event.RequestEvent;
 import org.piax.gtrans.async.EventExecutor;
+import org.piax.gtrans.async.EventSender;
+import org.piax.gtrans.async.EventSender.EventSenderNet;
+import org.piax.gtrans.async.EventSender.EventSenderSim;
 import org.piax.gtrans.async.Indirect;
 import org.piax.gtrans.async.LatencyProvider.StarLatencyProvider;
 import org.piax.gtrans.async.LocalNode;
@@ -58,38 +62,38 @@ public class AsyncTestBase {
         return createNode(factory, key, "P" + key, latency);
     }
 
+    // LocalNodes that have the same PeerId should have the same EventSenderNet 
+    private static Map<PeerId, EventSender> peerId2sender = new HashMap<>();
+
+    @SuppressWarnings({ "unchecked", "rawtypes" })
     private static LocalNode createNode(NodeFactory factory, int key,
             String peerIdStr, long latency) {
-        TransportId transId = new TransportId("SimTrans");
+        EventSender sender;
+        PeerId peerId = new PeerId(peerIdStr);
         if (REALTIME) {
-            Peer peer = Peer.getInstance(new PeerId(peerIdStr));
-            DdllKey k =
-                    new DdllKey(key, new UniqId(peer.getPeerId()), "", null);
-            PeerLocator loc = newLocator("emu", key);
-            ChannelTransport<?> trans;
-            try {
-                trans = peer.newBaseChannelTransport(loc);
-                LocalNode n = new LocalNode(transId, trans, k);
-                factory.setupNode(n);
-                latencyProvider.add(n, latency);
-                return n;
-            } catch (IOException | IdConflictException e) {
-                System.out.println("***** got " + e);
-                e.printStackTrace();
-                throw new Error("something wrong!", e);
+            TransportId transId = new TransportId("SimTrans");
+            Peer peer = Peer.getInstance(peerId);
+            sender = peerId2sender.get(peerId);
+            if (sender == null) {
+                PeerLocator loc = newLocator("emu", key);
+                try {
+                    ChannelTransport<?> trans = peer.newBaseChannelTransport(loc);
+                    sender = new EventSenderNet(transId, trans);
+                    peerId2sender.put(peerId, sender);
+                } catch (IOException | IdConflictException e) {
+                    System.out.println("***** got " + e);
+                    e.printStackTrace();
+                    throw new Error("something wrong!", e);
+                }
             }
         } else {
-            UniqId p = new UniqId(peerIdStr);
-            DdllKey k = new DdllKey(key, p, "", null);
-            try {
-                LocalNode n = new LocalNode(null, null, k);
-                factory.setupNode(n);
-                latencyProvider.add(n, latency);
-                return n;
-            } catch (IOException | IdConflictException e) {
-                throw new Error("something wrong!", e);
-            }
+            sender = EventSenderSim.getInstance();
         }
+        DdllKey k = new DdllKey(key, new UniqId(peerId), "", null);
+        LocalNode n = new LocalNode(sender, k);
+        factory.setupNode(n);
+        latencyProvider.add(n, latency);
+        return n;
     }
 
     static LocalNode[] createNodes(NodeFactory factory, int num) {

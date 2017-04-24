@@ -77,16 +77,17 @@ public class LocalNode extends Node {
     // TODO: define accessors!
     public Set<Node> maybeFailedNodes = new HashSet<>();
 
-    public static LocalNode newLocalNode(TransportId transId,
-            ChannelTransport<?> trans, Comparable<?> rawkey,
-            NodeStrategy strategy) 
-            throws IdConflictException, IOException {
-        DdllKey ddllkey = new DdllKey(rawkey, new UniqId(trans.getPeerId()));
-        LocalNode node = new LocalNode(transId, trans, ddllkey);
-        node.pushStrategy(strategy);
-        return node;
-    }
+//    public static LocalNode newLocalNode(TransportId transId,
+//            ChannelTransport<?> trans, Comparable<?> rawkey,
+//            NodeStrategy strategy) 
+//            throws IdConflictException, IOException {
+//        DdllKey ddllkey = new DdllKey(rawkey, new UniqId(trans.getPeerId()));
+//        LocalNode node = new LocalNode(transId, trans, ddllkey);
+//        node.pushStrategy(strategy);
+//        return node;
+//    }
 
+    @Deprecated
     public LocalNode(TransportId transId, ChannelTransport<?> trans,
             DdllKey ddllkey)
             throws IdConflictException, IOException {
@@ -116,6 +117,15 @@ public class LocalNode extends Node {
         }
     }
     
+    public LocalNode(EventSender sender, DdllKey ddllkey) {
+        super(ddllkey, sender.getEndpoint());
+        assert getInstance(ddllkey) == this; 
+        // to support multi-keys
+        localNodeMap.computeIfAbsent(peerId, k -> new TreeSet<>())
+            .add(this);
+        this.sender = sender;
+    }
+
     /*
      * strategy
      */
