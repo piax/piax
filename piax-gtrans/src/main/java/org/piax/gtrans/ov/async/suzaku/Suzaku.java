@@ -123,8 +123,8 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         }
         @Override
         public CompletableFuture<FutureQueue<Object>> get(RQAdapter<FutureQueue<Object>> received, DdllKey key) {
-            // XXX it should be threaded 
-            return CompletableFuture.completedFuture(szk.onReceiveRequest(key, ((ExecQueryAdapter)received).nmsg));
+            //return CompletableFuture.completedFuture(szk.onReceiveRequest(key, ((ExecQueryAdapter)received).nmsg));
+            return CompletableFuture.supplyAsync(()->{return szk.onReceiveRequest(key, ((ExecQueryAdapter)received).nmsg);});
         }
     }
     
@@ -227,7 +227,6 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
     @SuppressWarnings({ "unchecked", "rawtypes" })
     public FutureQueue<?> onReceiveRequest(DdllKey key, NestedMessage nmsg) {
         logger.trace("ENTRY:");
-        
         Collection<K> matchedKeys = Collections.<K>singleton((K) key.getRawKey());
         
         logger.debug("matchedKeys:{} nmsg:{}", matchedKeys, nmsg);
@@ -287,7 +286,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
                 for (Endpoint peerLocator : seeds) {
                     if (meansRoot(peerLocator)) {
                         for (K key : keyRegister.keySet()) {
-                            szAddKey(null, key);
+                            szAddKey(null, key, true);
                         }
                         isJoined = true;
                         // this.seeds = seeds;
@@ -302,13 +301,13 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
             for (Endpoint seed : seeds) {
                 if (meansRoot(seed))
                     continue;
-                szAddKey(seed, firstKey);
+                szAddKey(seed, firstKey, false);
                 break;
             }
             // for all rest of keys
             while (it.hasNext()) {
                 K key = it.next();
-                szAddKey(null, key);
+                szAddKey(null, key, false);
             }
             isJoined = true;
             // this.seeds = seeds;
@@ -340,7 +339,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         return Comparable.class;
     }
     
-    private void szAddKey(Endpoint seed, K key) throws IOException {
+    private void szAddKey(Endpoint seed, K key, boolean initial) throws IOException {
         logger.trace("ENTRY:");
         try {
             LocalNode node = new LocalNode(sender, new DdllKey(key, peer.getPeerId(), "", null));
@@ -348,11 +347,11 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
             RQStrategy s = (RQStrategy)node.getTopStrategy();
             s.registerAdapter(new ExecQueryAdapter(this));
 
-            if (seed == null) {
+            if (initial) {
                 node.joinInitialNode();
             }
             else {
-                node.addKey(seed);
+                node.addKey(seed != null ? seed : node.addr);
             }
             nodes.put(key, node);
         } catch (InterruptedException e) {
@@ -364,7 +363,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
     @Override
     protected void lowerAddKey(K key) throws IOException {
         if (!isJoined) return; 
-        szAddKey(null, key);
+        szAddKey(null, key, false);
     }
 
     @Override
