@@ -116,7 +116,7 @@ public class LocalNode extends Node {
             }
         }
     }
-    
+
     public LocalNode(EventSender sender, DdllKey ddllkey) {
         super(ddllkey, sender.getEndpoint());
         assert getInstance(ddllkey) == this; 

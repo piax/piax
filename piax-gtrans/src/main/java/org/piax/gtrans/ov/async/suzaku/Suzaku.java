@@ -13,7 +13,6 @@
 package org.piax.gtrans.ov.async.suzaku;
 
 import java.io.IOException;
-import java.io.Serializable;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -27,6 +26,7 @@ import org.piax.common.ComparableKey;
 import org.piax.common.Destination;
 import org.piax.common.Endpoint;
 import org.piax.common.ObjectId;
+import org.piax.common.PeerId;
 import org.piax.common.TransportId;
 import org.piax.common.subspace.KeyRange;
 import org.piax.common.subspace.KeyRanges;
@@ -40,6 +40,8 @@ import org.piax.gtrans.RequestTransportListener;
 import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.TransportListener;
 import org.piax.gtrans.async.EventExecutor;
+import org.piax.gtrans.async.EventSender;
+import org.piax.gtrans.async.EventSender.EventSenderNet;
 import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.impl.NestedMessage;
 import org.piax.gtrans.ov.OverlayListener;
@@ -64,6 +66,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
 
     public static TransportId DEFAULT_TRANSPORT_ID = new TransportId("suzaku");
     RQNodeFactory factory;
+    EventSender sender;
     Map<K,LocalNode> nodes;
     
 
@@ -79,7 +82,9 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         peer.registerBaseOverlay(transIdPath);
         SuzakuNodeFactory base = new SuzakuNodeFactory(3);
         factory = new RQNodeFactory(base);
+        sender = new EventSenderNet(transId, lowerTrans);
         nodes = new HashMap<>();
+        // XXX 
         EventExecutor.startExecutorThread();
     }
 
@@ -105,9 +110,9 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         return request3(sender, receiver, new KeyRanges<K>(dst), msg, opts);
     }
     
-    public static class ExecQueryAdapter extends RQAdapter<FutureQueue<Object>> implements Serializable {
+    public static class ExecQueryAdapter extends RQAdapter<FutureQueue<Object>> {
         public NestedMessage nmsg;
-        public Suzaku szk;
+        transient public Suzaku szk;
         public ExecQueryAdapter(ObjectId objId, NestedMessage nmsg, Consumer<RemoteValue<FutureQueue<Object>>> resultsReceiver) {
             super(resultsReceiver);
             this.nmsg = nmsg;
@@ -118,6 +123,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         }
         @Override
         public CompletableFuture<FutureQueue<Object>> get(RQAdapter<FutureQueue<Object>> received, DdllKey key) {
+            // XXX it should be threaded 
             return CompletableFuture.completedFuture(szk.onReceiveRequest(key, ((ExecQueryAdapter)received).nmsg));
         }
     }
@@ -337,14 +343,11 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
     private void szAddKey(Endpoint seed, K key) throws IOException {
         logger.trace("ENTRY:");
         try {
-            DdllKey dk = new DdllKey(key, peer.getPeerId(), "", null);
-            @SuppressWarnings("unchecked")
-            
-            LocalNode node = new LocalNode(transId, (ChannelTransport<Endpoint>)lowerTrans, dk);
+            LocalNode node = new LocalNode(sender, new DdllKey(key, peer.getPeerId(), "", null));
             factory.setupNode(node);
             RQStrategy s = (RQStrategy)node.getTopStrategy();
             s.registerAdapter(new ExecQueryAdapter(this));
-            
+
             if (seed == null) {
                 node.joinInitialNode();
             }
@@ -352,7 +355,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
                 node.addKey(seed);
             }
             nodes.put(key, node);
-        } catch (IdConflictException | InterruptedException e) {
+        } catch (InterruptedException e) {
             logger.error("", e);
             throw new IOException(e);
         }
