@@ -1205,7 +1205,7 @@ public class SuzakuStrategy extends NodeStrategy {
                 .count();
         if (nAlive != a.size()) {
             List<Node> list = a.stream()
-                    .filter(node -> node.isInserted())
+                    .filter(node -> !node.isInserted())
                     .collect(Collectors.toList());
             System.out.println("Node " + n.key + ": dead pointers = " + list);
         }
