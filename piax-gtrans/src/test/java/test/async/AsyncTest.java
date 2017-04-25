@@ -29,14 +29,12 @@ import org.piax.gtrans.async.Indirect;
 import org.piax.gtrans.async.Node;
 import org.piax.gtrans.async.NodeFactory;
 import org.piax.gtrans.ov.async.ddll.DdllStrategy.DdllNodeFactory;
-import org.piax.gtrans.ov.async.rq.RQStrategy.RQNodeFactory;
 import org.piax.gtrans.ov.async.rq.RQAdapter;
 import org.piax.gtrans.ov.async.rq.RQAdapter.InsertionPointAdapter;
 import org.piax.gtrans.ov.async.rq.RQAdapter.KeyAdapter;
+import org.piax.gtrans.ov.async.rq.RQStrategy.RQNodeFactory;
 import org.piax.gtrans.ov.async.suzaku.SuzakuStrategy.SuzakuNodeFactory;
 import org.piax.gtrans.ov.ddll.DdllKey;
-
-import test.async.AsyncTestBase.FastValueProvider;
 
 public class AsyncTest extends AsyncTestBase {
     @Test
@@ -529,30 +527,45 @@ public class AsyncTest extends AsyncTestBase {
             checkMemoryLeakage(nodes[0], nodes[1], nodes[3], nodes[4]);
         }
     }
-    
+
     @Test
     public void testMultikeySuzaku() {
         TransOptions opts = new TransOptions();
         opts.setResponseType(ResponseType.AGGREGATE);
         testMultikey(new SuzakuNodeFactory(3), opts,
                 receiver -> new KeyAdapter(receiver),
+                k -> {
+                    if (k == 300 || k == 400) {
+                        return "P100";
+                    } else {
+                        return "P" + k;
+                    }
+                },
+                new Range<Integer>(0, true, 500, false),
+                Arrays.asList(0, 100, 200, 300, 400));
+    }
+
+    @Test
+    public void testMultikeySuzakuOnOneNode() {
+        TransOptions opts = new TransOptions();
+        opts.setResponseType(ResponseType.AGGREGATE);
+        testMultikey(new SuzakuNodeFactory(3), opts,
+                receiver -> new KeyAdapter(receiver),
+                k -> {
+                    return "P100";
+                },
                 new Range<Integer>(0, true, 500, false),
                 Arrays.asList(0, 100, 200, 300, 400));
     }
 
     private void testMultikey(NodeFactory base, TransOptions opts,
             Function<Consumer<RemoteValue<DdllKey>>, RQAdapter<DdllKey>> providerFactory,
+            Function<Integer, String> mapper,
             Range<Integer> range, List<Integer> expect) {
         NodeFactory factory = new RQNodeFactory(base);
         System.out.println("** testMultikey");
         init();
-        createAndInsert(factory, 5, k -> {
-            if (k == 300 || k == 400) {
-                return "P100";
-            } else {
-                return "P" + k;
-            }
-        });
+        createAndInsert(factory, 5, mapper);
         {
             Collection<Range<Integer>> ranges = Collections.singleton(range);
             List<RemoteValue<DdllKey>> results = new ArrayList<>();
@@ -576,5 +589,6 @@ public class AsyncTest extends AsyncTestBase {
             checkMemoryLeakage(nodes[0], nodes[1], nodes[3], nodes[4]);
         }
     }
+
 }
 
