@@ -685,8 +685,10 @@ public class SuzakuStrategy extends NodeStrategy {
                 int index2 = p == 0 ? 1 : FingerTable.getFTIndex((1 << (p - 1)) + delta);
                 assert index2 != FingerTable.LOCALINDEX;
                 for (int i = 0; i < passive2.ents.length + (isBackward ? 0 : -1); i++) {
-                    System.out.println("pasv2 " + index2 + ", " + i + ": " + passive2.ents[i]);
-                    opTable.change(index2 + i, passive2.ents[i], true);
+                    if (passive2.ents[i] != null) {
+                        System.out.println("pasv2 " + index2 + ", " + i + ": " + passive2.ents[i]);
+                        opTable.change(index2 + i, passive2.ents[i], true);
+                    }
                 }
                 if (!isBackward && passive2.ents.length > 0) {
                     // opTable = BFT
@@ -940,7 +942,9 @@ public class SuzakuStrategy extends NodeStrategy {
                 if (dis < K) {
                     // XXX: THINK!: remove neighbors part
                     FTEntry e0 = e;
-                    e = new FTEntry(e.getNode());
+                    if (e != null) {
+                        e = new FTEntry(e.getNode());
+                    }
                 }
                 p2ents.add(e);
             }
@@ -1197,7 +1201,7 @@ public class SuzakuStrategy extends NodeStrategy {
         Set<Node> a0 = this.gatherRemoteLinks();
         Set<LocalNode> a = (Set)a0;
         long nAlive = a.stream()
-                .filter(node -> node.isInserted())
+                .filter(node -> !node.isInserted())
                 .count();
         if (nAlive != a.size()) {
             List<Node> list = a.stream()
