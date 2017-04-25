@@ -1201,7 +1201,7 @@ public class SuzakuStrategy extends NodeStrategy {
         Set<Node> a0 = this.gatherRemoteLinks();
         Set<LocalNode> a = (Set)a0;
         long nAlive = a.stream()
-                .filter(node -> !node.isInserted())
+                .filter(node -> node.isInserted())
                 .count();
         if (nAlive != a.size()) {
             List<Node> list = a.stream()
