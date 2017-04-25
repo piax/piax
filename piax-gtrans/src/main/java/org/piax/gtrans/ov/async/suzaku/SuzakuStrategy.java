@@ -1197,13 +1197,11 @@ public class SuzakuStrategy extends NodeStrategy {
         Set<Node> a0 = this.gatherRemoteLinks();
         Set<LocalNode> a = (Set)a0;
         long nAlive = a.stream()
-                .filter(node -> (node.mode == NodeMode.INSERTED
-                    || node.mode == NodeMode.DELETING))
+                .filter(node -> node.isInserted())
                 .count();
         if (nAlive != a.size()) {
             List<Node> list = a.stream()
-                    .filter(node -> (node.mode != NodeMode.INSERTED
-                        && node.mode != NodeMode.DELETING))
+                    .filter(node -> node.isInserted())
                     .collect(Collectors.toList());
             System.out.println("Node " + n.key + ": dead pointers = " + list);
         }

@@ -17,7 +17,6 @@ import java.util.stream.Collectors;
 
 import org.piax.common.Id;
 import org.piax.common.PeerId;
-import org.piax.common.subspace.CircularRange;
 import org.piax.common.subspace.Range;
 import org.piax.gtrans.RemoteValue;
 import org.piax.gtrans.ReturnValue;
@@ -29,6 +28,7 @@ import org.piax.gtrans.async.Event.StreamingRequestEvent;
 import org.piax.gtrans.async.EventExecutor;
 import org.piax.gtrans.async.FTEntry;
 import org.piax.gtrans.async.LocalNode;
+import org.piax.gtrans.async.Log;
 import org.piax.gtrans.async.NetworkParams;
 import org.piax.gtrans.async.Node;
 import org.piax.gtrans.ov.ddll.DdllKey;
@@ -289,19 +289,22 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         }
 
         private void rqDisseminate(List<RQRange> ranges) {
-            logger.debug("rqDisseminate start: {}", this);
-            logger.debug("                   : {}", RQRequest.this);
+            Log.verbose(() -> "rqDisseminate start: " + this);
+            Log.verbose(() -> "                     " + RQRequest.this);
 
             Set<Integer> history = strategy.queryHistory.get(qid);
             assert history != null;
             ranges.stream().forEach(r -> history.addAll(Arrays.asList(r.ids)));
 
             List<FTEntry> ftents = getTopStrategy().getRoutingEntries();
-            System.out.println("rqd#ftents=" + ftents);
+            Log.verbose(() -> "rqd#ftents=" + ftents);
             List<DKRangeRValue<T>> locallyResolved = new ArrayList<>();
             ranges = adapter.preprocess(ranges, ftents, locallyResolved);
-            System.out.println("rqd#ranges=" + ranges);
-            System.out.println("rqd#locally=" + locallyResolved);
+            {
+                List<RQRange> ranges0 = ranges;
+                Log.verbose(() -> "rqd#ranges=" + ranges0);
+                Log.verbose(() -> "rqd#locally=" + locallyResolved);
+            }
             assert gaps != null && !gaps.isEmpty();
             locallyResolved.stream().forEach(dkr -> {
                 addRemoteValue(dkr.getRemoteValue(), dkr);
@@ -309,7 +312,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
 
             // assign a delegate node for each range
             Map<Id, List<RQRange>> map = assignDelegates(ranges);
-            logger.debug("aggregated: {}", map);
+            Log.verbose(() -> "aggregated: " + map);
             PeerId peerId = getLocalNode().getPeerId();
 
             /*
@@ -343,9 +346,13 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                 = rqExecuteLocal(map.get(peerId));
             future.thenAccept((List<DKRangeRValue<T>> rvals) -> {
                 addRemoteValues(rvals);
+            }).exceptionally((exc) -> {
+                System.err.println("addRemoteValues completes exceptionally");
+                exc.getCause().printStackTrace();
+                return null; // or System.exit(1);
             });
             responder.rqDisseminateFinish();
-            logger.debug("rqDisseminate finished");
+            Log.verbose(() -> "rqDisseminate finished");
         }
 
         /**
@@ -358,9 +365,8 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             LocalNode local = getLocalNode(); 
             // collect [me, successor)
             List<RQRange> succRanges = new ArrayList<>();
-            for (LocalNode v : local.getSiblings()) {
-                succRanges.add(new RQRange(v, v.key, v.succ.key));
-            }
+            local.getSiblings().stream()
+                .forEach(v -> succRanges.add(new RQRange(v, v.key, v.succ.key)));
             List<Node> actives = local.getActiveNodeStream()
                     .collect(Collectors.toList());
             logger.debug("actives={}", actives);
@@ -565,7 +571,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
          */
         private CompletableFuture<List<DKRangeRValue<T>>>
         rqExecuteLocal(List<RQRange> ranges) {
-            logger.debug("rqExecuteLocal: ranges={}", ranges);
+            Log.verbose(() -> "rqExecuteLocal: ranges=" + ranges);
             // results of locally-resolved ranges
             List<DKRangeRValue<T>> rvals = new ArrayList<>();
             if (ranges == null) {
