@@ -195,8 +195,13 @@ public class LocalNode extends Node {
     }
 
     public List<LocalNode> getSiblings() {
-        SortedSet<LocalNode> set = localNodeMap.get(peerId);
-        return new ArrayList<>(set);
+        return localNodeMap.get(peerId).stream()
+                .filter(v -> v.isInserted())
+                .collect(Collectors.toList());
+    }
+    
+    public boolean isInserted() {
+        return mode == NodeMode.INSERTED || mode == NodeMode.DELETING;
     }
 
     /**
