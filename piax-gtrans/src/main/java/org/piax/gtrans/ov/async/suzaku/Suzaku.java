@@ -26,11 +26,11 @@ import org.piax.common.ComparableKey;
 import org.piax.common.Destination;
 import org.piax.common.Endpoint;
 import org.piax.common.ObjectId;
-import org.piax.common.PeerId;
 import org.piax.common.TransportId;
 import org.piax.common.subspace.KeyRange;
 import org.piax.common.subspace.KeyRanges;
 import org.piax.common.subspace.LowerUpper;
+import org.piax.common.subspace.Range;
 import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.FutureQueue;
 import org.piax.gtrans.IdConflictException;
@@ -90,8 +90,8 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
 
     @Override
     public synchronized void fin() {
-        
         super.fin();
+        // XXX stop event queue?
     }
 
     public Endpoint getEndpoint() {
@@ -111,16 +111,20 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
     }
     
     public static class ExecQueryAdapter extends RQAdapter<FutureQueue<Object>> {
+        private static final long serialVersionUID = -2672546268071889814L;
         public NestedMessage nmsg;
+        @SuppressWarnings("rawtypes")
         transient public Suzaku szk;
         public ExecQueryAdapter(ObjectId objId, NestedMessage nmsg, Consumer<RemoteValue<FutureQueue<Object>>> resultsReceiver) {
             super(resultsReceiver);
             this.nmsg = nmsg;
         }
+        @SuppressWarnings("rawtypes")
         public ExecQueryAdapter(Suzaku szk) { // for executor side.
             super(null);
             this.szk = szk;
         }
+        @SuppressWarnings("unchecked")
         @Override
         public CompletableFuture<FutureQueue<Object>> get(RQAdapter<FutureQueue<Object>> received, DdllKey key) {
             //return CompletableFuture.completedFuture(szk.onReceiveRequest(key, ((ExecQueryAdapter)received).nmsg));
@@ -201,7 +205,6 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
     /*
      * for MaxLessEq key query
      */
-    @SuppressWarnings({ "unchecked", "rawtypes" })
     public FutureQueue<?> forwardQueryToMaxLessThan(ObjectId sender,
             ObjectId receiver, LowerUpper lu, Object msg, TransOptions opts)
             throws IllegalStateException {
@@ -209,16 +212,29 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         if (!isJoined) {
             throw new IllegalStateException("Not joined to the network yet.");
         }
+        if (opts == null) {
+            opts = new TransOptions();
+        }
         NestedMessage nmsg = new NestedMessage(sender, receiver, null, peerId, msg);
-
-               
-        //Collection<RemoteValue<?>> ret = chordSharp.forwardQuery(lu.isPlusDir(),
-//                lu.getRange(), lu.getMaxNum(), nmsg, opts);
-        
-        //FutureQueue<?> fq = new FutureQueue(ret);
-        //fq.setEOFuture();
-        //return fq;
-        return null; // XXX not implemented yet.
+        FutureQueue<Object> fq = new FutureQueue<>();
+        getEntryPoint().forwardQueryLeftAsync(lu.getRange(), lu.getMaxNum(),
+                new ExecQueryAdapter(receiver, nmsg, (ret)-> {
+                    try {
+                        if (ret == null) {
+                            fq.setEOFuture();
+                        }
+                        else {
+                            FutureQueue<Object> o = ret.get();
+                            for (RemoteValue<Object> r : o) {
+                                fq.add(r);
+                            }
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                })
+                , opts);
+        return fq;
     }
 
     /*
