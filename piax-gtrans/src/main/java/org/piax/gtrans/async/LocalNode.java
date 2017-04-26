@@ -396,6 +396,12 @@ public class LocalNode extends Node {
             if (exc != null) {
                 retry.accept(exc);
             } else {
+                if (results.succ == null) {
+                    // Lookup failure
+                    assert results.pred == null;
+                    retry.accept(new TimeoutException());
+                    return;
+                }
                 CompletableFuture<Boolean> future = new CompletableFuture<>();
                 getTopStrategy().join(results, future);
                 future.whenComplete((rc, exc2) -> {
