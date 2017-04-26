@@ -254,7 +254,7 @@ public class LocalNode extends Node {
         if (!isFailed) {
             try {
                 sender.send(ev);
-            } catch (RPCException e) {
+            } catch (Exception e) {
                 Log.verbose(() -> this + " got exception: " + e);
                 failure.run(new RPCEventException(e));
             }
@@ -296,7 +296,7 @@ public class LocalNode extends Node {
         if (!isFailed()) {
             try {
                 sender.forward(ev);
-            } catch (RPCException e) {
+            } catch (Exception e) {
                 Log.verbose(()-> this + " got exception: " + e);
                 failure.run(new RPCEventException(e));
             }
@@ -449,7 +449,6 @@ public class LocalNode extends Node {
     
     public <T> void rangeQueryAsync(Collection<? extends Range<?>> ranges,
             RQAdapter<T> adapter, TransOptions opts) {
-        System.out.println("top=" + getTopStrategy());
         getTopStrategy().rangeQuery(ranges, adapter, opts);
     }
 

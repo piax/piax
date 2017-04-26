@@ -10,7 +10,7 @@ public class EventException extends Exception {
         super(s);
     }
     public static class RPCEventException extends EventException {
-        public RPCEventException(RPCException e) {
+        public RPCEventException(Exception e) {
             super(e);
         }
     }

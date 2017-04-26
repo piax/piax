@@ -15,9 +15,9 @@ import org.piax.gtrans.RemoteCallable.Type;
 import org.piax.gtrans.async.Event.LocalEvent;
 
 public interface EventSender {
-    void send(Event ev) throws RPCException;
+    void send(Event ev) throws Exception;
 
-    void forward(Event ev) throws RPCException;
+    void forward(Event ev) throws Exception;
 
     Endpoint getEndpoint();
 

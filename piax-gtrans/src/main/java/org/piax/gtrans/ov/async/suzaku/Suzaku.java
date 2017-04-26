@@ -13,14 +13,17 @@
 package org.piax.gtrans.ov.async.suzaku;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 import org.piax.common.ComparableKey;
 import org.piax.common.Destination;
@@ -30,19 +33,23 @@ import org.piax.common.TransportId;
 import org.piax.common.subspace.KeyRange;
 import org.piax.common.subspace.KeyRanges;
 import org.piax.common.subspace.LowerUpper;
-import org.piax.common.subspace.Range;
 import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.FutureQueue;
 import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.ProtocolUnsupportedException;
+import org.piax.gtrans.ReceivedMessage;
 import org.piax.gtrans.RemoteValue;
 import org.piax.gtrans.RequestTransportListener;
 import org.piax.gtrans.TransOptions;
+import org.piax.gtrans.Transport;
 import org.piax.gtrans.TransportListener;
+import org.piax.gtrans.async.Event;
+import org.piax.gtrans.async.Event.LocalEvent;
 import org.piax.gtrans.async.EventExecutor;
 import org.piax.gtrans.async.EventSender;
-import org.piax.gtrans.async.EventSender.EventSenderNet;
+import org.piax.gtrans.async.FTEntry;
 import org.piax.gtrans.async.LocalNode;
+import org.piax.gtrans.async.Node;
 import org.piax.gtrans.impl.NestedMessage;
 import org.piax.gtrans.ov.OverlayListener;
 import org.piax.gtrans.ov.OverlayReceivedMessage;
@@ -69,20 +76,59 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
     EventSender sender;
     Map<K,LocalNode> nodes;
     
+    class SuzakuEventSender<E extends Endpoint> implements EventSender, TransportListener<E> {
+        TransportId transId;
+        ChannelTransport<E> trans;
 
+        public SuzakuEventSender(TransportId transId, ChannelTransport<E> trans) {
+            this.transId = transId;
+            this.trans = trans;
+            trans.setListener(transId, this);
+        }
+
+        public Endpoint getEndpoint() {
+            return trans.getEndpoint();
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public void send(Event ev) throws Exception {
+            if (ev instanceof LocalEvent) {
+                recv(ev);
+            } else {
+                trans.send(transId, (E) ev.receiver.addr, ev);
+            }
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public void forward(Event ev) throws Exception {
+            trans.send(transId, (E) ev.receiver.addr, ev);
+        }
+
+        @Override
+        public void onReceive(Transport<E> trans, ReceivedMessage rmsg) {
+            recv((Event)rmsg.getMessage());
+        }
+
+        public void recv(Event ev) {
+            EventExecutor.enqueue(ev);
+        }
+    }
+        
     public Suzaku(ChannelTransport<?> lowerTrans) throws IdConflictException,
             IOException {
         this(DEFAULT_TRANSPORT_ID, lowerTrans);
     }
 
-    @SuppressWarnings("unchecked")
     public Suzaku(TransportId transId, ChannelTransport<?> lowerTrans)
             throws IdConflictException, IOException {
         super(lowerTrans.getPeer(), transId, lowerTrans);
         peer.registerBaseOverlay(transIdPath);
         SuzakuNodeFactory base = new SuzakuNodeFactory(3);
         factory = new RQNodeFactory(base);
-        sender = new EventSenderNet(transId, lowerTrans);
+        //sender = new EventSenderNet(transId, lowerTrans);
+        sender = new SuzakuEventSender<>(transId, lowerTrans);
         nodes = new HashMap<>();
         // XXX 
         EventExecutor.startExecutorThread();
@@ -128,7 +174,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         @Override
         public CompletableFuture<FutureQueue<Object>> get(RQAdapter<FutureQueue<Object>> received, DdllKey key) {
             //return CompletableFuture.completedFuture(szk.onReceiveRequest(key, ((ExecQueryAdapter)received).nmsg));
-            return CompletableFuture.supplyAsync(()->{return szk.onReceiveRequest(key, ((ExecQueryAdapter)received).nmsg);});
+            return CompletableFuture.supplyAsync(()->szk.onReceiveRequest(key, ((ExecQueryAdapter)received).nmsg));
         }
     }
     
@@ -364,9 +410,11 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
             s.registerAdapter(new ExecQueryAdapter(this));
 
             if (initial) {
+                System.out.println("initial=" + node.key + "self=" + node.addr);
                 node.joinInitialNode();
             }
             else {
+                System.out.println("seed=" + (seed == null ? node.addr : seed) + ","+ node.key + "self=" + node.addr);
                 node.addKey(seed != null ? seed : node.addr);
             }
             nodes.put(key, node);
@@ -424,6 +472,14 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         return super.removeKey(upper, key);
     }
 
+    private Link[] nodes2Links(List<Node> nodes) {
+        return nodes.stream().map(node->{
+            return new Link(node.addr, node.key);
+        }).toArray(count->{
+            return new Link[count];
+        });
+    }
+    
     @SuppressWarnings("unchecked")
     @Override
     public Set<K> getKeys(ObjectId upper) {
@@ -435,12 +491,24 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
     // RoutingTableAccessor implementations.
     @Override
     public Link[] getAll() {
-        return null; // XXX not implemented yet.
+        List<Link>ret = new ArrayList<>();
+        nodes.values().forEach((n) -> {
+            Stream<FTEntry> s = SuzakuStrategy.getSuzakuStrategy(n).getFTEntryStream();
+            if (s != null){
+                s.forEach((e) -> {
+                    e.allNodes().stream().forEach((node) -> {
+                        ret.add(new Link(node.addr, node.key));
+                    });
+                });
+            }
+        });
+        return ret.toArray(new Link[0]);
     }
 
     @Override
     public Link getLocal(Comparable<?> key) {
-        return null; // XXX not implemented yet.
+        Node node = nodes.get(key);
+        return new Link(node.addr, node.key);
     }
 
     @Override
@@ -475,16 +543,21 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
 
     @Override
     public Link[] getRights(Comparable<?> key, int level) {
-        return null; // XXX not implemented yet.
+        SuzakuStrategy szk = SuzakuStrategy.getSuzakuStrategy(nodes.get(key));
+        FTEntry ent = szk.getFingerTableEntry(false, level);
+        return ent != null? nodes2Links(ent.allNodes()) : null;
     }
 
     @Override
     public Link[] getLefts(Comparable<?> key, int level) {
-        return null; // XXX not implemented yet.
+        SuzakuStrategy szk = SuzakuStrategy.getSuzakuStrategy(nodes.get(key));
+        FTEntry ent = szk.getFingerTableEntry(true, level);
+        return ent != null? nodes2Links(ent.allNodes()) : null;
     }
     
     @Override
     public int getHeight(Comparable<?> key) {
-        return -1; // XXX not implemented yet.
+        SuzakuStrategy szk = SuzakuStrategy.getSuzakuStrategy(nodes.get(key));
+        return szk.getFingerTableSize();
     }
 }
