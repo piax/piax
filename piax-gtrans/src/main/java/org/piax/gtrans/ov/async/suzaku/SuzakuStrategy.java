@@ -34,8 +34,6 @@ import org.piax.gtrans.ov.async.suzaku.SuzakuEvent.GetFTEntEvent;
 import org.piax.gtrans.ov.async.suzaku.SuzakuEvent.RemoveReversePointerEvent;
 import org.piax.gtrans.ov.ring.rq.FlexibleArray;
 
-import test.async.TestOv.Base;
-
 public class SuzakuStrategy extends NodeStrategy {
     public static class SuzakuNodeFactory extends NodeFactory {
         public SuzakuNodeFactory(int type) {
@@ -696,7 +694,7 @@ public class SuzakuStrategy extends NodeStrategy {
                         opTable.change(index2 + i, passive2.ents[i], true);
                     }
                 }
-                if (!isBackward && passive2.ents.length > 0) {
+                if (!isBackward && p > 0 && passive2.ents.length > 0) {
                     // opTable = BFT
                     table.addReversePointer(passive2.ents[passive2.ents.length - 1].getNode());
                 }
