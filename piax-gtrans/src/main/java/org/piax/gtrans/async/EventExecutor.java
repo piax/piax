@@ -286,8 +286,9 @@ public class EventExecutor {
                             new GraceStateException()));
                 }
             } else if (receiver != null && (receiver.isFailed()
+                    || receiver.mode == NodeMode.OUT
                     || receiver.mode == NodeMode.DELETED)) {
-                System.out.println("message received by deleted or failed node: " + ev);
+                Log.verbose(() -> "message received by not inserted or failed node: " + ev);
             } else {
                 addToRoute(ev.route, receiver);
                 if (ev.beforeRunHook(receiver)) {

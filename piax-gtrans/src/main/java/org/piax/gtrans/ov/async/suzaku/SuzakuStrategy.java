@@ -293,7 +293,11 @@ public class SuzakuStrategy extends NodeStrategy {
 
     @Override
     public void handleLookup(Lookup l) {
-        handleLookup(l, 0);
+        // isInserted() check is for the case where this node has not
+        // yet been inserted.
+        if (ddll.isInserted()) {
+            handleLookup(l, 0);
+        }
     }
 
     public void handleLookup(Lookup l, int nRetry) {
@@ -690,7 +694,7 @@ public class SuzakuStrategy extends NodeStrategy {
                         opTable.change(index2 + i, passive2.ents[i], true);
                     }
                 }
-                if (!isBackward && passive2.ents.length > 0) {
+                if (!isBackward && p > 0 && passive2.ents.length > 0) {
                     // opTable = BFT
                     table.addReversePointer(passive2.ents[passive2.ents.length - 1].getNode());
                 }

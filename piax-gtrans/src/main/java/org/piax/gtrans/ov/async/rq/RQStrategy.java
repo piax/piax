@@ -95,8 +95,14 @@ public class RQStrategy extends NodeStrategy {
                         return;
                     }
                     Log.verbose(() -> "handleLookup: rval = " + rval);
-                    Node[] nodes = rval.getValue();
-                    Event ev = new LookupDone(l, nodes[0], nodes[1]);
+                    Event ev;
+                    if (rval == null) {
+                        // Timeout!
+                        ev = new LookupDone(l, null, null);
+                    } else {
+                        Node[] nodes = rval.getValue();
+                        ev = new LookupDone(l, nodes[0], nodes[1]);
+                    }
                     n.post(ev);
                     flag.val = true;
                 }), opts);
