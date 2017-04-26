@@ -116,6 +116,15 @@ public class DdllStrategy extends NodeStrategy {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * returns true if this node is likely to be inserted.
+     * 
+     * @return true if this node is likely to be inserted.
+     */
+    public boolean isInserted() {
+        return status == DdllStatus.IN || status == DdllStatus.DEL;
+    }
+
     @Override
     public void initInitialNode() {
         n.succ = n;

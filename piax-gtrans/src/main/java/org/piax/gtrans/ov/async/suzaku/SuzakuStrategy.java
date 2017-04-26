@@ -34,6 +34,8 @@ import org.piax.gtrans.ov.async.suzaku.SuzakuEvent.GetFTEntEvent;
 import org.piax.gtrans.ov.async.suzaku.SuzakuEvent.RemoveReversePointerEvent;
 import org.piax.gtrans.ov.ring.rq.FlexibleArray;
 
+import test.async.TestOv.Base;
+
 public class SuzakuStrategy extends NodeStrategy {
     public static class SuzakuNodeFactory extends NodeFactory {
         public SuzakuNodeFactory(int type) {
@@ -293,7 +295,11 @@ public class SuzakuStrategy extends NodeStrategy {
 
     @Override
     public void handleLookup(Lookup l) {
-        handleLookup(l, 0);
+        // isInserted() check is for the case where this node has not
+        // yet been inserted.
+        if (ddll.isInserted()) {
+            handleLookup(l, 0);
+        }
     }
 
     public void handleLookup(Lookup l, int nRetry) {
