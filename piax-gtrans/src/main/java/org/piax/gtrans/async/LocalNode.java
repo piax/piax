@@ -244,7 +244,9 @@ public class LocalNode extends Node {
                 sender.send(ev);
             } catch (RPCException e) {
                 Log.verbose(() -> this + " got exception: " + e);
-                failure.run(new RPCEventException(e));
+                if (failure != null) {
+                    failure.run(new RPCEventException(e));
+                }
             }
         }
     }
