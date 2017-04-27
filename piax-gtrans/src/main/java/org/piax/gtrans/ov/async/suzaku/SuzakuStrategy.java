@@ -683,7 +683,7 @@ public class SuzakuStrategy extends NodeStrategy {
                     opTable.change(index2 + i, passive1.ents[i], true);
                 }
             }
-            if (passive2 != null) {
+            if (passive2 != null && passive2.ents.length > 0) {
                 assert PASSIVE_UPDATE_2;
                 // Passive Update 2
                 int index2 = p == 0 ? 1 : FingerTable.getFTIndex((1 << (p - 1)) + delta);
@@ -694,9 +694,11 @@ public class SuzakuStrategy extends NodeStrategy {
                         opTable.change(index2 + i, passive2.ents[i], true);
                     }
                 }
-                if (!isBackward && p > 0 && passive2.ents.length > 0) {
-                    // opTable = BFT
-                    table.addReversePointer(passive2.ents[passive2.ents.length - 1].getNode());
+                if (!isBackward && p > 0) {
+                     FTEntry last = passive2.ents[passive2.ents.length - 1];
+                     if (last != null) {
+                         table.addReversePointer(last.getNode());
+                     }
                 }
 //                int index = FingerTable.getFTIndex(1 << (p + 1));
 //                if (!NOTIFY_WITH_REVERSE_POINTER.value() || isBackward) {
@@ -954,9 +956,7 @@ public class SuzakuStrategy extends NodeStrategy {
             }
             if (p > 0 && !isBackward) {
                 // FFT側ノードのReverse Pointer更新用
-                if (nextEnt2 != null) {
-                    p2ents.add(nextEnt2.clone());
-                }
+                p2ents.add(nextEnt2 != null ? nextEnt2.clone() : null);
             }
             passive2 = new FTEntrySet();
             passive2.ents = p2ents.toArray(new FTEntry[p2ents.size()]);
