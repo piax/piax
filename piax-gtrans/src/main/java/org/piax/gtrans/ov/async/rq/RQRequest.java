@@ -346,12 +346,13 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                 = rqExecuteLocal(map.get(peerId));
             future.thenAccept((List<DKRangeRValue<T>> rvals) -> {
                 addRemoteValues(rvals);
+                // XXX: RQAdapterの実行に時間を要する場合，Ackタイムアウトに間に合わない可能性
+                responder.rqDisseminateFinish();
             }).exceptionally((exc) -> {
                 System.err.println("addRemoteValues completes exceptionally");
                 exc.getCause().printStackTrace();
                 return null; // or System.exit(1);
             });
-            responder.rqDisseminateFinish();
             Log.verbose(() -> "rqDisseminate finished");
         }
 

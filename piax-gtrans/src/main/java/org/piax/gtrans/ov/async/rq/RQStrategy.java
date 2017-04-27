@@ -365,12 +365,16 @@ public class RQStrategy extends NodeStrategy {
             f = rAdapter.getRaw(received, localNode, r, qid);
         } catch (Throwable exc) {
             // if getRaw terminates exceptionally...
-            System.err.println("invokeadapter: got " + exc);
+            System.err.println("getLocalValue: got " + exc);
             exc.printStackTrace();
             RemoteValue<T> rval = new RemoteValue<>(getLocalNode().peerId, exc);
             return CompletableFuture.completedFuture(rval);
         }
-        return f.handle((T val, Throwable exc) -> {
+        // RQAdapter.getRaw may be executed by a separate thread.
+        // To avoid scattering mutual exclusion code, we let the event executor
+        // thread handle the successive jobs.
+        CompletableFuture<T> ret = unparallel(f);
+        return ret.handle((T val, Throwable exc) -> {
             RemoteValue<T> rval;
             if (exc != null) {
                 rval = new RemoteValue<>(getLocalNode().peerId, exc);
@@ -379,5 +383,24 @@ public class RQStrategy extends NodeStrategy {
             }
             return rval;
         });
+    }
+
+    /**
+     * 別スレッドで実行されるCompletableFutureが終了したら
+     * event executor thread で実行される CompletableFuture を返す．
+     */
+    private <T> CompletableFuture<T> unparallel(CompletableFuture<T> f) {
+        CompletableFuture<T> ret = new CompletableFuture<>();
+        f.whenComplete((T val, Throwable exc) -> {
+            LocalEvent ev = new LocalEvent(n, () -> {
+                if (exc != null) {
+                    ret.completeExceptionally(exc);
+                } else {
+                    ret.complete(val);
+                }
+            });
+            n.post(ev);
+        });
+        return ret;
     }
 }
