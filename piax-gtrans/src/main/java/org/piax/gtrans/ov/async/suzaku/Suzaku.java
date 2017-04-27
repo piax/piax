@@ -112,6 +112,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         }
 
         public void recv(Event ev) {
+            //System.err.println("recv(" + trans.getEndpoint() + "):" + ev );
             EventExecutor.enqueue(ev);
         }
     }
@@ -220,10 +221,10 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
     @Override
     public FutureQueue<?> request(ObjectId sender, ObjectId receiver,
             Destination dst, Object msg, int timeout)
-            throws ProtocolUnsupportedException, IOException {
-    		return request(sender, receiver, dst, msg, new TransOptions(timeout));
+                    throws ProtocolUnsupportedException, IOException {
+        return request(sender, receiver, dst, msg, new TransOptions(timeout));
     }
-    
+
     @Override @SuppressWarnings("unchecked")
     public FutureQueue<?> request(ObjectId sender, ObjectId receiver,
             Destination dst, Object msg, TransOptions opts)
@@ -400,7 +401,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
     public Class<?> getAvailableKeyType() {
         return Comparable.class;
     }
-    
+
     private void szAddKey(Endpoint seed, K key, boolean initial) throws IOException {
         logger.trace("ENTRY:");
         try {
@@ -410,11 +411,11 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
             s.registerAdapter(new ExecQueryAdapter(this));
 
             if (initial) {
-                System.out.println("initial=" + node.key + "self=" + node.addr);
+                logger.debug("initial=" + node.key + "self=" + node.addr);
                 node.joinInitialNode();
             }
             else {
-                System.out.println("seed=" + (seed == null ? node.addr : seed) + ","+ node.key + "self=" + node.addr);
+                logger.debug("seed=" + (seed == null ? node.addr : seed) + ","+ node.key + "self=" + node.addr);
                 node.addKey(seed != null ? seed : node.addr);
             }
             nodes.put(key, node);
