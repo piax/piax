@@ -33,6 +33,7 @@ public class EventExecutor {
     private static PriorityQueue<Event> timeq = new PriorityQueue<>();
     private static LatencyProvider latencyProvider;
     private static Map<String, Count> counter = new HashMap<String, Count>();
+    private static boolean terminateExecutor = false;
 
     // consistent random generator
     private static Random rand = new MersenneTwister();
@@ -205,14 +206,23 @@ public class EventExecutor {
         synchronized (EventExecutor.class) {
             if (thread == null) {
                 realtime.set(true);
+                terminateExecutor = false;
                 thread = new Thread(() -> run(0));
                 thread.start();
             }
         }
     }
 
+    public static void terminate() {
+        synchronized (EventExecutor.class) {
+            terminateExecutor = true;
+            // interrupt ?
+        }
+    }
+
     public static void startSimulation(long duration) {
         assert thread == null;
+        terminateExecutor = false;
         run(duration);
     }
 
@@ -223,6 +233,11 @@ public class EventExecutor {
             limit = getVTime() + duration;
         }
         while (true) {
+            if (terminateExecutor) {
+                System.out.println("*** event executor terminated: "
+                        + getVTime());
+                return;
+            }
             if (limit != 0 && getVTime() > limit) {
                 System.out.println(
                         "*** execution time over: " + getVTime() + " > " + limit);
@@ -230,8 +245,8 @@ public class EventExecutor {
             }
             Event ev = dequeue();
             if (ev == null) {
-                System.out.println("No more event: time=" + vtime + ", " + nmsgs
-                        + " messages");
+                System.out.println("No more event: time=" + getVTime()
+                    + ", " + nmsgs + " messages");
                 return;
             }
             if (!realtime.value() && vtime < ev.vtime) {
