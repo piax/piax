@@ -325,6 +325,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                     Node dlg = sub.get(0).getNode();
                     RQRequest<T> m = new RQRequest<>(RQRequest.this, dlg, sub, 
                             (Throwable th) -> {
+                                getLocalNode().addMaybeFailedNode(dlg);
                                 RetransMode mode = opts.getRetransMode();
                                 if (mode == RetransMode.FAST || mode == RetransMode.RELIABLE) {
                                     logger.debug("start fast retransmission! {}", sub);
