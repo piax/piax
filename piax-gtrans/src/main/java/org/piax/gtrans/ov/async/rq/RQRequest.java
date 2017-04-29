@@ -293,7 +293,10 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             Log.verbose(() -> "                     " + RQRequest.this);
 
             Set<Integer> history = strategy.queryHistory.get(qid);
-            assert history != null;
+            if (history == null) {
+                // retransmission too late! 
+                return;
+            }
             ranges.stream().forEach(r -> history.addAll(Arrays.asList(r.ids)));
 
             List<FTEntry> ftents = getTopStrategy().getRoutingEntries();
