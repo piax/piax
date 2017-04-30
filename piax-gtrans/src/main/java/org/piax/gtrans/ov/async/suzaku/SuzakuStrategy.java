@@ -504,6 +504,9 @@ public class SuzakuStrategy extends NodeStrategy {
         List<SuzakuStrategy> vnodes = n.getSiblings().stream()
                 .map(ln -> getSuzakuStrategy(ln))
                 .collect(Collectors.toList());
+        if (vnodes.isEmpty()) {
+            return Collections.emptyList();
+        }
         SuzakuStrategy v1 = vnodes.get(0);
         SuzakuStrategy v2;
         for (int k = 1; k <= vnodes.size(); k++, v1 = v2) {
