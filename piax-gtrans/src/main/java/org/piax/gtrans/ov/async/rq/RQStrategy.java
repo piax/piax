@@ -308,6 +308,7 @@ public class RQStrategy extends NodeStrategy {
                 .isPresent();
         if (expectedRight != null && circulated) {
             logger.debug("forwardQueryLeft: finish (circulated)");
+            p.adapter.handleResult(null); // finish!
             return;
         }
         GetLocalValueRequest<T> ev = new GetLocalValueRequest<>(current, 
@@ -337,6 +338,7 @@ public class RQStrategy extends NodeStrategy {
                         visited.add(current);
                         p.adapter.handleResult(rep.result);
                     }
+                    // BUG: rep.pred.key は信頼できるとは限らないため，以下の条件判定はまずい．
                     if (visited.size() >= p.num || !p.rq.contains(rep.pred.key)) {
                         p.adapter.handleResult(null); // finish!
                         return;
