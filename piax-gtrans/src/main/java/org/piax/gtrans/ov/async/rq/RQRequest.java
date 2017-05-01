@@ -300,6 +300,10 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             ranges.stream().forEach(r -> history.addAll(Arrays.asList(r.ids)));
 
             List<FTEntry> ftents = getTopStrategy().getRoutingEntries();
+            if (ftents.isEmpty()) {
+                Log.verbose(() -> "no routing entry available!");
+                return;
+            }
             Log.verbose(() -> "rqd#ftents=" + ftents);
             List<DKRangeRValue<T>> locallyResolved = new ArrayList<>();
             ranges = adapter.preprocess(ranges, ftents, locallyResolved);

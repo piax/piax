@@ -213,7 +213,9 @@ public class LocalNode extends Node {
     }
     
     public boolean isInserted() {
-        return mode == NodeMode.INSERTED || mode == NodeMode.DELETING;
+        // GRACE状態のノードもルーティング可能とするために，GRACEも挿入状態とみなす．
+        return mode == NodeMode.INSERTED || mode == NodeMode.DELETING
+                || mode == NodeMode.GRACE;
     }
 
     /**
@@ -553,7 +555,7 @@ public class LocalNode extends Node {
             .distinct()
             .sorted(comp)
             .collect(Collectors.toCollection(ArrayList::new));
-        if (cands.get(cands.size() - 1) == this) {
+        if (cands.size() > 0 && cands.get(cands.size() - 1) == this) {
             cands.remove(cands.size() - 1);
             cands.add(0, this);
         }
