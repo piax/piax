@@ -1,5 +1,6 @@
 package test.async;
 
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -37,6 +38,62 @@ import org.piax.gtrans.ov.async.suzaku.SuzakuStrategy.SuzakuNodeFactory;
 import org.piax.gtrans.ov.ddll.DdllKey;
 
 public class AsyncTest extends AsyncTestBase {
+    @Test
+    public void testTerminate1() {
+        EventExecutor.reset();
+        Indirect<Boolean> chk1 = new Indirect<>(false), chk2 = new Indirect<>(false);
+        EventExecutor.sched(50, () -> {
+            System.out.println("chk1: " + EventExecutor.getVTime());
+            chk1.val = true;
+        });
+        EventExecutor.sched(150, () -> {
+            System.out.println("chk2: "+ EventExecutor.getVTime());
+            chk2.val = true;
+        });
+
+        EventExecutor.startExecutorThread();
+        try {
+            Thread.sleep(100);
+        } catch (InterruptedException e) {}
+        EventExecutor.terminate();
+        EventExecutor.startExecutorThread();
+        try {
+            Thread.sleep(100);
+        } catch (InterruptedException e) {}
+        EventExecutor.terminate();
+        EventExecutor.realtime.set(false);
+        assertTrue(chk1.val);
+        assertTrue(chk2.val);
+    }
+
+    @Test
+    public void testTerminate2() {
+        EventExecutor.reset();
+        Indirect<Boolean> chk1 = new Indirect<>(false), chk2 = new Indirect<>(false);
+        EventExecutor.sched(50, () -> {
+            System.out.println("chk1: " + EventExecutor.getVTime());
+            chk1.val = true;
+        });
+        EventExecutor.sched(150, () -> {
+            System.out.println("chk2: "+ EventExecutor.getVTime());
+            chk2.val = true;
+        });
+        EventExecutor.startExecutorThread();
+        try {
+            Thread.sleep(100);
+        } catch (InterruptedException e) {}
+        EventExecutor.terminate();
+        EventExecutor.reset();
+        EventExecutor.startExecutorThread();
+        try {
+            Thread.sleep(100);
+        } catch (InterruptedException e) {}
+        EventExecutor.terminate();
+        EventExecutor.realtime.set(false);
+        assertTrue(chk1.val);
+        assertFalse(chk2.val);
+    }
+
     @Test
     public void testDdllBasicInsDel() {
         testBasicInsDel(new DdllNodeFactory());
@@ -589,6 +646,5 @@ public class AsyncTest extends AsyncTestBase {
             checkMemoryLeakage(nodes[0], nodes[1], nodes[3], nodes[4]);
         }
     }
-
 }
 
