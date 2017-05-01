@@ -559,6 +559,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         }
         
         private void notifyResult(RemoteValue<T> rval) {
+            assert isRoot;
             if (rval == null || rval.getValue() != SPECIAL.PADDING) {
                 adapter.handleResult(rval);
             }
@@ -649,7 +650,9 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                         exp, () -> {
                             logger.debug("expired: {}", this);
                             cleanup();
-                            notifyResult(null);
+                            if (isRoot) {
+                                notifyResult(null);
+                            }
                         });
                 cleanup.add(() -> expirationTask.cancel());
             }
