@@ -32,6 +32,11 @@ public class Node implements Comparable<Node>, Serializable {
         = new ConcurrentReferenceHashMap<>(16,
                 ConcurrentReferenceHashMap.ReferenceType.WEAK,
                 ConcurrentReferenceHashMap.ReferenceType.WEAK);
+
+    public static synchronized void resetInstances() {
+        instances.clear();
+    }
+
     public static synchronized Node getInstance(DdllKey ddllkey, Endpoint ep) {
         Node n = instances.get(ddllkey);
         if (n == null) {

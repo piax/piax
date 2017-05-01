@@ -24,9 +24,9 @@ public class EventExecutor {
     public static BooleanOption realtime = new BooleanOption(false, "-realtime");
     public static boolean REALWORLD = false;
 
-    private static long startTime = System.currentTimeMillis();
-    private static long vtime = 0;
-    public static int nmsgs = 0;
+    private static long startTime; // init by reset();
+    private static long vtime; // init by reset();
+    public static int nmsgs; // init by reset();
     public static int DEFAULT_MAX_TIME = 200 * 1000;
     private static ReentrantLock lock = new ReentrantLock();
     private static Condition cond = lock.newCondition();
@@ -42,7 +42,20 @@ public class EventExecutor {
         int count;
     }
 
+    static {
+        reset();
+    }
+
     public static void load() {
+    }
+
+    public static void reset() {
+        assert thread == null : "cannot reset while executor is running";
+        startTime = System.currentTimeMillis();
+        vtime = 0;
+        nmsgs = 0;
+        timeq.clear();
+        Node.resetInstances();
     }
 
     public static void enqueue(Event ev) {
@@ -58,34 +71,26 @@ public class EventExecutor {
         //System.out.println("enqueued: " + ev);
     }
 
-    public static Event dequeue() {
+    public static Event dequeue() throws InterruptedException {
         if (!realtime.value()) {
             return timeq.poll();
         }
         // real-time version
         Event ev;
         lock.lock();
-        final int GRACE = 2000;
         try {
             while (true) {
                 ev = timeq.peek();
-                long rem = GRACE;
                 if (ev != null) {
-                    rem = ev.vtime - getVTime();
+                    long rem = ev.vtime - getVTime();
                     if (rem <= 0) {
                         Event ev0 = timeq.poll();
                         assert ev == ev0;
                         return ev;
                     }
-                }
-                //System.out.println("Queue: " + timeq);
-                try {
-                    boolean rc = cond.await(rem, TimeUnit.MILLISECONDS);
-                    if (!rc && rem == GRACE) {
-                        return null;
-                    }
-                } catch (InterruptedException e) {
-                    throw new Error(e);
+                    cond.await(rem, TimeUnit.MILLISECONDS);
+                } else {
+                    cond.await();
                 }
             }
         } finally {
@@ -130,12 +135,6 @@ public class EventExecutor {
         ev.vtime = getVTime() + delay;
         enqueue(ev);
         return ev;
-    }
-
-    public static void reset() {
-        vtime = 0;
-        nmsgs = 0;
-        timeq.clear();
     }
 
     public static long getVTime() {
@@ -202,21 +201,37 @@ public class EventExecutor {
      * Event Executor
      */
     private static Thread thread;
-    public static void startExecutorThread() {
-        synchronized (EventExecutor.class) {
-            if (thread == null) {
-                realtime.set(true);
-                terminateExecutor = false;
-                thread = new Thread(() -> run(0));
-                thread.start();
-            }
+    public static synchronized void startExecutorThread() {
+        if (thread == null) {
+            realtime.set(true);
+            terminateExecutor = false;
+            thread = new Thread(() -> {
+                run(0);
+                synchronized (EventExecutor.class) {
+                    thread = null;
+                }
+            });
+            thread.start();
         }
     }
 
+    /**
+     * request termination of the event executor.
+     * 
+     * this method blocks until the thread terminates if this method
+     * is not invoked from event executor context. 
+     */
     public static void terminate() {
+        Thread t;
         synchronized (EventExecutor.class) {
             terminateExecutor = true;
-            // interrupt ?
+            t = thread;
+        }
+        if (t != null && Thread.currentThread() != t) {
+            t.interrupt();
+            try {
+                t.join();
+            } catch (InterruptedException e) {}
         }
     }
 
@@ -243,9 +258,15 @@ public class EventExecutor {
                         "*** execution time over: " + getVTime() + " > " + limit);
                 return;
             }
-            Event ev = dequeue();
+            Event ev;
+            try {
+                ev = dequeue();
+            } catch (InterruptedException e) {
+                Log.verbose(() -> "dequeue: interrupted");
+                continue;
+            }
             if (ev == null) {
-                System.out.println("No more event: time=" + getVTime()
+                System.out.println("event executor terminated: time=" + getVTime()
                     + ", " + nmsgs + " messages");
                 return;
             }
