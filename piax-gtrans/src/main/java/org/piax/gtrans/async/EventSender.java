@@ -82,6 +82,7 @@ public interface EventSender {
             } else {
                 assert ev.delay == Node.NETWORK_LATENCY;
                 //ev.vtime = EventExecutor.getVTime() + ev.delay;
+                ev.vtime = 0;
                 if (Log.verbose) {
                     System.out.println(ev.sender + "|send/forward event " + ev);
                 }
