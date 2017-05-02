@@ -326,7 +326,7 @@ public class AsyncTestBase {
         }
 
         int result(DdllKey key) {
-            int pkey = (int) key.getRawKey();
+            int pkey = (Integer) key.getRawKey();
             return pkey;
         }
     }
@@ -352,7 +352,7 @@ public class AsyncTestBase {
         }
 
         int result(DdllKey key) {
-            int pkey = (int) key.getRawKey();
+            int pkey = (Integer) key.getRawKey();
             return pkey;
         }
     }
@@ -383,7 +383,7 @@ public class AsyncTestBase {
         }
 
         int result(DdllKey key) {
-            int pkey = (int) key.getRawKey();
+            int pkey = (Integer) key.getRawKey();
             return count * 1000 + pkey;
         }
     }
