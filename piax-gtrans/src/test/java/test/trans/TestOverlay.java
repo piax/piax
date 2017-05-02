@@ -32,15 +32,16 @@ import org.piax.gtrans.ReceivedMessage;
 import org.piax.gtrans.RemoteValue;
 import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.Transport;
+import org.piax.gtrans.async.Log;
 import org.piax.gtrans.ov.Overlay;
 import org.piax.gtrans.ov.OverlayListener;
 import org.piax.gtrans.ov.OverlayReceivedMessage;
+import org.piax.gtrans.ov.async.suzaku.Suzaku;
 import org.piax.gtrans.ov.combined.CombinedOverlay;
 import org.piax.gtrans.ov.dolr.DOLR;
 import org.piax.gtrans.ov.flood.SimpleFlooding;
 import org.piax.gtrans.ov.llnet.LLNet;
 import org.piax.gtrans.ov.sg.MSkipGraph;
-import org.piax.gtrans.ov.szk.Suzaku;
 import org.piax.util.KeyComparator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,7 +60,7 @@ public class TestOverlay {
     static int seq = 0;
 
     // Test targets
-    static final Net net = Net.EMU;//Net.NETTY;
+    static final Net net = Net.NETTY;
     static final Ov ov = Ov.SZK;
 
     public String newId() {
@@ -248,7 +249,7 @@ public class TestOverlay {
         tr2.addKey(new StringKey("ishi"));
         tr3.addKey(new StringKey("yos"));
 //        Thread.sleep(500);
-
+        //Thread.sleep(10000);
         // It fails!
         List<Object> l = Arrays.asList(tr1
                 .request(new StringKey("ishi"), "req").getAllValues());
@@ -353,7 +354,7 @@ public class TestOverlay {
             public FutureQueue<?> onReceiveRequest(
                     Overlay<LowerUpper, DoubleKey> overlay,
                     OverlayReceivedMessage<DoubleKey> rmsg) {
-                logger.debug("3.0 matched:" + rmsg.getMatchedKeys());
+                logger.info("3.0 matched:" + rmsg.getMatchedKeys());
                 FutureQueue<?> fq = new FutureQueue();
                 fq.add(new RemoteValue(overlay.getPeerId(), "recv3"));
                 fq.setEOFuture();
@@ -369,12 +370,10 @@ public class TestOverlay {
         ov1.join(loc);
         ov2.join(loc);
         ov3.join(loc);
-        Thread.sleep(500);
+        //Thread.sleep(500);
         ov1.addKey(new DoubleKey(1.0));
         ov2.addKey(new DoubleKey(2.0));
         ov3.addKey(new DoubleKey(3.0));
-        logger.debug("sleeping 10 secs");
-        Thread.sleep(10000);
 
         DoubleKey k = new DoubleKey(2.5);
 
@@ -858,8 +857,6 @@ public class TestOverlay {
                 trs[i].join(loc);
                 trs[i].addKey(new DoubleKey((double) i));
             }
-            logger.debug("sleeping 25 sec...");
-            Thread.sleep(25000);
 
             for (int i = 0; i < numOfPeers; i++) {
                 logger.debug("size=" + trs[i].getAll().length);
