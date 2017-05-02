@@ -167,7 +167,6 @@ public class LocalNode extends Node {
      * replace this instance with corresponding Node object on serialization.
      * 
      * @return
-     * @throws ObjectStreamException
      */
     private Object writeReplace() {
         Node repl = new Node(this.key, this.addr);
@@ -372,7 +371,6 @@ public class LocalNode extends Node {
     /**
      * locate the node position and insert
      * @param introducer
-     * @param success  a callback that is called after join succeeds
      */
     public CompletableFuture<Boolean> joinAsync(Node introducer) { 
         CompletableFuture<Boolean> joinFuture = new CompletableFuture<>();

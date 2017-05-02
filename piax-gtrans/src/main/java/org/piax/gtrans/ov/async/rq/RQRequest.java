@@ -41,9 +41,7 @@ import org.slf4j.LoggerFactory;
  * a class used for range queries.
  * <p>
  * this class contains various data that are required to be transmitted to the
- * target nodes. this class also contains {@link #failedLinks} field, which
- * represents a set of failed nodes that are found while processing the range
- * query.
+ * target nodes. 
  * <p>
  * this class also manages (partial) results returned from child nodes.
  * 

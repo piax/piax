@@ -329,7 +329,7 @@ public class Range<K extends Comparable<?>> implements Serializable, Cloneable {
      * このインスタンスが表す範囲からrを削除した場合に残る範囲のリストを返す．
      * 削除した範囲のリストは intersect に追加する．
      * 
-     * このクラスのサブクラス X から呼び出す場合，返り値の型は List<X> である．
+     * このクラスのサブクラス X から呼び出す場合，返り値の型は List&lt;X&gt; である．
      *
      * <pre>
      * example:

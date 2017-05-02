@@ -452,7 +452,7 @@ public class SuzakuStrategy extends NodeStrategy {
 
     /**
      * 定期的なfinger table更新
-     * @param isFirst
+     * @param isFirst true if it is the first time update
      */
     public void scheduleFTUpdate(boolean isFirst) {
         if (UPDATE_FINGER_PERIOD.value() == 0) {
