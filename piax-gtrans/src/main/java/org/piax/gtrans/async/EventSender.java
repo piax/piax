@@ -16,9 +16,6 @@ import org.piax.gtrans.async.Event.LocalEvent;
 
 public interface EventSender {
     void send(Event ev) throws Exception;
-
-    void forward(Event ev) throws Exception;
-
     Endpoint getEndpoint();
 
     public static class EventSenderSim implements EventSender {
@@ -38,17 +35,22 @@ public interface EventSender {
 
         @Override
         public void send(Event ev) {
+            if (ev.delay == Node.NETWORK_LATENCY) {
+                ev.delay = EventExecutor.latency(ev.sender, ev.receiver);
+            }
+            ev.vtime = EventExecutor.getVTime() + ev.delay;
+            if (Log.verbose) {
+                if (ev.delay != 0) {
+                    System.out.println(ev.sender + "|send/forward event " + ev
+                            + ", (arrive at T" + ev.vtime + ")");
+                } else {
+                    System.out.println(ev.sender + "|send/forward event " + ev);
+                }
+            }
             // because sender Events and receiver Events are distinguished,
             // we have to clone the event even if sender == receiver.
             Event copy = ev.clone();
-            copy.vtime = EventExecutor.getVTime() + ev.delay;
-            EventExecutor.enqueue(copy);
-        }
-
-        @Override
-        public void forward(Event ev) {
-            Event copy = ev.clone();
-            copy.vtime = EventExecutor.getVTime() + ev.delay;
+            //copy.vtime = EventExecutor.getVTime() + ev.delay;
             EventExecutor.enqueue(copy);
         }
     }
@@ -77,17 +79,16 @@ public interface EventSender {
                 // not to get NotSerializableException
                 recv(ev);
             } else {
+                assert ev.delay == Node.NETWORK_LATENCY;
+                //ev.vtime = EventExecutor.getVTime() + ev.delay;
+                ev.vtime = 0;
+                if (Log.verbose) {
+                    System.out.println(ev.sender + "|send/forward event " + ev);
+                }
                 EventReceiverIf stub = getStub((E) ev.receiver.addr,
                         GTransConfigValues.rpcTimeout);
                 stub.recv(ev);
             }
-        }
-
-        @Override
-        public void forward(Event ev) throws RPCException {
-            EventReceiverIf stub = getStub((E) ev.receiver.addr,
-                    GTransConfigValues.rpcTimeout);
-            stub.recv(ev);
         }
 
         @Override

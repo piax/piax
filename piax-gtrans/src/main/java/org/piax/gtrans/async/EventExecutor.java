@@ -27,6 +27,7 @@ public class EventExecutor {
     private static long startTime; // init by reset();
     private static long vtime; // init by reset();
     public static int nmsgs; // init by reset();
+    private static int eventCount; // init by reset();
     public static int DEFAULT_MAX_TIME = 200 * 1000;
     private static ReentrantLock lock = new ReentrantLock();
     private static Condition cond = lock.newCondition();
@@ -54,6 +55,7 @@ public class EventExecutor {
         startTime = System.currentTimeMillis();
         vtime = 0;
         nmsgs = 0;
+        eventCount = 0;
         timeq.clear();
         Node.resetInstances();
     }
@@ -61,9 +63,11 @@ public class EventExecutor {
     public static void enqueue(Event ev) {
         if (!realtime.value()) {
             assert ev.vtime != 0;
+            ev.serial = eventCount++;
             timeq.add(ev);
         } else {
             lock.lock();
+            ev.serial = eventCount++;
             timeq.add(ev);
             cond.signal();
             lock.unlock();
