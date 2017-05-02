@@ -22,9 +22,9 @@ public class NettyOutboundHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) {
-        //trans.getPeer().execute(() -> {
+        trans.getPeer().execute(() -> {
             trans.outboundReceive(raw, ctx, msg);
-        //});
+        });
     }
 
     @Override
