@@ -223,23 +223,23 @@ public class LocalNode extends Node {
             };
         }
         ev.sender = ev.origin = this;
+        ev.failureCallback = failure;
         ev.route.add(this);
         if (ev.routeWithFailed.size() == 0) {
             ev.routeWithFailed.add(this);
         }
-        if (ev.delay == Node.NETWORK_LATENCY) {
-            ev.delay = EventExecutor.latency(this, ev.receiver);
-        }
-        ev.failureCallback = failure;
-        ev.vtime = EventExecutor.getVTime() + ev.delay;
-        if (Log.verbose) {
-            if (ev.delay != 0) {
-                System.out.println(this + "|send event " + ev + ", (arrive at T"
-                        + ev.vtime + ")");
-            } else {
-                System.out.println(this + "|send event " + ev);
-            }
-        }
+//        if (ev.delay == Node.NETWORK_LATENCY) {
+//            ev.delay = EventExecutor.latency(this, ev.receiver);
+//        }
+//        ev.vtime = EventExecutor.getVTime() + ev.delay;
+//        if (Log.verbose) {
+//            if (ev.delay != 0) {
+//                System.out.println(this + "|send event " + ev + ", (arrive at T"
+//                        + ev.vtime + ")");
+//            } else {
+//                System.out.println(this + "|send event " + ev);
+//            }
+//        }
         ev.beforeSendHook(this);
         if (!isFailed) {
             try {
@@ -264,30 +264,30 @@ public class LocalNode extends Node {
     }
 
     public void forward(Node dest, Event ev, FailureCallback failure) {
+        assert ev.origin != null;
         if (failure == null) {
             failure = exc -> {
                 Log.verbose(() -> "forward: got exception: " + exc + ", " + ev);
             };
         }
-        assert ev.origin != null;
+        ev.failureCallback = failure;
         ev.beforeForwardHook(this);
         ev.sender = this;
-        ev.failureCallback = failure;
-        if (ev.delay == Node.NETWORK_LATENCY) {
-            ev.delay = EventExecutor.latency(this, dest);
-        }
         ev.receiver = dest;
-        if (Log.verbose) {
-            if (ev.delay != 0) {
-                System.out.println(this + "|forward to " + dest + ", " + ev
-                        + ", (arrive at T" + ev.vtime + ")");
-            } else {
-                System.out.println(this + "|forward to " + dest + ", " + ev);
-            }
-        }
+//        if (ev.delay == Node.NETWORK_LATENCY) {
+//            ev.delay = EventExecutor.latency(this, dest);
+//        }
+//        if (Log.verbose) {
+//            if (ev.delay != 0) {
+//                System.out.println(this + "|forward to " + dest + ", " + ev
+//                        + ", (arrive at T" + ev.vtime + ")");
+//            } else {
+//                System.out.println(this + "|forward to " + dest + ", " + ev);
+//            }
+//        }
         if (!isFailed()) {
             try {
-                sender.forward(ev);
+                sender.send(ev);
             } catch (RPCException e) {
                 Log.verbose(()-> this + " got exception: " + e);
                 failure.run(new RPCEventException(e));

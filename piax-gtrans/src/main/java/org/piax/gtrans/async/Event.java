@@ -18,16 +18,14 @@ import org.piax.gtrans.ov.ddll.DdllKey;
 public abstract class Event implements Comparable<Event>, Serializable, Cloneable {
     private static final long serialVersionUID = 6144568542654208895L;
 
-    private static int count = 0; 
-
     private String type;
     public Node origin;
     public Node sender;
     public Node receiver;
 
     public long vtime;
-    private final int serial;
-    
+    int serial; // filled by EventExecutor#enqueue();
+
     private int eventId = System.identityHashCode(this);
 
     public long delay;
@@ -52,7 +50,6 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
         this.receiver = receiver;
         this.delay = delay;
         this.type = type;
-        this.serial = count++;
     }
     
     @Override
@@ -75,10 +72,11 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
 
     @Override
     public String toString() {
-        long rem = vtime - EventExecutor.getVTime();
+        //long rem = vtime - EventExecutor.getVTime();
         StringBuilder buf = new StringBuilder("[id=" + getEventId()
             + ", vt=" + vtime
-            + "(rem=" + rem + "), "
+            // + "(rem=" + rem + "), "
+            + ", "
             + toStringMessage());
         if (origin != null) {
             buf.append(", orig " + origin);
@@ -130,10 +128,7 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
         if (x != 0) {
             return x;
         }
-        if (serial != o.serial) {
-            return serial - o.serial;
-        }
-        return 0;
+        return Integer.compare(serial, o.serial);
     }
 
     public static class TimerEvent extends Event {
