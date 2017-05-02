@@ -22,6 +22,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
@@ -73,21 +75,32 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
 
     public static TransportId DEFAULT_TRANSPORT_ID = new TransportId("suzaku");
     RQNodeFactory factory;
-    EventSender sender;
+    SuzakuEventSender sender;
     Map<K,LocalNode> nodes;
     
-    class SuzakuEventSender<E extends Endpoint> implements EventSender, TransportListener<E> {
+    static class SuzakuEventSender<E extends Endpoint> implements EventSender, TransportListener<E> {
         TransportId transId;
         ChannelTransport<E> trans;
+        public static AtomicInteger count = new AtomicInteger(0);
 
         public SuzakuEventSender(TransportId transId, ChannelTransport<E> trans) {
             this.transId = transId;
             this.trans = trans;
             trans.setListener(transId, this);
+            if (count.incrementAndGet() == 1) {
+                EventExecutor.reset();
+                EventExecutor.startExecutorThread();
+            }
         }
 
         public Endpoint getEndpoint() {
             return trans.getEndpoint();
+        }
+
+        public void fin() {
+            if (count.decrementAndGet() == 0) {
+                EventExecutor.terminate();
+            }
         }
 
         @SuppressWarnings("unchecked")
@@ -130,15 +143,19 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         factory = new RQNodeFactory(base);
         //sender = new EventSenderNet(transId, lowerTrans);
         sender = new SuzakuEventSender<>(transId, lowerTrans);
+        logger.debug("EventSender started:" + lowerTrans.getEndpoint());
         nodes = new HashMap<>();
-        // XXX 
-        EventExecutor.startExecutorThread();
     }
 
     @Override
     public synchronized void fin() {
+        try {
+            leave();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         super.fin();
-        // XXX stop event queue?
+        sender.fin();
     }
 
     public Endpoint getEndpoint() {
@@ -273,7 +290,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
                         else {
                             FutureQueue<Object> o = ret.get();
                             for (RemoteValue<Object> r : o) {
-                                fq.add(r);
+                                fq.put(r);
                             }
                         }
                     } catch (Exception e) {
@@ -443,18 +460,23 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
 
     private void szRemoveKey(K key) throws IOException {
         logger.trace("ENTRY:");
-        for (LocalNode n : nodes.values()) {
-            CompletableFuture<Boolean> f = n.leaveAsync();
-            f.whenComplete((r, e)->{
-                if (e != null) {
-                    logger.warn("removing key {}:{}", key, e);
-                }
-                if (r) {
-                    logger.debug("leave completed for key {}", key);
-                    nodes.remove(key);
-                }
-            });
+        logger.debug("szRemoveKey:" + key);
+        LocalNode n = nodes.get(key);
+        CompletableFuture<Boolean> f = n.leaveAsync();
+        try {
+            f.get();
+        } catch (InterruptedException | ExecutionException e) {
+            logger.error("leave failed: {}" + e);
         }
+        f.whenComplete((r, e)->{
+            if (e != null) {
+                logger.warn("removing key {}:{}", key, e);
+            }
+            if (r) {
+                logger.debug("leave completed for key {}", key);
+                nodes.remove(key);
+            }
+        });
     }
 
     @Override
@@ -546,14 +568,14 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
     public Link[] getRights(Comparable<?> key, int level) {
         SuzakuStrategy szk = SuzakuStrategy.getSuzakuStrategy(nodes.get(key));
         FTEntry ent = szk.getFingerTableEntry(false, level);
-        return ent != null? nodes2Links(ent.allNodes()) : null;
+        return ent != null? nodes2Links(ent.allNodes()) : new Link[0];
     }
 
     @Override
     public Link[] getLefts(Comparable<?> key, int level) {
         SuzakuStrategy szk = SuzakuStrategy.getSuzakuStrategy(nodes.get(key));
         FTEntry ent = szk.getFingerTableEntry(true, level);
-        return ent != null? nodes2Links(ent.allNodes()) : null;
+        return ent != null? nodes2Links(ent.allNodes()) : new Link[0];
     }
     
     @Override
