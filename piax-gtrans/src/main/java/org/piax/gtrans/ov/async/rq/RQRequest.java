@@ -152,21 +152,18 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
 
     @Override
     protected long getAckTimeoutValue() {
-        if (opts.getResponseType() == ResponseType.NO_RESPONSE
-            || (opts.getRetransMode() == RetransMode.NONE
-                || opts.getRetransMode() == RetransMode.SLOW)) {
-            return 0;
-        } else {
+        if (isUseAck(opts)) {
             return NetworkParams.ACK_TIMEOUT;
         }
+        return 0;
     }
 
     @Override
     protected long getReplyTimeoutValue() {
         if (opts.getResponseType() == ResponseType.NO_RESPONSE
                 ||
-            // in DIRECT mode, only root node receives RQReply
-            opts.getResponseType() == ResponseType.DIRECT && sender != root) {
+            // in DIRECT mode, non root node does not receive RQDirectReply
+            opts.getResponseType() == ResponseType.DIRECT && !isRoot) {
             return 0;
         } else {
             // XXX: 再送時には短いタイムアウトで!
@@ -222,6 +219,17 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         RQRequest<?> ev = (RQRequest<?>)super.clone();
         ev.catcher = null;
         return ev;
+    }
+
+    private static boolean isUseAck(TransOptions opt) {
+        RetransMode mode = opt.getRetransMode();
+        return mode == RetransMode.NONE_ACK
+                || mode == RetransMode.FAST
+                || mode == RetransMode.RELIABLE;
+    }
+
+    private static long getAckSendTime() {
+        return Math.max(NetworkParams.ACK_TIMEOUT - 1000, 0);
     }
 
     /**
@@ -604,34 +612,6 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                     .thenAccept(rval -> rvals.add(new DKRangeRValue<T>(rval, r)));
         }
 
-        /*
-         * Message Sequences:
-         * 
-         * NO_RESPONSE:
-         * 
-         *   ROOT----RQRequest---->CHILD1                 CHILD2
-         *     |                     |------RQRequest------>|
-         *
-         * 
-         * DIRECT:
-         *
-         *   ROOT----RQRequest---->CHILD1                 CHILD2
-         *     |<-----RQReply--------|------RQRequest------>|
-         *     |                     |<----RQReply(dummy)---|
-         *     |<-------------------------RQReplyDirect-----|
-         *  
-         *  - always send RQReply to the parent node.
-         *  - no AckEvent is used. 
-         * 
-         * AGGREGATE:
-         *
-         *   ROOT----RQRequest---->CHILD1                 CHILD2
-         *     |<-----AckEvent-------|------RQRequest------>|
-         *     |                     |<------RQReply--------|
-         *     |<-----RQReply--------|                      |
-         *
-         *  - AckEvents are sent only from intermediate nodes.
-         */
         abstract class Responder {
             TimerEvent expirationTask;
             TimerEvent slowRetransTask;
@@ -683,6 +663,14 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             }
         }
 
+        /*
+         * Message Sequences:
+         * 
+         * NO_RESPONSE:
+         * 
+         *   ROOT----RQRequest---->CHILD1                 CHILD2
+         *     |                     |------RQRequest------>|
+         */
         class NoResponder extends Responder {
             @Override
             void rqDisseminateFinish() {
@@ -696,64 +684,71 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             }
         }
 
+        /*
+         * AGGREGATE:
+         *
+         *   ROOT                 CHILD1                 CHILD2
+         *     |-----RQRequest------>|                      |
+         *     |<------(Ack)---------|------RQRequest------>|
+         *     |                     |<--------(Ack)--------|
+         *     |<-----RQReply--------|<-------RQReply-------|
+         *
+         *  - Ack is sent to the parent only if the node cannot send RQReply
+         *    quickly.
+         */
         class AggregateResponder extends Responder {
-            TimerEvent flushTask;
-            boolean flushed;
-            boolean isFirst = true;
+            TimerEvent sendReplyTask;
+            boolean notAcked = true;
             public AggregateResponder() {
                 if (isRoot) {
                     startSlowRetransTask();
+                } else {
+                    long time2 = RQManager.RQ_FLUSH_PERIOD;
+                    long time1 = isUseAck(opts) ? getAckSendTime() : time2;
+                    sendReplyTask = EventExecutor.sched("sendreplytask-" + getEventId(), 
+                            time1, time2, () -> flush());
+                    cleanup.add(() -> {
+                        sendReplyTask.cancel();
+                    });
                 }
             }
             @Override
             void rqDisseminateFinish() {
-                if (!isRoot && !flushed) {
-                    // if we have some value, flush it immediately instead of
-                    // just sending an ack.
-                    if (!rvals.isEmpty()) {
-                        flush();
-                    } else if (isFirst) {
-                        // note that rqDisseminateFinish() might be called 
-                        // more than once when fast-retransmiting.
-                        getLocalNode().post(new AckEvent(RQRequest.this, sender));
-                    }
-                }
                 if (!isCompleted()) {
                     startExpirationTask();
                 }
-                isFirst = false;
             }
             @Override
             void onReceiveValues() {
                 if (!isRoot && isCompleted()) {
                     flush();
-                    flushed = true;
-                    if (flushTask != null) {
-                        flushTask.cancel();
-                    }
-                } else if (!isRoot && flushTask == null) {
-                    long flush = RQManager.RQ_FLUSH_PERIOD;
-                    logger.debug("schedule periodic flushing {}", flushTask);
-                    flushTask = EventExecutor.sched("flush-" + getEventId(), 
-                            flush, flush, () -> flush());
-                    cleanup.add(() -> {
-                        flushTask.cancel();
-                    });
+                    // cleanup() is called by addRemoteValues()
+                    //cleanup();
                 }
             }
             private void flush() {
-                if (!rvals.isEmpty()) {
+                if (notAcked || !rvals.isEmpty()) {
                     // if we don't copy, we'll send an empty list
                     Collection<DKRangeRValue<T>> copy = new ArrayList<>(rvals.values());
                     Event ev = new RQReply<T>(RQRequest.this, copy, isCompleted());
                     getLocalNode().post(ev);
                     rvals.clear();
+                    notAcked = false;
                 }
             }
         }
-        
+
+       /* 
+        * DIRECT:
+        *
+        *   ROOT                 CHILD1                 CHILD2
+        *     |---RQRequest-------->|                      |
+        *     |<----RQReplyDirect---|------RQRequest------>|
+        *     |                     |<--------Ack----------|
+        *     |<-------------------------RQReplyDirect-----|
+        */ 
         class DirectResponder extends Responder {
-            boolean acked;
+            TimerEvent sendAckTimer;
             public DirectResponder() {
                 if (isRoot) {
                     LocalNode local = (LocalNode)receiver;
@@ -765,41 +760,40 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                         RequestEvent.removeRequestEvent(local, getEventId());
                     });
                     startSlowRetransTask();
+                } else if (isUseAck(opts)) {
+                    if (sender != root) {
+                        getLocalNode().post(new AckEvent(RQRequest.this, sender));
+                    } else {
+                        sendAckTimer = EventExecutor.sched("sendacktimer-" + getEventId(), 
+                                getAckSendTime(), () -> {
+                                    getLocalNode().post(
+                                            new AckEvent(RQRequest.this, sender));
+                        });
+                        cleanup.add(() -> {
+                            sendAckTimer.cancel();
+                        });
+                    }
                 }
             }
             @Override
             void rqDisseminateFinish() {
-                if (!isRoot && !acked) {
-                    // XXX: consider retransMode == NONE or SLOW case!
-                    // send empty RQReply to parent instead of Ack
-                    Event ev = new RQReply<T>(RQRequest.this, null, true);
-                    getLocalNode().post(ev);
-                }
                 if (isRoot && !isCompleted()) {
                     startExpirationTask();
                 }
             }
             @Override
             void onReceiveValues() {
-                if (!isRoot) {
-                    flush();
-                }
-            }
-            private void flush() {
-                if (sender == root) {
-                    Event ev = new RQReply<T>(RQRequest.this, rvals.values(), true);
+                if (!isRoot && rvals.size() > 0) {
+                    Event ev = new RQReplyDirect<T>(RQRequest.this, rvals.values());
                     getLocalNode().post(ev);
-                    acked = true;
-                } else {
-                    if (rvals.size() > 0) {
-                        Event ev = new RQReplyDirect<T>(RQRequest.this, rvals.values());
-                        getLocalNode().post(ev);
+                    if (sendAckTimer != null) {
+                        sendAckTimer.cancel();
                     }
                 }
             }
         }
     }
-    
+
     public static class MVal<T> implements Serializable {
         private static final long serialVersionUID = 1L;
         public List<ReturnValue<T>> vals =
