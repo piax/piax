@@ -1,37 +1,55 @@
-package org.piax.gtrans.netty;
+package org.piax.gtrans.netty.idtrans;
 
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.piax.common.ComparableKey;
 import org.piax.common.wrapper.BooleanKey;
 import org.piax.common.wrapper.DoubleKey;
 import org.piax.common.wrapper.StringKey;
+import org.piax.gtrans.netty.NettyEndpoint;
+import org.piax.gtrans.netty.NettyLocator;
 import org.piax.util.KeyComparator;
 
 public class PrimaryKey implements ComparableKey<PrimaryKey>, NettyEndpoint {
     private static final long serialVersionUID = -8338701357931025730L;
+    static public int MAX_NEIGHBORS = 30;
 
-    public class LocatorEntry implements Serializable {
+    public class NeighborEntry implements Serializable {
         private static final long serialVersionUID = 8001237385879970460L;
-        public NettyLocator locator;
-        // The flag that indicates the locator is already visited. 
-        // valid only when the key is specified as the destination.
-        public boolean flag;
-        public LocatorEntry(NettyLocator locator) {
-            this.locator = locator;
-            this.flag = false;
+        public PrimaryKey key;
+        // The flag that indicates the endpoint is already visited. 
+        // this value is updated iff the key is used as a destination.
+        public boolean visited;
+        // The flag that indicates the channel to this endpoint is alive or not. 
+        // this value is updated by the peer which has this key.
+        public boolean alive;
+        public NeighborEntry(PrimaryKey key) {
+            this.key = key;
+            this.visited = false;
+            this.alive = true;
         }
+    }
+
+    // neighbor's neighbors are transient. (to keep the endpoint size small)  
+    PrimaryKey cloneForSend() {
+        PrimaryKey ret = new PrimaryKey(key, locator);
+        ret.neighbors = neighbors.stream()
+                .map(e -> {e.key.setNeighbors(null); return e;})
+                .collect(Collectors.toList());
+        return ret;
     }
 
     ComparableKey<?> key;
     private static final KeyComparator keyComp = KeyComparator.getInstance();
 
-    // direct locator;
+    // self locator;
     private NettyLocator locator;
-    // indirect locators;
-    private List<LocatorEntry> neighbors;
+
+    // neighbors;
+    private List<NeighborEntry> neighbors;
     long version;
 
     // a widlcard constructor.
@@ -49,31 +67,38 @@ public class PrimaryKey implements ComparableKey<PrimaryKey>, NettyEndpoint {
     public void setLocator(NettyLocator locator) {
         this.locator = locator;
     }
-    
-    public void setNeighborLocators(List<NettyLocator> locators) {
-        neighbors = new ArrayList<LocatorEntry>();
-        for (NettyLocator locator : locators) {
-            neighbors.add(new LocatorEntry(locator));
-        }
-    }
 
-    public void addNeighbor(NettyLocator locator) {
-        neighbors = new ArrayList<LocatorEntry>();
-        neighbors.add(new LocatorEntry(locator));
+    public void addNeighbor(PrimaryKey key) {
+        neighbors = new ArrayList<NeighborEntry>();
+        neighbors.add(new NeighborEntry(key));
         version = System.currentTimeMillis();
     }
 
-    public void setNeighbors(List<LocatorEntry> entries) {
-        this.neighbors = entries;
+    public void setNeighbors(List<NeighborEntry> eps) {
+        this.neighbors = eps;
         version = System.currentTimeMillis();
     }
 
-    public List<LocatorEntry> getNeighbors() {
+    public List<NeighborEntry> getNeighbors() {
         return this.neighbors;
     }
-    
+
     public ComparableKey<?> getRawKey() {
         return key;
+    }
+
+    private NeighborEntry getNeighborEndpointEntry(PrimaryKey key) {
+        return neighbors.stream().filter(e -> e.key.equals(key)).findFirst().orElse(null);
+    }
+
+    public void markNeighborClosed(PrimaryKey key) {
+        NeighborEntry e = getNeighborEndpointEntry(key);
+        e.alive = false;
+    }
+
+    public void markNeighborAlive(PrimaryKey key) {
+        NeighborEntry e = getNeighborEndpointEntry(key);
+        e.alive = true;
     }
 
     public PrimaryKey(ComparableKey<?> key) {
@@ -89,7 +114,7 @@ public class PrimaryKey implements ComparableKey<PrimaryKey>, NettyEndpoint {
         this.neighbors = null;
         version = System.currentTimeMillis();
     }
-    
+
     // A suger constructor.
     public PrimaryKey(Comparable<?> o) {
         if (o instanceof String) {
