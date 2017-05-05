@@ -394,8 +394,8 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
         private void prepareForAck(LocalNode n) {
             long acktimeout = getAckTimeoutValue();
             if (acktimeout != 0) {
-                // foundFailedNode must be called in prior to failureCallback
-                // because foundFailedNode is used for registering the failed 
+                // addMaybeFailedNode must be called in prior to failureCallback
+                // because addMaybeFailedNode is used for registering the failed 
                 // node and failureCallback relies on this.
                 registerNotAckedEvent(n, this);
                 cleanup.add(() -> removeNotAckedEvent(n, getEventId()));
