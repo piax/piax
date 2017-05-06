@@ -141,6 +141,12 @@ public class EventExecutor {
         return ev;
     }
 
+    public static void runNow(String name, Runnable job) {
+        TimerEvent ev = new TimerEvent(name, 0, 0, (dummy) -> job.run());
+        ev.vtime = getVTime();
+        enqueue(ev);
+    }
+
     public static long getVTime() {
         if (realtime.value()) {
             return System.currentTimeMillis() - startTime;

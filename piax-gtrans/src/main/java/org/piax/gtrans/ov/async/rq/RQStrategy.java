@@ -20,7 +20,6 @@ import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.TransOptions.ResponseType;
 import org.piax.gtrans.TransOptions.RetransMode;
 import org.piax.gtrans.async.Event;
-import org.piax.gtrans.async.Event.LocalEvent;
 import org.piax.gtrans.async.Event.Lookup;
 import org.piax.gtrans.async.Event.LookupDone;
 import org.piax.gtrans.async.EventExecutor;
@@ -126,10 +125,10 @@ public class RQStrategy extends NodeStrategy {
 
     public <T> void rangeQueryRQRange(Collection<RQRange> ranges,
             RQAdapter<T> adapter, TransOptions opts) {
-        n.post(new LocalEvent(n, () -> {
+        EventExecutor.runNow("rangeQueryRQRange", () -> {
             RQRequest<T> root = new RQRequest<>(n, ranges, adapter, opts);
             root.run();
-        }));
+        });
     }
     
     private static RQRange convertToRQRange(
@@ -393,14 +392,13 @@ public class RQStrategy extends NodeStrategy {
     private <T> CompletableFuture<T> unparallel(CompletableFuture<T> f) {
         CompletableFuture<T> ret = new CompletableFuture<>();
         f.whenComplete((T val, Throwable exc) -> {
-            LocalEvent ev = new LocalEvent(n, () -> {
+            EventExecutor.runNow("unparallel", () -> {
                 if (exc != null) {
                     ret.completeExceptionally(exc);
                 } else {
                     ret.complete(val);
                 }
             });
-            n.post(ev);
         });
         return ret;
     }

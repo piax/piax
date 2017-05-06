@@ -181,18 +181,6 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
         }
     }
 
-    public static class LocalEvent extends Event {
-        final Runnable run;
-        public LocalEvent(LocalNode receiver, Runnable run) {
-            super(receiver, 0);
-            this.run = run;
-        }
-        @Override
-        public void run() {
-            run.run();
-        }
-    }
-
     public static class AckEvent extends Event {
         int ackEventId = 0;
         protected boolean expectMuptipleAck = false;

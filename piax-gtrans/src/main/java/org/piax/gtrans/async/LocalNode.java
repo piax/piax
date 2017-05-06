@@ -28,7 +28,6 @@ import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.RPCException;
 import org.piax.gtrans.TransOptions;
-import org.piax.gtrans.async.Event.LocalEvent;
 import org.piax.gtrans.async.Event.Lookup;
 import org.piax.gtrans.async.Event.RequestEvent;
 import org.piax.gtrans.async.EventException.RPCEventException;
@@ -38,7 +37,6 @@ import org.piax.gtrans.async.EventSender.EventSenderNet;
 import org.piax.gtrans.async.EventSender.EventSenderSim;
 import org.piax.gtrans.ov.async.rq.RQAdapter;
 import org.piax.gtrans.ov.ddll.DdllKey;
-import org.piax.util.UniqId;
 
 public class LocalNode extends Node {
     public static final int INSERTION_DELETION_RETRY = 10; 
@@ -432,10 +430,9 @@ public class LocalNode extends Node {
         }
         mode = NodeMode.DELETING;
         CompletableFuture<Boolean> future = new CompletableFuture<>();
-        LocalEvent ev = new LocalEvent(this, () -> {
+        EventExecutor.runNow("leaveAsync", () -> {
             getTopStrategy().leave(future);
         });
-        post(ev);
         CompletableFuture<Boolean> f = future.thenApply(rc -> {
             if (rc) {
                 cleanup();
