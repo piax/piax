@@ -37,6 +37,7 @@ import org.piax.common.subspace.KeyRanges;
 import org.piax.common.subspace.LowerUpper;
 import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.FutureQueue;
+import org.piax.gtrans.GTransConfigValues;
 import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.ProtocolUnsupportedException;
 import org.piax.gtrans.ReceivedMessage;
@@ -47,10 +48,12 @@ import org.piax.gtrans.Transport;
 import org.piax.gtrans.TransportListener;
 import org.piax.gtrans.async.Event;
 import org.piax.gtrans.async.Event.LocalEvent;
+import org.piax.gtrans.async.EventSender.EventReceiverIf;
 import org.piax.gtrans.async.EventExecutor;
 import org.piax.gtrans.async.EventSender;
 import org.piax.gtrans.async.FTEntry;
 import org.piax.gtrans.async.LocalNode;
+import org.piax.gtrans.async.Log;
 import org.piax.gtrans.async.Node;
 import org.piax.gtrans.impl.NestedMessage;
 import org.piax.gtrans.ov.OverlayListener;
@@ -107,25 +110,28 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         @Override
         public void send(Event ev) throws Exception {
             if (ev instanceof LocalEvent) {
+                // not to get NotSerializableException
+                logger.debug("*** send (locally from: {} to: {}) {}", trans.getEndpoint(), ev.receiver.addr, ev);
                 recv(ev);
             } else {
+                assert ev.delay == Node.NETWORK_LATENCY;
+                //ev.vtime = EventExecutor.getVTime() + ev.delay;
+                ev.vtime = 0;
+                if (Log.verbose) {
+                    System.out.println(ev.sender + "|send/forward event " + ev);
+                }
+                logger.debug("*** send (from: {} to: {})", trans.getEndpoint(), ev.receiver.addr);
                 trans.send(transId, (E) ev.receiver.addr, ev);
             }
         }
 
-        @SuppressWarnings("unchecked")
-        @Override
-        public void forward(Event ev) throws Exception {
-            trans.send(transId, (E) ev.receiver.addr, ev);
-        }
-
         @Override
         public void onReceive(Transport<E> trans, ReceivedMessage rmsg) {
+            logger.debug("*** recv (on: {} from: {}) {}", trans.getEndpoint(), rmsg.getSource(), rmsg.getMessage());
             recv((Event)rmsg.getMessage());
         }
 
         public void recv(Event ev) {
-            //System.err.println("recv(" + trans.getEndpoint() + "):" + ev );
             EventExecutor.enqueue(ev);
         }
     }

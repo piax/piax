@@ -15,7 +15,7 @@ import org.piax.gtrans.ReceivedMessage;
 import org.piax.gtrans.Transport;
 import org.piax.gtrans.TransportListener;
 import org.piax.gtrans.netty.NettyLocator;
-import org.piax.gtrans.netty.PrimaryKey;
+import org.piax.gtrans.netty.idtrans.PrimaryKey;
 import org.piax.gtrans.ov.Overlay;
 import org.piax.gtrans.ov.szk.Suzaku;
 import org.slf4j.Logger;

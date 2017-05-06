@@ -62,14 +62,15 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
     // XXX should be private
     protected NettyBootstrap<E> bs;
     protected AtomicInteger seq;
-    final public int RAW_POOL_SIZE = 10;
+    final public int RAW_POOL_SIZE = 30;
     
     public AttributeKey<String> rawChannelKey = AttributeKey.valueOf("rawKey");
 
-    enum AttemptType {
-        ATTEMPT, ACK, NACK 
+    protected enum ControlType {
+        ATTEMPT, ACK, NACK, // Locator
+        UPDATE, INIT, WAIT
     }
-    
+
     //static boolean NAT_SUPPORT = true;
 
     public NettyChannelTransport(Peer peer, TransportId transId, PeerId peerId,
@@ -78,28 +79,31 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
         //this.locator = peerLocator;
         this.peerId = peerId;
         seq = new AtomicInteger(0);// sequence number (ID of the channel)
-        switch(peerLocator.getType()){
-        case TCP:
-            bs = new TcpBootstrap<E>();
-            break;
-        case SSL:
-            bs = new SslBootstrap<E>(ep.getHost(), ep.getPort());
-            break;
-        case UDT:
-            bs = new UdtBootstrap<E>();
-            break;
-        default:
-            throw new ProtocolUnsupportedException("not implemented yet.");
-        }
-        bossGroup = bs.getParentEventLoopGroup();
-        serverGroup = bs.getChildEventLoopGroup();
-        clientGroup = bs.getClientEventLoopGroup();
+        if (peerLocator != null) {
+            switch (peerLocator.getType()) {
+            case TCP:
+                bs = new TcpBootstrap<E>();
+                break;
+            case SSL:
+                bs = new SslBootstrap<E>(ep.getHost(), ep.getPort());
+                break;
+            case UDT:
+                bs = new UdtBootstrap<E>();
+                break;
+            default:
+                throw new ProtocolUnsupportedException("not implemented yet.");
+            }
+            bossGroup = bs.getParentEventLoopGroup();
+            serverGroup = bs.getChildEventLoopGroup();
+            clientGroup = bs.getClientEventLoopGroup();
 
-        bootstrap(peerLocator);
-        ServerBootstrap b = bs.getServerBootstrap(this);
-        b.bind(new InetSocketAddress(ep.getHost(), ep.getPort())).syncUninterruptibly();
-            
-        logger.debug("bound " + ep);
+            bootstrap(peerLocator);
+
+            ServerBootstrap b = bs.getServerBootstrap(this);
+            b.bind(new InetSocketAddress(ep.getHost(), ep.getPort()))
+                    .syncUninterruptibly();
+            logger.debug("bound " + ep);
+        }
         isRunning = true;
     }
 
@@ -232,15 +236,20 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
             for (NettyRawChannel<E> r : getCreatedRawChannels()) {
                 // in order of most recently used. 
                 if (RAW_POOL_SIZE - 1 <= count) {
-                    // logger.info("closing {}, curtime={}", r, System.currentTimeMillis());
+                    logger.debug("closing {}, curtime={}", r, System.currentTimeMillis());
                     r.close(); // should close gracefully.
                 }
                 count++;
             }
             raw = new NettyRawChannel<E>(dst, this, true);
             NettyLocator l = directLocator(dst);
-            Bootstrap b = bs.getBootstrap(raw, this);
-            b.connect(l.getHost(), l.getPort());
+            if (l != null) {
+                Bootstrap b = bs.getBootstrap(raw, this);
+                b.connect(l.getHost(), l.getPort());
+            }
+            else {
+                logger.debug("destination is not directly connectable.");
+            }
         }
         while (raw.getStat() == Stat.INIT || raw.getStat() == Stat.WAIT) {
             try {
@@ -286,7 +295,7 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
         InetSocketAddress sa = (InetSocketAddress)ctx.channel().remoteAddress();
         
         E dst = createEndpoint(sa.getHostName(), sa.getPort());
-        AttemptMessage<E> attempt = new AttemptMessage<E>(AttemptType.ATTEMPT, ep, attemptRand);
+        ControlMessage<E> attempt = new ControlMessage<E>(ControlType.ATTEMPT, ep, attemptRand);
         synchronized(raws) {
             // NettyRawChannel raw = raws.get(locator);
             synchronized (raw) {
@@ -345,38 +354,42 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
 
     protected static final int CHANNEL_ESTABLISH_TIMEOUT = 10000;
 
+    protected void handleControlMessage(ControlMessage<E> cmsg) {
+        // do nothing.
+        logger.warn("unhandled control message:" + cmsg);
+    }
+    
     void inboundReceive(ChannelHandlerContext ctx, Object msg) {
-        if (msg instanceof AttemptMessage<?>) {
-            AttemptMessage<E> attempt = (AttemptMessage<E>) msg;
-            logger.debug("received attempt: " + attempt.getArg() + " from "
-                    + ctx);
-            switch (attempt.type) {
+        if (msg instanceof ControlMessage<?>) {
+            ControlMessage<E> cmsg = (ControlMessage<E>) msg;
+            logger.debug("received attempt: " + cmsg.getArg() + " from " + ctx);
+            switch (cmsg.type) {
             case ATTEMPT:
                 synchronized (raws) {
-                    NettyRawChannel<E> raw = getRaw(attempt.getSource());
-                    if (raw != null && ep.equals(attempt.getSource())) {
+                    NettyRawChannel<E> raw = getRaw(cmsg.getSource());
+                    if (raw != null && ep.equals(cmsg.getSource())) {
                         // loop back.
                         synchronized (raw) {
                             raw.touch();
                             raw.setStat(Stat.RUN);
                             raw.setContext(ctx);
-                            ctx.writeAndFlush(new AttemptMessage<E>(
-                                    AttemptType.ACK, ep, null));
+                            ctx.writeAndFlush(new ControlMessage<E>(
+                                    ControlType.ACK, ep, null));
                         }
                     } else if (raw != null && raw.attempt != null) {
                         synchronized (raw) {
                             raw.touch();
                             // this side won
-                            if (raw.attempt > (int) attempt.getArg()) {
+                            if (raw.attempt > (int) cmsg.getArg()) {
                                 logger.debug("attempt won on " + raw);
-                                ctx.writeAndFlush(new AttemptMessage<E>(
-                                        AttemptType.NACK, ep, null));
+                                ctx.writeAndFlush(new ControlMessage<E>(
+                                        ControlType.NACK, ep, null));
                                 
                                 
                             } else { // opposite side wins.
                                 logger.debug("attempt lose on " + raw);
-                                ctx.writeAndFlush(new AttemptMessage<E>(
-                                        AttemptType.ACK, ep, null));
+                                ctx.writeAndFlush(new ControlMessage<E>(
+                                        ControlType.ACK, ep, null));
                                 //if (raw.getStat() == Stat.DENIED) {
                                 //logger.info("NACK is already received: " + raw);
                                 // if NACK is already received, it goes to RUN state.
@@ -390,18 +403,18 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
                     // raw.setStat(Stat.RUN);
                     else {
                         // cache not found. just accept it.
-                        raw = new NettyRawChannel<E>(attempt.getSource(), this);
+                        raw = new NettyRawChannel<E>(cmsg.getSource(), this);
                         synchronized(raw) {
                             ctx.channel().attr(rawChannelKey).set(raw.getRemote().getKeyString());
                             // accept attempt.
                             raw.setStat(Stat.RUN);
                             raw.setContext(ctx);
                             logger.debug("set run stat for raw from source="
-                                    + attempt.getSource());
+                                    + cmsg.getSource());
                         }
-                        ctx.writeAndFlush(new AttemptMessage<E>(AttemptType.ACK,
+                        ctx.writeAndFlush(new ControlMessage<E>(ControlType.ACK,
                                 ep, null));
-                        putRaw(attempt.getSource(), raw);
+                        putRaw(cmsg.getSource(), raw);
                     }
                 } // synchronized raws
                 break;
@@ -410,6 +423,9 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
                 break;
             case NACK:
                 logger.debug("illegal attempt NACK received from client");
+                break;
+            default:
+                handleControlMessage(cmsg);
                 break;
             }
         } else if (msg instanceof NettyMessage<?>) {
@@ -430,7 +446,7 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
                             NettyRawChannel<E> raw = getRaw(nmsg.getSource());
                             if (raw == null || raw.getStat() != Stat.RUN) {
                                 // might receive message in WAIT state.
-                                logger.info(
+                                logger.warn(
                                         "receive in illegal state {} from {} (channel not running): throwing it away.",
                                         raw == null ? "null" : raw.getStat(),
                                         nmsg.getSource());
@@ -466,8 +482,8 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
     }
 
     void outboundReceive(NettyRawChannel<E> raw, ChannelHandlerContext ctx, Object msg) {
-        if (msg instanceof AttemptMessage) {
-            AttemptMessage<E> resp = (AttemptMessage<E>) msg;
+        if (msg instanceof ControlMessage) {
+            ControlMessage<E> resp = (ControlMessage<E>) msg;
             logger.debug("outbound attempt response=" + resp.type);
             switch(resp.type) {
             case ATTEMPT:

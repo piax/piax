@@ -1,7 +1,6 @@
 package org.piax.gtrans.netty.idtrans;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.ListIterator;
 
@@ -10,36 +9,49 @@ import org.piax.common.TransportId;
 import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.Peer;
 import org.piax.gtrans.ProtocolUnsupportedException;
+import org.piax.gtrans.netty.ControlMessage;
 import org.piax.gtrans.netty.NettyChannelTransport;
 import org.piax.gtrans.netty.NettyLocator;
 import org.piax.gtrans.netty.NettyMessage;
 import org.piax.gtrans.netty.NettyRawChannel;
-import org.piax.gtrans.netty.PrimaryKey;
-import org.piax.gtrans.netty.PrimaryKey.LocatorEntry;
+import org.piax.gtrans.netty.idtrans.PrimaryKey.NeighborEntry;
 
 public class IdChannelTransport extends NettyChannelTransport<PrimaryKey> {
-
-    PrimaryKey primaryKey;
     LocatorManager mgr;
     
-    protected static final int FORWARD_HOPS_LIMIT = 3;
-    public int forwardCount = 0;
+    protected static final int FORWARD_HOPS_LIMIT = 5;
+    public int forwardCount = 0; // just for monitoring
 
     // By default, peerId becomes the primary key. 
     public IdChannelTransport(Peer peer, TransportId transId, PeerId peerId,
             NettyLocator peerLocator) throws IdConflictException, IOException {
         super(peer, transId, peerId, peerLocator);
-        primaryKey = new PrimaryKey(peerId, peerLocator);
+        this.ep= new PrimaryKey(peerId, peerLocator);
         mgr = new LocatorManager();
     }
 
     public IdChannelTransport(Peer peer, TransportId transId, PrimaryKey key, PeerId peerId,
             NettyLocator peerLocator) throws IdConflictException, IOException {
         super(peer, transId, peerId, peerLocator);
-        this.primaryKey = key;
+        this.ep = key;
         mgr = new LocatorManager();
     }
-    
+
+    // By default, peerId becomes the primary key.
+    // The transports that have no direct locator (have only indirect neighbors) use this constructor. 
+    public IdChannelTransport(Peer peer, TransportId transId, PeerId peerId) throws IdConflictException, IOException {
+        super(peer, transId, peerId, null);
+        this.ep = new PrimaryKey(peerId);
+        mgr = new LocatorManager();
+    }
+
+    public IdChannelTransport(Peer peer, TransportId transId, PrimaryKey key, PeerId peerId)
+            throws IdConflictException, IOException {
+        super(peer, transId, peerId, null);
+        this.ep = key;
+        mgr = new LocatorManager();
+    }
+
     public boolean filterMessage (NettyMessage<PrimaryKey> nmsg) {
         PrimaryKey src = nmsg.getSource();
         src = mgr.registerAndGet(src);
@@ -47,9 +59,14 @@ public class IdChannelTransport extends NettyChannelTransport<PrimaryKey> {
         return forwardMessage(nmsg);
     }
 
+    // forwarding the channel attempt signal:
+    // first, use channels for neighbors if already exists.
+    // second, initiate a channel for neighbors if not exists.
+    
+    @Deprecated
     boolean forwardMessage(NettyMessage<PrimaryKey> nmsg) {
         PrimaryKey dst = (PrimaryKey)nmsg.getDestination();
-        if (primaryKey.equals(dst)) {
+        if (ep.equals(dst)) {
             return false; // go to receive process.
         }
         else {
@@ -71,23 +88,39 @@ public class IdChannelTransport extends NettyChannelTransport<PrimaryKey> {
         }
     }
 
+    // handle the control message for IdChannelTrans.
+    protected void handleControlMessage(ControlMessage<PrimaryKey> cmsg) {
+        switch(cmsg.getType()) {
+        case UPDATE: // update locator information.
+            {
+                PrimaryKey k = (PrimaryKey)cmsg.getArg();
+            //
+            } 
+            break;
+        case INIT: // start a new channel initiation
+            {
+                PrimaryKey k = (PrimaryKey)cmsg.getArg();
+            }
+            break;
+        case WAIT:
+            // wait for the connection from specified locator...do nothing.
+            break;
+        default:
+            break;
+        }
+    }
+
     protected NettyRawChannel<PrimaryKey> getRaw(PrimaryKey ep) {
         return (ep.getRawKey() == null)? null : raws.get(ep); 
     }
 
     protected void channelSendHook(PrimaryKey src, PrimaryKey dst) {
-        ArrayList<NettyLocator> locators = new ArrayList<>();
-        for (NettyRawChannel<PrimaryKey> raw : raws.values()) {
-            locators.add((raw.getRemote().getLocator()));
-        }
-        src.setNeighborLocators(locators);
-
         // update the manager with newest neighbors.
         PrimaryKey k = mgr.registerAndGet(dst);
         // mark self as forwarded
-        for (LocatorEntry e : k.getNeighbors()) {
-            if (e.locator.equals(ep.getLocator())) {
-                e.flag = true;
+        for (NeighborEntry e : k.getNeighbors()) {
+            if (e.key.equals(ep)) {
+                e.visited = true;
             }
         }
         dst.setNeighbors(k.getNeighbors());
@@ -99,12 +132,12 @@ public class IdChannelTransport extends NettyChannelTransport<PrimaryKey> {
     }
 
     // get RawChannel with remote locator included in the list 
-    private NettyRawChannel<PrimaryKey> getExistingRawChannel(List<LocatorEntry> list) {
+    private NettyRawChannel<PrimaryKey> getExistingRawChannel(List<NeighborEntry> list) {
         NettyRawChannel<PrimaryKey> ret = null;
-        for(ListIterator<LocatorEntry> it=list.listIterator(list.size()); it.hasPrevious();){
-            LocatorEntry le = it.previous();
+        for(ListIterator<NeighborEntry> it=list.listIterator(list.size()); it.hasPrevious();){
+            NeighborEntry le = it.previous();
             for (NettyRawChannel<PrimaryKey> raw : raws.values()) {
-                if (raw.getRemote().equals(le.locator)) {
+                if (raw.getRemote().equals(le.key)) {
                     ret = raw;
                     break;
                 }
@@ -113,13 +146,13 @@ public class IdChannelTransport extends NettyChannelTransport<PrimaryKey> {
         return ret;
     }
 
-    private NettyLocator getUnmarkedAndMarkLocator(List<LocatorEntry> list) {
-        NettyLocator ret = null;
-        for(ListIterator<LocatorEntry> it=list.listIterator(list.size()); it.hasPrevious();){
-            LocatorEntry le = it.previous();
-            if (!le.flag) {
-                le.flag = true;
-                ret = le.locator;
+    private PrimaryKey getUnmarkedAndMarkLocator(List<NeighborEntry> list) {
+        PrimaryKey ret = null;
+        for(ListIterator<NeighborEntry> it=list.listIterator(list.size()); it.hasPrevious();){
+            NeighborEntry le = it.previous();
+            if (!le.visited) {
+                le.visited = true;
+                ret = le.key;
             }
         }
         return ret;
@@ -135,8 +168,8 @@ public class IdChannelTransport extends NettyChannelTransport<PrimaryKey> {
      // if there is only indirect candidate
         NettyRawChannel<PrimaryKey> raw = getExistingRawChannel(key.getNeighbors());
         if (raw == null) { // no exiting channel. create new
-            NettyLocator l = getUnmarkedAndMarkLocator(key.getNeighbors());
-            raw = getRawCreateAsClient0(new PrimaryKey(l));
+            PrimaryKey next = getUnmarkedAndMarkLocator(key.getNeighbors());
+            raw = getRawCreateAsClient0(next);
             logger.debug("no existing indirect rawchannel. creating {} for {} on {}",
                     raw.getRemote(), key, ep);
         }
@@ -165,7 +198,7 @@ public class IdChannelTransport extends NettyChannelTransport<PrimaryKey> {
                 raw = getRawCreateAsClient0(dst);
             }
         }
-        ep.addNeighbor(raw.getRemote().getLocator());
+        ep.addNeighbor(raw.getRemote());
         return raw;
     }
 
@@ -183,7 +216,7 @@ public class IdChannelTransport extends NettyChannelTransport<PrimaryKey> {
     @Override
     protected void bootstrap(NettyLocator locator)
             throws ProtocolUnsupportedException {
-        ep = new PrimaryKey(locator); // at bootstrap, wildcard key.
+        ep = new PrimaryKey(locator); // at bootstrap, temporary wildcard key.
         mgr = new LocatorManager();
     }
 

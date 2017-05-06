@@ -32,7 +32,7 @@ import org.piax.gtrans.ov.Overlay;
 import org.piax.gtrans.ov.OverlayListener;
 import org.piax.gtrans.ov.OverlayReceivedMessage;
 import org.piax.gtrans.ov.sg.MSkipGraph;
-import org.piax.gtrans.ov.szk.Suzaku;
+import org.piax.gtrans.ov.async.suzaku.Suzaku;
 import org.piax.gtrans.raw.emu.EmuLocator;
 import org.piax.gtrans.raw.tcp.TcpLocator;
 import org.piax.gtrans.raw.udp.UdpLocator;
@@ -1348,7 +1348,7 @@ public class TestTransport {
         p2.fin();
     }
 	
-	@Test
+//	@Test
     public void CSOnFailureSimulationChannelTest() throws Exception {
     	// get peers
         Peer p1 = Peer.getInstance(new PeerId("p1"));
@@ -1453,7 +1453,7 @@ public class TestTransport {
         p3.fin();    	
 	}
 	
-	@Test
+//	@Test
     public void CSRunsOnFailureSimulationChannelTest() throws Exception {
     	// get peers
         Peer p1 = Peer.getInstance(new PeerId("p1"));
