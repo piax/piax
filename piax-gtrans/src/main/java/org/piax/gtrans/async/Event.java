@@ -415,9 +415,10 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
                                 // probably we have already received the ack
                                 System.out.println("removeNotAck: not found: " + getEventId());
                             }
-                            //assert ev1 != null;
                             assert ev2 != null;
                             System.out.println("reply timed out: " + this);
+                            // In reply timeout case, unlike ack timeout case,
+                            // the receiver node is not considered to be failed.
                             this.failureCallback.run(new TimeoutException());
                         });
                 // System.out.println("schedule reply timer: " + replyTimeoutEvent);
