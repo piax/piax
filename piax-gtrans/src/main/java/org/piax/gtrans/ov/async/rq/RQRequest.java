@@ -41,7 +41,9 @@ import org.slf4j.LoggerFactory;
  * a class used for range queries.
  * <p>
  * this class contains various data that are required to be transmitted to the
- * target nodes. 
+ * target nodes. this class also contains {@link #obstacles} field, which
+ * represents a set of failed nodes that are found while processing the range
+ * query.
  * <p>
  * this class also manages (partial) results returned from child nodes.
  * 
@@ -64,6 +66,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
 
     /**
      * failed links. this field is used for avoiding and repairing dead links.
+     * XXX: NOT USED FOR NOW
      */
     final Set<Node> obstacles;
 
@@ -226,10 +229,6 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                 || mode == RetransMode.RELIABLE;
     }
 
-    private static long getAckSendTime() {
-        return Math.max(NetworkParams.ACK_TIMEOUT - 1000, 0);
-    }
-
     /**
      * A class for storing results of a range query used by parent nodes.
      */
@@ -361,7 +360,6 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                 = rqExecuteLocal(map.get(peerId));
             future.thenAccept((List<DKRangeRValue<T>> rvals) -> {
                 addRemoteValues(rvals);
-                // XXX: RQAdapterの実行に時間を要する場合，Ackタイムアウトに間に合わない可能性
                 responder.rqDisseminateFinish();
             }).exceptionally((exc) -> {
                 System.err.println("addRemoteValues completes exceptionally");
@@ -498,24 +496,6 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             if (isCompleted()) {
                 cleanup();
             }
-//            if (isCompleted() || opts.getResponseType() == ResponseType.DIRECT) {
-//                // transmit the collected results to the parent node
-//                flush();
-//                return true;
-//            } else {
-//                return false;
-//                // fast flushing
-//                // finished + failed = children ならば flush
-//                /*Set<Endpoint> eset = new HashSet<>();
-//                eset.addAll(children);
-//                eset.removeAll(finished);
-//                eset.removeAll(failedLinks);
-//                logger.debug("children={}, finished={}, failed={}, eset={}",
-//                        children, finished, failedLinks, eset);
-//                if (eset.size() == 0) {
-//                    flush();
-//                }*/
-//            }
         }
 
         private void addRemoteValue(RemoteValue<T> rval, Range<DdllKey> range) {
@@ -702,8 +682,10 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                 if (isRoot) {
                     startSlowRetransTask();
                 } else {
+                    // schedule calling flush() periodically.
+                    // if use ACK, schedule calling flush() at time1.
                     long time2 = RQManager.RQ_FLUSH_PERIOD;
-                    long time1 = isUseAck(opts) ? getAckSendTime() : time2;
+                    long time1 = isUseAck(opts) ? NetworkParams.SEND_ACK_TIME : time2;
                     sendReplyTask = EventExecutor.sched("sendreplytask-" + getEventId(), 
                             time1, time2, () -> flush());
                     cleanup.add(() -> {
@@ -764,7 +746,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                         getLocalNode().post(new AckEvent(RQRequest.this, sender));
                     } else {
                         sendAckTimer = EventExecutor.sched("sendacktimer-" + getEventId(), 
-                                getAckSendTime(), () -> {
+                                NetworkParams.SEND_ACK_TIME, () -> {
                                     getLocalNode().post(
                                             new AckEvent(RQRequest.this, sender));
                         });

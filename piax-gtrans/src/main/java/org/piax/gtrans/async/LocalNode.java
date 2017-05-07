@@ -31,7 +31,6 @@ import org.piax.gtrans.RPCException;
 import org.piax.gtrans.RPCIf;
 import org.piax.gtrans.RPCInvoker;
 import org.piax.gtrans.TransOptions;
-import org.piax.gtrans.async.Event.LocalEvent;
 import org.piax.gtrans.async.Event.Lookup;
 import org.piax.gtrans.async.Event.RequestEvent;
 import org.piax.gtrans.async.EventException.RPCEventException;
@@ -41,7 +40,6 @@ import org.piax.gtrans.async.EventSender.EventSenderNet;
 import org.piax.gtrans.async.EventSender.EventSenderSim;
 import org.piax.gtrans.ov.async.rq.RQAdapter;
 import org.piax.gtrans.ov.ddll.DdllKey;
-import org.piax.util.UniqId;
 
 public class LocalNode extends Node {
     public static final int INSERTION_DELETION_RETRY = 10; 
@@ -76,16 +74,6 @@ public class LocalNode extends Node {
     // TODO: purge entries by timer!
     // TODO: define accessors!
     public Set<Node> maybeFailedNodes = new HashSet<>();
-
-//    public static LocalNode newLocalNode(TransportId transId,
-//            ChannelTransport<?> trans, Comparable<?> rawkey,
-//            NodeStrategy strategy) 
-//            throws IdConflictException, IOException {
-//        DdllKey ddllkey = new DdllKey(rawkey, new UniqId(trans.getPeerId()));
-//        LocalNode node = new LocalNode(transId, trans, ddllkey);
-//        node.pushStrategy(strategy);
-//        return node;
-//    }
 
     @Deprecated
     public LocalNode(TransportId transId, ChannelTransport<?> trans,
@@ -239,18 +227,6 @@ public class LocalNode extends Node {
         if (ev.routeWithFailed.size() == 0) {
             ev.routeWithFailed.add(this);
         }
-//        if (ev.delay == Node.NETWORK_LATENCY) {
-//            ev.delay = EventExecutor.latency(this, ev.receiver);
-//        }
-//        ev.vtime = EventExecutor.getVTime() + ev.delay;
-//        if (Log.verbose) {
-//            if (ev.delay != 0) {
-//                System.out.println(this + "|send event " + ev + ", (arrive at T"
-//                        + ev.vtime + ")");
-//            } else {
-//                System.out.println(this + "|send event " + ev);
-//            }
-//        }
         ev.beforeSendHook(this);
         if (!isFailed) {
             try {
@@ -322,8 +298,8 @@ public class LocalNode extends Node {
     }
 
     public void addMaybeFailedNode(Node node) {
+        Log.verbose(() -> (this + ": addMaybeFailedNode: " + node));
         maybeFailedNodes.add(node);
-        getTopStrategy().foundMaybeFailedNode(node);
     }
 
     /**
@@ -442,10 +418,9 @@ public class LocalNode extends Node {
         }
         mode = NodeMode.DELETING;
         CompletableFuture<Boolean> future = new CompletableFuture<>();
-        LocalEvent ev = new LocalEvent(this, () -> {
+        EventExecutor.runNow("leaveAsync", () -> {
             getTopStrategy().leave(future);
         });
-        post(ev);
         CompletableFuture<Boolean> f = future.thenApply(rc -> {
             if (rc) {
                 cleanup();

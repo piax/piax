@@ -28,7 +28,6 @@ public class EventExecutor {
     private static long vtime; // init by reset();
     public static int nmsgs; // init by reset();
     private static int eventCount; // init by reset();
-    public static int DEFAULT_MAX_TIME = 200 * 1000;
     private static ReentrantLock lock = new ReentrantLock();
     private static Condition cond = lock.newCondition();
     private static PriorityQueue<Event> timeq = new PriorityQueue<>();
@@ -139,6 +138,12 @@ public class EventExecutor {
         ev.vtime = getVTime() + delay;
         enqueue(ev);
         return ev;
+    }
+
+    public static void runNow(String name, Runnable job) {
+        TimerEvent ev = new TimerEvent(name, 0, 0, (dummy) -> job.run());
+        ev.vtime = getVTime();
+        enqueue(ev);
     }
 
     public static long getVTime() {

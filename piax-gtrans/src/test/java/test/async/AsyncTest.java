@@ -275,7 +275,7 @@ public class AsyncTest extends AsyncTestBase {
             CompletableFuture<Boolean> f1 = nodes[1].joinAsync(nodes[0]);
             f1.whenComplete((rc, exc) -> 
                 System.out.println("rc=" + rc + ", exc=" + exc));
-            EventExecutor.startSimulation(30000);
+            EventExecutor.startSimulation(40000);
             dump(nodes);
             assertTrue(f1.isDone());
             try {

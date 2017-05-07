@@ -12,7 +12,6 @@ import org.piax.gtrans.RPCIf;
 import org.piax.gtrans.RPCInvoker;
 import org.piax.gtrans.RemoteCallable;
 import org.piax.gtrans.RemoteCallable.Type;
-import org.piax.gtrans.async.Event.LocalEvent;
 
 public interface EventSender {
     void send(Event ev) throws Exception;
@@ -75,20 +74,16 @@ public interface EventSender {
 
         @Override
         public void send(Event ev) throws RPCException {
-            if (ev instanceof LocalEvent) {
-                // not to get NotSerializableException
-                recv(ev);
-            } else {
-                assert ev.delay == Node.NETWORK_LATENCY;
-                //ev.vtime = EventExecutor.getVTime() + ev.delay;
-                ev.vtime = 0;
-                if (Log.verbose) {
-                    System.out.println(ev.sender + "|send/forward event " + ev);
-                }
-                EventReceiverIf stub = getStub((E) ev.receiver.addr,
-                        GTransConfigValues.rpcTimeout);
-                stub.recv(ev);
+            assert ev.delay == Node.NETWORK_LATENCY;
+            //ev.vtime = EventExecutor.getVTime() + ev.delay;
+            ev.vtime = 0;
+            if (Log.verbose) {
+                System.out.println(ev.sender + "|send/forward event " + ev);
             }
+            @SuppressWarnings("unchecked")
+            EventReceiverIf stub = getStub((E) ev.receiver.addr,
+                    GTransConfigValues.rpcTimeout);
+            stub.recv(ev);
         }
 
         @Override
