@@ -309,8 +309,8 @@ public class LocalNode extends Node {
     }
 
     public void addMaybeFailedNode(Node node) {
+        Log.verbose(() -> (this + ": addMaybeFailedNode: " + node));
         maybeFailedNodes.add(node);
-        getTopStrategy().foundMaybeFailedNode(node);
     }
 
     /**

@@ -70,10 +70,6 @@ public abstract class NodeStrategy {
         getLower().handleLookup(lookup);
     }
 
-    public void foundMaybeFailedNode(Node node) {
-        getLower().foundMaybeFailedNode(node);
-    }
-
     /**
      * get a (cloned) FTEntry for sending to a remote node.
      * 

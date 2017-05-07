@@ -369,11 +369,6 @@ public class DdllStrategy extends NodeStrategy {
     }
 
     @Override
-    public void foundMaybeFailedNode(Node node) {
-        System.out.println(n + ": foundFailedNode: " + node);
-    }
-
-    @Override
     public int getMessages4Join() {
         return joinMsgs;
     }
