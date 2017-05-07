@@ -28,7 +28,6 @@ public class EventExecutor {
     private static long vtime; // init by reset();
     public static int nmsgs; // init by reset();
     private static int eventCount; // init by reset();
-    public static int DEFAULT_MAX_TIME = 200 * 1000;
     private static ReentrantLock lock = new ReentrantLock();
     private static Condition cond = lock.newCondition();
     private static PriorityQueue<Event> timeq = new PriorityQueue<>();

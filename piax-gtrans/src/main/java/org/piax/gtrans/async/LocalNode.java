@@ -70,16 +70,6 @@ public class LocalNode extends Node {
     // TODO: define accessors!
     public Set<Node> maybeFailedNodes = new HashSet<>();
 
-//    public static LocalNode newLocalNode(TransportId transId,
-//            ChannelTransport<?> trans, Comparable<?> rawkey,
-//            NodeStrategy strategy) 
-//            throws IdConflictException, IOException {
-//        DdllKey ddllkey = new DdllKey(rawkey, new UniqId(trans.getPeerId()));
-//        LocalNode node = new LocalNode(transId, trans, ddllkey);
-//        node.pushStrategy(strategy);
-//        return node;
-//    }
-
     @Deprecated
     public LocalNode(TransportId transId, ChannelTransport<?> trans,
             DdllKey ddllkey)
@@ -226,18 +216,6 @@ public class LocalNode extends Node {
         if (ev.routeWithFailed.size() == 0) {
             ev.routeWithFailed.add(this);
         }
-//        if (ev.delay == Node.NETWORK_LATENCY) {
-//            ev.delay = EventExecutor.latency(this, ev.receiver);
-//        }
-//        ev.vtime = EventExecutor.getVTime() + ev.delay;
-//        if (Log.verbose) {
-//            if (ev.delay != 0) {
-//                System.out.println(this + "|send event " + ev + ", (arrive at T"
-//                        + ev.vtime + ")");
-//            } else {
-//                System.out.println(this + "|send event " + ev);
-//            }
-//        }
         ev.beforeSendHook(this);
         if (!isFailed) {
             try {
