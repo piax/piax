@@ -28,11 +28,12 @@ import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.TransOptions.RetransMode;
 import org.piax.gtrans.Transport;
 import org.piax.gtrans.TransportListener;
+import org.piax.gtrans.netty.idtrans.PrimaryKey;
 import org.piax.gtrans.ov.Overlay;
 import org.piax.gtrans.ov.OverlayListener;
 import org.piax.gtrans.ov.OverlayReceivedMessage;
-import org.piax.gtrans.ov.sg.MSkipGraph;
 import org.piax.gtrans.ov.async.suzaku.Suzaku;
+import org.piax.gtrans.ov.sg.MSkipGraph;
 import org.piax.gtrans.raw.emu.EmuLocator;
 import org.piax.gtrans.raw.tcp.TcpLocator;
 import org.piax.gtrans.raw.udp.UdpLocator;
@@ -40,6 +41,9 @@ import org.piax.gtrans.util.FailureSimulationChannelTransport;
 import org.piax.gtrans.util.ThroughTransport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import test.Util;
+import test.Util.Net;
 
 public class TestTransport {
 	
@@ -91,6 +95,53 @@ public class TestTransport {
         assertTrue("UDP1 receive failed", udp_received1);
         assertTrue("UDP2 receive failed", udp_received2);
         // assertTrue(ByteUtil.equals(b.getMessage(), "abcdefg".getBytes()));
+    }
+    
+    @Test
+    public void IdChannelTest() throws Exception {
+        // get peers
+        Peer p1 = Peer.getInstance(new PeerId("p1"));
+        Peer p2 = Peer.getInstance(new PeerId("p2"));
+        
+        // top level
+        ChannelTransport<PrimaryKey> tr1 = p1.newBaseChannelTransport(
+                Util.genEndpoint(Net.ID, p1.getPeerId(),
+                                "localhost", 12367));
+        ChannelTransport<PrimaryKey> tr2 = p2.newBaseChannelTransport(
+                Util.genEndpoint(Net.ID, p2.getPeerId(),
+                                "localhost", 12368));
+
+        tr1.setChannelListener(new ChannelListener<PrimaryKey>() {
+            public boolean onAccepting(Channel<PrimaryKey> channel) {
+                return true;
+            }
+
+            public void onClosed(Channel<PrimaryKey> channel) {
+            }
+
+            public void onFailure(Channel<PrimaryKey> channel, Exception cause) {
+            }
+
+            public void onReceive(Channel<PrimaryKey> ch) {
+                if (ch.isCreatorSide())
+                    return;
+                Object msg = ch.receive();
+                try {
+                    ch.send(msg);
+                } catch (IOException e) {
+                    fail("IOException occured");
+                }
+            }
+        });
+        
+        Channel<PrimaryKey> c = tr2.newChannel(tr1.getEndpoint());
+        c.send("654321");
+        String mes = (String) c.receive(1000);
+        assertTrue(mes.equals("654321"));
+        c.close();
+
+        p1.fin();
+        p2.fin();
     }
 
     @Test

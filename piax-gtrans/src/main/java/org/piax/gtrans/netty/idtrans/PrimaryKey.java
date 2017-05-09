@@ -3,6 +3,7 @@ package org.piax.gtrans.netty.idtrans;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 import org.piax.common.ComparableKey;
@@ -161,12 +162,12 @@ public class PrimaryKey implements ComparableKey<PrimaryKey>, NettyEndpoint {
 
     @Override
     public int getPort() {
-        return 0;
+        return locator.getPort();
     }
 
     @Override
     public String getHost() {
-        return null;
+        return locator.getHost();
     }
 
     @Override
@@ -177,4 +178,5 @@ public class PrimaryKey implements ComparableKey<PrimaryKey>, NettyEndpoint {
     public long getLocatorVersion() {
         return version;
     }
+
 }

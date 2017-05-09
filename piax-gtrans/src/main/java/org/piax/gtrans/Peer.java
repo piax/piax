@@ -25,9 +25,9 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.RejectedExecutionException;
 
+import org.piax.common.Endpoint;
 import org.piax.common.ObjectId;
 import org.piax.common.PeerId;
-import org.piax.common.PeerLocator;
 import org.piax.common.StatusRepo;
 import org.piax.common.TransportId;
 import org.piax.common.TransportIdPath;
@@ -195,7 +195,7 @@ public class Peer {
      * @throws IdConflictException 指定したtransIdが他とコンフリクトを起こした場合
      * @param <E> the type of peer locator.
      */
-    public <E extends PeerLocator> Transport<E> newBaseTransport(E locator)
+    public <E extends Endpoint> Transport<E> newBaseTransport(E locator)
             throws IOException, IdConflictException {
         return newBaseTransport(null, null, locator);
     }
@@ -216,7 +216,7 @@ public class Peer {
      * @throws IdConflictException 指定したtransIdが他とコンフリクトを起こした場合
      * @param <E> the type of peer locator.
      */
-    public <E extends PeerLocator> Transport<E> newBaseTransport(
+    public <E extends Endpoint> Transport<E> newBaseTransport(
             String desc, E locator) throws IOException, IdConflictException {
         return newBaseTransport(desc, null, locator);
     }
@@ -238,7 +238,7 @@ public class Peer {
      * @throws IdConflictException 指定したtransIdが他とコンフリクトを起こした場合
      * @param <E> the type of peer locator.
      */
-    public <E extends PeerLocator> Transport<E> newBaseTransport(
+    public <E extends Endpoint> Transport<E> newBaseTransport(
             String desc, TransportId transId, E locator) throws IOException,
             IdConflictException {
         return baseTransMgr.newBaseTransport(desc, transId, locator);
@@ -257,7 +257,7 @@ public class Peer {
      * @throws IdConflictException 指定したtransIdが他とコンフリクトを起こした場合
      * @param <E> the type of peer locator.
      */
-    public <E extends PeerLocator> ChannelTransport<E> newBaseChannelTransport(
+    public <E extends Endpoint> ChannelTransport<E> newBaseChannelTransport(
             E locator) throws IOException, IdConflictException {
         return newBaseChannelTransport(null, null, locator);
     }
@@ -278,7 +278,7 @@ public class Peer {
      * @param <E> the type of peer locator.
      * @return the peer locator.
      */
-    public <E extends PeerLocator> ChannelTransport<E> newBaseChannelTransport(
+    public <E extends Endpoint> ChannelTransport<E> newBaseChannelTransport(
             String desc, E locator) throws IOException, IdConflictException {
         return newBaseChannelTransport(desc, null, locator);
     }
@@ -300,7 +300,7 @@ public class Peer {
      * @throws IdConflictException 指定したtransIdが他とコンフリクトを起こした場合
      * @param <E> the type of peer locator.
      */
-    public <E extends PeerLocator> ChannelTransport<E> newBaseChannelTransport(
+    public <E extends Endpoint> ChannelTransport<E> newBaseChannelTransport(
             String desc, TransportId transId, E locator) throws IOException,
             IdConflictException {
         return baseTransMgr.newBaseChannelTransport(desc, transId, locator);

@@ -77,6 +77,6 @@ public class NettyMessage<E extends NettyEndpoint> implements Serializable {
     }
 
     public String toString() {
-        return "locator=" + src + ",objectId=" + sender + "msg=" + msg;
+        return "[src=" + src + ",dst=" + dst + ",ischannel=" + isChannelSend + ",msg=" + msg + "]";
     }
 }

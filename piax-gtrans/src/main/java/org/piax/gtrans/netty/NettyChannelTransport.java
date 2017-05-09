@@ -46,23 +46,25 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
     protected EventLoopGroup clientGroup;
     boolean supportsDuplex = true;
     protected E ep = null;
-    final PeerId peerId;
+    final protected PeerId peerId;
     // a map to hold active raw channels;
     protected final ConcurrentHashMap<E,NettyRawChannel<E>> raws =
             new ConcurrentHashMap<E,NettyRawChannel<E>>();
     protected final ConcurrentHashMap<String,NettyChannel<E>> channels =
             new ConcurrentHashMap<String,NettyChannel<E>>();
-    final Random rand = new Random(System.currentTimeMillis());
+    protected final Random rand = new Random(System.currentTimeMillis());
     protected boolean isRunning = false;
     
-    final ChannelGroup schannels =
+    final protected ChannelGroup schannels =
             new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
-    final ChannelGroup cchannels =
+    final protected ChannelGroup cchannels =
             new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
     // XXX should be private
     protected NettyBootstrap<E> bs;
     protected AtomicInteger seq;
-    final public int RAW_POOL_SIZE = 30;
+
+    static public int RAW_POOL_SIZE = 30;
+    static public boolean PARALLEL_RECEIVE = true;
     
     public AttributeKey<String> rawChannelKey = AttributeKey.valueOf("rawKey");
 
@@ -76,7 +78,7 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
     public NettyChannelTransport(Peer peer, TransportId transId, PeerId peerId,
             NettyLocator peerLocator) throws IdConflictException, IOException {
         super(peer, transId, null, true);
-        //this.locator = peerLocator;
+        this.ep = (E)peerLocator;
         this.peerId = peerId;
         seq = new AtomicInteger(0);// sequence number (ID of the channel)
         if (peerLocator != null) {
@@ -97,14 +99,18 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
             serverGroup = bs.getChildEventLoopGroup();
             clientGroup = bs.getClientEventLoopGroup();
 
-            bootstrap(peerLocator);
-
             ServerBootstrap b = bs.getServerBootstrap(this);
             b.bind(new InetSocketAddress(ep.getHost(), ep.getPort()))
                     .syncUninterruptibly();
             logger.debug("bound " + ep);
         }
         isRunning = true;
+    }
+
+    // for subclass implementation.
+    public NettyChannelTransport(Peer peer, TransportId transId, PeerId peerId) throws IdConflictException, IOException {
+        super(peer, transId, null, true);
+        this.peerId = peerId;
     }
 
     @Override
@@ -140,7 +146,7 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
         channels.put("" + ch.getChannelNo() + ch.channelInitiator.hashCode(), ch);
     }
 
-    NettyChannel<E> getChannel(int channelNo, E channelInitiator) {
+    protected NettyChannel<E> getChannel(int channelNo, E channelInitiator) {
         logger.debug("" + channelNo + channelInitiator.hashCode() + " on " + ep);
         return channels.get("" + channelNo + channelInitiator.hashCode());
     }
@@ -203,7 +209,7 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
 */
     protected abstract NettyRawChannel<E> getRawCreateAsClient(E dst, NettyMessage<E> msg) throws IOException;
     protected abstract boolean filterMessage(NettyMessage<E> msg);
-    protected abstract void bootstrap(NettyLocator locator) throws ProtocolUnsupportedException;
+
     protected abstract NettyRawChannel<E> getResolvedRawChannel(E ep) throws IOException;
     protected abstract NettyLocator directLocator(E ep);
     
@@ -285,15 +291,13 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
     
     abstract protected E createEndpoint(String host, int port);
 
-    void outboundActive(NettyRawChannel<E> raw, ChannelHandlerContext ctx) {
+    protected void outboundActive(NettyRawChannel<E> raw, ChannelHandlerContext ctx) {
         logger.debug("outbound active: " + ctx.channel().remoteAddress());
         ctx.channel().attr(rawChannelKey).set(raw.getRemote().getKeyString());
         cchannels.add(ctx.channel());
         int attemptRand = rand.nextInt();
         // is this valid only for tcp channel?
-        
         InetSocketAddress sa = (InetSocketAddress)ctx.channel().remoteAddress();
-        
         E dst = createEndpoint(sa.getHostName(), sa.getPort());
         ControlMessage<E> attempt = new ControlMessage<E>(ControlType.ATTEMPT, ep, attemptRand);
         synchronized(raws) {
@@ -311,7 +315,7 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
         logger.debug("sent attempt to " + dst + " : " + ctx);
     }
 
-    void outboundInactive(ChannelHandlerContext ctx) {
+    protected void outboundInactive(ChannelHandlerContext ctx) {
         logger.debug("outbound inactive: " + ctx.channel().remoteAddress());
         String key = ctx.channel().attr(rawChannelKey).get();
         //logger.info("outbound raw key: " + key);
@@ -327,12 +331,12 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
         ctx.close();
     }
 
-    void inboundActive(ChannelHandlerContext ctx) {
+    protected void inboundActive(ChannelHandlerContext ctx) {
         logger.debug("inbound active: " + ctx.channel().remoteAddress());
         schannels.add(ctx.channel());
     }
 
-    void inboundInactive(ChannelHandlerContext ctx) {
+    protected void inboundInactive(ChannelHandlerContext ctx) {
         logger.debug("inbound inactive: " + ctx.channel().remoteAddress());
         String key = ctx.channel().attr(rawChannelKey).get();
         //logger.info("inbound raw key : {} on {}", key, ctx.channel().localAddress());
@@ -359,7 +363,7 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
         logger.warn("unhandled control message:" + cmsg);
     }
     
-    void inboundReceive(ChannelHandlerContext ctx, Object msg) {
+    protected void inboundReceive(ChannelHandlerContext ctx, Object msg) {
         if (msg instanceof ControlMessage<?>) {
             ControlMessage<E> cmsg = (ControlMessage<E>) msg;
             logger.debug("received attempt: " + cmsg.getArg() + " from " + ctx);

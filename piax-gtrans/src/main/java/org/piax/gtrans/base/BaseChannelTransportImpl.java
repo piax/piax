@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.piax.common.Endpoint;
 import org.piax.common.ObjectId;
 import org.piax.common.PeerLocator;
 import org.piax.common.TransportId;
@@ -54,7 +55,7 @@ public class BaseChannelTransportImpl<E extends PeerLocator> extends
     @SuppressWarnings("unchecked")
     public BaseChannelTransportImpl(Peer peer, TransportId transId,
             E locator) throws IdConflictException, IOException {
-        super(transId, (RawTransport<E>) locator.newRawTransport(peer.getPeerId()));
+        super(transId, (RawTransport<E>) ((PeerLocator)locator).newRawTransport(peer.getPeerId()));
     }
 
     @SuppressWarnings("unchecked")

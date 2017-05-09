@@ -18,16 +18,12 @@ public class LocatorChannelTransport extends NettyChannelTransport<NettyLocator>
             PeerId peerId, NettyLocator peerLocator)
             throws IdConflictException, IOException {
         super(peer, transId, peerId, peerLocator);
+        this.ep = peerLocator;
     }
     
     protected NettyRawChannel<NettyLocator> getRawCreateAsClient(NettyLocator dst, NettyMessage<NettyLocator> nmsg) throws IOException {
         NettyRawChannel<NettyLocator> raw = getRawCreateAsClient0(dst);
         return raw;
-    }
-
-    @Override
-    protected void bootstrap(NettyLocator peerLocator) throws ProtocolUnsupportedException {
-        this.ep = peerLocator;
     }
 
     @Override

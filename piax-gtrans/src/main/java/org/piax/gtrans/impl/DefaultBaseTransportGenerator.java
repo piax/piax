@@ -15,6 +15,7 @@ package org.piax.gtrans.impl;
 
 import java.io.IOException;
 
+import org.piax.common.Endpoint;
 import org.piax.common.PeerLocator;
 import org.piax.common.TransportId;
 import org.piax.gtrans.ChannelTransport;
@@ -24,6 +25,8 @@ import org.piax.gtrans.Transport;
 import org.piax.gtrans.base.BaseChannelTransportImpl;
 import org.piax.gtrans.base.BaseDatagramTransport;
 import org.piax.gtrans.netty.NettyLocator;
+import org.piax.gtrans.netty.idtrans.IdChannelTransport;
+import org.piax.gtrans.netty.idtrans.PrimaryKey;
 import org.piax.gtrans.netty.loctrans.LocatorChannelTransport;
 import org.piax.gtrans.raw.emu.EmuLocator;
 import org.piax.gtrans.raw.lwtcp.LWTcpTransport;
@@ -40,7 +43,7 @@ public class DefaultBaseTransportGenerator extends BaseTransportGenerator {
         super(peer);
     }
     
-    private TransportId newDefaultId(PeerLocator loc) {
+    private TransportId newDefaultId(Endpoint loc) {
         String type;
         if (loc instanceof EmuLocator) {
             type = "emu"; 
@@ -50,6 +53,8 @@ public class DefaultBaseTransportGenerator extends BaseTransportGenerator {
             type = "tcp";
         } else if (loc instanceof NettyLocator) {
             type = "netty";
+        } else if (loc instanceof PrimaryKey) { 
+            type = "id";
         } else {
             return null;
         }
@@ -63,7 +68,7 @@ public class DefaultBaseTransportGenerator extends BaseTransportGenerator {
     }
 
     @Override
-    public <E extends PeerLocator> ChannelTransport<E> _newBaseChannelTransport(
+    public <E extends Endpoint> ChannelTransport<E> _newBaseChannelTransport(
             String desc, TransportId transId, E loc)
             throws IdConflictException, IOException {
         if (transId == null) {
@@ -74,17 +79,19 @@ public class DefaultBaseTransportGenerator extends BaseTransportGenerator {
         }
         ChannelTransport<E> trans = null;
         if (loc instanceof EmuLocator || loc instanceof UdpLocator) {
-            trans = new BaseDatagramTransport<E>(peer, transId, loc);
+            trans = new BaseDatagramTransport(peer, transId, (PeerLocator)loc);
         } else if (loc instanceof TcpLocator){
             boolean linger0Option = false;
             if (desc != null && desc.equals("LINGER0")) {
                 linger0Option = true;
             }
-            trans = new BaseChannelTransportImpl<E>(peer, transId,
+            trans = new BaseChannelTransportImpl(peer, transId,
                     new LWTcpTransport(peer.getPeerId(), (TcpLocator) loc,
                             linger0Option));
         } else if (loc instanceof NettyLocator){
             trans = (ChannelTransport<E>)new LocatorChannelTransport(peer, transId, peer.getPeerId(), (NettyLocator)loc);
+        } else if (loc instanceof PrimaryKey){ 
+            trans = (ChannelTransport<E>)new IdChannelTransport(peer, transId, peer.getPeerId(), (PrimaryKey)loc);
         } else {
             return null;
         }
@@ -98,7 +105,7 @@ public class DefaultBaseTransportGenerator extends BaseTransportGenerator {
     }
 
     @Override
-    public <E extends PeerLocator> Transport<E> _newBaseTransport(
+    public <E extends Endpoint> Transport<E> _newBaseTransport(
             String desc, TransportId transId, E loc)
             throws IdConflictException, IOException {
         return newBaseChannelTransport(desc, transId, loc);

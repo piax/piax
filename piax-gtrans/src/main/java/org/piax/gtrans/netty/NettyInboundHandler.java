@@ -16,9 +16,14 @@ public class NettyInboundHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) {
-        trans.getPeer().execute(() -> {
+        if (NettyChannelTransport.PARALLEL_RECEIVE) {
+            trans.getPeer().execute(() -> {
+                trans.inboundReceive(ctx, msg);
+            });
+        }
+        else {
             trans.inboundReceive(ctx, msg);
-        });
+        }
     }
 
     @Override

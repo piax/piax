@@ -2,6 +2,8 @@ package org.piax.gtrans.netty.bootstrap;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
+import io.netty.channel.ChannelHandler;
+import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.ChannelPipeline;
@@ -21,6 +23,7 @@ import java.util.concurrent.ThreadFactory;
 import org.piax.gtrans.netty.NettyChannelTransport;
 import org.piax.gtrans.netty.NettyEndpoint;
 import org.piax.gtrans.netty.NettyInboundHandler;
+import org.piax.gtrans.netty.NettyLocator;
 import org.piax.gtrans.netty.NettyOutboundHandler;
 import org.piax.gtrans.netty.NettyRawChannel;
 
@@ -105,6 +108,61 @@ public class UdtBootstrap<E extends NettyEndpoint> implements NettyBootstrap<E> 
         .channelFactory(NioUdtProvider.BYTE_CONNECTOR)
         .handler(getChannelOutboundInitializer(raw, trans));
         return b;
+    }
+
+    @Override
+    public Bootstrap getBootstrap(NettyLocator dst,
+            ChannelInboundHandlerAdapter ohandler) {
+        Bootstrap b = new Bootstrap();
+        b.group(clientGroup)
+        //.channel(transType.getChannelClass())
+        .channelFactory(NioUdtProvider.BYTE_CONNECTOR)
+        .handler(getChannelOutboundInitializer(dst, ohandler));
+        return b;
+    }
+
+    private ChannelHandler getChannelOutboundInitializer(NettyLocator dst,
+            ChannelInboundHandlerAdapter ohandler) {
+        return new ChannelInitializer<UdtChannel>() {
+            @Override
+            public void initChannel(UdtChannel sch)
+                    throws Exception {
+                ChannelPipeline p = sch.pipeline();
+                p.addLast(
+                        new ObjectEncoder(),
+                        new ObjectDecoder(ClassResolvers.cacheDisabled(null)));
+                p.addLast(ohandler);
+            }
+        };
+    }
+
+    @Override
+    public ServerBootstrap getServerBootstrap(
+            ChannelInboundHandlerAdapter ihandler) {
+        ServerBootstrap b = new ServerBootstrap();
+        b.group(parentGroup, childGroup)
+        .channelFactory(NioUdtProvider.BYTE_ACCEPTOR)
+        //.channel(transType.getServerChannelClass())//NioServerSocketChannel.class)
+        .option(ChannelOption.SO_BACKLOG, 10)
+        .option(ChannelOption.SO_REUSEADDR, true);
+        //.option(ChannelOption.AUTO_READ, true)
+        b.handler(new LoggingHandler(LogLevel.INFO))
+        .childHandler(getChannelInboundInitializer(ihandler));
+        return b;
+    }
+
+    private ChannelHandler getChannelInboundInitializer(
+            ChannelInboundHandlerAdapter ihandler) {
+        return new ChannelInitializer<UdtChannel>() {
+            @Override
+            public void initChannel(UdtChannel ch) throws Exception {
+                ChannelPipeline p = ch.pipeline();
+                p.addLast(
+                        new ObjectEncoder(),
+                        new ObjectDecoder(ClassResolvers.cacheDisabled(null)));
+                p.addLast(ihandler);
+            }
+        };
     }
 
 }

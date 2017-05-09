@@ -6,6 +6,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+import org.piax.common.Endpoint;
+import org.piax.common.PeerId;
 import org.piax.common.PeerLocator;
 import org.piax.common.TransportId;
 import org.piax.gtrans.ChannelTransport;
@@ -13,6 +15,7 @@ import org.piax.gtrans.FutureQueue;
 import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.RemoteValue;
 import org.piax.gtrans.netty.NettyLocator;
+import org.piax.gtrans.netty.idtrans.PrimaryKey;
 import org.piax.gtrans.ov.Overlay;
 import org.piax.gtrans.ov.async.suzaku.Suzaku;
 import org.piax.gtrans.ov.sg.MSkipGraph;
@@ -51,7 +54,7 @@ public class Util {
     }
 
     public enum Net {
-        EMU, UDP, TCP, NETTY
+        EMU, UDP, TCP, NETTY, ID
     }
     
     public enum Ov {
@@ -105,7 +108,32 @@ public class Util {
             break;
         case NETTY:
             loc = new NettyLocator(new InetSocketAddress(host, port));
+            break;            
+        default:
+            loc = null;
+        }
+        return (E) loc;
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <E extends Endpoint> E genEndpoint(Net net, PeerId pid, String host, int port) {
+        Endpoint loc;
+        switch (net) {
+        case EMU:
+            loc = new EmuLocator(port);
             break;
+        case UDP:
+            loc = new UdpLocator(new InetSocketAddress(host, port));
+            break;
+        case TCP:
+            loc = new TcpLocator(new InetSocketAddress(host, port));
+            break;
+        case NETTY:
+            loc = new NettyLocator(new InetSocketAddress(host, port));
+            break;
+        case ID:
+            loc = new PrimaryKey(pid, new NettyLocator(new InetSocketAddress(host, port)));
+            break;            
         default:
             loc = null;
         }

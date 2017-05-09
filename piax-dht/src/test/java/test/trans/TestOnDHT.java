@@ -18,6 +18,7 @@ import org.piax.gtrans.GTransConfigValues;
 import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.Peer;
 import org.piax.gtrans.netty.NettyLocator;
+import org.piax.gtrans.netty.idtrans.PrimaryKey;
 import org.piax.gtrans.ov.Overlay;
 import org.piax.gtrans.ov.async.suzaku.Suzaku;
 import org.piax.gtrans.ov.ddll.NodeMonitor;
@@ -35,7 +36,7 @@ public class TestOnDHT {
             .getLogger(TestOnDHT.class);
 
     static <D extends Destination, K extends ComparableKey<?>> Overlay<D, K> genOv(
-            boolean isSG, Peer peer, PeerLocator locator)
+            boolean isSG, Peer peer, Endpoint locator)
             throws IdConflictException, IOException {
         ChannelTransport<?> tr = peer.newBaseChannelTransport(locator);
         Overlay<D, K> ov = null;
@@ -70,7 +71,7 @@ public class TestOnDHT {
     static DHT[] dhts = new DHT[numPeer];
 
     enum L {
-        UDP, TCP, EMU, NETTY
+        UDP, TCP, EMU, NETTY, ID
     };
 
     @Test
@@ -91,6 +92,11 @@ public class TestOnDHT {
     @Test
     public void DHTOnSuzakuOnNettyTest() throws Exception {
         DHTRun(false, L.NETTY);
+    }
+    
+    @Test
+    public void DHTOnSuzakuOnIdTest() throws Exception {
+        DHTRun(false, L.ID);
     }
 
     @Test
@@ -130,8 +136,12 @@ public class TestOnDHT {
         for (int i = 0; i < numPeer; i++) {
             peers[i] = Peer.getInstance(new PeerId("p" + i));
             try {
-                PeerLocator l = null;
+                Endpoint l = null;
                 switch (loc) {
+                case ID:
+                    l = new PrimaryKey(peers[i].getPeerId(),
+                            new NettyLocator(new InetSocketAddress("localhost", 20000 + i)));
+                    break;
                 case NETTY:
                     // if (i % 10 == 1) {
                     // l = new NettyNATLocator(new

@@ -16,6 +16,7 @@ package org.piax.gtrans.raw;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+import org.piax.common.Endpoint;
 import org.piax.common.PeerId;
 import org.piax.common.PeerLocator;
 import org.piax.gtrans.ProtocolUnsupportedException;

@@ -9,11 +9,11 @@ import java.util.List;
 import org.junit.Test;
 import org.piax.common.ComparableKey;
 import org.piax.common.Destination;
+import org.piax.common.Endpoint;
 import org.piax.common.Id;
 import org.piax.common.Key;
 import org.piax.common.Location;
 import org.piax.common.PeerId;
-import org.piax.common.PeerLocator;
 import org.piax.common.TransportId;
 import org.piax.common.TransportIdPath;
 import org.piax.common.attribs.RowData;
@@ -32,7 +32,6 @@ import org.piax.gtrans.ReceivedMessage;
 import org.piax.gtrans.RemoteValue;
 import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.Transport;
-import org.piax.gtrans.async.Log;
 import org.piax.gtrans.ov.Overlay;
 import org.piax.gtrans.ov.OverlayListener;
 import org.piax.gtrans.ov.OverlayReceivedMessage;
@@ -60,7 +59,7 @@ public class TestOverlay {
     static int seq = 0;
 
     // Test targets
-    static final Net net = Net.NETTY;
+    static final Net net = Net.ID;
     static final Ov ov = Ov.SZK;
 
     public String newId() {
@@ -80,13 +79,13 @@ public class TestOverlay {
         Peer p3 = Peer.getInstance(new PeerId(newId()));
 
         // base transport
-        PeerLocator loc;
-        ChannelTransport<?> bt1 = p1.newBaseChannelTransport("base",
-                loc = Util.genLocator(net, "localhost", portNumber++));
-        ChannelTransport<?> bt2 = p2.newBaseChannelTransport("base",
-                Util.genLocator(net, "localhost", portNumber++));
-        ChannelTransport<?> bt3 = p3.newBaseChannelTransport("base",
-                Util.genLocator(net, "localhost", portNumber++));
+        Endpoint loc;
+        ChannelTransport<?> bt1 = p1.newBaseChannelTransport(loc = Util
+                .genEndpoint(net, p1.getPeerId(), "localhost", portNumber++));
+        ChannelTransport<?> bt2 = p2.newBaseChannelTransport(Util.genEndpoint(
+                net, p2.getPeerId(), "localhost", portNumber++));
+        ChannelTransport<?> bt3 = p3.newBaseChannelTransport(Util.genEndpoint(
+                net, p3.getPeerId(), "localhost", portNumber++));
 
         // top level
         Overlay<GeoRegion, Location> tr1, tr2, tr3;
@@ -190,13 +189,13 @@ public class TestOverlay {
         Peer p3 = Peer.getInstance(new PeerId("p3"));
 
         // base transport
-        PeerLocator loc;
+        Endpoint loc;
         ChannelTransport<?> bt1 = p1.newBaseChannelTransport(loc = Util
-                .genLocator(net, "localhost", portNumber++));
-        ChannelTransport<?> bt2 = p2.newBaseChannelTransport(Util.genLocator(
-                net, "localhost", portNumber++));
-        ChannelTransport<?> bt3 = p3.newBaseChannelTransport(Util.genLocator(
-                net, "localhost", portNumber++));
+                .genEndpoint(net, p1.getPeerId(), "localhost", portNumber++));
+        ChannelTransport<?> bt2 = p2.newBaseChannelTransport(Util.genEndpoint(
+                net, p2.getPeerId(), "localhost", portNumber++));
+        ChannelTransport<?> bt3 = p3.newBaseChannelTransport(Util.genEndpoint(
+                net, p3.getPeerId(), "localhost", portNumber++));
 
         // top level
         Overlay<Key, Key> tr1, tr2, tr3;
@@ -300,13 +299,13 @@ public class TestOverlay {
         Peer p3 = Peer.getInstance(new PeerId("p3"));
 
         // base transport
-        PeerLocator loc;
+        Endpoint loc;
         ChannelTransport<?> bt1 = p1.newBaseChannelTransport(loc = Util
-                .genLocator(net, "localhost", portNumber++));
-        ChannelTransport<?> bt2 = p2.newBaseChannelTransport(Util.genLocator(
-                net, "localhost", portNumber++));
-        ChannelTransport<?> bt3 = p3.newBaseChannelTransport(Util.genLocator(
-                net, "localhost", portNumber++));
+                .genEndpoint(net, p1.getPeerId(), "localhost", portNumber++));
+        ChannelTransport<?> bt2 = p2.newBaseChannelTransport(Util.genEndpoint(
+                net, p2.getPeerId(), "localhost", portNumber++));
+        ChannelTransport<?> bt3 = p3.newBaseChannelTransport(Util.genEndpoint(
+                net, p3.getPeerId(), "localhost", portNumber++));
 
         // top level
         Overlay<LowerUpper, DoubleKey> ov1, ov2, ov3;
@@ -418,13 +417,13 @@ public class TestOverlay {
         Peer p3 = Peer.getInstance(new PeerId("p3"));
 
         // base transport
-        PeerLocator loc;
+        Endpoint loc;
         ChannelTransport<?> bt1 = p1.newBaseChannelTransport(loc = Util
-                .genLocator(net, "localhost", portNumber++));
-        ChannelTransport<?> bt2 = p2.newBaseChannelTransport(Util.genLocator(
-                net, "localhost", portNumber++));
-        ChannelTransport<?> bt3 = p3.newBaseChannelTransport(Util.genLocator(
-                net, "localhost", portNumber++));
+                .genEndpoint(net, p1.getPeerId(), "localhost", portNumber++));
+        ChannelTransport<?> bt2 = p2.newBaseChannelTransport(Util.genEndpoint(
+                net, p2.getPeerId(), "localhost", portNumber++));
+        ChannelTransport<?> bt3 = p3.newBaseChannelTransport(Util.genEndpoint(
+                net, p3.getPeerId(), "localhost", portNumber++));
 
         // top level
         Overlay<Destination, Key> tr1, tr2, tr3;
@@ -531,13 +530,13 @@ public class TestOverlay {
         Peer p3 = Peer.getInstance(new PeerId("p3"));
 
         // base transport
-        PeerLocator loc;
+        Endpoint loc;
         ChannelTransport<?> bt1 = p1.newBaseChannelTransport(loc = Util
-                .genLocator(net, "localhost", portNumber++));
-        ChannelTransport<?> bt2 = p2.newBaseChannelTransport(Util.genLocator(
-                net, "localhost", portNumber++));
-        ChannelTransport<?> bt3 = p3.newBaseChannelTransport(Util.genLocator(
-                net, "localhost", portNumber++));
+                .genEndpoint(net, p1.getPeerId(), "localhost", portNumber++));
+        ChannelTransport<?> bt2 = p2.newBaseChannelTransport(Util.genEndpoint(
+                net, p2.getPeerId(), "localhost", portNumber++));
+        ChannelTransport<?> bt3 = p3.newBaseChannelTransport(Util.genEndpoint(
+                net, p3.getPeerId(), "localhost", portNumber++));
 
         // top level
         CombinedOverlay tr1, tr2, tr3;
@@ -647,13 +646,13 @@ public class TestOverlay {
         Peer p3 = Peer.getInstance(new PeerId("p3"));
 
         // base transport
-        PeerLocator loc;
+        Endpoint loc;
         ChannelTransport<?> bt1 = p1.newBaseChannelTransport(loc = Util
-                .genLocator(net, "localhost", portNumber++));
-        ChannelTransport<?> bt2 = p2.newBaseChannelTransport(Util.genLocator(
-                net, "localhost", portNumber++));
-        ChannelTransport<?> bt3 = p3.newBaseChannelTransport(Util.genLocator(
-                net, "localhost", portNumber++));
+                .genEndpoint(net, p1.getPeerId(), "localhost", portNumber++));
+        ChannelTransport<?> bt2 = p2.newBaseChannelTransport(Util.genEndpoint(
+                net, p2.getPeerId(), "localhost", portNumber++));
+        ChannelTransport<?> bt3 = p3.newBaseChannelTransport(Util.genEndpoint(
+                net, p3.getPeerId(), "localhost", portNumber++));
 
         // top level
         CombinedOverlay tr1, tr2, tr3;
@@ -818,16 +817,17 @@ public class TestOverlay {
     public void SuzakuRoutingTableTest() throws Exception {
         int numOfPeers = 32;
         // get peers
-        PeerLocator loc = null;
+        Endpoint loc = null;
         Suzaku<Destination, ComparableKey<?>> trs[] = new Suzaku[numOfPeers];
         Peer peers[] = new Peer[numOfPeers];
         for (int i = 0; i < numOfPeers; i++) {
-            PeerLocator l = Util.genLocator(net, "localhost", 12367 + i);
+            PeerId pid = new PeerId("p" + i);
+            Endpoint l = Util.genEndpoint(net, pid, "localhost", 12367 + i);
             if (loc == null) {
                 loc = l; // remember for seed;
             }
             trs[i] = new Suzaku<Destination, ComparableKey<?>>(
-                    (peers[i] = Peer.getInstance(new PeerId("p" + i)))
+                    (peers[i] = Peer.getInstance(pid))
                             .newBaseChannelTransport(l));
             int x = i;
             trs[i].setListener(new OverlayListener<Destination, ComparableKey<?>>() {
@@ -904,16 +904,17 @@ public class TestOverlay {
     public void MSGRoutingTableTest() throws Exception {
         int numOfPeers = 32;
         // get peers
-        PeerLocator loc = null;
+        Endpoint loc = null;
         MSkipGraph<Destination, ComparableKey<?>> trs[] = new MSkipGraph[numOfPeers];
         Peer peers[] = new Peer[numOfPeers];
         for (int i = 0; i < numOfPeers; i++) {
-            PeerLocator l = Util.genLocator(net, "localhost", 12367 + i);
+            PeerId pid = new PeerId("p" + i);
+            Endpoint l = Util.genEndpoint(net, pid, "localhost", 12367 + i);
             if (loc == null) {
                 loc = l; // remember for seed;
             }
             trs[i] = new MSkipGraph<Destination, ComparableKey<?>>(
-                    (peers[i] = Peer.getInstance(new PeerId("p" + i)))
+                    (peers[i] = Peer.getInstance(pid))
                             .newBaseChannelTransport(l));
             int x = i;
             trs[i].setListener(new OverlayListener<Destination, ComparableKey<?>>() {

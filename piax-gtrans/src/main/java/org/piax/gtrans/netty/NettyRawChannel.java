@@ -164,7 +164,7 @@ public class NettyRawChannel<E extends NettyEndpoint> implements Channel<E> {
     synchronized public Stat getStat() {
         return stat;
     }
-    
+
     synchronized public void setContext(ChannelHandlerContext ctx) {
         this.ctx = ctx;
     }

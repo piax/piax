@@ -37,7 +37,6 @@ import org.piax.common.subspace.KeyRanges;
 import org.piax.common.subspace.LowerUpper;
 import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.FutureQueue;
-import org.piax.gtrans.GTransConfigValues;
 import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.ProtocolUnsupportedException;
 import org.piax.gtrans.ReceivedMessage;
@@ -47,8 +46,6 @@ import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.Transport;
 import org.piax.gtrans.TransportListener;
 import org.piax.gtrans.async.Event;
-import org.piax.gtrans.async.Event.LocalEvent;
-import org.piax.gtrans.async.EventSender.EventReceiverIf;
 import org.piax.gtrans.async.EventExecutor;
 import org.piax.gtrans.async.EventSender;
 import org.piax.gtrans.async.FTEntry;
@@ -109,11 +106,6 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         @SuppressWarnings("unchecked")
         @Override
         public void send(Event ev) throws Exception {
-            if (ev instanceof LocalEvent) {
-                // not to get NotSerializableException
-                logger.debug("*** send (locally from: {} to: {}) {}", trans.getEndpoint(), ev.receiver.addr, ev);
-                recv(ev);
-            } else {
                 assert ev.delay == Node.NETWORK_LATENCY;
                 //ev.vtime = EventExecutor.getVTime() + ev.delay;
                 ev.vtime = 0;
@@ -122,7 +114,6 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
                 }
                 logger.debug("*** send (from: {} to: {})", trans.getEndpoint(), ev.receiver.addr);
                 trans.send(transId, (E) ev.receiver.addr, ev);
-            }
         }
 
         @Override
