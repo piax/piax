@@ -15,6 +15,9 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.LongStream;
 
+import ocu.p2p.stat.Stat;
+import ocu.p2p.stat.StatSet;
+
 import org.piax.common.PeerId;
 import org.piax.common.PeerLocator;
 import org.piax.common.TransportId;
@@ -27,7 +30,6 @@ import org.piax.gtrans.async.EventExecutor;
 import org.piax.gtrans.async.FailureCallback;
 import org.piax.gtrans.async.LatencyProvider.StarLatencyProvider;
 import org.piax.gtrans.async.LocalNode;
-import org.piax.gtrans.async.Log;
 import org.piax.gtrans.async.NetworkParams;
 import org.piax.gtrans.async.Node;
 import org.piax.gtrans.async.Node.NodeMode;
@@ -48,9 +50,6 @@ import org.piax.gtrans.raw.tcp.TcpLocator;
 import org.piax.gtrans.raw.udp.UdpLocator;
 import org.piax.util.MersenneTwister;
 import org.piax.util.UniqId;
-
-import ocu.p2p.stat.Stat;
-import ocu.p2p.stat.StatSet;
 
 public class Sim {
     @FunctionalInterface
@@ -129,8 +128,8 @@ public class Sim {
         });
 
     public static LocalNode[] nodes;
-    public static BooleanOption verbOpt = new BooleanOption(false, "-verbose",
-            val -> {Log.verbose = val;});
+//    public static BooleanOption verbOpt = new BooleanOption(false, "-verbose",
+//            val -> {Log.verbose = val;});
     public static EnumOption<Algorithm> algorithm
         = new EnumOption<>(Algorithm.class, Algorithm.DDLL, "-algorithm");
     // use PIAX network as the underlying network

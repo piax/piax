@@ -13,14 +13,16 @@ import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.async.EventExecutor;
 import org.piax.gtrans.async.FTEntry;
 import org.piax.gtrans.async.LocalNode;
-import org.piax.gtrans.async.Log;
 import org.piax.gtrans.async.Node;
 import org.piax.gtrans.ov.async.rq.RQRequest.SPECIAL;
 import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.gtrans.ov.ring.rq.DKRangeRValue;
 import org.piax.gtrans.ov.ring.rq.DdllKeyRange;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public abstract class RQAdapter<T> implements Serializable {
+    private static final Logger logger = LoggerFactory.getLogger(RQAdapter.class);
     transient protected final Consumer<RemoteValue<T>> resultsReceiver;
     public RQAdapter(Consumer<RemoteValue<T>> resultsReceiver) {
         this.resultsReceiver = resultsReceiver;
@@ -137,7 +139,7 @@ public abstract class RQAdapter<T> implements Serializable {
             Map<PeerId, Map<Long, CompletableFuture<?>>> pmap = s.resultCache;
             Map<Long, CompletableFuture<?>> qmap = pmap
                     .computeIfAbsent(localNode.peerId, k -> new HashMap<>());
-            Log.verbose(() -> "getRaw: qid=" + qid);
+            logger.trace("getRaw: qid={}", qid);
             CompletableFuture<T> f = (CompletableFuture<T>) qmap.get(qid);
             if (f == null) {
                 f = get(received, localNode.key);

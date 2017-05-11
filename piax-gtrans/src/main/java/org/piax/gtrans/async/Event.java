@@ -11,13 +11,16 @@ import java.util.function.Consumer;
 import org.piax.gtrans.async.EventException.AckTimeoutException;
 import org.piax.gtrans.async.EventException.TimeoutException;
 import org.piax.gtrans.ov.ddll.DdllKey;
+import org.piax.gtrans.ov.szk.ChordSharp;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * base class of any event
  */
 public abstract class Event implements Comparable<Event>, Serializable, Cloneable {
     private static final long serialVersionUID = 6144568542654208895L;
-
+    private static final Logger logger = LoggerFactory.getLogger(Event.class);
     private String type;
     public Node origin;
     public Node sender;
@@ -202,7 +205,7 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
                     (LocalNode)receiver, ackEventId);
             if (req == null) {
                 if (!expectMuptipleAck) {
-                    System.out.println("already acked: ackEventId=" + ackEventId);
+                    logger.debug("already acked: ackEventId={}", ackEventId);
                 }
                 return;
             }
@@ -231,8 +234,7 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
             super(receiver);
             this.isReceiverHalf = isReceiverHalf;
             super.onReply((rep, exc) -> {
-                Log.verbose(() -> "SreamingRequestEvent: complete! " + rep
-                        + ", " + exc);
+                logger.trace("SreamingRequestEvent: complete! {}, {}", rep, exc);
                 assert rep == null;
                 exceptionReceiver.accept(exc);
             });
@@ -331,7 +333,7 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
          * cleanup the instance at sender half
          */
         public void cleanup() {
-            Log.verbose(() -> "cleanup() called for " + this);
+            logger.trace("cleanup() called for {}", this);
             cleanup.stream().forEach(r -> r.run());
             cleanup.clear();
         }
@@ -413,10 +415,10 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
                             RequestEvent<?, ?> ev2 = removeRequestEvent(n, getEventId());
                             if (ev1 == null) {
                                 // probably we have already received the ack
-                                System.out.println("removeNotAck: not found: " + getEventId());
+                                logger.debug("removeNotAck: not found: {}", getEventId());
                             }
                             assert ev2 != null;
-                            System.out.println("reply timed out: " + this);
+                            logger.debug("reply timed out: {}", this);
                             // In reply timeout case, unlike ack timeout case,
                             // the receiver node is not considered to be failed.
                             this.failureCallback.run(new TimeoutException());
@@ -484,7 +486,7 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
             // restore transient "req" field
             RequestEvent<?, ?> r = RequestEvent.lookupRequestEvent(n, reqEventId);
             if (r == null) {
-                System.out.println("ReplyEvent#beforeRunHook: reqEventId=" + reqEventId + ": not found");
+                logger.debug("ReplyEvent#beforeRunHook: reqEventId={}: not found", reqEventId);
                 return false;
             }
             // System.out.println("ReplyEvent#beforeRunHook: reqEventId=" + reqEventId);
@@ -551,7 +553,7 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
         }
         @Override
         public void run() {
-            System.out.println("ErrorEvent");
+            logger.debug("ErrorEvent");
             if (req.failureCallback != null) {
                 FailureCallback h = req.failureCallback;
                 req.failureCallback = null;

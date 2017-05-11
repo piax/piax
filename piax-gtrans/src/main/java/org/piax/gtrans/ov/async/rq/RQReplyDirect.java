@@ -7,8 +7,11 @@ import java.util.Collection;
 import org.piax.gtrans.async.Event;
 import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.ov.ring.rq.DKRangeRValue;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class RQReplyDirect<T> extends Event {
+    private static final Logger logger = LoggerFactory.getLogger(RQReplyDirect.class);
     final Collection<DKRangeRValue<T>> vals;
     final int rootEventId;
     
@@ -29,7 +32,7 @@ public class RQReplyDirect<T> extends Event {
         RQRequest<T> ev = (RQRequest<T>) RequestEvent.lookupRequestEvent(local,
                 rootEventId);
         if (ev == null) {
-            System.out.println("No RQRequest found: " + rootEventId);
+            logger.debug("No RQRequest found: {}", rootEventId);
         } else {
             ev.receiveReply(this);
         }
