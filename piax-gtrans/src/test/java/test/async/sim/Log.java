@@ -1,15 +1,12 @@
 package test.async.sim;
 
 import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.util.logging.Formatter;
 import java.util.logging.Level;
 import java.util.logging.LogManager;
 import java.util.logging.LogRecord;
 import java.util.logging.StreamHandler;
 
-import org.piax.gtrans.async.Event;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
