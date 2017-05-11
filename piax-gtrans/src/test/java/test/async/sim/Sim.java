@@ -128,8 +128,8 @@ public class Sim {
         });
 
     public static LocalNode[] nodes;
-//    public static BooleanOption verbOpt = new BooleanOption(false, "-verbose",
-//            val -> {Log.verbose = val;});
+    public static BooleanOption verbOpt = new BooleanOption(false, "-verbose",
+            val -> {Log.verbose = val;});
     public static EnumOption<Algorithm> algorithm
         = new EnumOption<>(Algorithm.class, Algorithm.DDLL, "-algorithm");
     // use PIAX network as the underlying network
@@ -159,6 +159,7 @@ public class Sim {
     StarLatencyProvider latencyProvider = new StarLatencyProvider();
     
     public static void main(String[] args) {
+        Log.init();
         // force load to initialize Options
         EventExecutor.load();
         SuzakuStrategy.load();
