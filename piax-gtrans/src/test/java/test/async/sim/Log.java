@@ -26,7 +26,7 @@ public class Log extends StreamHandler {
         try {
             LogManager.getLogManager().readConfiguration(new ByteArrayInputStream(conf.getBytes("utf-8")));
         } catch (Exception e) {
-            // ignore
+            e.printStackTrace();
         }
     }
 

@@ -278,8 +278,8 @@ public class EventExecutor {
                 continue;
             }
             if (ev == null) {
-                logger.debug("event executor terminated: time={}, {} messages" + getVTime()
-                		, nmsgs);
+                logger.debug("event executor terminated: time={}, {} messages",
+                        getVTime(), nmsgs);
                 return;
             }
             if (!realtime.value() && vtime < ev.vtime) {
