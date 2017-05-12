@@ -18,8 +18,11 @@ import org.piax.gtrans.async.EventException.GraceStateException;
 import org.piax.gtrans.async.Node.NodeMode;
 import org.piax.gtrans.async.Option.BooleanOption;
 import org.piax.util.MersenneTwister;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class EventExecutor {
+    private static final Logger logger = LoggerFactory.getLogger(EventExecutor.class);
     // run in real-time
     public static BooleanOption realtime = new BooleanOption(false, "-realtime");
     public static boolean REALWORLD = false;
@@ -27,7 +30,7 @@ public class EventExecutor {
     private static long startTime; // init by reset();
     private static long vtime; // init by reset();
     public static int nmsgs; // init by reset();
-    public static int DEFAULT_MAX_TIME = 200 * 1000;
+    private static int eventCount; // init by reset();
     private static ReentrantLock lock = new ReentrantLock();
     private static Condition cond = lock.newCondition();
     private static PriorityQueue<Event> timeq = new PriorityQueue<>();
@@ -54,6 +57,7 @@ public class EventExecutor {
         startTime = System.currentTimeMillis();
         vtime = 0;
         nmsgs = 0;
+        eventCount = 0;
         timeq.clear();
         Node.resetInstances();
     }
@@ -61,9 +65,11 @@ public class EventExecutor {
     public static void enqueue(Event ev) {
         if (!realtime.value()) {
             assert ev.vtime != 0;
+            ev.serial = eventCount++;
             timeq.add(ev);
         } else {
             lock.lock();
+            ev.serial = eventCount++;
             timeq.add(ev);
             cond.signal();
             lock.unlock();
@@ -137,6 +143,12 @@ public class EventExecutor {
         return ev;
     }
 
+    public static void runNow(String name, Runnable job) {
+        TimerEvent ev = new TimerEvent(name, 0, 0, (dummy) -> job.run());
+        ev.vtime = getVTime();
+        enqueue(ev);
+    }
+
     public static long getVTime() {
         if (realtime.value()) {
             return System.currentTimeMillis() - startTime;
@@ -172,11 +184,11 @@ public class EventExecutor {
     }
 
     public static void dumpMessageCounters() {
-        System.out.println("#message count");
+        logger.debug("#message count");
         for (Map.Entry<String, Count> ent : counter.entrySet()) {
             String name = ent.getKey();
             Count cnt = ent.getValue();
-            System.out.println(name + ": " + cnt.count);
+            logger.debug("{}: {}", name, cnt.count);
         }
     }
 
@@ -242,32 +254,32 @@ public class EventExecutor {
     }
 
     private static void run(long duration) {
-        System.out.println("Event Executor Started");
+        logger.debug("Event Executor Started");
         long limit = 0;
         if (duration != 0) {
             limit = getVTime() + duration;
         }
         while (true) {
             if (terminateExecutor) {
-                System.out.println("*** event executor terminated: "
-                        + getVTime());
+                logger.debug("*** event executor terminated: {}",
+                		getVTime());
                 return;
             }
             if (limit != 0 && getVTime() > limit) {
-                System.out.println(
-                        "*** execution time over: " + getVTime() + " > " + limit);
+                logger.debug(
+                        "*** execution time over: {} > {}", getVTime(), limit);
                 return;
             }
             Event ev;
             try {
                 ev = dequeue();
             } catch (InterruptedException e) {
-                Log.verbose(() -> "dequeue: interrupted");
+                logger.trace("dequeue: interrupted");
                 continue;
             }
             if (ev == null) {
-                System.out.println("event executor terminated: time=" + getVTime()
-                    + ", " + nmsgs + " messages");
+                logger.debug("event executor terminated: time={}, {} messages",
+                        getVTime(), nmsgs);
                 return;
             }
             if (!realtime.value() && vtime < ev.vtime) {
@@ -277,17 +289,17 @@ public class EventExecutor {
                 nmsgs++;
             }
             addCounter(ev.getType());
-            if (Log.verbose) {
+            if (logger.isTraceEnabled()) {
                 String s;
                 if (ev.receiver != null) {
                     s = ev.receiver + " receives " + ev + " from " + ev.sender;
                 } else {
                     s = ev.toString();
                 }
-                System.out.println("-----------------------------------------");
-                System.out.println("T" + getVTime() + " " + s);
+                logger.trace("-----------------------------------------");
+                logger.trace("T{} {}", getVTime(), s);
                 if (ev.receiver != null) {
-                    System.out.println(ev.receiver.toStringDetail());
+                    logger.trace(ev.receiver.toStringDetail());
                 }
                 //System.out.println("so far:" + ev.route);
             }
@@ -300,7 +312,7 @@ public class EventExecutor {
                     // special case
                     receiver = Node.getAnyLocalNode();
                     if (receiver == null) {
-                        System.out.println("No valid LocalNode: " + ev);
+                        logger.debug("No valid LocalNode: {}", ev);
                         continue;
                     }
                     ev.receiver = receiver;
@@ -310,8 +322,8 @@ public class EventExecutor {
                 addToRoute(ev.routeWithFailed, receiver);
             }
             if (receiver != null && receiver.mode == NodeMode.GRACE) {
-                System.out.println(
-                        receiver + ": received in grace period: " + ev);
+                logger.debug(
+                        "{}: received in grace period: {}", receiver, ev);
                 if (ev instanceof Lookup) {
                     addToRoute(ev.route, receiver);
                     if (ev.beforeRunHook(receiver)) {
@@ -324,7 +336,7 @@ public class EventExecutor {
             } else if (receiver != null && (receiver.isFailed()
                     || receiver.mode == NodeMode.OUT
                     || receiver.mode == NodeMode.DELETED)) {
-                Log.verbose(() -> "message received by not inserted or failed node: " + ev);
+                logger.trace("message received by not inserted or failed node: {}", ev);
             } else {
                 addToRoute(ev.route, receiver);
                 if (ev.beforeRunHook(receiver)) {

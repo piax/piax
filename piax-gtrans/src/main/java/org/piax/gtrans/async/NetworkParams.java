@@ -9,10 +9,18 @@ public class NetworkParams {
     public final static double LATENCY_FACTOR = 1;
 
     /** default ack timeout */
-    public final static long ACK_TIMEOUT = toVTime(2*1000);
+    public final static long ACK_TIMEOUT = toVTime(4*1000);
 
     /** default reply timeout */
     public final static long REPLY_TIMEOUT = toVTime(8*1000);
+    
+    /** max wait time before sending ACK message */
+    public final static long SEND_ACK_TIME = toVTime(2*1000);
+    
+    static {
+        assert SEND_ACK_TIME < ACK_TIMEOUT;
+        assert ACK_TIMEOUT < REPLY_TIMEOUT;
+    }
 
     /**
      * 片方向ネットワーク遅延時間のベース値．

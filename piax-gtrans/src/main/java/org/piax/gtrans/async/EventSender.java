@@ -12,12 +12,12 @@ import org.piax.gtrans.RPCIf;
 import org.piax.gtrans.RPCInvoker;
 import org.piax.gtrans.RemoteCallable;
 import org.piax.gtrans.RemoteCallable.Type;
-import org.piax.gtrans.async.Event.LocalEvent;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public interface EventSender {
+    static final Logger logger = LoggerFactory.getLogger(EventSender.class);
     void send(Event ev) throws RPCException;
-
-    void forward(Event ev) throws RPCException;
 
     Endpoint getEndpoint();
 
@@ -38,17 +38,21 @@ public interface EventSender {
 
         @Override
         public void send(Event ev) {
+            if (ev.delay == Node.NETWORK_LATENCY) {
+                ev.delay = EventExecutor.latency(ev.sender, ev.receiver);
+            }
+            ev.vtime = EventExecutor.getVTime() + ev.delay;
+            if (logger.isTraceEnabled()) {
+                if (ev.delay != 0) {
+                    logger.trace("{} |send/forward event {}, (arrive at T{})", ev.sender, ev, ev.vtime);
+                } else {
+                    logger.trace("{} |send/forward event {}", ev.sender, ev);
+                }
+            }
             // because sender Events and receiver Events are distinguished,
             // we have to clone the event even if sender == receiver.
             Event copy = ev.clone();
-            copy.vtime = EventExecutor.getVTime() + ev.delay;
-            EventExecutor.enqueue(copy);
-        }
-
-        @Override
-        public void forward(Event ev) {
-            Event copy = ev.clone();
-            copy.vtime = EventExecutor.getVTime() + ev.delay;
+            //copy.vtime = EventExecutor.getVTime() + ev.delay;
             EventExecutor.enqueue(copy);
         }
     }
@@ -73,18 +77,13 @@ public interface EventSender {
 
         @Override
         public void send(Event ev) throws RPCException {
-            if (ev instanceof LocalEvent) {
-                // not to get NotSerializableException
-                recv(ev);
-            } else {
-                EventReceiverIf stub = getStub((E) ev.receiver.addr,
-                        GTransConfigValues.rpcTimeout);
-                stub.recv(ev);
+            assert ev.delay == Node.NETWORK_LATENCY;
+            //ev.vtime = EventExecutor.getVTime() + ev.delay;
+            ev.vtime = 0;
+            if (logger.isTraceEnabled()) {
+                logger.trace("{}|send/forward event {}", ev.sender, ev);
             }
-        }
-
-        @Override
-        public void forward(Event ev) throws RPCException {
+            @SuppressWarnings("unchecked")
             EventReceiverIf stub = getStub((E) ev.receiver.addr,
                     GTransConfigValues.rpcTimeout);
             stub.recv(ev);

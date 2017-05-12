@@ -74,7 +74,7 @@ public class AsyncTest extends AsyncTestBase {
             System.out.println("chk1: " + EventExecutor.getVTime());
             chk1.val = true;
         });
-        EventExecutor.sched(150, () -> {
+        EventExecutor.sched(1000, () -> {
             System.out.println("chk2: "+ EventExecutor.getVTime());
             chk2.val = true;
         });
@@ -273,7 +273,7 @@ public class AsyncTest extends AsyncTestBase {
             CompletableFuture<Boolean> f1 = nodes[1].joinAsync(nodes[0]);
             f1.whenComplete((rc, exc) -> 
                 System.out.println("rc=" + rc + ", exc=" + exc));
-            EventExecutor.startSimulation(30000);
+            EventExecutor.startSimulation(40000);
             dump(nodes);
             assertTrue(f1.isDone());
             try {
@@ -329,27 +329,46 @@ public class AsyncTest extends AsyncTestBase {
         }
     }
 
+    @Test
+    public void testRQ1AggregateNone() {
+        testRQ1With(ResponseType.AGGREGATE, RetransMode.NONE);
+    }
 
     @Test
-    public void testRQ1Aggregate() {
+    public void testRQ1AggregateReliable() {
+        testRQ1With(ResponseType.AGGREGATE, RetransMode.RELIABLE);
+    }
+
+    @Test
+    public void testRQ1AggregateFast() {
+        testRQ1With(ResponseType.AGGREGATE, RetransMode.FAST);
+    }
+
+    @Test
+    public void testRQ1DirectNone() {
+        testRQ1With(ResponseType.DIRECT, RetransMode.NONE);
+    }
+
+    @Test
+    public void testRQ1DirectReliable() {
+        testRQ1With(ResponseType.DIRECT, RetransMode.RELIABLE);
+    }
+
+    @Test
+    public void testRQ1DirectFast() {
+        testRQ1With(ResponseType.DIRECT, RetransMode.FAST);
+    }
+
+    private void testRQ1With(ResponseType response, RetransMode retrans) {
         TransOptions opts = new TransOptions();
-        opts.setResponseType(ResponseType.AGGREGATE);
+        opts.setResponseType(response);
+        opts.setRetransMode(retrans);
         testRQ1(new DdllNodeFactory(), opts,
                 (receiver) -> new FastValueProvider(receiver),
                 new Range<Integer>(0, true, 500, true),
                 Arrays.asList(0, 100, 200, 300, 400));
     }
 
-    @Test
-    public void testRQ1Direct() {
-        TransOptions opts = new TransOptions();
-        opts.setResponseType(ResponseType.DIRECT);
-        testRQ1(new DdllNodeFactory(), opts, 
-                (receiver) -> new FastValueProvider(receiver),
-                new Range<Integer>(200, true, 400, false),
-                Arrays.asList(200, 300));
-    }
-    
     @Test
     public void testRQ1NoResponse() {
         TransOptions opts = new TransOptions();
@@ -361,11 +380,11 @@ public class AsyncTest extends AsyncTestBase {
     }
 
     @Test
-    public void testRQ1AggregateSlow() {
+    public void testRQ1AggregateSlowProvider() {
         TransOptions opts = new TransOptions();
         opts.setResponseType(ResponseType.AGGREGATE);
         testRQ1(new DdllNodeFactory(), opts,
-                (receiver) -> new SlowValueProvider(receiver, 2000),
+                (receiver) -> new SlowValueProvider(receiver, 3000),
                 new Range<Integer>(200, true, 400, false),
                 Arrays.asList(200, 300));
     }
@@ -429,36 +448,36 @@ public class AsyncTest extends AsyncTestBase {
         init();
         RQAdapter<Integer> nodeProvider = providerFactory.apply(null);
         createAndInsert(factory, 5, nodeProvider);
-        {
-            Collection<Range<Integer>> ranges = Collections.singleton(range);
-            List<RemoteValue<Integer>> results = new ArrayList<>();
-            RQAdapter<Integer> provider = providerFactory.apply((ret) -> {
-                System.out.println("GOT RESULT: " + ret);
-                results.add(ret);
-            });
-            nodes[0].rangeQueryAsync(ranges, provider, opts); 
-            EventExecutor.startSimulation(30000);
-            assertTrue(!results.isEmpty());
-            assertTrue(results.get(results.size() - 1 ) == null);
-            List<?> rvals = results.stream()
-                    .filter(Objects::nonNull)
-                    .filter(rv -> rv.getException() == null)
-                    .map(rv -> rv.getValue())
-                    .sorted()
-                    .collect(Collectors.toList());
-            List<?> evals = results.stream()
-                    .filter(Objects::nonNull)
-                    .filter(rv -> rv.getException() != null)
-                    .map(rv -> rv.getException().getMessage())
-                    .sorted()
-                    .collect(Collectors.toList());
-            System.out.println("RVALS = " + rvals);
-            System.out.println("EXCEPTIONS = " + evals);
-            System.out.println("EXPECTED = " + expect);
-            assertTrue(rvals.equals(expect));
-            assertTrue(evals.toString().equals(expectedErr));
-            checkMemoryLeakage(nodes);
-        }
+
+        Collection<Range<Integer>> ranges = Collections.singleton(range);
+        List<RemoteValue<Integer>> results = new ArrayList<>();
+        RQAdapter<Integer> provider = providerFactory.apply((ret) -> {
+            System.out.println("GOT RESULT: " + ret);
+            results.add(ret);
+        });
+        nodes[0].rangeQueryAsync(ranges, provider, opts); 
+        EventExecutor.startSimulation(30000);
+        assertTrue(!results.isEmpty());
+        assertTrue(results.get(results.size() - 1 ) == null);
+        List<?> rvals = results.stream()
+                .filter(Objects::nonNull)
+                .filter(rv -> rv.getException() == null)
+                .map(rv -> rv.getValue())
+                .sorted()
+                .collect(Collectors.toList());
+        List<?> evals = results.stream()
+                .filter(Objects::nonNull)
+                .filter(rv -> rv.getException() != null)
+                .map(rv -> rv.getException().getMessage())
+                .sorted()
+                .collect(Collectors.toList());
+        System.out.println("RVALS = " + rvals);
+        System.out.println("EXCEPTIONS = " + evals);
+        System.out.println("EXPECTED = " + expect);
+        assertTrue(rvals.equals(expect));
+        assertTrue(evals.toString().equals(expectedErr));
+        checkConsistent(nodes);
+        checkMemoryLeakage(nodes);
     }
     
     @Test
@@ -506,9 +525,10 @@ public class AsyncTest extends AsyncTestBase {
     }
 
     @Test
-    public void testRetransDirectSuzaku() {
+    public void testRetransDirectNoneSuzaku() {
         TransOptions opts = new TransOptions();
         opts.setResponseType(ResponseType.DIRECT);
+        opts.setRetransMode(RetransMode.NONE);
         testRetrans(new SuzakuNodeFactory(3), opts,
                 receiver -> new FastValueProvider(receiver),
                 new Range<Integer>(200, true, 400, false),
@@ -516,7 +536,29 @@ public class AsyncTest extends AsyncTestBase {
     }
 
     @Test
-    public void testSlowRetransAggregateSuzaku() {
+    public void testRetransDirectNoneAckSuzaku() {
+        TransOptions opts = new TransOptions();
+        opts.setResponseType(ResponseType.DIRECT);
+        opts.setRetransMode(RetransMode.NONE_ACK);
+        testRetrans(new SuzakuNodeFactory(3), opts,
+                receiver -> new FastValueProvider(receiver),
+                new Range<Integer>(200, true, 400, false),
+                Arrays.asList(300));
+    }
+
+    @Test
+    public void testRetransDirectSlowSuzaku() {
+        TransOptions opts = new TransOptions();
+        opts.setResponseType(ResponseType.DIRECT);
+        opts.setRetransMode(RetransMode.SLOW);
+        testRetrans(new SuzakuNodeFactory(3), opts,
+                receiver -> new FastValueProvider(receiver),
+                new Range<Integer>(200, true, 400, false),
+                Arrays.asList(300));
+    }
+
+    @Test
+    public void testRetransAggregateSlowSuzaku() {
         TransOptions opts = new TransOptions();
         opts.setResponseType(ResponseType.AGGREGATE);
         opts.setRetransMode(RetransMode.SLOW);
@@ -528,7 +570,7 @@ public class AsyncTest extends AsyncTestBase {
     }
 
     @Test
-    public void testFastRetransAggregateSuzaku() {
+    public void testRetransAggregateFastSuzaku() {
         TransOptions opts = new TransOptions();
         opts.setResponseType(ResponseType.AGGREGATE);
         opts.setRetransMode(RetransMode.FAST);

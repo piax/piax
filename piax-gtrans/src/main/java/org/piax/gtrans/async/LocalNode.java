@@ -28,7 +28,6 @@ import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.RPCException;
 import org.piax.gtrans.TransOptions;
-import org.piax.gtrans.async.Event.LocalEvent;
 import org.piax.gtrans.async.Event.Lookup;
 import org.piax.gtrans.async.Event.RequestEvent;
 import org.piax.gtrans.async.EventException.RPCEventException;
@@ -38,9 +37,11 @@ import org.piax.gtrans.async.EventSender.EventSenderNet;
 import org.piax.gtrans.async.EventSender.EventSenderSim;
 import org.piax.gtrans.ov.async.rq.RQAdapter;
 import org.piax.gtrans.ov.ddll.DdllKey;
-import org.piax.util.UniqId;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class LocalNode extends Node {
+    private static final Logger logger = LoggerFactory.getLogger(LocalNode.class);
     public static final int INSERTION_DELETION_RETRY = 10; 
     public long insertionStartTime = -1L;
     public long insertionEndTime;
@@ -71,16 +72,6 @@ public class LocalNode extends Node {
     // TODO: purge entries by timer!
     // TODO: define accessors!
     public Set<Node> maybeFailedNodes = new HashSet<>();
-
-//    public static LocalNode newLocalNode(TransportId transId,
-//            ChannelTransport<?> trans, Comparable<?> rawkey,
-//            NodeStrategy strategy) 
-//            throws IdConflictException, IOException {
-//        DdllKey ddllkey = new DdllKey(rawkey, new UniqId(trans.getPeerId()));
-//        LocalNode node = new LocalNode(transId, trans, ddllkey);
-//        node.pushStrategy(strategy);
-//        return node;
-//    }
 
     @Deprecated
     public LocalNode(TransportId transId, ChannelTransport<?> trans,
@@ -218,34 +209,22 @@ public class LocalNode extends Node {
         if (ev instanceof RequestEvent && failure == null) {
             RequestEvent<?, ?> req = (RequestEvent<?, ?>)ev;
             failure = exc -> {
-                Log.verbose(() -> "post: got exception: " + exc + ", " + ev);
+                logger.trace("post: got exception: {}. {}", exc, ev);
                 req.future.completeExceptionally(exc);
             };
         }
         ev.sender = ev.origin = this;
+        ev.failureCallback = failure;
         ev.route.add(this);
         if (ev.routeWithFailed.size() == 0) {
             ev.routeWithFailed.add(this);
-        }
-        if (ev.delay == Node.NETWORK_LATENCY) {
-            ev.delay = EventExecutor.latency(this, ev.receiver);
-        }
-        ev.failureCallback = failure;
-        ev.vtime = EventExecutor.getVTime() + ev.delay;
-        if (Log.verbose) {
-            if (ev.delay != 0) {
-                System.out.println(this + "|send event " + ev + ", (arrive at T"
-                        + ev.vtime + ")");
-            } else {
-                System.out.println(this + "|send event " + ev);
-            }
         }
         ev.beforeSendHook(this);
         if (!isFailed) {
             try {
                 sender.send(ev);
             } catch (RPCException e) {
-                Log.verbose(() -> this + " got exception: " + e);
+                logger.trace("{} got exception: {}", this, e);
                 if (failure != null) {
                     failure.run(new RPCEventException(e));
                 }
@@ -264,32 +243,32 @@ public class LocalNode extends Node {
     }
 
     public void forward(Node dest, Event ev, FailureCallback failure) {
+        assert ev.origin != null;
         if (failure == null) {
             failure = exc -> {
-                Log.verbose(() -> "forward: got exception: " + exc + ", " + ev);
+            	logger.trace("forward: got exception: {}, {}", exc, ev);
             };
         }
-        assert ev.origin != null;
+        ev.failureCallback = failure;
         ev.beforeForwardHook(this);
         ev.sender = this;
-        ev.failureCallback = failure;
-        if (ev.delay == Node.NETWORK_LATENCY) {
-            ev.delay = EventExecutor.latency(this, dest);
-        }
         ev.receiver = dest;
-        if (Log.verbose) {
-            if (ev.delay != 0) {
-                System.out.println(this + "|forward to " + dest + ", " + ev
-                        + ", (arrive at T" + ev.vtime + ")");
-            } else {
-                System.out.println(this + "|forward to " + dest + ", " + ev);
-            }
-        }
+//        if (ev.delay == Node.NETWORK_LATENCY) {
+//            ev.delay = EventExecutor.latency(this, dest);
+//        }
+//        if (Log.verbose) {
+//            if (ev.delay != 0) {
+//                System.out.println(this + "|forward to " + dest + ", " + ev
+//                        + ", (arrive at T" + ev.vtime + ")");
+//            } else {
+//                System.out.println(this + "|forward to " + dest + ", " + ev);
+//            }
+//        }
         if (!isFailed()) {
             try {
-                sender.forward(ev);
+                sender.send(ev);
             } catch (RPCException e) {
-                Log.verbose(()-> this + " got exception: " + e);
+                logger.trace("{} got exception: {}", this, e);
                 failure.run(new RPCEventException(e));
             }
         }
@@ -311,8 +290,8 @@ public class LocalNode extends Node {
     }
 
     public void addMaybeFailedNode(Node node) {
+        logger.trace("{}: addMaybeFailedNode: {}", this, node);
         maybeFailedNodes.add(node);
-        getTopStrategy().foundMaybeFailedNode(node);
     }
 
     /**
@@ -324,7 +303,7 @@ public class LocalNode extends Node {
      */
     public boolean addKey(Endpoint introducer) throws IOException,
         InterruptedException {
-        System.out.println(this + ": addKey");
+        logger.debug("{}: addkey", this);
         Node temp = Node.getTemporaryInstance(introducer);
         CompletableFuture<Boolean> future = joinAsync(temp);
         try {
@@ -337,7 +316,7 @@ public class LocalNode extends Node {
     }
 
     public boolean removeKey() throws IOException, InterruptedException {
-        System.out.println(this + ": removeKey");
+        logger.debug("{}: removeKey", this);
         CompletableFuture<Boolean> future = leaveAsync();
         try {
             return future.get();
@@ -382,8 +361,7 @@ public class LocalNode extends Node {
         this.mode = NodeMode.INSERTING;
         this.introducer = introducer;
         Consumer<Throwable> retry = (exc) -> {
-            Log.verbose(() -> this + ": joinAsync failed: " + exc
-                    + ", count=" + count);
+            logger.trace("{}: joinAsync failed: {}, count={}", this, exc, count);
             // reset insertionStartTime ?
             if (((exc instanceof RetriableException) 
                     || (exc instanceof TimeoutException))
@@ -424,7 +402,7 @@ public class LocalNode extends Node {
     }
 
     public CompletableFuture<Boolean> leaveAsync() {
-        System.out.println("Node " + this + " leaves");
+        logger.debug("Node {} leaves", this);
         if (mode != NodeMode.INSERTED) {
             CompletableFuture<Boolean> f = new CompletableFuture<>();
             f.completeExceptionally(new IllegalStateException("not inserted"));
@@ -432,10 +410,9 @@ public class LocalNode extends Node {
         }
         mode = NodeMode.DELETING;
         CompletableFuture<Boolean> future = new CompletableFuture<>();
-        LocalEvent ev = new LocalEvent(this, () -> {
+        EventExecutor.runNow("leaveAsync", () -> {
             getTopStrategy().leave(future);
         });
-        post(ev);
         CompletableFuture<Boolean> f = future.thenApply(rc -> {
             if (rc) {
                 cleanup();
@@ -456,12 +433,12 @@ public class LocalNode extends Node {
     }
 
     public void fail() {
-        System.out.println("*** " + this + " fails");
+        logger.debug("*** {} fails", this);
         this.isFailed = true;
     }
     
     public void revive() {
-        System.out.println("*** " + this + " revives");
+        logger.debug("*** {} revives", this);
         this.isFailed = false;
     }
 

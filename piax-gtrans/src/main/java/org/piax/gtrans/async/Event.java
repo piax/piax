@@ -11,23 +11,24 @@ import java.util.function.Consumer;
 import org.piax.gtrans.async.EventException.AckTimeoutException;
 import org.piax.gtrans.async.EventException.TimeoutException;
 import org.piax.gtrans.ov.ddll.DdllKey;
+import org.piax.gtrans.ov.szk.ChordSharp;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * base class of any event
  */
 public abstract class Event implements Comparable<Event>, Serializable, Cloneable {
     private static final long serialVersionUID = 6144568542654208895L;
-
-    private static int count = 0; 
-
+    private static final Logger logger = LoggerFactory.getLogger(Event.class);
     private String type;
     public Node origin;
     public Node sender;
     public Node receiver;
 
     public long vtime;
-    private final int serial;
-    
+    int serial; // filled by EventExecutor#enqueue();
+
     private int eventId = System.identityHashCode(this);
 
     public long delay;
@@ -52,7 +53,6 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
         this.receiver = receiver;
         this.delay = delay;
         this.type = type;
-        this.serial = count++;
     }
     
     @Override
@@ -75,10 +75,11 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
 
     @Override
     public String toString() {
-        long rem = vtime - EventExecutor.getVTime();
+        //long rem = vtime - EventExecutor.getVTime();
         StringBuilder buf = new StringBuilder("[id=" + getEventId()
             + ", vt=" + vtime
-            + "(rem=" + rem + "), "
+            // + "(rem=" + rem + "), "
+            + ", "
             + toStringMessage());
         if (origin != null) {
             buf.append(", orig " + origin);
@@ -130,10 +131,7 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
         if (x != 0) {
             return x;
         }
-        if (serial != o.serial) {
-            return serial - o.serial;
-        }
-        return 0;
+        return Integer.compare(serial, o.serial);
     }
 
     public static class TimerEvent extends Event {
@@ -186,18 +184,6 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
         }
     }
 
-    public static class LocalEvent extends Event {
-        final Runnable run;
-        public LocalEvent(LocalNode receiver, Runnable run) {
-            super(receiver, 0);
-            this.run = run;
-        }
-        @Override
-        public void run() {
-            run.run();
-        }
-    }
-
     public static class AckEvent extends Event {
         int ackEventId = 0;
         protected boolean expectMuptipleAck = false;
@@ -219,7 +205,7 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
                     (LocalNode)receiver, ackEventId);
             if (req == null) {
                 if (!expectMuptipleAck) {
-                    System.out.println("already acked: ackEventId=" + ackEventId);
+                    logger.debug("already acked: ackEventId={}", ackEventId);
                 }
                 return;
             }
@@ -248,8 +234,7 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
             super(receiver);
             this.isReceiverHalf = isReceiverHalf;
             super.onReply((rep, exc) -> {
-                Log.verbose(() -> "SreamingRequestEvent: complete! " + rep
-                        + ", " + exc);
+                logger.trace("SreamingRequestEvent: complete! {}, {}", rep, exc);
                 assert rep == null;
                 exceptionReceiver.accept(exc);
             });
@@ -348,7 +333,7 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
          * cleanup the instance at sender half
          */
         public void cleanup() {
-            Log.verbose(() -> "cleanup() called for " + this);
+            logger.trace("cleanup() called for {}", this);
             cleanup.stream().forEach(r -> r.run());
             cleanup.clear();
         }
@@ -399,8 +384,8 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
         private void prepareForAck(LocalNode n) {
             long acktimeout = getAckTimeoutValue();
             if (acktimeout != 0) {
-                // foundFailedNode must be called in prior to failureCallback
-                // because foundFailedNode is used for registering the failed 
+                // addMaybeFailedNode must be called in prior to failureCallback
+                // because addMaybeFailedNode is used for registering the failed 
                 // node and failureCallback relies on this.
                 registerNotAckedEvent(n, this);
                 cleanup.add(() -> removeNotAckedEvent(n, getEventId()));
@@ -430,11 +415,12 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
                             RequestEvent<?, ?> ev2 = removeRequestEvent(n, getEventId());
                             if (ev1 == null) {
                                 // probably we have already received the ack
-                                System.out.println("removeNotAck: not found: " + getEventId());
+                                logger.debug("removeNotAck: not found: {}", getEventId());
                             }
-                            //assert ev1 != null;
                             assert ev2 != null;
-                            System.out.println("reply timed out: " + this);
+                            logger.debug("reply timed out: {}", this);
+                            // In reply timeout case, unlike ack timeout case,
+                            // the receiver node is not considered to be failed.
                             this.failureCallback.run(new TimeoutException());
                         });
                 // System.out.println("schedule reply timer: " + replyTimeoutEvent);
@@ -500,7 +486,7 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
             // restore transient "req" field
             RequestEvent<?, ?> r = RequestEvent.lookupRequestEvent(n, reqEventId);
             if (r == null) {
-                System.out.println("ReplyEvent#beforeRunHook: reqEventId=" + reqEventId + ": not found");
+                logger.debug("ReplyEvent#beforeRunHook: reqEventId={}: not found", reqEventId);
                 return false;
             }
             // System.out.println("ReplyEvent#beforeRunHook: reqEventId=" + reqEventId);
@@ -567,7 +553,7 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
         }
         @Override
         public void run() {
-            System.out.println("ErrorEvent");
+            logger.debug("ErrorEvent");
             if (req.failureCallback != null) {
                 FailureCallback h = req.failureCallback;
                 req.failureCallback = null;

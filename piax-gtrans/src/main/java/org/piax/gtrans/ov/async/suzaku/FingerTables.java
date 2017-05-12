@@ -9,8 +9,12 @@ import java.util.stream.Stream;
 import org.piax.gtrans.async.FTEntry;
 import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.async.Node;
+import org.piax.gtrans.ov.async.rq.RQConditionalAdapter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class FingerTables {
+    private static final Logger logger = LoggerFactory.getLogger(FingerTables.class);
     final FingerTable forward;
     final FingerTable backward;
     Set<Node> reversePointers = new HashSet<>();
@@ -36,8 +40,7 @@ public class FingerTables {
     void replace(Node node, FTEntry repl) {
         forward.replace(node, repl);
         backward.replace(node, repl);
-        System.out.println("FT replaced: " + node + " -> " + repl + "\n"
-                + n.toStringDetail());
+        logger.debug("FT replaced: {} -> {}\n{}", node, repl, n.toStringDetail());
     }
 
     Stream<FTEntry> stream() {
@@ -63,7 +66,7 @@ public class FingerTables {
             return;
         }
         if (SuzakuStrategy.DEBUG_REVPTR) {
-            System.out.println(n + ": add revptr! " + node);
+            logger.debug("{}: add revptr! ", node);
         }
         this.reversePointers.add(node);
     }
@@ -71,8 +74,8 @@ public class FingerTables {
     public void removeReversePointer(Node node) {
         boolean rc = this.reversePointers.remove(node);
         if (SuzakuStrategy.NOTIFY_WITH_REVERSE_POINTER.value() && !rc) {
-            System.out.println(n + ": removeRP does not exist: " + node + "\n"
-                    + n.toStringDetail());
+            logger.debug("{}: removeRP does not exist: {}\n{}", n, node,
+                    n.toStringDetail());
         }
     }
 }
