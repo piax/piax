@@ -4,6 +4,7 @@ import io.netty.channel.ChannelFuture;
 
 import java.io.IOException;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
@@ -11,6 +12,8 @@ import org.piax.common.ObjectId;
 import org.piax.common.TransportId;
 import org.piax.gtrans.Channel;
 import org.piax.gtrans.NetworkTimeoutException;
+import org.piax.gtrans.netty.ControlMessage;
+import org.piax.gtrans.netty.ControlMessage.ControlType;
 import org.piax.gtrans.netty.NettyMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,6 +32,7 @@ public class IdChannel implements Channel<PrimaryKey> {
     private final BlockingQueue<Object> rcvQueue;
     final int id;
     boolean isClosed;
+    long timestamp;
     private static final Logger logger = LoggerFactory.getLogger(IdChannel.class.getName());
 
     public IdChannel(int channelNo, PrimaryKey channelInitiator, PrimaryKey destination,
@@ -43,6 +47,8 @@ public class IdChannel implements Channel<PrimaryKey> {
         this.raw = raw;
         this.trans = trans;
         this.isClosed = false;
+        raw.use();
+        this.timestamp = System.currentTimeMillis();
         rcvQueue = new LinkedBlockingQueue<Object>();
     }
     
@@ -56,8 +62,25 @@ public class IdChannel implements Channel<PrimaryKey> {
 
     @Override
     public void close() {
-        // close the raw channel synchronously, if needed.
-        isClosed = true;
+        // emulate bidirectional close;
+        closeAsync(); // does not wait for the end.
+    }
+
+    public CompletableFuture<Boolean> closeAsync() {
+        CompletableFuture<Boolean> f = new CompletableFuture<>();
+        // send a control message to close id channel.
+        raw.getChannel().writeAndFlush(new ControlMessage<PrimaryKey>(ControlType.CLOSE, channelInitiator, id));
+        // close locator channel
+        raw.closeAsync(false).whenComplete((ret, e) -> {
+            this.isClosed = true;
+            this.timestamp = System.currentTimeMillis();
+            f.complete(isClosed);
+        });
+        return f;
+    }
+    
+    public long elapsedTimeAfterClose() {
+        return System.currentTimeMillis() - timestamp;
     }
 
     @Override

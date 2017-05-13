@@ -30,6 +30,7 @@ import org.piax.gtrans.ReceivedMessage;
 import org.piax.gtrans.Transport;
 import org.piax.gtrans.TransportListener;
 import org.piax.gtrans.impl.ChannelTransportImpl;
+import org.piax.gtrans.netty.ControlMessage.ControlType;
 import org.piax.gtrans.netty.NettyRawChannel.Stat;
 import org.piax.gtrans.netty.bootstrap.NettyBootstrap;
 import org.piax.gtrans.netty.bootstrap.SslBootstrap;
@@ -67,11 +68,6 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
     static public boolean PARALLEL_RECEIVE = true;
     
     public AttributeKey<String> rawChannelKey = AttributeKey.valueOf("rawKey");
-
-    protected enum ControlType {
-        ATTEMPT, ACK, NACK, // Locator
-        UPDATE, INIT, WAIT
-    }
 
     //static boolean NAT_SUPPORT = true;
 

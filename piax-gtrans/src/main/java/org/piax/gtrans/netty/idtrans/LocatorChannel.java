@@ -4,6 +4,8 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 
 import java.io.IOException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.piax.common.PeerId;
 import org.piax.gtrans.netty.NettyLocator;
@@ -19,6 +21,7 @@ public class LocatorChannel {
     private static final Logger logger = LoggerFactory.getLogger(LocatorChannel.class.getName());
     Integer attempt = null;
     long lastUse;
+    AtomicInteger useCount;
 
     public enum Stat {
         INIT,
@@ -35,16 +38,22 @@ public class LocatorChannel {
         this.attempt = null;
         this.stat = Stat.RUN;
         this.channel = null;
+        this.useCount = new AtomicInteger(0); 
         lastUse = System.currentTimeMillis();
     }
-    
+
     public LocatorChannel(NettyLocator remote, IdChannelTransport trans) {
         this.remote = remote;
         this.trans = trans;
         this.attempt = null;
         this.stat = Stat.INIT;
         this.channel = null;
+        this.useCount = new AtomicInteger(0); 
         lastUse = System.currentTimeMillis();
+    }
+    
+    public void use() {
+        useCount.incrementAndGet();
     }
 
     synchronized public void setNettyChannel(Channel channel) {
@@ -64,9 +73,18 @@ public class LocatorChannel {
         lastUse = System.currentTimeMillis();
     }
 
-    public ChannelFuture close() {
-        setStat(Stat.DEFUNCT);
-        return channel.close();
+    public CompletableFuture<Boolean> closeAsync(boolean force) {
+        CompletableFuture<Boolean> ret = new CompletableFuture<>();
+        if (force || useCount.getAndDecrement() == 0) {
+            channel.close().addListener((future) -> {
+                ret.complete(true);
+            });
+        }
+        else {
+            // not fource & useCount > 0
+            ret.complete(true);
+        }
+        return ret;
     }
 
     public boolean isClosed() {
@@ -116,19 +134,12 @@ public class LocatorChannel {
         return this.channel;
     }
 
- // asynchronous send method.
+    // synchronous send without confirmation
     public void send(Object msg) throws IOException {
-        touch();
-        logger.debug("sending {} from {} to {}", ((NettyMessage)msg).getMsg(), trans.getEndpoint(), remote);
-        if (stat == Stat.RUN && channel.isOpen()) {
-            channel.writeAndFlush(msg);
-        }
-        else {
-            new IOException("the sending channel is closed.");
-        }
+        sendAsync(msg).syncUninterruptibly();
     }
-    
- // asynchronous send method.
+
+    // asynchronous send method.
     public ChannelFuture sendAsync(Object msg) throws IOException {
         touch();
         logger.debug("sending {} from {} to {}", ((NettyMessage)msg).getMsg(), trans.getEndpoint(), remote);

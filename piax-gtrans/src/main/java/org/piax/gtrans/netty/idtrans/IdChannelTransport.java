@@ -6,48 +6,84 @@ import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.group.ChannelGroup;
+import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.util.AttributeKey;
+import io.netty.util.concurrent.GlobalEventExecutor;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
-import java.util.List;
-import java.util.ListIterator;
+import java.util.Iterator;
+import java.util.Map.Entry;
+import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
 
-import org.piax.common.Endpoint;
 import org.piax.common.ObjectId;
 import org.piax.common.PeerId;
 import org.piax.common.TransportId;
 import org.piax.gtrans.Channel;
 import org.piax.gtrans.ChannelListener;
+import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.Peer;
 import org.piax.gtrans.ProtocolUnsupportedException;
 import org.piax.gtrans.ReceivedMessage;
 import org.piax.gtrans.Transport;
 import org.piax.gtrans.TransportListener;
+import org.piax.gtrans.impl.ChannelTransportImpl;
 import org.piax.gtrans.netty.ControlMessage;
+import org.piax.gtrans.netty.ControlMessage.ControlType;
 import org.piax.gtrans.netty.NettyChannelTransport;
 import org.piax.gtrans.netty.NettyLocator;
 import org.piax.gtrans.netty.NettyMessage;
-import org.piax.gtrans.netty.NettyRawChannel;
+import org.piax.gtrans.netty.bootstrap.NettyBootstrap;
 import org.piax.gtrans.netty.bootstrap.SslBootstrap;
 import org.piax.gtrans.netty.bootstrap.TcpBootstrap;
 import org.piax.gtrans.netty.bootstrap.UdtBootstrap;
 import org.piax.gtrans.netty.idtrans.LocatorChannel.Stat;
-import org.piax.gtrans.netty.idtrans.PrimaryKey.NeighborEntry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class IdChannelTransport extends NettyChannelTransport<PrimaryKey> {
+/* TODO:
+ * - close asynchronously & gracefully.
+ * - NAT handling.
+ * - locator change notification / periodic ping / failure detector.
+ * - 
+ */
+public class IdChannelTransport extends ChannelTransportImpl<PrimaryKey> implements ChannelTransport<PrimaryKey> {
     LocatorManager mgr;
     protected static final Logger logger = LoggerFactory.getLogger(IdChannelTransport.class.getName());
     protected final ConcurrentHashMap<String,IdChannel> ichannels = new ConcurrentHashMap<String,IdChannel>();
     
+    protected EventLoopGroup bossGroup;
+    protected EventLoopGroup serverGroup;
+    protected EventLoopGroup clientGroup;
+    boolean supportsDuplex = true;
+    protected PrimaryKey ep = null;
+    final protected PeerId peerId;
+    // a map to hold active raw channels;
+
+    private ConcurrentHashMap<NettyLocator, LocatorChannelEntry> raws;
+    protected final Random rand = new Random(System.currentTimeMillis());
+    protected boolean isRunning = false;
+
+    final protected ChannelGroup schannels =
+            new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
+    final protected ChannelGroup cchannels =
+            new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
+    // XXX should be private
+    protected NettyBootstrap<PrimaryKey> bs;
+    protected AtomicInteger seq;
+
+    static public int RAW_POOL_SIZE = 30;
+    static public boolean PARALLEL_RECEIVE = true;
+    
+    public AttributeKey<String> rawChannelKey = AttributeKey.valueOf("rawKey");
+
     // LocatorChannelEntry:
     // channel ... the locator channel. when its stat becomes RUN, the future must be completed.
     // future is completed when:
@@ -152,6 +188,7 @@ public class IdChannelTransport extends NettyChannelTransport<PrimaryKey> {
         schannels.add(ctx.channel());
     }
 
+    @SuppressWarnings("unchecked")
     protected void inboundReceive(ChannelHandlerContext ctx, Object msg) {
         if (msg instanceof ControlMessage<?>) {
             ControlMessage<PrimaryKey> cmsg = (ControlMessage<PrimaryKey>) msg;
@@ -220,6 +257,10 @@ public class IdChannelTransport extends NettyChannelTransport<PrimaryKey> {
             case NACK:
                 logger.debug("illegal attempt NACK received from client");
                 break;
+            case CLOSE:
+                logger.debug("close id channel: {}/{}", (int)cmsg.getArg(), (PrimaryKey)cmsg.getSource());
+                closeIdChannel(ichannels.get(IdChannel.getKeyString((int)cmsg.getArg(), (PrimaryKey)cmsg.getSource())));
+                break;
             default:
                 handleControlMessage(cmsg);
                 break;
@@ -227,15 +268,15 @@ public class IdChannelTransport extends NettyChannelTransport<PrimaryKey> {
         } else if (msg instanceof NettyMessage<?>) {
             NettyMessage<PrimaryKey> nmsg = (NettyMessage<PrimaryKey>) msg;
             logger.debug("inbound received msg{}: on {}", nmsg, ep);
-            if (filterMessage(nmsg)) {
+            /*if (filterMessage(nmsg)) {
                 return;
-            }
-            
+            }*/
             if (nmsg.isChannelSend()){ 
                 IdChannel ch = null;
                 synchronized (ichannels) {
                     ch = ichannels.get(IdChannel.getKeyString(nmsg.channelNo(), (PrimaryKey)nmsg.getChannelInitiator()));
                     if (ch == null) {
+                        // piggybacking the channel initiation.
                         synchronized (raws) {
                             LocatorChannelEntry ent = raws.get(nmsg.getSource().getLocator());
                             logger.debug("locator channel for {} is {} ", nmsg.getSource().getLocator(), ent);
@@ -246,8 +287,8 @@ public class IdChannelTransport extends NettyChannelTransport<PrimaryKey> {
                                         ent == null ? "null" : ent.channel.getStat(),
                                         nmsg.getSource());
                             } else {
-                                // channel is created on the first message
-                                // arrival (XXX should not be reached)
+                                // channel is created on the first message arrival
+                                expireClosedIdChannels(); // XXX performance
                                 ch = new IdChannel(nmsg.channelNo(),
                                         (PrimaryKey)nmsg.getChannelInitiator(),
                                         (PrimaryKey)nmsg.getChannelInitiator(), // channel initiator is the destination
@@ -275,7 +316,7 @@ public class IdChannelTransport extends NettyChannelTransport<PrimaryKey> {
             }
         }
     }
-
+    
     void messageReceived(IdChannel c, NettyMessage<PrimaryKey> nmsg) {
         if (!nmsg.isChannelSend()) {
             TransportListener<PrimaryKey> listener = (TransportListener<PrimaryKey>)getListener(nmsg.getObjectId());
@@ -329,6 +370,7 @@ public class IdChannelTransport extends NettyChannelTransport<PrimaryKey> {
         logger.debug("sent attempt to " + dst + " : " + ctx);
     }
 
+    @SuppressWarnings("unchecked")
     void outboundReceive(LocatorChannelEntry ent, ChannelHandlerContext ctx, Object msg) {
         if (msg instanceof ControlMessage) {
             ControlMessage<PrimaryKey> resp = (ControlMessage<PrimaryKey>) msg;
@@ -370,9 +412,9 @@ public class IdChannelTransport extends NettyChannelTransport<PrimaryKey> {
             NettyMessage<PrimaryKey> nmsg = (NettyMessage<PrimaryKey>) msg;
             logger.debug("outbound received msg {} on {}", nmsg, ep);
 
-            if (filterMessage(nmsg)) {
+            /*if (filterMessage(nmsg)) {
                 return;
-            }
+            }*/
             synchronized(ent) {
                 if (ent.channel.getStat() != Stat.RUN && ent.channel.getStat() != Stat.DEFUNCT) {
                     // this may happen when the server send a message
@@ -390,6 +432,7 @@ public class IdChannelTransport extends NettyChannelTransport<PrimaryKey> {
                     logger.debug("got stored ch=" + ch + " for msg: " + nmsg.getMsg());
                     if (ch == null) {
                         // a first call from server.
+                        expireClosedIdChannels(); // XXX performance
                         ch = new IdChannel(nmsg.channelNo(),
                                 nmsg.getChannelInitiator(),
                                 nmsg.getChannelInitiator(),
@@ -418,14 +461,24 @@ public class IdChannelTransport extends NettyChannelTransport<PrimaryKey> {
     }
 
     protected static final int FORWARD_HOPS_LIMIT = 5;
-    private ConcurrentHashMap<Endpoint, LocatorChannelEntry> raws;
+
     public int forwardCount = 0; // just for monitoring
 
+    protected static final int ID_CHANNEL_REMOVE_CLOSED_THRESHOLD = 2000;
     void closeIdChannel(IdChannel ch) {
-        ichannels.remove(ch.getKeyString());
-        // XXX if there's no more associated locator channel, close it.
+        ch.isClosed = true; // just mark as closed.
+        // the IdChannel entry will be expired after ID_CHANNEL_REMOVE_CLOSED_THRESHOLD
     }
-    
+    void expireClosedIdChannels() {
+        for (Iterator<Entry<String, IdChannel>> it = ichannels.entrySet().iterator();
+                it.hasNext();) {
+            if (it.next().getValue().elapsedTimeAfterClose() > ID_CHANNEL_REMOVE_CLOSED_THRESHOLD) {
+                it.remove();
+            }
+        }
+    }
+
+
     // By default, peerId becomes the primary key. 
     public IdChannelTransport(Peer peer, TransportId transId, PeerId peerId,
             NettyLocator peerLocator) throws IdConflictException, IOException {
@@ -433,11 +486,10 @@ public class IdChannelTransport extends NettyChannelTransport<PrimaryKey> {
     }
 
     public IdChannelTransport(Peer peer, TransportId transId, PeerId peerId, PrimaryKey key) throws IdConflictException, IOException {
-        super(peer, transId, peerId);
+        super(peer, transId, null, true);
+        this.peerId = peerId;
         this.ep = key;
         NettyLocator peerLocator = key.getLocator(); 
-        System.out.println("start " + IdChannelTransport.class.getName());
-        logger.info("start " +     IdChannelTransport.class.getName());
         mgr = new LocatorManager();
         raws = new ConcurrentHashMap<>();
         seq = new AtomicInteger(0);// sequence number (ID of the channel)
@@ -469,7 +521,7 @@ public class IdChannelTransport extends NettyChannelTransport<PrimaryKey> {
     public IdChannelTransport(Peer peer, TransportId transId, PeerId peerId) throws IdConflictException, IOException {
         this(peer, transId, peerId, new PrimaryKey(peerId, null));
     }
-
+/*
     public boolean filterMessage (NettyMessage<PrimaryKey> nmsg) {
         PrimaryKey src = nmsg.getSource();
         src = mgr.registerAndGet(src);
@@ -480,7 +532,7 @@ public class IdChannelTransport extends NettyChannelTransport<PrimaryKey> {
     // forwarding the channel attempt signal:
     // first, use channels for neighbors if already exists.
     // second, initiate a channel for neighbors if not exists.
-    
+
     @Deprecated
     boolean forwardMessage(NettyMessage<PrimaryKey> nmsg) {
         PrimaryKey dst = (PrimaryKey)nmsg.getDestination();
@@ -505,14 +557,13 @@ public class IdChannelTransport extends NettyChannelTransport<PrimaryKey> {
             return true;
         }
     }
-
+*/
     // handle the control message for IdChannelTrans.
     protected void handleControlMessage(ControlMessage<PrimaryKey> cmsg) {
         switch(cmsg.getType()) {
         case UPDATE: // update locator information.
             {
                 PrimaryKey k = (PrimaryKey)cmsg.getArg();
-            //
             } 
             break;
         case INIT: // start a new channel initiation
@@ -528,107 +579,15 @@ public class IdChannelTransport extends NettyChannelTransport<PrimaryKey> {
         }
     }
 
-    protected void channelSendHook(PrimaryKey src, PrimaryKey dst) {
-        // update the manager with newest neighbors.
-        PrimaryKey k = mgr.registerAndGet(dst);
-        // mark self as forwarded
-        for (NeighborEntry e : k.getNeighbors()) {
-            if (e.key.equals(ep)) {
-                e.visited = true;
-            }
-        }
-        dst.setNeighbors(k.getNeighbors());
-    }
-
-    @Override
-    protected NettyLocator directLocator(PrimaryKey key) {
-        return key.getLocator();
-    }
-
-    // get RawChannel with remote locator included in the list 
-    private NettyRawChannel<PrimaryKey> getExistingRawChannel(List<NeighborEntry> list) {
-        NettyRawChannel<PrimaryKey> ret = null;
-        for(ListIterator<NeighborEntry> it=list.listIterator(list.size()); it.hasPrevious();){
-            NeighborEntry le = it.previous();
-        }
-        return ret;
-    }
-
-    private PrimaryKey getUnmarkedAndMarkLocator(List<NeighborEntry> list) {
-        PrimaryKey ret = null;
-        for(ListIterator<NeighborEntry> it=list.listIterator(list.size()); it.hasPrevious();){
-            NeighborEntry le = it.previous();
-            if (!le.visited) {
-                le.visited = true;
-                ret = le.key;
-            }
-        }
-        return ret;
-    }
-
-    @Override
-    protected NettyRawChannel<PrimaryKey> getResolvedRawChannel(PrimaryKey key) throws IOException {
-        // find the node itself or the adjacent neighbor node, then get raw channel for it.
-        return null; // XXX not implemented yet.
-    }
-
-    private NettyRawChannel<PrimaryKey> getIndirectRawChannel(PrimaryKey key) throws IOException {
-     // if there is only indirect candidate
-        NettyRawChannel<PrimaryKey> raw = getExistingRawChannel(key.getNeighbors());
-        if (raw == null) { // no exiting channel. create new
-            PrimaryKey next = getUnmarkedAndMarkLocator(key.getNeighbors());
-            raw = getRawCreateAsClient0(next);
-            logger.debug("no existing indirect rawchannel. creating {} for {} on {}",
-                    raw.getRemote(), key, ep);
-        }
-        return raw;
-    }
-
-    /* 
-     * Get or Create a RawChannel that corresponds to the {@code dst}. 
-     * @see org.piax.gtrans.netty.NettyChannelTransport#getRawCreateAsClient(org.piax.gtrans.netty.NettyEndpoint, org.piax.gtrans.netty.NettyMessage)
-     */
-    @Override
-    protected NettyRawChannel<PrimaryKey> getRawCreateAsClient(PrimaryKey dst, NettyMessage<PrimaryKey> nmsg) throws IOException {
-        NettyRawChannel<PrimaryKey> raw = null;
-        dst = mgr.registerAndGet(dst); // refresh the locator entries;
-        // cached raw channel.
-        raw = getRaw(dst);
-        if (raw != null) {
-            logger.debug("existing rawchannel for {} is {} on {}", dst,
-                    raw.getRemote(), ep);
-            return raw;
-        } else {
-            if (directLocator(dst) == null) {
-                raw = getIndirectRawChannel(dst);
-            }
-            else {
-                raw = getRawCreateAsClient0(dst);
-            }
-        }
-        ep.addNeighbor(raw.getRemote());
-        return raw;
-    }
-
-    @Override
-    protected PrimaryKey createEndpoint(String host, int port) {
-        // TODO Auto-generated method stub
-        return null;
-    }
-
     public void fin() {
-        super.fin();
+        logger.debug("running fin.");
+        isRunning = false;
+        cchannels.close().awaitUninterruptibly();
+        schannels.close().awaitUninterruptibly();
+        bossGroup.shutdownGracefully();
+        serverGroup.shutdownGracefully();
+        clientGroup.shutdownGracefully();
         mgr.fin();
-    }
-
-    // Id transport API.
-    public void setPrimaryKey(PrimaryKey key) {
-        key.setLocator(ep.getLocator());
-        ep = key;
-    }
-    
-    public void setLocator(NettyLocator locator) {
-        ep.setLocator(locator);
     }
 
     private CompletableFuture<LocatorChannel> createLocatorChannel(NettyLocator locator) {
@@ -657,8 +616,15 @@ public class IdChannelTransport extends NettyChannelTransport<PrimaryKey> {
             });
             // XXX this may takes a while.
             obsoletes.stream().forEach((ent) -> {
-                ent.channel.close().syncUninterruptibly();
-                raws.remove(ent.channel.getRemote());
+                try {
+                    if (ent.channel.closeAsync(true).get()) {
+                        raws.remove(ent.channel.getRemote());
+                    }
+                } catch (Exception e) {
+                    // remove anyway.
+                    raws.remove(ent.channel.getRemote());
+                }
+                logger.debug("channel expired for: " + ent + " on " + ep);
             });
 
             LocatorChannelEntry ent = raws.get(dst);
@@ -684,6 +650,7 @@ public class IdChannelTransport extends NettyChannelTransport<PrimaryKey> {
                             future.completeExceptionally(e);
                         }
                         else {
+                            expireClosedIdChannels(); // XXX performance
                             IdChannel newCh = new IdChannel(seq.incrementAndGet(), ep, dst, sender, receiver, true, ret, this);
                             ichannels.put(newCh.getKeyString(), newCh);
                             future.complete(newCh);
@@ -740,6 +707,11 @@ public class IdChannelTransport extends NettyChannelTransport<PrimaryKey> {
             }
         });
         return retf;
+    }
+
+    @Override
+    public PrimaryKey getEndpoint() {
+        return ep;
     }
 
 }

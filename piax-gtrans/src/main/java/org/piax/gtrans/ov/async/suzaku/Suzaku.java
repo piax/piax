@@ -50,7 +50,6 @@ import org.piax.gtrans.async.EventExecutor;
 import org.piax.gtrans.async.EventSender;
 import org.piax.gtrans.async.FTEntry;
 import org.piax.gtrans.async.LocalNode;
-import org.piax.gtrans.async.Log;
 import org.piax.gtrans.async.Node;
 import org.piax.gtrans.impl.NestedMessage;
 import org.piax.gtrans.ov.OverlayListener;
@@ -106,19 +105,16 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         @SuppressWarnings("unchecked")
         @Override
         public void send(Event ev) throws Exception {
-                assert ev.delay == Node.NETWORK_LATENCY;
-                //ev.vtime = EventExecutor.getVTime() + ev.delay;
-                ev.vtime = 0;
-                if (Log.verbose) {
-                    System.out.println(ev.sender + "|send/forward event " + ev);
-                }
-                logger.debug("*** send (from: {} to: {})", trans.getEndpoint(), ev.receiver.addr);
-                trans.send(transId, (E) ev.receiver.addr, ev);
+            assert ev.delay == Node.NETWORK_LATENCY;
+            //ev.vtime = EventExecutor.getVTime() + ev.delay;
+            ev.vtime = 0;
+            logger.trace("*** {}|send/forward event {}", ev.sender, ev);
+            trans.send(transId, (E) ev.receiver.addr, ev);
         }
 
         @Override
         public void onReceive(Transport<E> trans, ReceivedMessage rmsg) {
-            logger.debug("*** recv (on: {} from: {}) {}", trans.getEndpoint(), rmsg.getSource(), rmsg.getMessage());
+            logger.trace("*** recv (on: {} from: {}) {}", trans.getEndpoint(), rmsg.getSource(), rmsg.getMessage());
             recv((Event)rmsg.getMessage());
         }
 
