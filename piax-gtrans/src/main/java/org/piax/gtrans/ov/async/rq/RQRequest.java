@@ -28,7 +28,6 @@ import org.piax.gtrans.async.Event.StreamingRequestEvent;
 import org.piax.gtrans.async.EventExecutor;
 import org.piax.gtrans.async.FTEntry;
 import org.piax.gtrans.async.LocalNode;
-import org.piax.gtrans.async.Log;
 import org.piax.gtrans.async.NetworkParams;
 import org.piax.gtrans.async.Node;
 import org.piax.gtrans.ov.ddll.DdllKey;
@@ -294,8 +293,8 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         }
 
         private void rqDisseminate(List<RQRange> ranges) {
-            Log.verbose(() -> "rqDisseminate start: " + this);
-            Log.verbose(() -> "                     " + RQRequest.this);
+            logger.trace("rqDisseminate start: {}", this);
+            logger.trace("                     {}", RQRequest.this);
 
             Set<Integer> history = strategy.queryHistory.get(qid);
             if (history == null) {
@@ -306,16 +305,16 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
 
             List<FTEntry> ftents = getTopStrategy().getRoutingEntries();
             if (ftents.isEmpty()) {
-                Log.verbose(() -> "no routing entry available!");
+                logger.trace("no routing entry available!");
                 return;
             }
-            Log.verbose(() -> "rqd#ftents=" + ftents);
+            logger.trace("rqd#ftents={}", ftents);
             List<DKRangeRValue<T>> locallyResolved = new ArrayList<>();
             ranges = adapter.preprocess(ranges, ftents, locallyResolved);
             {
                 List<RQRange> ranges0 = ranges;
-                Log.verbose(() -> "rqd#ranges=" + ranges0);
-                Log.verbose(() -> "rqd#locally=" + locallyResolved);
+                logger.trace("rqd#ranges={}",  ranges0);
+                logger.trace("rqd#locally={}", locallyResolved);
             }
             assert gaps != null && !gaps.isEmpty();
             locallyResolved.stream().forEach(dkr -> {
@@ -324,7 +323,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
 
             // assign a delegate node for each range
             Map<Id, List<RQRange>> map = assignDelegates(ranges);
-            Log.verbose(() -> "aggregated: " + map);
+            logger.trace("aggregated: {}", map);
             PeerId peerId = getLocalNode().getPeerId();
 
             /*
@@ -366,7 +365,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                 exc.getCause().printStackTrace();
                 return null; // or System.exit(1);
             });
-            Log.verbose(() -> "rqDisseminate finished");
+            logger.trace("rqDisseminate finished");
         }
 
         /**
@@ -568,7 +567,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
          */
         private CompletableFuture<List<DKRangeRValue<T>>>
         rqExecuteLocal(List<RQRange> ranges) {
-            Log.verbose(() -> "rqExecuteLocal: ranges=" + ranges);
+            logger.trace("rqExecuteLocal: ranges={}", ranges);
             // results of locally-resolved ranges
             List<DKRangeRValue<T>> rvals = new ArrayList<>();
             if (ranges == null) {

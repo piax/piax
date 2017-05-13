@@ -10,10 +10,11 @@ import org.piax.common.subspace.Range;
 import org.piax.gtrans.RemoteValue;
 import org.piax.gtrans.async.FTEntry;
 import org.piax.gtrans.async.LocalNode;
-import org.piax.gtrans.async.Log;
 import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.gtrans.ov.ring.rq.DKRangeRValue;
 import org.piax.gtrans.ov.ring.rq.DdllKeyRange;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * an adapter for conditional query
@@ -22,6 +23,7 @@ import org.piax.gtrans.ov.ring.rq.DdllKeyRange;
  * @param <U> the type of aggregated value
  */
 public abstract class RQConditionalAdapter<T, U> extends RQAdapter<T> {
+    private static final Logger logger = LoggerFactory.getLogger(RQConditionalAdapter.class);
     protected U current;
     public RQConditionalAdapter(Consumer<RemoteValue<T>> resultsReceiver) {
         super(resultsReceiver);
@@ -119,15 +121,15 @@ public abstract class RQConditionalAdapter<T, U> extends RQAdapter<T> {
         // "refined" contains all FTEntry that matches the condition.
         // XXX: refinedを，カバーする範囲の小さい順にソートするべき
         List<Range<DdllKey>> refined = getMatchedRanges(ftents);
-        Log.verbose(() -> "refined=" + refined);
+        logger.trace("refined={}", refined);
 
         // unmatched = target \ refined
         // matched = target ∧ refined
         List<RQRange> target = new ArrayList<>(queryRanges);
         List<RQRange> matched = new ArrayList<>();
         List<RQRange> unmatched = diffRanges(target, refined, matched, true);
-        Log.verbose(() -> "matched=" + matched);
-        Log.verbose(() -> "unmatched=" + unmatched);
+        logger.trace("matched={}", matched);
+        logger.trace("unmatched={}", unmatched);
 
         // unmatched に含まれる範囲は null を埋める
         for (Range<DdllKey> r: unmatched) {

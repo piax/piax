@@ -29,7 +29,6 @@ import org.piax.gtrans.async.EventSender.EventSenderSim;
 import org.piax.gtrans.async.Indirect;
 import org.piax.gtrans.async.LatencyProvider.StarLatencyProvider;
 import org.piax.gtrans.async.LocalNode;
-import org.piax.gtrans.async.Log;
 import org.piax.gtrans.async.NetworkParams;
 import org.piax.gtrans.async.NodeFactory;
 import org.piax.gtrans.async.NodeStrategy;
@@ -132,7 +131,6 @@ public class AsyncTestBase {
      * reset the simulation environment.
      */
     public static void init(int pingPeriod) {
-        Log.verbose = true;
         if (REALTIME) {
             EventExecutor.realtime.set(true);
         }

@@ -40,8 +40,11 @@ import org.piax.gtrans.async.EventSender.EventSenderNet;
 import org.piax.gtrans.async.EventSender.EventSenderSim;
 import org.piax.gtrans.ov.async.rq.RQAdapter;
 import org.piax.gtrans.ov.ddll.DdllKey;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class LocalNode extends Node {
+    private static final Logger logger = LoggerFactory.getLogger(LocalNode.class);
     public static final int INSERTION_DELETION_RETRY = 10; 
     public long insertionStartTime = -1L;
     public long insertionEndTime;
@@ -217,7 +220,7 @@ public class LocalNode extends Node {
         if (ev instanceof RequestEvent && failure == null) {
             RequestEvent<?, ?> req = (RequestEvent<?, ?>)ev;
             failure = exc -> {
-                Log.verbose(() -> "post: got exception: " + exc + ", " + ev);
+                logger.trace("post: got exception: {}. {}", exc, ev);
                 req.future.completeExceptionally(exc);
             };
         }
@@ -232,7 +235,7 @@ public class LocalNode extends Node {
             try {
                 sender.send(ev);
             } catch (Exception e) {
-                Log.verbose(() -> this + " got exception: " + e);
+                logger.trace("{} got exception: {}", this, e);
                 if (failure != null) {
                     failure.run(new RPCEventException(e));
                 }
@@ -254,7 +257,7 @@ public class LocalNode extends Node {
         assert ev.origin != null;
         if (failure == null) {
             failure = exc -> {
-                Log.verbose(() -> "forward: got exception: " + exc + ", " + ev);
+            	logger.trace("forward: got exception: {}, {}", exc, ev);
             };
         }
         ev.failureCallback = failure;
@@ -276,7 +279,7 @@ public class LocalNode extends Node {
             try {
                 sender.send(ev);
             } catch (Exception e) {
-                Log.verbose(()-> this + " got exception: " + e);
+                logger.trace("{} got exception: {}", this, e);
                 failure.run(new RPCEventException(e));
             }
         }
@@ -298,7 +301,7 @@ public class LocalNode extends Node {
     }
 
     public void addMaybeFailedNode(Node node) {
-        Log.verbose(() -> (this + ": addMaybeFailedNode: " + node));
+        logger.trace("{}: addMaybeFailedNode: {}", this, node);
         maybeFailedNodes.add(node);
     }
 
@@ -311,7 +314,7 @@ public class LocalNode extends Node {
      */
     public boolean addKey(Endpoint introducer) throws IOException,
         InterruptedException {
-        System.out.println(this + ": addKey");
+        logger.debug("{}: addkey", this);
         Node temp = Node.getTemporaryInstance(introducer);
         CompletableFuture<Boolean> future = joinAsync(temp);
         try {
@@ -324,7 +327,7 @@ public class LocalNode extends Node {
     }
 
     public boolean removeKey() throws IOException, InterruptedException {
-        System.out.println(this + ": removeKey");
+        logger.debug("{}: removeKey", this);
         CompletableFuture<Boolean> future = leaveAsync();
         try {
             return future.get();
@@ -368,8 +371,7 @@ public class LocalNode extends Node {
         this.mode = NodeMode.INSERTING;
         this.introducer = introducer;
         Consumer<Throwable> retry = (exc) -> {
-            Log.verbose(() -> this + ": joinAsync failed: " + exc
-                    + ", count=" + count);
+            logger.trace("{}: joinAsync failed: {}, count={}", this, exc, count);
             // reset insertionStartTime ?
             if (((exc instanceof RetriableException) 
                     || (exc instanceof TimeoutException))
@@ -410,7 +412,7 @@ public class LocalNode extends Node {
     }
 
     public CompletableFuture<Boolean> leaveAsync() {
-        System.out.println("Node " + this + " leaves");
+        logger.debug("Node {} leaves", this);
         if (mode != NodeMode.INSERTED) {
             CompletableFuture<Boolean> f = new CompletableFuture<>();
             f.completeExceptionally(new IllegalStateException("not inserted"));
@@ -441,12 +443,12 @@ public class LocalNode extends Node {
     }
 
     public void fail() {
-        System.out.println("*** " + this + " fails");
+        logger.debug("*** {} fails", this);
         this.isFailed = true;
     }
     
     public void revive() {
-        System.out.println("*** " + this + " revives");
+        logger.debug("*** {} revives", this);
         this.isFailed = false;
     }
 

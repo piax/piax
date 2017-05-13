@@ -17,7 +17,6 @@ import org.piax.gtrans.async.Event.TimerEvent;
 import org.piax.gtrans.async.EventExecutor;
 import org.piax.gtrans.async.FTEntry;
 import org.piax.gtrans.async.LocalNode;
-import org.piax.gtrans.async.Log;
 import org.piax.gtrans.async.NetworkParams;
 import org.piax.gtrans.async.Node;
 import org.piax.gtrans.async.Node.NodeMode;
@@ -33,8 +32,11 @@ import org.piax.gtrans.ov.async.suzaku.SuzakuEvent.GetFTAllEvent;
 import org.piax.gtrans.ov.async.suzaku.SuzakuEvent.GetFTEntEvent;
 import org.piax.gtrans.ov.async.suzaku.SuzakuEvent.RemoveReversePointerEvent;
 import org.piax.gtrans.ov.ring.rq.FlexibleArray;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SuzakuStrategy extends NodeStrategy {
+    static final Logger logger = LoggerFactory.getLogger(SuzakuStrategy.class);
     public static class SuzakuNodeFactory extends NodeFactory {
         public SuzakuNodeFactory(int type) {
             switch (type) {
@@ -174,10 +176,10 @@ public class SuzakuStrategy extends NodeStrategy {
     @Override
     public void join(LookupDone lookupDone, 
             CompletableFuture<Boolean> joinFuture) {
-        Log.verbose(() -> "Suzaku#join: " + lookupDone.route
-                + ", " + lookupDone.hops() + " hops"); 
-        Log.verbose(() -> "Suzaku#join: " + n.key + " joins between "
-                + lookupDone.pred + " and " + lookupDone.succ);
+        logger.trace("Suzaku#join: {}, {} hops", lookupDone.route,
+                lookupDone.hops()); 
+        logger.trace("Suzaku#join: {} joins between {} and {}", n.key
+                , lookupDone.pred, lookupDone.succ);
         assert Node.isOrdered(lookupDone.pred.key, n.key, lookupDone.succ.key);
         joinMsgs += lookupDone.hops();
         CompletableFuture<Boolean> future = new CompletableFuture<>();
@@ -216,8 +218,7 @@ public class SuzakuStrategy extends NodeStrategy {
             szk.table.sanitizeRevPtrs();
 
             Set<Node> s = reversePointers;
-            System.out.println(node + ": receives revptr ("
-                    + s.size() + ") from " + n + ": " + s);
+            logger.debug("{}: receives revptr ({}) from {} : {}", node, s.size(), n, s);
             s.remove(n); // ノードnは既に削除済
             // nodeのfinger tableで，nをnodeに置き換える
             List<Node> neighbors = szk.getNeighbors();
@@ -232,7 +233,7 @@ public class SuzakuStrategy extends NodeStrategy {
                     szk.table.addReversePointer(x);
                 } else {
                     if (DEBUG_REVPTR) {
-                        System.out.println(node + ": filtered " + x);
+                        logger.debug("{}: filtered {}", node, x);
                     }
                 }
             });
@@ -241,7 +242,7 @@ public class SuzakuStrategy extends NodeStrategy {
 
     @Override
     public void leave(CompletableFuture<Boolean> leaveComplete) {
-        Log.verbose(()-> "leave " + n);
+        logger.trace("leave {}", n);
         // jobはSetRが成功した場合に左ノード上で実行される
         SetRJob job;
         if (NOTIFY_WITH_REVERSE_POINTER.value()) {
@@ -249,22 +250,22 @@ public class SuzakuStrategy extends NodeStrategy {
         } else {
             job = null;
         }
-        System.out.println(n + ": start DDLL deletion");
+        logger.debug("{}: start DDLL deletion", n);
         CompletableFuture<Boolean> future = new CompletableFuture<>();
         ddll.leave(future, job);
         future.whenComplete((rc, exc) -> {
             assert rc;
             // SetRAckを受信した場合の処理
             n.mode = NodeMode.GRACE;
-            System.out.println(n + ": mode=grace");
+            logger.debug("{}: mode=grace", n);
             if (updateSchedEvent != null) {
-                System.out.println(n + ": remove schedEvent: " + updateSchedEvent.getEventId());
+                logger.debug("{}: remove schedEvent: {}", n, updateSchedEvent.getEventId());
                 EventExecutor.cancelEvent(updateSchedEvent);
                 updateSchedEvent = null;
             }
             EventExecutor.sched(NetworkParams.ONEWAY_DELAY, () -> {
                 n.mode = NodeMode.DELETED;
-                System.out.println(n + ": mode=deleted");
+                logger.debug("{}: mode=deleted", n);
                 leaveComplete.complete(true);
             });
         });
@@ -281,7 +282,7 @@ public class SuzakuStrategy extends NodeStrategy {
         table.removeReversePointer(r);
         FTEntry repl;
         if (neighbors.get(0) == n) {
-            System.out.println(n + ": removeFromFingerTable: self!");
+            logger.debug("{}: removeFromFingerTable: self!", n);
             // XXX: 論文に入っていない修正 
             // 代替ノードが自分自身ならば，successorに付け替える．
             repl = getFingerTableEntry(0);
@@ -319,8 +320,7 @@ public class SuzakuStrategy extends NodeStrategy {
         }
         if (l.fill) {
             FTEntry ent = getFTEntryToSendTop(0, 1);
-            System.out.println("handleLookup: "
-                    + n + " sends FTEntUpdateEvent: " + ent);
+            logger.debug("handleLookup: {} sends FTEntUpdateEvent: ", n, ent);
             n.post(new FTEntUpdateEvent(l.sender, ent));
         }
         if (isResponsible(l.key)) {
@@ -329,7 +329,7 @@ public class SuzakuStrategy extends NodeStrategy {
             Node next = n.getClosestPredecessor(l.key);
             // successorがfailしていると，next.node == n になる
             if (next == null || next == n) {
-                System.out.println(n + ": handleLookup! key=" + l.key + ", evid=" + l.getEventId() + ", next=" + next + ", " + toStringDetail());
+                logger.debug("{}: handleLookup! key={}, evid={}, next={}, {}", n, l.key, l.getEventId(), next, toStringDetail());
                 //System.out.println(n.toStringDetail());
                 n.post(new LookupDone(l, n, n.succ));
                 return;
@@ -339,24 +339,23 @@ public class SuzakuStrategy extends NodeStrategy {
             {
                 FTEntry ent = table.getFTEntry(next);
                 if (ent == null) {
-                    System.out.println("ent == null, next=" + next);
-                    System.out.println(toStringDetail());
+                    logger.debug("ent == null, next={}\n{}", next,
+                            toStringDetail());
                     assert false;
                 }
                 l.fill = ent.needUpdate();
             }
-            System.out.println("T=" + EventExecutor.getVTime() + ": " + n + ": handleLookup " + l.getEventId() + " " + next);
+            logger.debug("T={}: {}: handleLookup evid={} next={}", EventExecutor.getVTime(), n, l.getEventId(), next);
             n.forward(next, l, (exc) -> {
                 /* 
                  * 相手ノード障害時は，handleLookupを再実行する．．
                  * getClosestPredecessorは障害ノード集合を取り除いて再送する．
                  */
                 FTEntry ent = table.getFTEntry(next);
-                System.out.println("TIMEOUT: " + n + " sent a query to "
-                        + next.key
-                        + ", ftent = " + ent + "\n"
-                        + n.toStringDetail() 
-                        + "\n" + next.toStringDetail());
+                logger.debug("TIMEOUT: {} sent a query to {}, ftent = {}\n{}\n{}",
+                        n, next.key,  ent,
+                        n.toStringDetail(), 
+                        next.toStringDetail());
                 if (next == n.pred) {
                     CompletableFuture<Boolean> future = ddll.checkAndFix();
                     future.thenRun(() -> {
@@ -426,7 +425,7 @@ public class SuzakuStrategy extends NodeStrategy {
             GetFTAllEvent ev = new GetFTAllEvent(n.pred);
             ev.onReply((rep, exc) -> {
                 if (exc != null) {
-                    System.out.println("getFTAll failed: " + exc);
+                    logger.debug("getFTAll failed: {}", exc);
                 } else {
                     joinMsgs += 2;
                     FTEntry[][] fts = rep.ents;
@@ -467,7 +466,7 @@ public class SuzakuStrategy extends NodeStrategy {
         updateSchedEvent = EventExecutor.sched(delay, () -> {
             updateFingerTable(false);
         });
-        Log.verbose(() -> n + ": add schedEvent: " + updateSchedEvent.getEventId());
+        logger.trace("{}: add schedEvent: {}", n, updateSchedEvent.getEventId());
     }
     
     /**
@@ -682,7 +681,7 @@ public class SuzakuStrategy extends NodeStrategy {
                 //opTable.change(index, passive1.ents[0], true);
                 int index2 = FingerTable.getFTIndex(delta);
                 for (int i = 0; i < passive1.ents.length; i++) {
-                    System.out.println("pasv1 " + index2 + ", " + i + ": " + passive1.ents[i]);
+                    logger.debug("pasv1 {}, {}: {}", index2, i, passive1.ents[i]);
                     opTable.change(index2 + i, passive1.ents[i], true);
                 }
             }
@@ -693,7 +692,7 @@ public class SuzakuStrategy extends NodeStrategy {
                 assert index2 != FingerTable.LOCALINDEX;
                 for (int i = 0; i < passive2.ents.length + (isBackward ? 0 : -1); i++) {
                     if (passive2.ents[i] != null) {
-                        System.out.println("pasv2 " + index2 + ", " + i + ": " + passive2.ents[i]);
+                        logger.debug("pasv2 {}, {}: {}", index2, i, passive2.ents[i]);
                         opTable.change(index2 + i, passive2.ents[i], true);
                     }
                 }
@@ -800,8 +799,8 @@ public class SuzakuStrategy extends NodeStrategy {
             return;
         }
         updatingFT = true;
-        Log.verbose(() -> "start finger table update: " + n.key
-                + ", " + EventExecutor.getVTime());
+        logger.trace("start finger table update: {}, {}", n.key, 
+                EventExecutor.getVTime());
         updateFingerTable0(0, isBackward, null, null);
         updatingFT = false;
     }
@@ -847,12 +846,9 @@ public class SuzakuStrategy extends NodeStrategy {
         nextLevel = p;
         boolean isFirst = isFirst(isBackward);
         int B = SuzakuStrategy.B.value();
-        Log.verbose(() -> EventExecutor.getVTime() + ": " 
-                + "updateFingerTable0 " + n.key + ", p=" + p + ", " + isBackward
-                + ", fcount=" + forwardUpdateCount
-                + ", bcount=" + backwardUpdateCount
-                + ", nextEnt1=" + nextEnt1
-                + ", nextEnt2=" + nextEnt2);
+        logger.trace("{}: updateFingerTable0 {}, p={}, {}, fcount={}, bcount={}, nextEnt1={}, nextEnt2={}", 
+                EventExecutor.getVTime(), n.key, p, isBackward, forwardUpdateCount, 
+                backwardUpdateCount, nextEnt1, nextEnt2);
         if (n.mode == NodeMode.OUT || n.mode == NodeMode.DELETED) {
             return;
         }
@@ -861,21 +857,19 @@ public class SuzakuStrategy extends NodeStrategy {
         FTEntry baseEnt = (nextEnt1 != null
                 ? nextEnt1 : getFingerTableEntry(isBackward, indQ)); 
         if (baseEnt == null) {
-            System.out.println(n + ": null-entry-1, index = "
-                    + indQ + ", " + toStringDetail());
+            logger.debug("{}: null-entry-1, index = {}, {}", n, indQ, toStringDetail());
             updateNext(p, isBackward, nextEnt2, null);
             return;
         }
         if (baseEnt.getNode() == null) {
-            System.out.println(n + ": null-entry-2, index = "
-                    + indQ + ", " + toStringDetail());
+            logger.debug("{}: null-entry-2, index = {}, {}", n, indQ, toStringDetail());
             updateNext(p, isBackward, nextEnt2, null);
             return;
         }
         if (baseEnt.getNode() == n) {
             // FTEntryの先頭ノードが削除された場合に発生する可能性がある
-            System.out.println(n + ": self-pointing-entry, index = "
-                    + indQ + ", " + toStringDetail());
+            logger.debug("{}: self-pointing-entry, index ={}, {} ", n, 
+                    indQ, toStringDetail());
             updateNext(p, isBackward, nextEnt2, null);
             return;
         }
@@ -980,14 +974,14 @@ public class SuzakuStrategy extends NodeStrategy {
         //     B = 2, p = 2 -> x = 1, y = 0, ents=[0, 1*4^1=4]
         //     B = 2, p = 3 -> x = 1, y = 1, ents=[0, 1*4^1=4, 2*4^1=8]
         Node q = baseEnt.getNode();
-        Log.verbose(() -> "update: " + n.key + ", " + isBackward
-                + ", ent = " + q.key + ", p =" + p);
+        logger.trace("update: {}, {}, ent = {}, p ={}", n.key, isBackward,
+                q.key, p);
         GetFTEntEvent ev = new GetFTEntEvent(q, isBackward, x, y, K, passive1, passive2);
         ev.onReply((repl, exc) -> {
             FingerTable tab = isBackward ? table.backward : table.forward;
             FingerTable opTab = isBackward ? table.forward : table.backward;
             if (exc != null) {
-                System.out.println(n + ": getFingerTable0: TIMEOUT on " + q);
+                logger.debug("{}: getFingerTable0: TIMEOUT on {}", n, q);
                 Runnable job = () -> {
                     // XXX: ここで，getNode() は suspectedNode を考慮していない! 
                     if (baseEnt.getNode() != null) {
@@ -996,10 +990,10 @@ public class SuzakuStrategy extends NodeStrategy {
                     } else {
                         // we have no backup node
                         if (p + 1 < tab.getFingerTableSize()) {
-                            System.out.println(n + ": No backup node: " + n + ", p =" + p + ", continue");
+                            logger.debug("{}: No backup node, p={}, continue", n, p);
                             updateFingerTable0(p + 1, isBackward, null, null);
                         } else {
-                            System.out.println(n + ": No backup node: " + n + ", p =" + p + ", no continue");
+                            logger.debug("{}: No backup node, p={}, no continue", n, p);
                             updateNext(p, isBackward, nextEnt2, null);
                         }
                     }
@@ -1031,8 +1025,7 @@ public class SuzakuStrategy extends NodeStrategy {
                     if (e != null && e.getNode() == null) {
                         // 取得したエントリが null の場合，以前のエントリを使う
                         e = getFingerTableEntry(isBackward, indQ + 1);
-                        System.out.println(n + ": fetched null entry from "
-                                + q + ", use old ent: " + e);
+                        logger.debug("{}: fetched null entry from {}, use old ent: ", n, q, e);
                         if (e == null || e.getNode() == null) {
                             break;
                         }
@@ -1092,7 +1085,7 @@ public class SuzakuStrategy extends NodeStrategy {
         if (!found) {
             n.post(new RemoveReversePointerEvent(p));
             if (DEBUG_REVPTR) {
-                System.out.println(n + ": removes " + n + " from revPtr of " + p);
+                logger.debug("{}: removes {} from revPtr of {}", n, n, p);
             }
         }
     }
@@ -1147,7 +1140,7 @@ public class SuzakuStrategy extends NodeStrategy {
                 }
             } else {
                 nextLevel = p + 1;
-                Log.verbose(() -> "nextLevel=" + nextLevel +" , nextEntX=" + nextEntX);
+                logger.trace("nextLevel={}, nextEntX={}", nextLevel, nextEntX);
                 EventExecutor.sched(UPDATE_FINGER_PERIOD.value(),
                         () -> updateFingerTable0(p + 1, isBackward, nextEntX, null));
             }
@@ -1170,13 +1163,12 @@ public class SuzakuStrategy extends NodeStrategy {
      */
     private void finish(boolean isBackward, int level) {
         boolean isFirst = isFirst(isBackward);
-        Log.verbose(() -> 
-            n + ": finger table update done: "
-            + isBackward
-            + ", level=" + level
-            + ", " + (isBackward ? backwardUpdateCount : forwardUpdateCount) + "th" 
-            + ", " + EventExecutor.getVTime()
-            + "\n" + n.toStringDetail());
+        logger.trace(
+            "{}: finger table update done: {}, level={}, {}, {}, \n{}",
+            n, isBackward, level,
+            (isBackward ? backwardUpdateCount : forwardUpdateCount) + "th", 
+            EventExecutor.getVTime(),
+            n.toStringDetail());
 //        if (!isFirst) {
 //            // truncate the finger tables
 //            table.forward.shrink(level + 1);
@@ -1214,7 +1206,7 @@ public class SuzakuStrategy extends NodeStrategy {
             List<Node> list = a.stream()
                     .filter(node -> !node.isInserted())
                     .collect(Collectors.toList());
-            System.out.println("Node " + n.key + ": dead pointers = " + list);
+            logger.debug("Node {}: dead pointers = {}", n.key, list);
         }
         return (double)nAlive / a.size();
     }
@@ -1263,7 +1255,7 @@ public class SuzakuStrategy extends NodeStrategy {
             boolean rc = szk.isConverged(nodes);
             if (rc) count++;
         }
-        System.out.println("# of converged nodes: " + count);
+        logger.debug("# of converged nodes: {}", count);
         return count == nodes.length;
     }
 

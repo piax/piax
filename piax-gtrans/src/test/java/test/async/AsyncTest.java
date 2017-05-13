@@ -27,7 +27,6 @@ import org.piax.gtrans.TransOptions.RetransMode;
 import org.piax.gtrans.async.EventException.TimeoutException;
 import org.piax.gtrans.async.EventExecutor;
 import org.piax.gtrans.async.Indirect;
-import org.piax.gtrans.async.Log;
 import org.piax.gtrans.async.Node;
 import org.piax.gtrans.async.NodeFactory;
 import org.piax.gtrans.ov.async.ddll.DdllStrategy.DdllNodeFactory;
@@ -69,7 +68,6 @@ public class AsyncTest extends AsyncTestBase {
 
     @Test
     public void testTerminate2() {
-        Log.verbose = true;
         EventExecutor.reset();
         Indirect<Boolean> chk1 = new Indirect<>(false), chk2 = new Indirect<>(false);
         EventExecutor.sched(50, () -> {

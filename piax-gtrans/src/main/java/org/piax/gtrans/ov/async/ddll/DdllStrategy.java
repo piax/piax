@@ -13,10 +13,10 @@ import org.piax.gtrans.async.Event.LookupDone;
 import org.piax.gtrans.async.Event.TimerEvent;
 import org.piax.gtrans.async.EventException;
 import org.piax.gtrans.async.EventException.RetriableException;
+import org.piax.gtrans.async.Event;
 import org.piax.gtrans.async.EventExecutor;
 import org.piax.gtrans.async.FTEntry;
 import org.piax.gtrans.async.LocalNode;
-import org.piax.gtrans.async.Log;
 import org.piax.gtrans.async.NetworkParams;
 import org.piax.gtrans.async.Node;
 import org.piax.gtrans.async.NodeFactory;
@@ -32,8 +32,11 @@ import org.piax.gtrans.ov.async.ddll.DdllEvent.SetRAckNak;
 import org.piax.gtrans.ov.async.ddll.DdllEvent.SetRJob;
 import org.piax.gtrans.ov.async.ddll.DdllEvent.SetRNak;
 import org.piax.gtrans.ov.ddll.LinkNum;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class DdllStrategy extends NodeStrategy {
+    private static final Logger logger = LoggerFactory.getLogger(DdllStrategy.class);
     public static class DdllNodeFactory extends NodeFactory {
         @Override
         public void setupNode(LocalNode node) {
@@ -147,7 +150,7 @@ public class DdllStrategy extends NodeStrategy {
         SetR ev = new SetR(n.pred, SetRType.NORMAL, n, n.succ,
                 new LinkNum(0, 0), setRjob);
         Consumer<EventException> joinfail = (exc) -> {
-            System.out.println(n + ": join failed: " + exc);
+            logger.debug("{}: join failed: {}", n, exc);
             setStatus(DdllStatus.OUT);
             joinComplete.completeExceptionally(exc);
         };
@@ -163,15 +166,15 @@ public class DdllStrategy extends NodeStrategy {
                 leftNbrs.set(msg.nbrs);
                 // nbrs does not contain the immediate left node
                 leftNbrs.add(getPredecessor());
-                Log.verbose(() -> n + ": INSERTED, vtime = " + msg.vtime);
+                logger.trace("{}: INSERTED, vtime = ", n, msg.vtime);
                 joinComplete.complete(true);
             } else if (msg0 instanceof SetRNak){
                 SetRNak msg = (SetRNak)msg0;
                 joinMsgs += 2; // SetR and SetRNak
                 setStatus(DdllStatus.OUT);
                 // retry!
-                Log.verbose(() -> "receive SetRNak: join retry, pred=" + msg.pred
-                        + ", succ=" + msg.succ);
+                logger.trace("receive SetRNak: join retry, pred={}, succ={}", msg.pred
+                		, msg.succ);
                 if (setrnakmode.value() == SetRNakMode.SETRNAK_OPT2) {
                     // DDLLopt2
                     if (msg.pred == n.pred) {
@@ -220,16 +223,16 @@ public class DdllStrategy extends NodeStrategy {
 
     public void leave(CompletableFuture<Boolean> leaveComplete,
             SetRJob setRjob) {
-        System.out.println(n + ": leave start");
+        logger.debug("{}: leave start", n);
         stopPeriodicalPing();
         if (!fixComplete.isDone()) {
-            System.out.println("but fix() is running");
+            logger.debug("but fix() is running");
             fixComplete.thenAccept(rc -> {
                 if (rc) {
                     leave(leaveComplete, setRjob);
                 } else {
                     // leave ungracefully
-                    System.out.println("leave ungracefully");
+                    logger.debug("leave ungracefully");
                     leaveComplete.complete(false);
                 }
             });
@@ -246,7 +249,7 @@ public class DdllStrategy extends NodeStrategy {
                 rseq.next(), setRjob);
         ev.onReply((msg0, exc) -> {
             if (exc != null) {
-                System.out.println(n + ": leave failed: " + exc);
+                logger.debug("{} : leave failed: {}", n, exc);
                 if (!(exc instanceof RetriableException)) {
                     // fix and retry
                     setStatus(DdllStatus.IN);
@@ -258,12 +261,12 @@ public class DdllStrategy extends NodeStrategy {
                 }
             } else if (msg0 instanceof SetRAck) {
                 setStatus(DdllStatus.OUT);
-                System.out.println(n + ": DELETED, vtime = " + msg0.vtime);
+                logger.debug("{}: DELETED, vtime = {}", n, msg0.vtime);
                 leaveComplete.complete(true);
             } else if (msg0 instanceof SetRNak) {
                 setStatus(DdllStatus.IN);
-                System.out.println(n + ": retry deletion:" + this.toStringDetail());
-                System.out.println("pred: " + getPredecessor().toStringDetail());
+                logger.debug("{}: retry deletion:", n, this.toStringDetail());
+                logger.debug("pred: {}", getPredecessor().toStringDetail());
                 long delay =
                         (long) (NetworkParams.ONEWAY_DELAY * EventExecutor.random().nextDouble());
                 EventExecutor.sched(delay, () -> {
@@ -419,18 +422,18 @@ public class DdllStrategy extends NodeStrategy {
     }
     private CompletableFuture<Boolean> checkAndFix0() {
         fixState = FIXSTATE.CHECKING;
-        Log.verbose(() -> "FIXSTATE=" + fixState);
+        logger.trace("FIXSTATE={}", fixState);
         CompletableFuture<Boolean> future = getLiveLeft()
                 .thenCompose(nodes -> {
                     fixState = FIXSTATE.FIXING;
-                    Log.verbose(() -> "FIXSTATE=" + fixState);
+                    logger.trace("FIXSTATE=", fixState);
                     return fix(nodes[0], nodes[1]);
                 }).thenCompose(rc -> {
                     if (!rc) {
                         return checkAndFix0();
                     } else {
                         fixState = FIXSTATE.IDLE;
-                        Log.verbose(() -> "FIXSTATE=" + fixState);
+                        logger.trace("FIXSTATE={}", fixState);
                         return CompletableFuture.completedFuture(true);
                     }
                 });
@@ -450,8 +453,8 @@ public class DdllStrategy extends NodeStrategy {
                 .filter(q -> !n.maybeFailedNodes.contains(q))
                 .reduce((a, b) -> b).orElse(null);
         Node last0 = last;
-        Log.verbose(() -> "left=" + left +", last=" + last0
-                + ", suspect=" + n.maybeFailedNodes);
+        logger.trace("left={}, last={}, suspect=",left, last0,
+                n.maybeFailedNodes);
         if (last == left) {
             future.complete(new Node[]{left, leftSucc});
             return;
@@ -464,7 +467,7 @@ public class DdllStrategy extends NodeStrategy {
             if (exc != null) {
                 // redo.  because the failed node should have been added to
                 // suspectedNode, it is safe to redo.
-                System.out.println(n + ": getLiveLeft: got " + exc);
+                logger.debug("{}: getLiveLeft: got {}", n, exc);
                 getLiveLeft(left, leftSucc, candidates, future);
             } else {
                 getLiveLeft(resp.origin, resp.succ, resp.candidates, future);
@@ -479,24 +482,24 @@ public class DdllStrategy extends NodeStrategy {
      * @return CompletableFuture
      */
     private CompletableFuture<Boolean> fix(Node left, Node leftSucc) {
-        Log.verbose(() -> n + ": fix(" + left
-                + ", " + leftSucc + "): status=" + status);
+        logger.trace("{}: fix({}, {}): status={}", n, left,
+        		leftSucc, status);
         if (status != DdllStatus.IN) {
-            System.out.println("not IN");
+            logger.debug("not IN");
             return CompletableFuture.completedFuture(true);
         }
         if (leftSucc == n) {
-            Log.verbose(() -> "no problem");
+            logger.trace("no problem");
             return CompletableFuture.completedFuture(true);
         }
         n.setPred(left);
         lseq = lseq.gnext();
         SetRType type;
         if (left != leftSucc && Node.isOrdered(left.key, true, leftSucc.key, n.key, false)) {
-            System.out.println("seems " + left + " is dead");
+            logger.debug("seems {} is dead", left);
             type = SetRType.LEFTONLY;
         } else {
-            System.out.println("must join between " + left + " and " + leftSucc);
+            logger.debug("must join between " + left + " and " + leftSucc);
             type = SetRType.BOTH;
             n.setSucc(leftSucc);
         }
@@ -505,8 +508,8 @@ public class DdllStrategy extends NodeStrategy {
         ev.onReply((msg0, exc) -> {
             if (exc != null || msg0 instanceof SetRNak) {
                 // while fixing fails, retry fixing 
-                System.out.println(n + ": fix failed: "
-                        + (exc == null ? "SetRNak" : exc));
+                logger.debug("{}: fix failed: {}", n, 
+                       (exc == null ? "SetRNak" : exc));
                 future.complete(false);
             } else if (msg0 instanceof SetRAck) {
                 SetRAck msg = (SetRAck)msg0;
@@ -515,7 +518,7 @@ public class DdllStrategy extends NodeStrategy {
                 if (type != SetRType.LEFTONLY) {
                     rseq = msg.rnewnum;
                 }
-                System.out.println(n + ": fix completed");
+                logger.debug("{}: fix completed");
                 future.complete(true);
             } else {
                 throw new Error("shouldn't happen");

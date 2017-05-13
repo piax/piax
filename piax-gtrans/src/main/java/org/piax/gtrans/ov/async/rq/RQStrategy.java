@@ -27,7 +27,6 @@ import org.piax.gtrans.async.EventExecutor;
 import org.piax.gtrans.async.FTEntry;
 import org.piax.gtrans.async.Indirect;
 import org.piax.gtrans.async.LocalNode;
-import org.piax.gtrans.async.Log;
 import org.piax.gtrans.async.Node;
 import org.piax.gtrans.async.NodeFactory;
 import org.piax.gtrans.async.NodeStrategy;
@@ -93,7 +92,7 @@ public class RQStrategy extends NodeStrategy {
                     if (flag.val) {
                         return;
                     }
-                    Log.verbose(() -> "handleLookup: rval = " + rval);
+                    logger.trace("handleLookup: rval = {}", rval);
                     Event ev;
                     if (rval == null) {
                         // Timeout!
@@ -278,7 +277,7 @@ public class RQStrategy extends NodeStrategy {
         // get the right-most node within the range
         rangeQueryRQRange(Collections.singleton(rEnd),
                 new InsertionPointAdapter(rval -> {
-                    Log.verbose(() -> "startFQL rq rval = " + rval);
+                    logger.trace("startFQL rq rval = {}", rval);
                     if (rval != null) {
                         flag.val = true;
                         Node[] nodes = rval.getValue();
@@ -289,7 +288,7 @@ public class RQStrategy extends NodeStrategy {
                         forwardQueryLeft0(p, nodes[0], nodes[1], trace, visited);
                     } else {
                         if (!flag.val) {
-                            System.err.println("forwardQueryLeft: couldn't find the start node");
+                            logger.debug("forwardQueryLeft: couldn't find the start node");
                             p.adapter.handleResult(null);
                         }
                     }
@@ -299,8 +298,7 @@ public class RQStrategy extends NodeStrategy {
     final static long RETRANS_INTERVAL = 1000;
     private <T> void forwardQueryLeft0(FQLParams<T> p, Node current, 
             Node expectedRight, LinkedList<Node> trace, List<Node> visited) {
-        Log.verbose(() -> "current=" + current + ", expected=" + expectedRight
-                + ", trace=" + trace);
+        logger.trace("current={}, expected={}, trace={}", current, expectedRight, trace);
         boolean circulated = visited.stream()
                 .filter(node -> node == current)
                 .findAny()
@@ -315,7 +313,7 @@ public class RQStrategy extends NodeStrategy {
         n.post(ev);
         ev.onReply((rep, exc) -> {
             if (exc != null) {
-                Log.verbose(() -> "onReply: got " + exc + ", trace=" + trace);
+                logger.trace("onReply: got {}, trace={}", exc, trace);
                 EventExecutor.sched(RETRANS_INTERVAL, () -> {
                     if (trace.isEmpty()) {
                         startForwardQueryLeft(p, visited);
@@ -344,8 +342,8 @@ public class RQStrategy extends NodeStrategy {
                     }
                     forwardQueryLeft0(p, rep.pred, current, trace, visited);
                 } else {  // right node mismatch case
-                    Log.verbose(() -> "right node mismatch: expected=" 
-                            + expectedRight +", actual=" + rep.succ);
+                    logger.trace("right node mismatch: expected={}, actual={}", 
+                            expectedRight, rep.succ);
                     if (Node.isOrdered(current.key, rep.succ.key, expectedRight.key)) {
                         forwardQueryLeft0(p, rep.succ, expectedRight, trace, visited);
                     } else {

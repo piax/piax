@@ -12,9 +12,13 @@ import org.piax.gtrans.RPCIf;
 import org.piax.gtrans.RPCInvoker;
 import org.piax.gtrans.RemoteCallable;
 import org.piax.gtrans.RemoteCallable.Type;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public interface EventSender {
+    static final Logger logger = LoggerFactory.getLogger(EventSender.class);
     void send(Event ev) throws Exception;
+
     Endpoint getEndpoint();
 
     public static class EventSenderSim implements EventSender {
@@ -38,12 +42,11 @@ public interface EventSender {
                 ev.delay = EventExecutor.latency(ev.sender, ev.receiver);
             }
             ev.vtime = EventExecutor.getVTime() + ev.delay;
-            if (Log.verbose) {
+            if (logger.isTraceEnabled()) {
                 if (ev.delay != 0) {
-                    System.out.println(ev.sender + "|send/forward event " + ev
-                            + ", (arrive at T" + ev.vtime + ")");
+                    logger.trace("{} |send/forward event {}, (arrive at T{})", ev.sender, ev, ev.vtime);
                 } else {
-                    System.out.println(ev.sender + "|send/forward event " + ev);
+                    logger.trace("{} |send/forward event {}", ev.sender, ev);
                 }
             }
             // because sender Events and receiver Events are distinguished,
@@ -77,8 +80,8 @@ public interface EventSender {
             assert ev.delay == Node.NETWORK_LATENCY;
             //ev.vtime = EventExecutor.getVTime() + ev.delay;
             ev.vtime = 0;
-            if (Log.verbose) {
-                System.out.println(ev.sender + "|send/forward event " + ev);
+            if (logger.isTraceEnabled()) {
+                logger.trace("{}|send/forward event {}", ev.sender, ev);
             }
             @SuppressWarnings("unchecked")
             EventReceiverIf stub = getStub((E) ev.receiver.addr,
