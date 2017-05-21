@@ -16,6 +16,7 @@ package org.piax.gtrans.ov;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Set;
+import java.util.function.BiConsumer;
 
 import org.piax.common.Destination;
 import org.piax.common.Endpoint;
@@ -41,11 +42,12 @@ public interface Overlay<D extends Destination, K extends Destination> extends
 
     Class<?> getAvailableKeyType();
 
-    
+    /*
     // Utility functions
     <E> FutureQueue<E> singletonFutureQueue(E value);
     
     <E> FutureQueue<E> singletonFutureQueue(E value, Throwable t);
+    */
     /*
      * TODO
      * 以前の実装では、Overlay が動的に生成されるオブジェクトであることを考慮して、
@@ -99,6 +101,45 @@ public interface Overlay<D extends Destination, K extends Destination> extends
             int timeout) throws ParseException, ProtocolUnsupportedException,
             IOException;
 
+    // async request interface
+    public void requestAsync(ObjectId sender, ObjectId receiver,
+            String dstExp, Object msg,
+            BiConsumer<Object, Exception> resultsReceiver,
+            TransOptions opts) throws ParseException, ProtocolUnsupportedException, IOException;
+
+    /* Reduced argument versions of requestAsync */
+    default public void requestAsync(ObjectId appId, 
+            String dstExp, Object msg,
+            BiConsumer<Object, Exception> responseReceiver,
+            TransOptions opts
+            ) throws ParseException, ProtocolUnsupportedException, IOException {
+        requestAsync(appId, appId, dstExp, msg, responseReceiver, opts);
+    }
+    
+    /* Reduced argument versions of requestAsync */
+    default public void requestAsync(ObjectId appId, 
+            String dstExp, Object msg,
+            BiConsumer<Object, Exception> responseReceiver
+            ) throws ParseException, ProtocolUnsupportedException, IOException {
+        requestAsync(appId, appId, dstExp, msg, responseReceiver, null);
+    }
+
+    /* Reduced argument versions of requestAsync */
+    default public void requestAsync(String dstExp, Object msg,
+            BiConsumer<Object, Exception> responseReceiver,
+            TransOptions opts
+            ) throws ParseException, ProtocolUnsupportedException, IOException {
+        requestAsync(null, null, dstExp, msg, responseReceiver, opts);
+    }
+
+    /* Reduced argument versions of requestAsync */
+    default public void requestAsync(String dstExp, Object msg,
+            BiConsumer<Object, Exception> responseReceiver
+            ) throws ParseException, ProtocolUnsupportedException, IOException {
+        requestAsync(null, null, dstExp, msg, responseReceiver, null);
+    }
+    
+    
     /**
      * 指定されたkeyをオーバレイに登録する。
      * <p>
