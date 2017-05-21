@@ -22,8 +22,8 @@ import org.piax.common.Destination;
 public interface RequestTransportListener<D extends Destination> extends
         TransportListener<D> {
 
-    void onReceive(RequestTransport<D> trans, ReceivedMessage rmsg);
-    
+    default void onReceive(RequestTransport<D> trans, ReceivedMessage rmsg) {
+    }
     /**
      * 
      * @param trans the request transport.
