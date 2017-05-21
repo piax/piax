@@ -98,12 +98,29 @@ public interface RequestTransport<D extends Destination> extends Transport<D> {
             TransOptions opts);
 
     /* Reduced argument versions of requestAsync */
+    default public void requestAsync(String appIdStr, 
+            D dst, Object msg,
+            BiConsumer<Object, Exception> responseReceiver,
+            TransOptions opts
+            ) {
+        requestAsync(new ObjectId(appIdStr), new ObjectId(appIdStr), dst, msg, responseReceiver, opts);
+    }
+    
+    /* Reduced argument versions of requestAsync */
     default public void requestAsync(ObjectId appId, 
             D dst, Object msg,
             BiConsumer<Object, Exception> responseReceiver,
             TransOptions opts
             ) {
         requestAsync(appId, appId, dst, msg, responseReceiver, opts);
+    }
+    
+    /* Reduced argument versions of requestAsync */
+    default public void requestAsync(String appIdStr, 
+            D dst, Object msg,
+            BiConsumer<Object, Exception> responseReceiver
+            ) {
+        requestAsync(new ObjectId(appIdStr), new ObjectId(appIdStr), dst, msg, responseReceiver, null);
     }
     
     /* Reduced argument versions of requestAsync */
