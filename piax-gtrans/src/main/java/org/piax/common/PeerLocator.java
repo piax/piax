@@ -72,25 +72,7 @@ public abstract class PeerLocator implements Endpoint {
      */
     public abstract RawTransport<? extends PeerLocator> newRawTransport(PeerId peerId)
             throws IOException;
-    
-    static public PeerLocator newLocator(String spec) {
-        PeerLocator locator = null;
-        String specs[] = spec.split(":");
-        if (specs[0].equals("tcp")) {
-            locator = new TcpLocator(spec);
-        }
-        else if (specs[0].equals("udp")) {
-            locator = new UdpLocator(spec);
-        }
-        else if (specs[0].equals("netty")) {
-            try {
-                locator = new NettyLocator(spec);
-            } catch (ProtocolUnsupportedException e) {
-            }
-        }
-        return locator;
-    }
-    
+
     /**
      * targetに指定されたPeerLocatorオブジェクトと同一のクラスであるときに
      * trueを返す。
