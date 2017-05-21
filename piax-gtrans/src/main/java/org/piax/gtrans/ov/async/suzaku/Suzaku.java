@@ -24,6 +24,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
@@ -31,6 +32,7 @@ import org.piax.common.ComparableKey;
 import org.piax.common.Destination;
 import org.piax.common.Endpoint;
 import org.piax.common.ObjectId;
+import org.piax.common.PeerId;
 import org.piax.common.TransportId;
 import org.piax.common.subspace.KeyRange;
 import org.piax.common.subspace.KeyRanges;
@@ -38,6 +40,7 @@ import org.piax.common.subspace.LowerUpper;
 import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.FutureQueue;
 import org.piax.gtrans.IdConflictException;
+import org.piax.gtrans.Peer;
 import org.piax.gtrans.ProtocolUnsupportedException;
 import org.piax.gtrans.ReceivedMessage;
 import org.piax.gtrans.RemoteValue;
@@ -52,6 +55,7 @@ import org.piax.gtrans.async.FTEntry;
 import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.async.Node;
 import org.piax.gtrans.impl.NestedMessage;
+import org.piax.gtrans.netty.idtrans.PrimaryKey;
 import org.piax.gtrans.ov.OverlayListener;
 import org.piax.gtrans.ov.OverlayReceivedMessage;
 import org.piax.gtrans.ov.RoutingTableAccessor;
@@ -63,6 +67,7 @@ import org.piax.gtrans.ov.compound.CompoundOverlay.SpecialKey;
 import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.gtrans.ov.ddll.Link;
 import org.piax.gtrans.ov.impl.OverlayImpl;
+import org.piax.gtrans.ov.ring.rq.DdllKeyRange;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -73,6 +78,8 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
             .getLogger(Suzaku.class);
 
     public static TransportId DEFAULT_TRANSPORT_ID = new TransportId("suzaku");
+    public static final int DEFAULT_SUZAKU_TYPE = 3; // Suzaku algorithm.
+    
     RQNodeFactory factory;
     SuzakuEventSender sender;
     Map<K,LocalNode> nodes;
@@ -122,17 +129,33 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
             EventExecutor.enqueue(ev);
         }
     }
-        
+    
+    public Suzaku(String spec) throws IdConflictException, IOException {
+        this(DEFAULT_TRANSPORT_ID,
+                Peer.getInstance(PeerId.newId()).newBaseChannelTransport(Endpoint.newEndpoint(spec)),
+                DEFAULT_SUZAKU_TYPE);
+    }
+    
     public Suzaku(ChannelTransport<?> lowerTrans) throws IdConflictException,
             IOException {
-        this(DEFAULT_TRANSPORT_ID, lowerTrans);
+        this(DEFAULT_TRANSPORT_ID, lowerTrans, DEFAULT_SUZAKU_TYPE);
+    }
+
+    public Suzaku(ChannelTransport<?> lowerTrans, int suzakuType) throws IdConflictException,
+    IOException {
+        this(DEFAULT_TRANSPORT_ID, lowerTrans, suzakuType);
     }
 
     public Suzaku(TransportId transId, ChannelTransport<?> lowerTrans)
             throws IdConflictException, IOException {
+        this(transId, lowerTrans, DEFAULT_SUZAKU_TYPE);
+    }
+
+    public Suzaku(TransportId transId, ChannelTransport<?> lowerTrans, int suzakuType)
+            throws IdConflictException, IOException {
         super(lowerTrans.getPeer(), transId, lowerTrans);
         peer.registerBaseOverlay(transIdPath);
-        SuzakuNodeFactory base = new SuzakuNodeFactory(3);
+        SuzakuNodeFactory base = new SuzakuNodeFactory(suzakuType);
         factory = new RQNodeFactory(base);
         //sender = new EventSenderNet(transId, lowerTrans);
         sender = new SuzakuEventSender<>(transId, lowerTrans);
@@ -172,19 +195,38 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         public NestedMessage nmsg;
         @SuppressWarnings("rawtypes")
         transient public Suzaku szk;
+        public boolean isMaxLessThan;
         public ExecQueryAdapter(ObjectId objId, NestedMessage nmsg, Consumer<RemoteValue<FutureQueue<Object>>> resultsReceiver) {
             super(resultsReceiver);
             this.nmsg = nmsg;
+            this.isMaxLessThan = false;
+        }
+        public ExecQueryAdapter(ObjectId objId, NestedMessage nmsg, boolean isMaxLessThan, Consumer<RemoteValue<FutureQueue<Object>>> resultsReceiver) {
+            super(resultsReceiver);
+            this.nmsg = nmsg;
+            this.isMaxLessThan = isMaxLessThan;
         }
         @SuppressWarnings("rawtypes")
         public ExecQueryAdapter(Suzaku szk) { // for executor side.
             super(null);
             this.szk = szk;
         }
+
+        @Override
+        protected CompletableFuture<FutureQueue<Object>> getRaw(RQAdapter<FutureQueue<Object>> received,
+                LocalNode localNode, DdllKeyRange range, long qid) {
+            ExecQueryAdapter r = (ExecQueryAdapter) received; 
+            if (r.isMaxLessThan) {
+                logger.trace("isMaxLessThan:" + range);
+                return get(r, range.from);
+            }
+            logger.trace("NOT isMaxLessThan:" + range);
+            return super.getRaw(received, localNode, range, qid);
+        }
+        
         @SuppressWarnings("unchecked")
         @Override
         public CompletableFuture<FutureQueue<Object>> get(RQAdapter<FutureQueue<Object>> received, DdllKey key) {
-            //return CompletableFuture.completedFuture(szk.onReceiveRequest(key, ((ExecQueryAdapter)received).nmsg));
             return CompletableFuture.supplyAsync(()->szk.onReceiveRequest(key, ((ExecQueryAdapter)received).nmsg));
         }
     }
@@ -258,39 +300,109 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
                     "chord sharp only supports ranges");
         }
     }
-    
+    @Override
+    public void requestAsync(ObjectId sender, ObjectId receiver, D d,
+            Object msg, BiConsumer<Object, Exception> resultsReceiver,
+            TransOptions opts) {
+        // TODO Auto-generated method stub
+        if (sender == null) {
+            sender = getDefaultAppId();
+        }
+        if (receiver == null) {
+            receiver = getDefaultAppId();
+        }
+        if (opts == null) {
+            opts = new TransOptions();
+        }
+        Collection<KeyRange<K>> ranges = null;
+        
+        if (d instanceof ComparableKey) {
+            KeyRanges<K> dst = new KeyRanges<K>((K)d);
+            ranges = dst.getRanges();
+        }
+        if (d instanceof KeyRanges) {
+            KeyRanges<K> dst = (KeyRanges<K>) d;
+            ranges = dst.getRanges();
+        }
+        if (d instanceof KeyRange) {
+            ranges = (Collection<KeyRange<K>>) Collections.singleton(d);
+        }
+        NestedMessage nmsg = new NestedMessage(sender, receiver, null, peerId, msg);
+        
+        getEntryPoint()
+        .rangeQueryAsync(ranges, new ExecQueryAdapter(receiver, nmsg, (ret)-> {
+            try {
+                if (ret == null) {
+                    resultsReceiver.accept(null, null); // End of receive.
+                }
+                else {
+                    FutureQueue<Object> o = ret.get();
+                    for (RemoteValue<Object> r : o) {
+                        resultsReceiver.accept(r.getValue(), (Exception)r.getException());
+                    }
+                }
+            }
+            catch (Exception e) {
+                resultsReceiver.accept(null, e);
+            }
+        }), opts);
+    }
+
     /*
      * for MaxLessEq key query
      */
     public FutureQueue<?> forwardQueryToMaxLessThan(ObjectId sender,
             ObjectId receiver, LowerUpper lu, Object msg, TransOptions opts)
             throws IllegalStateException {
-        logger.trace("ENTRY:");
+        logger.debug("ENTRY: {}", msg);
         if (!isJoined) {
             throw new IllegalStateException("Not joined to the network yet.");
         }
         if (opts == null) {
             opts = new TransOptions();
         }
+        logger.debug("opts: {}", opts);
         NestedMessage nmsg = new NestedMessage(sender, receiver, null, peerId, msg);
         FutureQueue<Object> fq = new FutureQueue<>();
-        getEntryPoint().forwardQueryLeftAsync(lu.getRange(), lu.getMaxNum(),
-                new ExecQueryAdapter(receiver, nmsg, (ret)-> {
-                    try {
-                        if (ret == null) {
-                            fq.setEOFuture();
-                        }
-                        else {
-                            FutureQueue<Object> o = ret.get();
-                            for (RemoteValue<Object> r : o) {
-                                fq.put(r);
+        if (lu.getMaxNum() == 1) {
+            KeyRange<?> range = lu.getRange();
+            getEntryPoint().rangeQueryAsync(Collections.singleton(new KeyRange<>(range.to, true, range.to, true)),
+                    new ExecQueryAdapter(receiver, nmsg, true, (ret)-> {
+                        try {
+                            if (ret == null) {
+                                fq.setEOFuture();
                             }
+                            else {
+                                FutureQueue<Object> o = ret.get();
+                                for (RemoteValue<Object> r : o) {
+                                    fq.put(r);
+                                }
+                            }
+                        } catch (Exception e) {
+                            e.printStackTrace();
                         }
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                })
-                , opts);
+                    })
+            , opts);
+        }
+        else {
+            getEntryPoint().forwardQueryLeftAsync(lu.getRange(), lu.getMaxNum(),
+                    new ExecQueryAdapter(receiver, nmsg, (ret)-> {
+                        try {
+                            if (ret == null) {
+                                fq.setEOFuture();
+                            }
+                            else {
+                                FutureQueue<Object> o = ret.get();
+                                for (RemoteValue<Object> r : o) {
+                                    fq.put(r);
+                                }
+                            }
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    })
+            , opts);
+        }
         return fq;
     }
 
@@ -306,6 +418,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         // matchしたkeyセットと upperが登録しているkeyセットの共通部分を求める
         Set<K> keys = getKeys(nmsg.receiver);
         keys.retainAll(matchedKeys);
+        // if keys.size == 0, the listener should not be called? 
 
         OverlayReceivedMessage<K> rcvMsg = 
                 new OverlayReceivedMessage<K>(
@@ -313,7 +426,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
 
         TransportListener<D> listener = getListener0(nmsg.receiver);
         if (listener == null) {
-            logger.info("onReceiveRequest data purged as no such listener {}",
+            logger.debug("onReceiveRequest data purged as no such listener {}",
                     nmsg.receiver);
             return FutureQueue.emptyQueue();
         }
@@ -329,11 +442,28 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
             return FutureQueue.emptyQueue();
         }
     }
+    /*
+    // toplevel api.
+    public void setOverlayListener(ObjectId appId, OverlayListener<D,K> listener) {
+        listenersByUpper.put(appId, listener);
+    }*/
+
+    public void setRequestListener(ObjectId appId, RequestTransportListener<D> listener) {
+        listenersByUpper.put(appId, listener);
+    }
+    
+    public void setRequestListener(RequestTransportListener<D> listener) {
+        listenersByUpper.put(getDefaultAppId(), listener);
+    }
 
     private boolean meansRoot(Endpoint seed) {
         return lowerTrans.getEndpoint().equals(seed);
         
         //return getEndpoint().equals(seed);
+    }
+    
+    public boolean join(String spec) throws ProtocolUnsupportedException, IOException {
+        return join(Endpoint.newEndpoint(spec));
     }
 
     /*
@@ -352,8 +482,16 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
                 throw new IllegalArgumentException("invalied specified seeds");
             }
 
+            K primaryKey;
+            if (sender.getEndpoint() instanceof PrimaryKey) { // IdChannelTransport
+                primaryKey = (K)(((PrimaryKey)sender.getEndpoint()).getRawKey());
+            }
+            else {
+                primaryKey = (K)this.peerId;
+            }
             // join時に必ず、peerIdを登録する
-            registerKey((K) this.peerId);
+            //registerKey((K) this.peerId);
+            registerKey(primaryKey);
             // if root peer
             if (seeds.size() == 1) {
                 for (Endpoint peerLocator : seeds) {
