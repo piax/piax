@@ -1018,7 +1018,7 @@ public class TestOverlay {
             s2.join("tcp:localhost:12367");
             s2.addKey(new StringKey("hello"));
             s2.setRequestListener((szk, msg) -> { // make a response
-                return szk.singletonFutureQueue(msg.getMessage() + "2");
+                return msg.getMessage() + "2";
             });
             AtomicBoolean received = new AtomicBoolean(false);
             s1.requestAsync(new StringKey("hello"), "world",
@@ -1045,7 +1045,7 @@ public class TestOverlay {
             s1.join("id:p1:tcp:localhost:12367");
             s2.join("id:p1:tcp:localhost:12367");
             s2.setRequestListener((szk, msg) -> { // make a response
-                return szk.singletonFutureQueue(msg.getMessage() + "2");
+                return msg.getMessage() + "2";
             });
             AtomicBoolean received = new AtomicBoolean(false);
             s1.requestAsync(new StringKey("p2"), "world",
@@ -1057,6 +1057,44 @@ public class TestOverlay {
                     });
             Thread.sleep(1000); // unless this line, finishes immediately.
             assertTrue(received.get());
+        }
+        finally {
+            s1.fin();
+            s2.fin();
+        }
+    }
+
+    @Test
+    public void minimalRangeRequestIdTest() throws Exception {
+        Suzaku<KeyRange<DoubleKey>, DoubleKey> s1 = new Suzaku<>("id:0.0:tcp:localhost:12367");
+        Suzaku<KeyRange<DoubleKey>, DoubleKey> s2 = new Suzaku<>("id:0.5:tcp:localhost:12368");
+        Suzaku<KeyRange<DoubleKey>, DoubleKey> s3 = new Suzaku<>("id:0.7:tcp:localhost:12369");
+        try {
+            s1.join("id:0.0:tcp:localhost:12367");
+            s2.join("id:0.0:tcp:localhost:12367");
+            s3.join("id:0.0:tcp:localhost:12367");
+            s2.setRequestListener((szk, msg) -> { // make a response
+                return msg.getMessage() + "2";
+            });
+            s3.setRequestListener((szk, msg) -> { // make a response
+                return msg.getMessage() + "3";
+            });
+            AtomicBoolean received2 = new AtomicBoolean(false);
+            AtomicBoolean received3 = new AtomicBoolean(false);
+            s1.requestAsync(new KeyRange<DoubleKey>(new DoubleKey(0.2), true, new DoubleKey(0.8), true),
+                    "world",
+                    (ret, e)-> { // receive response
+                        if (ret != null) {
+                            if (ret.equals("world2")) {
+                                received2.set(true);
+                            }
+                            if (ret.equals("world3")) {
+                                received3.set(true);
+                            }
+                        }
+                    });
+            Thread.sleep(1000); // unless this line, finishes immediately.
+            assertTrue(received2.get() && received3.get());
         }
         finally {
             s1.fin();
