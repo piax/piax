@@ -21,7 +21,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.piax.common.Endpoint;
 import org.piax.common.ObjectId;
 import org.piax.common.PeerLocator;
 import org.piax.common.TransportId;
@@ -30,6 +29,7 @@ import org.piax.gtrans.GTransConfigValues;
 import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.Peer;
 import org.piax.gtrans.ProtocolUnsupportedException;
+import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.impl.ExceededSizeException;
 import org.piax.gtrans.impl.InvalidMessageException;
 import org.piax.gtrans.impl.NestedMessage;
@@ -90,8 +90,9 @@ public class BaseChannelTransportImpl<E extends PeerLocator> extends
 
     @Override
     protected void lowerSend(ObjectId sender, ObjectId receiver,
-            E dst, NestedMessage nmsg)
+            E dst, NestedMessage nmsg, TransOptions opts)
             throws ProtocolUnsupportedException, IOException {
+        // XXX opts is ignored.
         Channel<E> ch = null;
         Object bb;
         if (GTransConfigValues.ALLOW_REF_SEND_IN_BASE_TRANSPORT

@@ -15,6 +15,7 @@ package org.piax.gtrans.impl;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.function.BiConsumer;
 
 import org.piax.common.Destination;
 import org.piax.common.ObjectId;
@@ -130,6 +131,13 @@ public abstract class RequestTransportImpl<D extends Destination> extends
     		return request(upperTrans, upperTrans, dst, msg, opts);
     }
     
+    public void requestAsync(ObjectId sender, ObjectId receiver,
+            D dst, Object msg,
+            BiConsumer<Object, Exception> resultsReceiver,
+            TransOptions opts) {
+        resultsReceiver.accept(null, new ProtocolUnsupportedException("not implemented yet."));
+    }
+
     static class IsEasySend implements Serializable {
         private static final long serialVersionUID = 1L;
         final Object msg;
@@ -179,6 +187,7 @@ public abstract class RequestTransportImpl<D extends Destination> extends
             listener.onReceive(trans, rmsg);
             return FutureQueue.emptyQueue();
         } else {
+            logger.debug("select onReceiveRequest: trans:{}", trans.getTransportId());
             return listener.onReceiveRequest(trans, rmsg);
         }
     }
