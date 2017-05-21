@@ -11,12 +11,15 @@ import java.util.List;
 import org.junit.Test;
 import org.piax.common.ComparableKey;
 import org.piax.common.Destination;
+import org.piax.common.Endpoint;
 import org.piax.common.ObjectId;
 import org.piax.common.PeerId;
 import org.piax.common.PeerLocator;
 import org.piax.common.TransportId;
 import org.piax.common.dcl.DCLTranslator;
 import org.piax.common.subspace.KeyRange;
+import org.piax.common.subspace.Lower;
+import org.piax.common.subspace.LowerUpper;
 import org.piax.common.wrapper.DoubleKey;
 import org.piax.gtrans.Channel;
 import org.piax.gtrans.ChannelListener;
@@ -28,6 +31,7 @@ import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.TransOptions.RetransMode;
 import org.piax.gtrans.Transport;
 import org.piax.gtrans.TransportListener;
+import org.piax.gtrans.netty.NettyLocator;
 import org.piax.gtrans.netty.idtrans.PrimaryKey;
 import org.piax.gtrans.ov.Overlay;
 import org.piax.gtrans.ov.OverlayListener;
@@ -1039,6 +1043,122 @@ public class TestTransport {
         p2.fin();
     }
     
+    @Test
+    public void IdTransTest() throws Exception {
+        // get peers
+        Peer p1 = Peer.getInstance(new PeerId("p1"));
+        Peer p2 = Peer.getInstance(new PeerId("p2"));
+        
+        // base transport (Emu)
+        Endpoint ep;
+        ChannelTransport<?> bt1 = p1.newBaseChannelTransport(
+                ep = new PrimaryKey(new DoubleKey(0.0), new NettyLocator("localhost", 12367)));
+        ChannelTransport<?> bt2 = p2.newBaseChannelTransport(
+                new PrimaryKey(new DoubleKey(1.0), new NettyLocator("localhost", 12368)));
+
+        // top level
+        Overlay<DoubleKey, DoubleKey> ov1, ov2;
+        ov1 = new Suzaku<DoubleKey, DoubleKey>(
+                        new TransportId("mskip"), bt1);
+        ov2 = new Suzaku<DoubleKey, DoubleKey>(
+                        new TransportId("mskip"), bt2);
+
+        sg_received1 = false;
+        sg_received2 = false;
+
+        ov1.setListener((trans, rmsg)-> {
+                logger.debug("emu recv1:" + rmsg.getMessage());
+                sg_received1 = rmsg.getMessage().equals("recv");
+        });
+
+        ov2.setListener((trans, rmsg)-> {
+                try {
+                    logger.debug("emu recv2:" + rmsg.getMessage());
+                    sg_received2 = true;
+                    trans.send(new DoubleKey(Double.parseDouble(
+                            (String) rmsg.getMessage())), "recv");
+                } catch (IOException e) {
+                    fail("IOException occured");
+                }
+        });
+
+        boolean succ1 = ov1.join(ep);
+        boolean succ2 = ov2.join(ep);
+
+        assertTrue("SG1 join failed", succ1);
+        assertTrue("SG2 join failed", succ2);
+
+        DoubleKey key = null;
+        for (ComparableKey<?> obj : ov1.getKeys()) {
+            if (obj instanceof DoubleKey) {
+                key = (DoubleKey) obj;
+            }
+        }
+        ov1.send(new DoubleKey(1.0), key.getKey().toString());
+
+        Thread.sleep(1000);
+        assertTrue("SG2 receive failed", sg_received2);
+        assertTrue("SG1 receive failed", sg_received1);
+
+        p1.fin();
+        p2.fin();
+    }
+
+    @Test
+    public void LowerIdTest() throws Exception {
+        // get peers
+        Peer p1 = Peer.getInstance(new PeerId("p1"));
+        Peer p2 = Peer.getInstance(new PeerId("p2"));
+        
+        Endpoint ep;
+        ChannelTransport<?> bt1 = p1.newBaseChannelTransport(
+                ep = new PrimaryKey(new DoubleKey(0.0), new NettyLocator("localhost", 12367)));
+        ChannelTransport<?> bt2 = p2.newBaseChannelTransport(
+                new PrimaryKey(new DoubleKey(0.5), new NettyLocator("localhost", 12368)));
+
+        // top level
+        Overlay<LowerUpper, DoubleKey> ov1, ov2;
+        ov1 = new Suzaku<LowerUpper, DoubleKey>(
+                        new TransportId("mskip"), bt1);
+        ov2 = new Suzaku<LowerUpper, DoubleKey>(
+                        new TransportId("mskip"), bt2);
+
+        sg_received1 = false;
+        sg_received2 = false;
+
+        ov1.setListener((trans, rmsg) -> {
+                logger.debug("emu recv1:" + rmsg.getMessage());
+                sg_received1 = rmsg.getMessage().equals("recv");
+        });
+
+        ov2.setListener((trans, rmsg) -> {
+                try {
+                    logger.debug("emu recv2:" + rmsg.getMessage());
+                    sg_received2 = true;
+                    trans.send(new Lower<DoubleKey>(false, new DoubleKey(0.1), 1), "recv");
+                } catch (IOException e) {
+                    fail("IOException occured");
+                }
+        });
+    try {
+
+        boolean succ1 = ov1.join(ep);
+        boolean succ2 = ov2.join(ep);
+
+        assertTrue("SG1 join failed", succ1);
+        assertTrue("SG2 join failed", succ2);
+        Thread.sleep(500);
+        ov1.send(new Lower<DoubleKey>(false, new DoubleKey(0.6), 1), "data");
+        Thread.sleep(1000);
+        assertTrue("SG2 receive failed", sg_received2);
+        assertTrue("SG1 receive failed", sg_received1);
+    }
+    finally {
+        p1.fin();
+        p2.fin();
+    }
+    }    
+
     @Test
     public void CSTransportTestDirectReply() throws Exception {
         // get peers

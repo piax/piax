@@ -5,6 +5,7 @@ import static org.junit.Assert.assertTrue;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.Test;
 import org.piax.common.ComparableKey;
@@ -982,6 +983,84 @@ public class TestOverlay {
             for (int i = 0; i < numOfPeers; i++) {
                 peers[i].fin();
             }
+        }
+    }
+    
+    @Test
+    public void minimalSendTest() throws Exception {
+        Suzaku<StringKey, StringKey> s1 = new Suzaku<>("tcp:localhost:12367");
+        Suzaku<StringKey, StringKey> s2 = new Suzaku<>("tcp:localhost:12368");
+        try {
+            s1.join("tcp:localhost:12367");
+            s2.join("tcp:localhost:12367");
+            s2.addKey(new StringKey("hello"));
+            AtomicBoolean received = new AtomicBoolean(false);
+            s2.setListener((szk, msg) -> {
+                received.set(true);
+                assertTrue(msg.getMessage().equals("world"));
+            });
+            s1.send(new StringKey("hello"), "world");
+            Thread.sleep(1000); // unless this line, finishes immediately.
+            assertTrue(received.get());
+        }
+        finally {
+            s1.fin();
+            s2.fin();
+        }
+    }
+
+    @Test
+    public void minimalRequestTest() throws Exception {
+        Suzaku<StringKey, StringKey> s1 = new Suzaku<>("tcp:localhost:12367");
+        Suzaku<StringKey, StringKey> s2 = new Suzaku<>("tcp:localhost:12368");
+        try {
+            s1.join("tcp:localhost:12367");
+            s2.join("tcp:localhost:12367");
+            s2.addKey(new StringKey("hello"));
+            s2.setRequestListener((szk, msg) -> { // make a response
+                return szk.singletonFutureQueue(msg.getMessage() + "2");
+            });
+            AtomicBoolean received = new AtomicBoolean(false);
+            s1.requestAsync(new StringKey("hello"), "world",
+                    (ret, e)-> { // receive response
+                        if (ret != null) {
+                            received.set(true);
+                            assertTrue(ret.equals("world2"));
+                        }
+                    });
+            Thread.sleep(1000); // unless this line, finishes immediately.
+            assertTrue(received.get());
+        }
+        finally {
+            s1.fin();
+            s2.fin();
+        }
+    }
+
+    @Test
+    public void minimalRequestIdTest() throws Exception {
+        Suzaku<StringKey, StringKey> s1 = new Suzaku<>("id:p1:tcp:localhost:12367");
+        Suzaku<StringKey, StringKey> s2 = new Suzaku<>("id:p2:tcp:localhost:12368");
+        try {
+            s1.join("id:p1:tcp:localhost:12367");
+            s2.join("id:p1:tcp:localhost:12367");
+            s2.setRequestListener((szk, msg) -> { // make a response
+                return szk.singletonFutureQueue(msg.getMessage() + "2");
+            });
+            AtomicBoolean received = new AtomicBoolean(false);
+            s1.requestAsync(new StringKey("p2"), "world",
+                    (ret, e)-> { // receive response
+                        if (ret != null) {
+                            received.set(true);
+                            assertTrue(ret.equals("world2"));
+                        }
+                    });
+            Thread.sleep(1000); // unless this line, finishes immediately.
+            assertTrue(received.get());
+        }
+        finally {
+            s1.fin();
+            s2.fin();
         }
     }
 }
