@@ -95,19 +95,19 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
         int cmp = keyComp.compare(rawKey, o.rawKey);
         if (cmp != 0) {
             if (logger.isDebugEnabled()) {
-                logger.debug("compareTo: " + this + ", " + o + " = " + cmp);
+                logger.debug("compareTo: {}, {} = {}", this, o, cmp);
             }
             return cmp;
         }
         cmp = uniqId.compareTo(o.uniqId);
         if (cmp != 0) {
             if (logger.isDebugEnabled()) {
-                logger.debug("compareTo: " + this + ", " + o + " = " + cmp);
+                logger.debug("compareTo: {}, {} = {}", this, o, cmp);
             }
             return cmp;
         }
         if (logger.isDebugEnabled()) {
-            logger.debug("compareTo: " + this + ", " + o + " = 0");
+            logger.debug("compareTo: {}, {} = 0", this, o);
         }
         return 0;
     }
