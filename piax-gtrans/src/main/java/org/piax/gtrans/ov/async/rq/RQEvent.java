@@ -32,22 +32,22 @@ public abstract class RQEvent {
                 // special case
                 Event ev = new GetLocalValueReply<>(this, null, true,
                         local.pred, local.succ);
-                getLocalNode().post(ev);
+                local.post(ev);
                 return;
             }
-            if (expectedSucc == getLocalNode().succ) {
-                RQStrategy strategy = RQStrategy.getRQStrategy(getLocalNode());
+            if (expectedSucc == local.succ) {
+                RQStrategy strategy = RQStrategy.getRQStrategy(local);
                 CompletableFuture<RemoteValue<T>> f
-                    = strategy.getLocalValue(adapter, getLocalNode(), null, qid);
+                    = strategy.getLocalValue(adapter, local, null, qid);
                 f.thenAccept(rval -> {
                     GetLocalValueReply<T> ev = new GetLocalValueReply<>(this,
                             rval, true, local.pred, local.succ);
-                    getLocalNode().post(ev);
+                    local.post(ev);
                 });
             } else {
                 Event ev = new GetLocalValueReply<>(this, null, false,
                         local.pred, local.succ);
-                getLocalNode().post(ev);
+                local.post(ev);
             }
         }
     }

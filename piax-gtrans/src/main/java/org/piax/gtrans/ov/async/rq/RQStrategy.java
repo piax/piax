@@ -219,10 +219,10 @@ public class RQStrategy extends NodeStrategy {
      * - forwardQueryLeft(n, nRight, count)を実行
      * 
      * forwardQueryLeft(Node n, Node eRight, int count):
-     * - n に対して，InvokeProvider(eRight) メッセージを送信
-     *   - InvokeProvider を受信したノードの処理:
-     *     - eRight == succ ならば，Provider を実行し，左ノード(nLeft)と右ノード(nRight)を返す．
-     *     - そうでなければ，Provider は実行せず，左ノード(nLeft)と右ノード(nRight)を返す（RMismatch)．
+     * - n に対して，GetLocalValueRequest(eRight) メッセージを送信
+     *   - GetLocalValueRequestを受信したノードの処理:
+     *     - eRight == succ ならば，RQAdapterを実行し，左ノード(nLeft)と右ノード(nRight)を返す．
+     *     - そうでなければ，RQAdapter は実行せず，左ノード(nLeft)と右ノード(nRight)を返す（RMismatch)．
      * - RMismatchを受信した場合:
      *   - case1: nRightが，eRightより右 (eRightは削除されている?)
      *     - forwardQueryLeft(n, nRight, count) を実行
@@ -274,6 +274,9 @@ public class RQStrategy extends NodeStrategy {
         RQRange rEnd = new RQRange(null, p.rq.to).assignId();
         LinkedList<Node> trace = new LinkedList<>();
         Indirect<Boolean> flag = new Indirect<>(false);
+        // we cannot use p.opts (TransOptions given by the user) for the initial
+        // range query because p.opts.retransType may be NO_RESPONSE.
+        TransOptions initialOpts = new TransOptions(); // use default
         // get the right-most node within the range
         rangeQueryRQRange(Collections.singleton(rEnd),
                 new InsertionPointAdapter(rval -> {
@@ -292,7 +295,7 @@ public class RQStrategy extends NodeStrategy {
                             p.adapter.handleResult(null);
                         }
                     }
-                }), p.opts);
+                }), initialOpts);
     }
 
     final static long RETRANS_INTERVAL = 1000;
@@ -333,7 +336,10 @@ public class RQStrategy extends NodeStrategy {
                     trace.add(current);
                     if (rep.result != null) { // not special case
                         visited.add(current);
-                        p.adapter.handleResult(rep.result);
+                        // XXX: ugly
+                        if (p.opts.getResponseType() != ResponseType.NO_RESPONSE) {
+                            p.adapter.handleResult(rep.result);
+                        }
                     }
                     // BUG: rep.pred.key は信頼できるとは限らないため，以下の条件判定はまずい．
                     if (visited.size() >= p.num || !p.rq.contains(rep.pred.key)) {
