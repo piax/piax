@@ -293,8 +293,10 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         }
 
         private void rqDisseminate(List<RQRange> ranges) {
-            logger.trace("rqDisseminate start: {}", this);
-            logger.trace("                     {}", RQRequest.this);
+            if (logger.isTraceEnabled()) {
+                logger.trace("rqDisseminate start: {}", this);
+                logger.trace("                     {}", RQRequest.this);
+            }
 
             Set<Integer> history = strategy.queryHistory.get(qid);
             if (history == null) {
@@ -308,7 +310,9 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                 logger.trace("no routing entry available!");
                 return;
             }
-            logger.trace("rqd#ftents={}", ftents);
+            if (logger.isTraceEnabled()) {
+                logger.trace("rqd#ftents={}", ftents);
+            }
             List<DKRangeRValue<T>> locallyResolved = new ArrayList<>();
             ranges = adapter.preprocess(ranges, ftents, locallyResolved);
             {
@@ -323,7 +327,9 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
 
             // assign a delegate node for each range
             Map<Id, List<RQRange>> map = assignDelegates(ranges);
-            logger.trace("aggregated: {}", map);
+            if (logger.isTraceEnabled()) {
+                logger.trace("aggregated: {}", map);
+            }
             PeerId peerId = getLocalNode().getPeerId();
 
             /*
