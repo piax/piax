@@ -24,6 +24,7 @@ import org.piax.gtrans.ChannelListener;
 import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.Peer;
 import org.piax.gtrans.ProtocolUnsupportedException;
+import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.Transport;
 import org.piax.gtrans.TransportListener;
 import org.piax.gtrans.impl.ChannelTransportImpl;
@@ -104,9 +105,9 @@ public abstract class MonoTransportImpl<E extends Endpoint> extends
     }
 
     @Override
-    public void send(ObjectId sender, ObjectId receiver, E dst, Object msg)
+    public void send(ObjectId sender, ObjectId receiver, E dst, Object msg, TransOptions opts)
             throws ProtocolUnsupportedException, IOException {
-        // sender, receiverは無視される
+        // sender, receiver, and opts are ignored. 
         send(dst, msg);
     }
 

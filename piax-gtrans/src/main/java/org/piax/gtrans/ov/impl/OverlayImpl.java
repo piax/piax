@@ -20,6 +20,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiConsumer;
 
 import org.piax.common.Destination;
 import org.piax.common.Endpoint;
@@ -169,7 +170,7 @@ public abstract class OverlayImpl<D extends Destination, K extends Key> extends
     public FutureQueue<?> request(ObjectId appId, String dstExp,
             Object msg, int timeout) throws ParseException,
             ProtocolUnsupportedException, IOException {
-        return request(transId, transId, dstExp, msg, timeout);
+        return request(appId, appId, dstExp, msg, timeout);
     }
     
     public FutureQueue<?> request(ObjectId appId, String dstExp, Object msg) throws ParseException,
@@ -190,6 +191,24 @@ public abstract class OverlayImpl<D extends Destination, K extends Key> extends
     public FutureQueue<?> request(String dstExp, Object msg, int timeout)
 			throws ParseException, ProtocolUnsupportedException, IOException {
 		return request(getDefaultAppId(), dstExp, msg, timeout);
+    }
+    
+    // async request interface
+    public void requestAsync(ObjectId sender, ObjectId receiver,
+            String dstExp, Object msg,
+            BiConsumer<Object, Exception> responseReceiver,
+            TransOptions opts) throws ParseException, ProtocolUnsupportedException, IOException {
+        try {
+            @SuppressWarnings("unchecked")
+            D dst = (D) parser.parseDestination(dstExp);
+            requestAsync(sender, receiver, dst, msg, responseReceiver, opts);
+        }
+        catch (ParseException e) {
+            /* XXX Try parse as DCL */
+            @SuppressWarnings("unchecked")
+            D dc = (D) parser.parseDCL(dstExp);
+            requestAsync(sender, receiver, dc, msg, responseReceiver, opts);
+        }
     }
 
     protected FutureQueue<?> selectOnReceive(OverlayListener<D, K> listener,
