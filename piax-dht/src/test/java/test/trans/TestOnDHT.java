@@ -1,16 +1,15 @@
 package test.trans;
 
-import static org.junit.Assert.assertTrue;
-
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.junit.Test;
 import org.piax.common.ComparableKey;
 import org.piax.common.Destination;
 import org.piax.common.Endpoint;
 import org.piax.common.PeerId;
-import org.piax.common.PeerLocator;
 import org.piax.common.StatusRepo;
 import org.piax.common.subspace.LowerUpper;
 import org.piax.gtrans.ChannelTransport;
@@ -21,6 +20,7 @@ import org.piax.gtrans.netty.NettyLocator;
 import org.piax.gtrans.netty.idtrans.PrimaryKey;
 import org.piax.gtrans.ov.Overlay;
 import org.piax.gtrans.ov.async.suzaku.Suzaku;
+import org.piax.gtrans.ov.async.suzaku.SuzakuStrategy;
 import org.piax.gtrans.ov.ddll.NodeMonitor;
 import org.piax.gtrans.ov.sg.MSkipGraph;
 import org.piax.gtrans.raw.emu.EmuLocator;
@@ -36,14 +36,23 @@ public class TestOnDHT {
             .getLogger(TestOnDHT.class);
 
     static <D extends Destination, K extends ComparableKey<?>> Overlay<D, K> genOv(
-            boolean isSG, Peer peer, Endpoint locator)
+            O ovt, Peer peer, Endpoint locator)
             throws IdConflictException, IOException {
         ChannelTransport<?> tr = peer.newBaseChannelTransport(locator);
         Overlay<D, K> ov = null;
-        if (isSG) {
+        switch(ovt) {
+        case SG:
             ov = new MSkipGraph<D, K>(tr);
-        } else {
-            ov = new Suzaku<D, K>(tr);
+            break;
+        case OCS:
+            ov = new org.piax.gtrans.ov.szk.Suzaku<D, K>(tr);
+            break;
+        case CS:
+            ov = new Suzaku<D, K>(tr, 1);
+            break;
+        case SZK:
+            ov = new Suzaku<D, K>(tr, 3);
+            break;
         }
         return ov;
     }
@@ -59,67 +68,90 @@ public class TestOnDHT {
         }
     }
 
-    static void printDHT() {
-        logger.debug("\n** print DHT repo\n");
-        for (int i = 0; i < numPeer; i++) {
-            printf(" * DHT repository status on %s, %s",
-                    dhts[i].sg.getPeerId(), dhts[i]);
-        }
-    }
-
     static int numPeer = 32;
-    static DHT[] dhts = new DHT[numPeer];
+    //
 
     enum L {
         UDP, TCP, EMU, NETTY, ID
     };
+    
+    enum O {
+        SG, OCS, CS, SZK
+    }
 
     @Test
     public void DHTOnSuzakuOnEmuTest() throws Exception {
-        DHTRun(false, L.EMU);
+        DHTRun(O.SZK, L.EMU);
     }
 
     @Test
     public void DHTOnSuzakuOnUdpTest() throws Exception {
-        DHTRun(false, L.UDP);
+        DHTRun(O.SZK, L.UDP);
     }
 
     @Test
     public void DHTOnSuzakuOnTcpTest() throws Exception {
-        DHTRun(false, L.TCP);
+        DHTRun(O.SZK, L.TCP);
     }
 
     @Test
     public void DHTOnSuzakuOnNettyTest() throws Exception {
-        DHTRun(false, L.NETTY);
+        DHTRun(O.SZK, L.NETTY);
     }
     
     @Test
     public void DHTOnSuzakuOnIdTest() throws Exception {
-        DHTRun(false, L.ID);
+        DHTRun(O.SZK, L.ID);
+    }
+    
+    @Test
+    public void DHTOnOCSOnNettyTest() throws Exception {
+        DHTRun(O.OCS, L.NETTY);
+    }
+    
+    @Test
+    public void DHTOnOCSOnIdTest() throws Exception {
+        DHTRun(O.OCS, L.ID);
+    }
+    
+    @Test
+    public void DHTOnCSOnNettyTest() throws Exception {
+        DHTRun(O.CS, L.NETTY);
+    }
+    
+    @Test
+    public void DHTOnCSOnIdTest() throws Exception {
+        DHTRun(O.CS, L.ID);
     }
 
+    
     @Test
     public void DHTOnSkipGraphOnNettyTest() throws Exception {
-        DHTRun(true, L.NETTY);
+        DHTRun(O.SG, L.NETTY);
+    }
+    
+    @Test
+    public void DHTOnSkipGraphOnIdTest() throws Exception {
+        DHTRun(O.SG, L.ID);
     }
 
     @Test
     public void DHTOnSkipGraphOnEmuTest() throws Exception {
-        DHTRun(true, L.EMU);
+        DHTRun(O.SG, L.EMU);
     }
 
     @Test
     public void DHTOnSkipGraphOnUdpTest() throws Exception {
-        DHTRun(true, L.UDP);
+        DHTRun(O.SG, L.UDP);
     }
 
     @Test
     public void DHTOnSkipGraphOnTcpTest() throws Exception {
-        DHTRun(true, L.TCP);
+        DHTRun(O.SG, L.TCP);
     }
 
-    public void DHTRun(boolean useSG, L loc) throws Exception {
+    public static long DHTRun(O ovt, L loc) throws Exception {
+        DHT[] dhts = new DHT[numPeer];
         StatusRepo.ON_MEMORY = true;
         NodeMonitor.PING_TIMEOUT = 100 * 1000;
         GTransConfigValues.rpcTimeout = 100 * 1000;
@@ -131,6 +163,8 @@ public class TestOnDHT {
         printf("** Simulation start **%n");
         printf(" - num of peers: %d%n", numPeer);
         printf(" - seed: %d%n", seedPeerNo);
+        
+//        long start = System.currentTimeMillis();
 
         printf("%n** new peerId and overlay%n");
         for (int i = 0; i < numPeer; i++) {
@@ -162,7 +196,7 @@ public class TestOnDHT {
                 case EMU:
                     l = new EmuLocator(10000 + i);
                 }
-                ovs[i] = genOv(useSG, peers[i], l);
+                ovs[i] = genOv(ovt, peers[i], l);
                 // Id id = new Id(new byte[]{(byte)(i * 256 / numPeer)});
                 // dhts[i] = new DHT(new ServiceId("dht"), ovs[i], id, true);
                 dhts[i] = new DHT(ovs[i], true);
@@ -186,47 +220,89 @@ public class TestOnDHT {
         }
         printf("%n");
         final DHT dht = dhts[0];
-        int n = 20;
-        printf("%n** put (%d)%n", n);
-        for (int i = 0; i < n; i++) {
-            printf("putting %s", "hage" + i);
-            try {
-                dht.put("hoge" + i, "hage" + i);
-            } catch (Exception e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            }
-        }
-        printf("%n** get (%d)%n", n);
-        for (int i = 0; i < n; i++) {
-            String get = null;
-            try {
-                get = (String) dht.get("hoge" + i);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-            assertTrue("GET failed", (get != null && get.equals("hage" + i)));
-        }
-        printf("%n** fin%n");
-        for (int i = 1; i < numPeer; i++) {
-            dhts[i].fin();
-            try {
-                ovs[i].leave();
-            } catch (Exception e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            }
-        }
-        dhts[0].fin();
+        int n = 100;
+        long ret;
         try {
-            ovs[0].leave();
-        } catch (Exception e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
-        for (int i = 0; i < numPeer; i++) {
-            peers[i].fin();
+            printf("%n** put (%d)%n", n);
+            for (int i = 0; i < n; i++) {
+                printf("putting %s", "hage" + i);
+                try {
+                    dht.put("hoge" + i, "hage" + i);
+                } catch (Exception e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
+            }
+            long start = System.currentTimeMillis();
+            printf("%n** get (%d)%n", n);
+            for (int i = 0; i < n; i++) {
+                String get = null;
+                try {
+                    get = (String) dht.get("hoge" + i);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                //assertTrue("GET failed",
+                if (get == null || !get.equals("hage" + i)) {
+                    System.err.println("get failed:" + get + "!= hage" + i);
+                }
+            }
+            ret = System.currentTimeMillis() - start;
+        } finally {
+            printf("%n** fin%n");
+            for (int i = 1; i < numPeer; i++) {
+                dhts[i].fin();
+                try {
+                    ovs[i].leave();
+                } catch (Exception e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
+            }
+            dhts[0].fin();
+            try {
+                ovs[0].leave();
+            } catch (Exception e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+            for (int i = 0; i < numPeer; i++) {
+                peers[i].fin();
+            }
         }
         printf("** end **%n");
+        return ret;
+    }
+    
+    public static void eval(O ovt, L loc) throws Exception {
+        int TRIAL = 10;
+        List<Integer> results = new ArrayList<>();
+        for (int i = 0; i < TRIAL; i++) {
+            long elapsed = DHTRun(ovt, loc);
+            results.add((int)elapsed);
+            System.out.println(i + "th trial end.");
+        }
+        // remove head and tail (min and max) then calc ave. 
+        double ave = results.stream().sorted().limit(results.size() - 1).skip(1).mapToInt(Integer::intValue).average().getAsDouble();
+        System.out.println(ovt + "/"+ loc + ":" + ave);
+    }
+
+    public static void main(String args[]) throws Exception {
+        for (int n = 10; n <= 30; n+=10) {
+            numPeer = n;
+            System.out.println("n=" + numPeer);
+            eval(O.SZK, L.ID);
+            eval(O.SZK, L.TCP);
+            //eval(O.OCS, L.ID);
+            //eval(O.OCS, L.NETTY);
+            eval(O.SZK, L.NETTY);
+
+            
+            
+            eval(O.CS, L.NETTY);
+            eval(O.CS, L.ID);
+            //eval(O.SG, L.NETTY);
+            //eval(O.SG, L.ID);
+        }
     }
 }
