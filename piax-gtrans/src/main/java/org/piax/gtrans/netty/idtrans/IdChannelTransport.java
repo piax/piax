@@ -32,6 +32,7 @@ import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.Peer;
 import org.piax.gtrans.ProtocolUnsupportedException;
 import org.piax.gtrans.ReceivedMessage;
+import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.Transport;
 import org.piax.gtrans.TransportListener;
 import org.piax.gtrans.impl.ChannelTransportImpl;
@@ -80,7 +81,7 @@ public class IdChannelTransport extends ChannelTransportImpl<PrimaryKey> impleme
     protected AtomicInteger seq;
 
     static public int RAW_POOL_SIZE = 30;
-    static public boolean PARALLEL_RECEIVE = true;
+    static public boolean PARALLEL_RECEIVE = false;
     
     public AttributeKey<String> rawChannelKey = AttributeKey.valueOf("rawKey");
 
@@ -259,7 +260,10 @@ public class IdChannelTransport extends ChannelTransportImpl<PrimaryKey> impleme
                 break;
             case CLOSE:
                 logger.debug("close id channel: {}/{}", (int)cmsg.getArg(), (PrimaryKey)cmsg.getSource());
-                closeIdChannel(ichannels.get(IdChannel.getKeyString((int)cmsg.getArg(), (PrimaryKey)cmsg.getSource())));
+                IdChannel c = ichannels.get(IdChannel.getKeyString((int)cmsg.getArg(), (PrimaryKey)cmsg.getSource()));
+                if (c != null) {
+                    closeIdChannel(ichannels.get(IdChannel.getKeyString((int)cmsg.getArg(), (PrimaryKey)cmsg.getSource())));
+                }
                 break;
             default:
                 handleControlMessage(cmsg);
@@ -680,12 +684,13 @@ public class IdChannelTransport extends ChannelTransportImpl<PrimaryKey> impleme
     
     @Override
     public void send(ObjectId sender, ObjectId receiver, PrimaryKey dst,
-            Object msg) throws ProtocolUnsupportedException, IOException {
-        sendAsync(sender, receiver, dst, msg);
+            Object msg, TransOptions opts) throws ProtocolUnsupportedException, IOException {
+        sendAsync(sender, receiver, dst, msg, opts);
     }
     
     public CompletableFuture<Boolean> sendAsync(ObjectId sender, ObjectId receiver, PrimaryKey dst,
-            Object msg) throws IOException {
+            Object msg, TransOptions opts) throws IOException {
+        // opts is ignored in this layer.
         NettyMessage<PrimaryKey> nmsg = new NettyMessage<PrimaryKey>(receiver, ep, dst, null, getPeerId(), msg, false, 0);
         // generate a new channel if not exists
         logger.debug("sending async {}", nmsg);
