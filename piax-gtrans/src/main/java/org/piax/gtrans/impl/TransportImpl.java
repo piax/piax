@@ -241,43 +241,42 @@ public abstract class TransportImpl<D extends Destination> implements Transport<
         return listenersByUpper.get(getDefaultAppId());
     }
     
-    public void send(ObjectId sender, ObjectId receiver, D dst, Object msg, TransOptions opts)
+    public abstract void send(ObjectId sender, ObjectId receiver, D dst, Object msg, TransOptions opts)
+            throws ProtocolUnsupportedException, IOException;
+    
+    public void send(ObjectId sender, ObjectId receiver, D dst, Object msg)
             throws ProtocolUnsupportedException, IOException {
-    		// XXX ignore opts by default.
-    		send(sender, receiver, dst, msg);
+        send(sender, receiver, dst, msg, null);
     }
     
     public void send(D dst, Object msg)
             throws ProtocolUnsupportedException, IOException {
-    		send(getDefaultAppId(), dst, msg);
+        send(getDefaultAppId(), getDefaultAppId(), dst, msg, null);
     }
     
     public void send(D dst, Object msg, TransOptions opts)
             throws ProtocolUnsupportedException, IOException {
-    		// XXX ignore opts by default.
-    		send(getDefaultAppId(), dst, msg);
+    		send(getDefaultAppId(), getDefaultAppId(), dst, msg, opts);
     }
     
     public void send(ObjectId appId, D dst, Object msg)
             throws ProtocolUnsupportedException, IOException {
-    		send(appId, appId, dst, msg);
+    		send(appId, appId, dst, msg, null);
     }
     
     public void send(ObjectId appId, D dst, Object msg, TransOptions opts)
             throws ProtocolUnsupportedException, IOException {
-    		// XXX ignore opts by default.
-    		send(appId, appId, dst, msg);
+    		send(appId, appId, dst, msg, opts);
     }
 
     public void send(TransportId upperTrans, D dst, Object msg, TransOptions opts)
             throws ProtocolUnsupportedException, IOException {
-    		// Default behavior is ignoring the options.
-        send(upperTrans, upperTrans, dst, msg);
+        send(upperTrans, upperTrans, dst, msg, opts);
     }
     
     public void send(TransportId upperTrans, D dst, Object msg)
             throws ProtocolUnsupportedException, IOException {
-        send(upperTrans, upperTrans, dst, msg);
+        send(upperTrans, upperTrans, dst, msg, null);
     }
 
     public String toString0() {
