@@ -132,7 +132,7 @@ public class DOLR<K extends Key> extends OverlayImpl<K, K> implements
         ovl.onReceive(this, rcvMsg);
     }
 
-    public FutureQueue<?> onReceiveRequest(
+    public Object onReceiveRequest(
             Overlay<ConvertedComparableKey<K>, ConvertedComparableKey<K>> trans,
             OverlayReceivedMessage<ConvertedComparableKey<K>> rmsg) {
         logger.trace("ENTRY:");

@@ -166,7 +166,7 @@ public class LLNet extends OverlayImpl<GeoRegion, Location> implements
     }
 
     @Override
-    public FutureQueue<?> onReceiveRequest(
+    public Object onReceiveRequest(
             Overlay<KeyRanges<LocationId>, LocationId> trans,
             OverlayReceivedMessage<LocationId> rmsg) {
         logger.trace("ENTRY:");

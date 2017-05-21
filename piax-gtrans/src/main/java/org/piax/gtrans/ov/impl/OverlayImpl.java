@@ -223,7 +223,11 @@ public abstract class OverlayImpl<D extends Destination, K extends Key> extends
             listener.onReceive(trans, rmsg);
             return FutureQueue.emptyQueue();
         } else {
-            return listener.onReceiveRequest(trans, rmsg);
+            Object obj = listener.onReceiveRequest(trans, rmsg);
+            if (obj instanceof FutureQueue<?>) {
+                return (FutureQueue<?>)obj;
+            }
+            return trans.singletonFutureQueue(obj);
         }
     }
 

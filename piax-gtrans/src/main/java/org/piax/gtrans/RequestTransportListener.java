@@ -28,9 +28,9 @@ public interface RequestTransportListener<D extends Destination> extends
      * 
      * @param trans the request transport.
      * @param rmsg the received message.
-     * @return future queue.
+     * @return the response object or a future queue.
      */
-    FutureQueue<?> onReceiveRequest(RequestTransport<D> trans,
+    Object onReceiveRequest(RequestTransport<D> trans,
             ReceivedMessage rmsg);
     
     // valid on Java 8 API

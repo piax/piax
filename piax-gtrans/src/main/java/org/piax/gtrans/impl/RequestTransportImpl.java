@@ -188,7 +188,11 @@ public abstract class RequestTransportImpl<D extends Destination> extends
             return FutureQueue.emptyQueue();
         } else {
             logger.debug("select onReceiveRequest: trans:{}", trans.getTransportId());
-            return listener.onReceiveRequest(trans, rmsg);
+            Object obj = listener.onReceiveRequest(trans, rmsg);
+            if (obj instanceof FutureQueue<?>) {
+                return (FutureQueue<?>) obj;
+            }
+            return trans.singletonFutureQueue(obj); 
         }
     }
 }

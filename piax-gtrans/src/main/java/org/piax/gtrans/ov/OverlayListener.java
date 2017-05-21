@@ -30,7 +30,8 @@ public interface OverlayListener<D extends Destination, K extends Destination>
     default void onReceive(Overlay<D, K> ov, OverlayReceivedMessage<K> rmsg) {
     }
     
-    FutureQueue<?> onReceiveRequest(Overlay<D, K> ov,
+    // returns FutureQueue<?> or an object.
+    Object onReceiveRequest(Overlay<D, K> ov,
             OverlayReceivedMessage<K> rmsg);
 
     // valid on Java 8 API

@@ -172,6 +172,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         }
         super.fin();
         sender.fin();
+        peer.fin();
     }
 
     public Endpoint getEndpoint() {
