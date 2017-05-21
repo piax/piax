@@ -14,6 +14,7 @@
 package org.piax.gtrans.raw.emu;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 
 import org.piax.common.PeerId;
@@ -30,6 +31,11 @@ public class EmuLocator extends PeerLocator {
     
     public EmuLocator(int vport) {
         this.vport = vport;
+    }
+    
+    public EmuLocator(String spec) {
+        String specs[] = spec.split(":");
+        this.vport = Integer.parseInt(specs[1]);
     }
     
     public int getVPort() {
