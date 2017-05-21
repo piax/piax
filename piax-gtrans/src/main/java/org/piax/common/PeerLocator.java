@@ -18,9 +18,8 @@ import java.lang.reflect.Constructor;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 
-import org.piax.gtrans.ProtocolUnsupportedException;
-import org.piax.gtrans.netty.NettyLocator;
 import org.piax.gtrans.raw.RawTransport;
+import org.piax.gtrans.raw.emu.EmuLocator;
 import org.piax.gtrans.raw.tcp.TcpLocator;
 import org.piax.gtrans.raw.udp.UdpLocator;
 
@@ -73,6 +72,21 @@ public abstract class PeerLocator implements Endpoint {
     public abstract RawTransport<? extends PeerLocator> newRawTransport(PeerId peerId)
             throws IOException;
 
+    static public PeerLocator newLocator(String spec) {
+        PeerLocator locator = null;
+        String specs[] = spec.split(":");
+        if (specs[0].equals("tcp")) {
+            locator = new TcpLocator(spec);
+        }
+        else if (specs[0].equals("udp")) {
+            locator = new UdpLocator(spec);
+        }
+        else if (specs[0].equals("emu")) {
+            locator = new EmuLocator(spec);
+        }
+        return locator;
+    }
+    
     /**
      * targetに指定されたPeerLocatorオブジェクトと同一のクラスであるときに
      * trueを返す。
