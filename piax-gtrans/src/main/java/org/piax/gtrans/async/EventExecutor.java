@@ -64,7 +64,7 @@ public class EventExecutor {
 
     public static void enqueue(Event ev) {
         if (!realtime.value()) {
-            assert ev.vtime != 0;
+            //assert ev.vtime != 0;
             ev.serial = eventCount++;
             timeq.add(ev);
         } else {

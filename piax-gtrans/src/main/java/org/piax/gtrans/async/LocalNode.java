@@ -353,7 +353,9 @@ public class LocalNode extends Node {
      */
     public CompletableFuture<Boolean> joinAsync(Node introducer) { 
         CompletableFuture<Boolean> joinFuture = new CompletableFuture<>();
-        joinAsync(introducer, INSERTION_DELETION_RETRY, joinFuture);
+        EventExecutor.runNow("joinAsync", () -> {
+            joinAsync(introducer, INSERTION_DELETION_RETRY, joinFuture);
+        });
         return joinFuture;
     }
 
