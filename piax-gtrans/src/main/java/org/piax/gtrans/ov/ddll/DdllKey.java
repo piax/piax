@@ -52,7 +52,11 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
     /** application supplied data */
     public final Object appData;
     private final int hash; 
-    
+
+    // a field for repetitive key usage.
+    // To distinguish key instances with same key, uniqId, and id.
+    private int nonce;
+
     public DdllKey(Comparable<?> key, UniqId uniqId, String id, Object appData) {
         this.primaryKey = key;
         this.uniqId = uniqId;
@@ -62,6 +66,7 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
             h ^= uniqId.hashCode();
         }
         this.hash = h;
+        this.nonce = super.hashCode();
         this.appData = appData;
     }
 
@@ -95,19 +100,26 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
         int cmp = keyComp.compare(primaryKey, o.primaryKey);
         if (cmp != 0) {
             if (logger.isDebugEnabled()) {
-                logger.debug("compareTo: " + this + ", " + o + " = " + cmp);
+                logger.debug("compareTo: {}, {} = {}", this, o, cmp);
             }
             return cmp;
         }
         cmp = uniqId.compareTo(o.uniqId);
         if (cmp != 0) {
             if (logger.isDebugEnabled()) {
-                logger.debug("compareTo: " + this + ", " + o + " = " + cmp);
+                logger.debug("compareTo: {}, {} = {}", this, o, cmp);
+            }
+            return cmp;
+        }
+        cmp = ((Integer)nonce).compareTo(o.nonce);
+        if (cmp != 0) {
+            if (logger.isDebugEnabled()) {
+                logger.debug("compareTo: {}, {} = {}", this, o, cmp);
             }
             return cmp;
         }
         if (logger.isDebugEnabled()) {
-            logger.debug("compareTo: " + this + ", " + o + " = 0");
+            logger.debug("compareTo: {}, {} = 0", this, o);
         }
         return 0;
     }
@@ -127,6 +139,9 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
         if (!id.equals(o.id)) {
             return false;
         }
+        if (nonce != o.nonce) {
+            return false;
+        }
         return true;
     }
 
@@ -143,12 +158,15 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
         if (!uniqId.equals(o.uniqId)) {
             return false;
         }
+        if (nonce != o.nonce) {
+            return false;
+        }
         return true;
     }
 
     @Override
     public int hashCode() {
-        return hash ^ id.hashCode();
+        return hash ^ id.hashCode() ^ nonce;
     }
 
     /**
