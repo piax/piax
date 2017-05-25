@@ -65,8 +65,8 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
         if (uniqId != null) {
             h ^= uniqId.hashCode();
         }
-        this.hash = h;
-        this.nonce = super.hashCode();
+        this.nonce = System.identityHashCode(this);
+        this.hash = h ^ nonce;
         this.appData = appData;
     }
 
@@ -166,7 +166,7 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
 
     @Override
     public int hashCode() {
-        return hash ^ id.hashCode() ^ nonce;
+        return hash ^ id.hashCode();
     }
 
     /**
