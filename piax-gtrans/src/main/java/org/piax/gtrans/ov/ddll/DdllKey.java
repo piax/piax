@@ -87,6 +87,10 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
         this(key, uniqId, "", null);
     }
 
+    public DdllKey(Comparable<?> key, UniqId uniqId, int nonce) {
+        this(key, uniqId, "", nonce, null);
+    }
+
     /**
      * get primaryKey portion of the key
      * 

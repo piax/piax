@@ -185,7 +185,7 @@ public class RQManager<E extends Endpoint> extends RingManager<E> implements
                     throws IdConflictException, IOException {
         super(transId, trans);
         this.execQueryCallback = execQueryCallback;
-        FIXLEFT = new Link(myLocator, new DdllKey(0, FIXPEERID));
+        FIXLEFT = new Link(myLocator, new DdllKey(0, FIXPEERID, 0));
 
         schedule(new PurgeTask(),
                 (long) (Math.random() * QID_EXPIRATION_TASK_PERIOD),
@@ -374,10 +374,10 @@ public class RQManager<E extends Endpoint> extends RingManager<E> implements
         SubRange keyRange =
                 new SubRange(
                         new DdllKey(range.from, range.fromInclusive
-                                ? UniqId.MINUS_INFINITY : UniqId.PLUS_INFINITY),
+                                ? UniqId.MINUS_INFINITY : UniqId.PLUS_INFINITY, 0),
                         true,
                         new DdllKey(range.to, range.toInclusive
-                                ? UniqId.PLUS_INFINITY : UniqId.MINUS_INFINITY),
+                                ? UniqId.PLUS_INFINITY : UniqId.MINUS_INFINITY, 0),
                         false);
         return keyRange;
     }
@@ -754,13 +754,13 @@ public class RQManager<E extends Endpoint> extends RingManager<E> implements
         Comparable rawFromKey = range.to;
         DdllKey fromKey =
                 range.toInclusive ? new DdllKey(rawFromKey,
-                        UniqId.PLUS_INFINITY) : new DdllKey(rawFromKey,
-                        UniqId.MINUS_INFINITY);
+                        UniqId.PLUS_INFINITY, 0) : new DdllKey(rawFromKey,
+                        UniqId.MINUS_INFINITY, 0);
         Comparable rawToKey = range.from;
         DdllKey toKey =
                 range.fromInclusive ? new DdllKey(rawToKey,
-                        UniqId.MINUS_INFINITY) : new DdllKey(rawToKey,
-                        UniqId.PLUS_INFINITY);
+                        UniqId.MINUS_INFINITY, 0) : new DdllKey(rawToKey,
+                        UniqId.PLUS_INFINITY, 0);
 
         List<RemoteValue<?>> rset = new ArrayList<RemoteValue<?>>();
         QueryId qid = new QueryId(peerId, rand.nextLong());
