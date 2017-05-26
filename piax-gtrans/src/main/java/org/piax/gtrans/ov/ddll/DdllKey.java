@@ -55,7 +55,20 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
 
     // a field for repetitive key usage.
     // To distinguish key instances with same key, uniqId, and id.
-    private int nonce;
+    private final int nonce;
+
+    public DdllKey(Comparable<?> key, UniqId uniqId, String id, int nonce, Object appData) {
+        this.primaryKey = key;
+        this.uniqId = uniqId;
+        this.id = id;
+        int h = primaryKey.hashCode();
+        if (uniqId != null) {
+            h ^= uniqId.hashCode();
+        }
+        this.nonce = nonce;
+        this.hash = h ^ nonce;
+        this.appData = appData;
+    }
 
     public DdllKey(Comparable<?> key, UniqId uniqId, String id, Object appData) {
         this.primaryKey = key;
@@ -208,6 +221,6 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
      * @return  the DdllKey with the specified ID
      */
     public DdllKey getIdChangedKey(String id) {
-        return new DdllKey(primaryKey, uniqId, id, appData);
+        return new DdllKey(primaryKey, uniqId, id, nonce, appData);
     }
 }
