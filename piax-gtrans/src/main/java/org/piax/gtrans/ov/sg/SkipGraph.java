@@ -180,7 +180,7 @@ public class SkipGraph<E extends Endpoint> extends RPCInvoker<SkipGraphIf<E>, E>
         logger.debug("SkipGraph: transId={}", trans.getTransportId());
 
         timer = new Timer("SGTimer@" + myLocator, true);
-        FIXLEFT = new Link(myLocator, new DdllKey(0, FIXPEERID));
+        FIXLEFT = new Link(myLocator, new DdllKey(0, FIXPEERID, 0));
 
         sgmf = new SGMessagingFramework<E>(this);
 
@@ -796,8 +796,8 @@ public class SkipGraph<E extends Endpoint> extends RPCInvoker<SkipGraphIf<E>, E>
     @SuppressWarnings("unchecked")
     private List<RemoteValue<?>> forwardQuery0(Range<?> range, Object query) {
         logger.trace("ENTRY:");
-        DdllKey fromKey = new DdllKey(range.from, UniqId.MINUS_INFINITY); // inclusive
-        DdllKey toKey = new DdllKey(range.to, UniqId.PLUS_INFINITY); // inclusive
+        DdllKey fromKey = new DdllKey(range.from, UniqId.MINUS_INFINITY, 0); // inclusive
+        DdllKey toKey = new DdllKey(range.to, UniqId.PLUS_INFINITY, 0); // inclusive
         List<RemoteValue<?>> rset = new ArrayList<RemoteValue<?>>();
         QueryId qid = new QueryId(peerId, rand.nextLong());
         // n1 -> n2 -> n3 と辿って，n3と通信できなかった場合，再度n2と通信して
@@ -923,11 +923,11 @@ public class SkipGraph<E extends Endpoint> extends RPCInvoker<SkipGraphIf<E>, E>
     private List<RemoteValue<?>> forwardQueryLeft(Range<?> range, int num, 
             Object query, boolean wrapAround) {
         Comparable rawFromKey = range.to;
-        DdllKey fromKey = range.toInclusive ? new DdllKey(rawFromKey, UniqId.PLUS_INFINITY) :
-            new DdllKey(rawFromKey, UniqId.MINUS_INFINITY);
+        DdllKey fromKey = range.toInclusive ? new DdllKey(rawFromKey, UniqId.PLUS_INFINITY, 0) :
+            new DdllKey(rawFromKey, UniqId.MINUS_INFINITY, 0);
         Comparable rawToKey = range.from;
-        DdllKey toKey = range.fromInclusive ? new DdllKey(rawToKey, UniqId.MINUS_INFINITY) :
-            new DdllKey(rawToKey, UniqId.PLUS_INFINITY);
+        DdllKey toKey = range.fromInclusive ? new DdllKey(rawToKey, UniqId.MINUS_INFINITY, 0) :
+            new DdllKey(rawToKey, UniqId.PLUS_INFINITY, 0);
         
         List<RemoteValue<?>> rset = new ArrayList<RemoteValue<?>>();
         QueryId qid = new QueryId(peerId, rand.nextLong());
@@ -1239,9 +1239,9 @@ public class SkipGraph<E extends Endpoint> extends RPCInvoker<SkipGraphIf<E>, E>
         for (Range<? extends Comparable<?>> range : ranges) {
             Range<DdllKey> keyRange =
                     new Range<DdllKey>(new DdllKey(range.from, range.fromInclusive
-                            ? UniqId.MINUS_INFINITY : UniqId.PLUS_INFINITY), false,
+                            ? UniqId.MINUS_INFINITY : UniqId.PLUS_INFINITY, 0), false,
                             new DdllKey(range.to, range.toInclusive
-                                    ? UniqId.PLUS_INFINITY : UniqId.MINUS_INFINITY),
+                                    ? UniqId.PLUS_INFINITY : UniqId.MINUS_INFINITY, 0),
                             false);
             subRanges.add(keyRange);
         }

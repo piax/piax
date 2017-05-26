@@ -52,7 +52,24 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
     /** application supplied data */
     public final Object appData;
     private final int hash; 
-    
+
+    // a field for repetitive key usage.
+    // To distinguish key instances with same key, uniqId, and id.
+    private final int nonce;
+
+    public DdllKey(Comparable<?> key, UniqId uniqId, String id, int nonce, Object appData) {
+        this.rawKey = key;
+        this.uniqId = uniqId;
+        this.id = id;
+        int h = rawKey.hashCode();
+        if (uniqId != null) {
+            h ^= uniqId.hashCode();
+        }
+        this.nonce = nonce;
+        this.hash = h ^ nonce;
+        this.appData = appData;
+    }
+
     public DdllKey(Comparable<?> key, UniqId uniqId, String id, Object appData) {
         this.rawKey = key;
         this.uniqId = uniqId;
@@ -61,12 +78,17 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
         if (uniqId != null) {
             h ^= uniqId.hashCode();
         }
-        this.hash = h;
+        this.nonce = System.identityHashCode(this);
+        this.hash = h ^ nonce;
         this.appData = appData;
     }
 
     public DdllKey(Comparable<?> key, UniqId uniqId) {
         this(key, uniqId, "", null);
+    }
+
+    public DdllKey(Comparable<?> key, UniqId uniqId, int nonce) {
+        this(key, uniqId, "", nonce, null);
     }
 
     /**
@@ -106,6 +128,13 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
             }
             return cmp;
         }
+        cmp = ((Integer)nonce).compareTo(o.nonce);
+        if (cmp != 0) {
+            if (logger.isDebugEnabled()) {
+                logger.debug("compareTo: {}, {} = {}", this, o, cmp);
+            }
+            return cmp;
+        }
         if (logger.isDebugEnabled()) {
             logger.debug("compareTo: {}, {} = 0", this, o);
         }
@@ -127,6 +156,9 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
         if (!id.equals(o.id)) {
             return false;
         }
+        if (nonce != o.nonce) {
+            return false;
+        }
         return true;
     }
 
@@ -141,6 +173,9 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
             return false;
         }
         if (!uniqId.equals(o.uniqId)) {
+            return false;
+        }
+        if (nonce != o.nonce) {
             return false;
         }
         return true;
@@ -186,10 +221,10 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
     /**
      * get a DdllKey instance with the specified ID
      * 
-     * @param id    an id to be set
+     * @param   id an id to be set
      * @return  the DdllKey with the specified ID
      */
     public DdllKey getIdChangedKey(String id) {
-        return new DdllKey(rawKey, uniqId, id, appData);
+        return new DdllKey(rawKey, uniqId, id, nonce, appData);
     }
 }

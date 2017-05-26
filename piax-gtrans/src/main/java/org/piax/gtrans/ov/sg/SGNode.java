@@ -98,7 +98,7 @@ public class SGNode<E extends Endpoint> implements NodeObserver {
         this.sg = sg;
         this.mv = mv;
         this.rawkey = rawkey;
-        this.key = new DdllKey(rawkey, new UniqId(sg.peerId));
+        this.key = new DdllKey(rawkey, new UniqId(sg.peerId), 0);
         
         /* register instance for debug */
 //        synchronized (SGNode.class) {
@@ -364,7 +364,7 @@ public class SGNode<E extends Endpoint> implements NodeObserver {
             try {
                 // accurate = false because an inaccurate result can be 
                 // detected later. 
-                p = sg.find(seed, new DdllKey(rawkey, new UniqId(sg.peerId)), false);
+                p = sg.find(seed, new DdllKey(rawkey, new UniqId(sg.peerId), 0), false);
                 logger.debug("getContact: {} is between {} at level0", rawkey, p);
                 return p;
             } catch (UnavailableException e) {
