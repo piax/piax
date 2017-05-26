@@ -88,7 +88,7 @@ public class RingVNode<E extends Endpoint> implements NodeObserver {
     public RingVNode(RingManager<E> rman, Comparable<?> rawkey) {
         this.manager = rman;
         this.rawkey = rawkey;
-        this.key = new DdllKey(rawkey, new UniqId(rman.peerId));
+        this.key = new DdllKey(rawkey, new UniqId(rman.peerId), 0);
         this.ddllNode = rman.manager.createNode(this.key, this);
 
         /* register instance for debug */

@@ -147,7 +147,7 @@ public class Node {
     Node(NodeManager manager, NodeObserver observer, String id,
             Comparable<?> key, Object appData, Timer timer) {
         this(manager, observer, new DdllKey(key, new UniqId(manager.peerId),
-                id, appData), timer);
+                id, 0, appData), timer);
     }
 
     /**
