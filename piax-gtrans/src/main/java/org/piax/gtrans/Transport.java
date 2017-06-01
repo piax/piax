@@ -15,6 +15,7 @@ package org.piax.gtrans;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 import org.piax.common.Destination;
 import org.piax.common.Endpoint;
@@ -215,7 +216,6 @@ public interface Transport<D extends Destination> {
      */
     void send(ObjectId sender, ObjectId receiver, D dst, Object msg, TransOptions opts)
             throws ProtocolUnsupportedException, IOException;
-    
     /**
      * Send a message to the dst which have same ObjectId as an application Id.
      * 
@@ -295,5 +295,33 @@ public interface Transport<D extends Destination> {
      */
     void send(TransportId upperTrans, D dst, Object msg, TransOptions opts)
             throws ProtocolUnsupportedException, IOException;
+
+    // Default is act synchronously.
+    default CompletableFuture<Void> sendAsync(ObjectId sender, ObjectId receiver, D dst, Object msg, TransOptions opts) {
+        try {
+            send(sender, receiver, dst, msg, opts);
+        } 
+        catch (Exception e) {
+            CompletableFuture<Void> f = new CompletableFuture<>();
+            f.completeExceptionally(e);
+            return f;
+        }
+        return CompletableFuture.completedFuture(null);
+    };
+    default CompletableFuture<Void> sendAsync(ObjectId receiver, D dst, Object msg, TransOptions opts) {
+        return sendAsync(receiver, receiver, dst, msg, opts);
+    };
+    default CompletableFuture<Void> sendAsync(TransportId upperTrans, D dst, Object msg, TransOptions opts) {
+        return sendAsync(upperTrans, upperTrans, dst, msg, opts);
+    };
+    default CompletableFuture<Void> sendAsync(TransportId upperTrans, D dst, Object msg){
+        return sendAsync(upperTrans, upperTrans, dst, msg, new TransOptions());
+    };
+    default CompletableFuture<Void> sendAsync(D dst, Object msg, TransOptions opts){
+        return sendAsync(getTransportId(), getTransportId(), dst, msg, opts);
+    };
+    default CompletableFuture<Void> sendAsync(D dst, Object msg){
+        return sendAsync(getTransportId(), getTransportId(), dst, msg, new TransOptions());
+    };
     
 }

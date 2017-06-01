@@ -3,7 +3,6 @@ package org.piax.gtrans.netty.idtrans;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 import org.piax.common.ComparableKey;
@@ -17,7 +16,7 @@ import org.piax.util.KeyComparator;
 public class PrimaryKey implements ComparableKey<PrimaryKey>, NettyEndpoint {
     private static final long serialVersionUID = -8338701357931025730L;
     static public int MAX_NEIGHBORS = 30;
-
+    
     public class NeighborEntry implements Serializable {
         private static final long serialVersionUID = 8001237385879970460L;
         public PrimaryKey key;
@@ -152,6 +151,8 @@ public class PrimaryKey implements ComparableKey<PrimaryKey>, NettyEndpoint {
 
     @Override
     public String toString() {
+        if (key == null) // wildcard
+            return "WILDCARD";
         return key.toString();
     }
 

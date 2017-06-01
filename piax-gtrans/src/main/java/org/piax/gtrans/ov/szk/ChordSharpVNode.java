@@ -43,9 +43,9 @@ public class ChordSharpVNode<E extends Endpoint> extends RQVNode<E> {
 
     public static boolean DBEUG_FT_UPDATES = true;
 
-    public final static int UPDATE_FINGER_PERIOD = 5 * 1000;
+    public static int UPDATE_FINGER_PERIOD = 5 * 1000;
     /** parameter to compute the base of log */
-    public final static int B = 2; // to reproduce chord# behavior, set this as 1
+    public static int B = 2; // to reproduce chord# behavior, set this as 1
     /** the base of log. K = 2<sup>B</sup> */
     public final static int K = 1 << B;
 

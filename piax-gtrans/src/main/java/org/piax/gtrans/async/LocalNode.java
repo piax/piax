@@ -232,14 +232,11 @@ public class LocalNode extends Node {
         }
         ev.beforeSendHook(this);
         if (!isFailed) {
-            try {
-                sender.send(ev);
-            } catch (Exception e) {
-                logger.trace("{} got exception: {}", this, e);
-                if (failure != null) {
-                    failure.run(new RPCEventException(e));
+            sender.send(ev).whenComplete((result, e) ->{
+                if (e != null) {
+                    ev.failureCallback.run(new RPCEventException((Exception)e));
                 }
-            }
+            });
         }
     }
 
@@ -276,12 +273,11 @@ public class LocalNode extends Node {
 //            }
 //        }
         if (!isFailed()) {
-            try {
-                sender.send(ev);
-            } catch (Exception e) {
-                logger.trace("{} got exception: {}", this, e);
-                failure.run(new RPCEventException(e));
-            }
+            sender.send(ev).whenComplete((result, e) ->{
+                if (e != null) {
+                    ev.failureCallback.run(new RPCEventException((Exception)e));
+                }
+            });
         }
     }
 

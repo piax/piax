@@ -91,6 +91,10 @@ public interface RequestTransport<D extends Destination> extends Transport<D> {
     FutureQueue<?> request(D dst, Object msg, int timeout)
 			throws ProtocolUnsupportedException, IOException;
 
+    public enum Response {
+        EOR // Response.EOR end of request
+    }
+    
     // async request interface
     public void requestAsync(ObjectId sender, ObjectId receiver,
             D dst, Object msg,

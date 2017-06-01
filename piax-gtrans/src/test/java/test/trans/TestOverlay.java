@@ -31,6 +31,7 @@ import org.piax.gtrans.FutureQueue;
 import org.piax.gtrans.Peer;
 import org.piax.gtrans.ReceivedMessage;
 import org.piax.gtrans.RemoteValue;
+import org.piax.gtrans.RequestTransport.Response;
 import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.Transport;
 import org.piax.gtrans.ov.Overlay;
@@ -1008,6 +1009,31 @@ public class TestOverlay {
             s2.fin();
         }
     }
+    
+    @Test
+    public void addDellSendTest() throws Exception {
+        Suzaku<StringKey, StringKey> s1 = new Suzaku<>("tcp:localhost:12367");
+        Suzaku<StringKey, StringKey> s2 = new Suzaku<>("tcp:localhost:12368");
+        try {
+            s1.join("tcp:localhost:12367");
+            s2.join("tcp:localhost:12367");
+            s2.addKey(new StringKey("hello"));
+            s2.removeKey(new StringKey("hello"));
+            s2.addKey(new StringKey("hello"));
+            AtomicBoolean received = new AtomicBoolean(false);
+            s2.setListener((szk, msg) -> {
+                received.set(true);
+                assertTrue(msg.getMessage().equals("world"));
+            });
+            s1.send(new StringKey("hello"), "world");
+            Thread.sleep(1000); // unless this line, finishes immediately.
+            assertTrue(received.get());
+        }
+        finally {
+            s1.fin();
+            s2.fin();
+        }
+    }
 
     @Test
     public void minimalRequestTest() throws Exception {
@@ -1023,7 +1049,7 @@ public class TestOverlay {
             AtomicBoolean received = new AtomicBoolean(false);
             s1.requestAsync(new StringKey("hello"), "world",
                     (ret, e)-> { // receive response
-                        if (ret != null) {
+                        if (ret != Response.EOR) {
                             received.set(true);
                             assertTrue(ret.equals("world2"));
                         }
@@ -1050,7 +1076,7 @@ public class TestOverlay {
             AtomicBoolean received = new AtomicBoolean(false);
             s1.requestAsync(new StringKey("p2"), "world",
                     (ret, e)-> { // receive response
-                        if (ret != null) {
+                        if (ret != Response.EOR) {
                             received.set(true);
                             assertTrue(ret.equals("world2"));
                         }
@@ -1084,7 +1110,7 @@ public class TestOverlay {
             s1.requestAsync(new KeyRange<DoubleKey>(new DoubleKey(0.2), true, new DoubleKey(0.8), true),
                     "world",
                     (ret, e)-> { // receive response
-                        if (ret != null) {
+                        if (ret != Response.EOR) {
                             if (ret.equals("world2")) {
                                 received2.set(true);
                             }

@@ -138,7 +138,11 @@ public interface Overlay<D extends Destination, K extends Destination> extends
             ) throws ParseException, ProtocolUnsupportedException, IOException {
         requestAsync(null, null, dstExp, msg, responseReceiver, null);
     }
-    
+
+    default public void requestAsync(String appIdStr, D dst, String msg,
+            BiConsumer<Object, Exception> responseReceiver) {
+        requestAsync(new ObjectId(appIdStr), new ObjectId(appIdStr), dst, msg, responseReceiver, null);
+    }
     
     /**
      * 指定されたkeyをオーバレイに登録する。

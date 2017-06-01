@@ -6,6 +6,7 @@ import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.DefaultChannelGroup;
@@ -76,6 +77,7 @@ public class IdChannelTransport extends ChannelTransportImpl<PrimaryKey> impleme
             new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
     final protected ChannelGroup cchannels =
             new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
+    final ChannelFuture serverFuture;
     // XXX should be private
     protected NettyBootstrap<PrimaryKey> bs;
     protected AtomicInteger seq;
@@ -515,9 +517,12 @@ public class IdChannelTransport extends ChannelTransportImpl<PrimaryKey> impleme
             serverGroup = bs.getChildEventLoopGroup();
             clientGroup = bs.getClientEventLoopGroup();
             ServerBootstrap b = bs.getServerBootstrap(new InboundHandler(this));
-            b.bind(new InetSocketAddress(peerLocator.getHost(), peerLocator.getPort()))
+            serverFuture = b.bind(new InetSocketAddress(peerLocator.getHost(), peerLocator.getPort()))
                     .syncUninterruptibly();
             logger.debug("bound " + ep);
+        }
+        else {
+            serverFuture = null;
         }
         isRunning = true;
     }
@@ -583,32 +588,45 @@ public class IdChannelTransport extends ChannelTransportImpl<PrimaryKey> impleme
         }
     }
 
+    public void waitForFin() {
+        serverFuture.channel().closeFuture().awaitUninterruptibly();
+    }
+
     public void fin() {
         logger.debug("running fin.");
         isRunning = false;
         cchannels.close().awaitUninterruptibly();
         schannels.close().awaitUninterruptibly();
+        serverFuture.channel().close().awaitUninterruptibly();
         bossGroup.shutdownGracefully();
         serverGroup.shutdownGracefully();
         clientGroup.shutdownGracefully();
         mgr.fin();
     }
 
-    private CompletableFuture<LocatorChannel> createLocatorChannel(NettyLocator locator) {
+    private CompletableFuture<LocatorChannel> createLocatorChannel(NettyLocator locator, TransOptions opts) {
         if (!isRunning) return null;
         LocatorChannelEntry ent = new LocatorChannelEntry(new LocatorChannel(locator, this), new CompletableFuture<>());
         logger.debug("initiating locator channel to {}", locator);
         raws.put(locator, ent);
         Bootstrap b = bs.getBootstrap(locator, new OutboundHandler(ent, this));
+        b.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, (int)opts.getTimeout());
         ChannelFuture f = b.connect(locator.getHost(), locator.getPort());
         f.addListener((future) -> {
+            if (future.isCancelled()) {
+                logger.trace("connection timed out to {}: {} sec", locator, opts.getTimeout());
+                ent.future.completeExceptionally(new IOException("connection timed out to " + locator + ": " + opts.getTimeout() + " sec"));
+            }
+            else if (!future.isSuccess()){
+                ent.future.completeExceptionally(new IOException(f.cause()));
+            }
             // change locator channel entry to the one with <future and channel>
             ent.channel.setNettyChannel(((ChannelFuture)future).channel()); 
         });
         return ent.future;
     }
 
-    public CompletableFuture<LocatorChannel> getRawCreate(NettyLocator dst) {
+    public CompletableFuture<LocatorChannel> getRawCreate(NettyLocator dst, TransOptions opts) {
         synchronized(raws) {
             ArrayList<LocatorChannelEntry> obsoletes = new ArrayList<>();
             raws.values().stream()
@@ -633,7 +651,7 @@ public class IdChannelTransport extends ChannelTransportImpl<PrimaryKey> impleme
 
             LocatorChannelEntry ent = raws.get(dst);
             if (ent == null) {
-                return createLocatorChannel(dst);
+                return createLocatorChannel(dst, opts);
             }
             else {
                 return ent.future;
@@ -641,14 +659,15 @@ public class IdChannelTransport extends ChannelTransportImpl<PrimaryKey> impleme
         }
     }
 
-    public CompletableFuture<IdChannel> getChannelCreate(int channelNo, PrimaryKey dst, ObjectId sender, ObjectId receiver) {
+    public CompletableFuture<IdChannel> getChannelCreate(int channelNo, PrimaryKey dst, ObjectId sender, ObjectId receiver, TransOptions opts) {
         synchronized(ichannels) {
-            IdChannel ch = ichannels.get(IdChannel.getKeyString(channelNo, dst));
+            // dst.key == null means wildcard. no need to cache it(XXX not implemented yet.)
+            IdChannel ch = (dst.key == null) ? null : ichannels.get(IdChannel.getKeyString(channelNo, dst));
             if (ch == null) {
                 NettyLocator direct = dst.getLocator();
                 if (direct != null) {// outside NAT
                     CompletableFuture<IdChannel> future = new CompletableFuture<>();
-                    CompletableFuture<LocatorChannel> lfuture = getRawCreate(direct);
+                    CompletableFuture<LocatorChannel> lfuture = getRawCreate(direct, opts);
                     lfuture.whenComplete((ret, e) -> {
                         if (e != null) {
                             future.completeExceptionally(e);
@@ -656,7 +675,9 @@ public class IdChannelTransport extends ChannelTransportImpl<PrimaryKey> impleme
                         else {
                             expireClosedIdChannels(); // XXX performance
                             IdChannel newCh = new IdChannel(seq.incrementAndGet(), ep, dst, sender, receiver, true, ret, this);
-                            ichannels.put(newCh.getKeyString(), newCh);
+                            if (dst.key != null) { // not a wildcard, cache it.
+                                ichannels.put(newCh.getKeyString(), newCh);
+                            }
                             future.complete(newCh);
                         }
                     });
@@ -675,7 +696,7 @@ public class IdChannelTransport extends ChannelTransportImpl<PrimaryKey> impleme
 
         IdChannel ret;
         try {
-            ret = getChannelCreate(seq.incrementAndGet(), dst, sender, receiver).get();
+            ret = getChannelCreate(seq.incrementAndGet(), dst, sender, receiver, new TransOptions(timeout)).get();
         } catch (Exception e) {
             throw new IOException(e);
         }
@@ -688,20 +709,21 @@ public class IdChannelTransport extends ChannelTransportImpl<PrimaryKey> impleme
         sendAsync(sender, receiver, dst, msg, opts);
     }
     
-    public CompletableFuture<Boolean> sendAsync(ObjectId sender, ObjectId receiver, PrimaryKey dst,
-            Object msg, TransOptions opts) throws IOException {
+    @Override
+    public CompletableFuture<Void> sendAsync(ObjectId sender, ObjectId receiver, PrimaryKey dst,
+            Object msg, TransOptions opts) {
         // opts is ignored in this layer.
         NettyMessage<PrimaryKey> nmsg = new NettyMessage<PrimaryKey>(receiver, ep, dst, null, getPeerId(), msg, false, 0);
         // generate a new channel if not exists
         logger.debug("sending async {}", nmsg);
-        CompletableFuture<IdChannel> f = getChannelCreate(0, dst, sender, receiver);
-        CompletableFuture<Boolean> retf = new CompletableFuture<>();
+        CompletableFuture<IdChannel> f = getChannelCreate(0, dst, sender, receiver, opts);
+        CompletableFuture<Void> retf = new CompletableFuture<>();
         f.whenComplete((ret, e) -> {
             if (e == null) {
                 try {
                     logger.debug("sending async when completed: {} {}", ret, nmsg);
                     ret.sendAsync(nmsg).addListener((cf) -> {
-                        retf.complete(true);
+                        retf.complete(null); // when does it return false?
                     });
                 } catch (Exception e1) {
                     retf.completeExceptionally(e1);

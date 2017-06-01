@@ -38,6 +38,9 @@ public interface NettyEndpoint extends Endpoint {
     static public ComparableKey<?> parseKey(String input) {
         ComparableKey<?> key;
         try {
+            if (input.equals("*")) { // wildcard.
+                return null;
+            }
             Number number = NumberFormat.getInstance().parse(input);
             int dot = input.indexOf('.'); // XXX just checking existence of '.'
             if (dot > 0) {
