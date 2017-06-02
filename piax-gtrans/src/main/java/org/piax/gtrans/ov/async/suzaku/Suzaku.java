@@ -128,6 +128,10 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         public void recv(Event ev) {
             EventExecutor.enqueue(ev);
         }
+        
+        public boolean isRunning() {
+            return trans.isUp();
+        }
     }
     
     public Suzaku(String spec) throws IdConflictException, IOException {
@@ -607,7 +611,9 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
                 return false;
             }
             for (K key : keyRegister.keySet()) {
-                szRemoveKey(key);
+                if (sender.isRunning()) {
+                    szRemoveKey(key);
+                }
             }
             isJoined = false;
             return true;

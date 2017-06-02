@@ -234,7 +234,11 @@ public class LocalNode extends Node {
         if (!isFailed) {
             sender.send(ev).whenComplete((result, e) ->{
                 if (e != null && ev.failureCallback != null) {
-                    ev.failureCallback.run(new RPCEventException((Exception)e));
+                    // It might be completed on the receiver transport thread.
+                    // Ensure to run on the execution thread.
+                    EventExecutor.runNow("failure", () -> {
+                        ev.failureCallback.run(new RPCEventException((Exception)e));
+                    });
                 }
             });
         }
@@ -275,7 +279,11 @@ public class LocalNode extends Node {
         if (!isFailed()) {
             sender.send(ev).whenComplete((result, e) ->{
                 if (e != null && ev.failureCallback != null) {
-                    ev.failureCallback.run(new RPCEventException((Exception)e));
+                    // It might be completed on the receiver transport thread.
+                    // Ensure to run on the execution thread.
+                    EventExecutor.runNow("failure", () -> {
+                        ev.failureCallback.run(new RPCEventException((Exception)e));
+                    });
                 }
             });
         }

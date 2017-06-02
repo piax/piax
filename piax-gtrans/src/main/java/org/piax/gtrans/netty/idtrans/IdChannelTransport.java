@@ -592,6 +592,11 @@ public class IdChannelTransport extends ChannelTransportImpl<PrimaryKey> impleme
         serverFuture.channel().closeFuture().awaitUninterruptibly();
     }
 
+    @Override
+    public boolean isUp() {
+        return isRunning;
+    }
+    
     public void fin() {
         logger.debug("running fin.");
         isRunning = false;
@@ -720,14 +725,19 @@ public class IdChannelTransport extends ChannelTransportImpl<PrimaryKey> impleme
         NettyMessage<PrimaryKey> nmsg = new NettyMessage<PrimaryKey>(receiver, ep, dst, null, getPeerId(), msg, false, 0);
         // generate a new channel if not exists
         logger.debug("sending async {}", nmsg);
-        CompletableFuture<IdChannel> f = getChannelCreate(0, dst, sender, receiver, opts);
         CompletableFuture<Void> retf = new CompletableFuture<>();
+        if (!isRunning) {
+            logger.debug("{} is not running", this);
+            retf.completeExceptionally(new IOException("transport is not running."));
+            return retf;
+        }
+        CompletableFuture<IdChannel> f = getChannelCreate(0, dst, sender, receiver, opts);
         f.whenComplete((ret, e) -> {
             if (e == null) {
                 try {
                     logger.debug("sending async when completed: {} {}", ret, nmsg);
                     ret.sendAsync(nmsg).addListener((cf) -> {
-                        retf.complete(null); // when does it return false?
+                        retf.complete(null);
                     });
                 } catch (Exception e1) {
                     retf.completeExceptionally(e1);
