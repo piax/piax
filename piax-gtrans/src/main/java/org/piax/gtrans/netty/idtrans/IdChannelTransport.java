@@ -605,24 +605,28 @@ public class IdChannelTransport extends ChannelTransportImpl<PrimaryKey> impleme
     }
 
     private CompletableFuture<LocatorChannel> createLocatorChannel(NettyLocator locator, TransOptions opts) {
-        if (!isRunning) return null;
         LocatorChannelEntry ent = new LocatorChannelEntry(new LocatorChannel(locator, this), new CompletableFuture<>());
         logger.debug("initiating locator channel to {}", locator);
         raws.put(locator, ent);
-        Bootstrap b = bs.getBootstrap(locator, new OutboundHandler(ent, this));
-        b.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, (int)opts.getTimeout());
-        ChannelFuture f = b.connect(locator.getHost(), locator.getPort());
-        f.addListener((future) -> {
-            if (future.isCancelled()) {
-                logger.trace("connection timed out to {}: {} sec", locator, opts.getTimeout());
-                ent.future.completeExceptionally(new IOException("connection timed out to " + locator + ": " + opts.getTimeout() + " sec"));
-            }
-            else if (!future.isSuccess()){
-                ent.future.completeExceptionally(new IOException(f.cause()));
-            }
-            // change locator channel entry to the one with <future and channel>
-            ent.channel.setNettyChannel(((ChannelFuture)future).channel()); 
-        });
+        if (!isRunning) {
+            ent.future.completeExceptionally(new IOException("generating a channel on stopped transport."));
+        }
+        else {
+            Bootstrap b = bs.getBootstrap(locator, new OutboundHandler(ent, this));
+            b.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, (int)opts.getTimeout());
+            ChannelFuture f = b.connect(locator.getHost(), locator.getPort());
+            f.addListener((future) -> {
+                if (future.isCancelled()) {
+                    logger.trace("connection timed out to {}: {} sec", locator, opts.getTimeout());
+                    ent.future.completeExceptionally(new IOException("connection timed out to " + locator + ": " + opts.getTimeout() + " sec"));
+                }
+                else if (!future.isSuccess()){
+                    ent.future.completeExceptionally(new IOException(f.cause()));
+                }
+                // change locator channel entry to the one with <future and channel>
+                ent.channel.setNettyChannel(((ChannelFuture)future).channel()); 
+            });
+        }
         return ent.future;
     }
 

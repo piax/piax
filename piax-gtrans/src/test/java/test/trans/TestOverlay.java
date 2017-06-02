@@ -1009,7 +1009,7 @@ public class TestOverlay {
             s2.fin();
         }
     }
-    
+
     @Test
     public void addDellSendTest() throws Exception {
         Suzaku<StringKey, StringKey> s1 = new Suzaku<>("tcp:localhost:12367");
@@ -1032,6 +1032,34 @@ public class TestOverlay {
         finally {
             s1.fin();
             s2.fin();
+        }
+    }
+    
+    @Test
+    public void joinToFailedNetTest() throws Exception {
+        Suzaku<StringKey, StringKey> s1 = new Suzaku<>("id:pid1:tcp:localhost:12367");
+        Suzaku<StringKey, StringKey> s2 = new Suzaku<>("id:pid2:tcp:localhost:12368");
+        Suzaku<StringKey, StringKey> s3 = new Suzaku<>("id:pid3:tcp:localhost:12369");
+        try {
+            s1.join("id:pid1:tcp:localhost:12367");
+            s2.join("id:pid1:tcp:localhost:12367");
+            // to cause a failure
+            s2.getBaseTransport().fin();
+            s3.join("id:pid1:tcp:localhost:12367");
+            s3.addKey(new StringKey("hello"));
+            AtomicBoolean received = new AtomicBoolean(false);
+            s3.setListener((szk, msg) -> {
+                received.set(true);
+                assertTrue(msg.getMessage().equals("world"));
+            });
+            s1.send(new StringKey("hello"), "world");
+            Thread.sleep(1000); // unless this line, finishes immediately.
+            assertTrue(received.get());
+        }
+        finally {
+            s1.fin();
+            s2.fin();
+            s3.fin();
         }
     }
 

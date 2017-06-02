@@ -11,6 +11,10 @@ import org.piax.gtrans.netty.NettyLocator;
 import org.piax.gtrans.netty.NettyRawChannel;
 
 public interface NettyBootstrap<E extends NettyEndpoint> {
+    
+    static int NUMBER_OF_THREADS_FOR_CLIENT = 1;
+    static int NUMBER_OF_THREADS_FOR_SERVER = 1;
+    
     EventLoopGroup getParentEventLoopGroup();
     EventLoopGroup getChildEventLoopGroup();
     EventLoopGroup getClientEventLoopGroup();

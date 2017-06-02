@@ -233,7 +233,7 @@ public class LocalNode extends Node {
         ev.beforeSendHook(this);
         if (!isFailed) {
             sender.send(ev).whenComplete((result, e) ->{
-                if (e != null) {
+                if (e != null && ev.failureCallback != null) {
                     ev.failureCallback.run(new RPCEventException((Exception)e));
                 }
             });
@@ -274,7 +274,7 @@ public class LocalNode extends Node {
 //        }
         if (!isFailed()) {
             sender.send(ev).whenComplete((result, e) ->{
-                if (e != null) {
+                if (e != null && ev.failureCallback != null) {
                     ev.failureCallback.run(new RPCEventException((Exception)e));
                 }
             });

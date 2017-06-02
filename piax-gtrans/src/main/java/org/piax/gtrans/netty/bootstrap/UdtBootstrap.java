@@ -38,8 +38,8 @@ public class UdtBootstrap<E extends NettyEndpoint> implements NettyBootstrap<E> 
         ThreadFactory clientFactory = new DefaultThreadFactory("client");
 
         parentGroup = new NioEventLoopGroup(1, bossFactory, NioUdtProvider.BYTE_PROVIDER);
-        childGroup = new NioEventLoopGroup(10, serverFactory, NioUdtProvider.BYTE_PROVIDER);
-        clientGroup = new NioEventLoopGroup(10, clientFactory, NioUdtProvider.BYTE_PROVIDER);
+        childGroup = new NioEventLoopGroup(NettyBootstrap.NUMBER_OF_THREADS_FOR_SERVER, serverFactory, NioUdtProvider.BYTE_PROVIDER);
+        clientGroup = new NioEventLoopGroup(NettyBootstrap.NUMBER_OF_THREADS_FOR_CLIENT, clientFactory, NioUdtProvider.BYTE_PROVIDER);
     }
 
     private ChannelInitializer<?> getChannelInboundInitializer(

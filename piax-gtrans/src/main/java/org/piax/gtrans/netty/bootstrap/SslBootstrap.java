@@ -43,8 +43,8 @@ public class SslBootstrap<E extends NettyEndpoint> implements NettyBootstrap<E> 
 
     public SslBootstrap(String host, int port) {
         parentGroup = new NioEventLoopGroup(1);
-        childGroup = new NioEventLoopGroup(10);
-        clientGroup = new NioEventLoopGroup(10);
+        childGroup = new NioEventLoopGroup(NettyBootstrap.NUMBER_OF_THREADS_FOR_SERVER);
+        clientGroup = new NioEventLoopGroup(NettyBootstrap.NUMBER_OF_THREADS_FOR_CLIENT);
         this.host = host;
         this.port = port;
     }
