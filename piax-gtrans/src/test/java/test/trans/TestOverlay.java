@@ -1045,6 +1045,7 @@ public class TestOverlay {
             s2.join("id:pid1:tcp:localhost:12367");
             // to cause a failure
             s2.getBaseTransport().fin();
+            Thread.sleep(1000);
             s3.join("id:pid1:tcp:localhost:12367");
             s3.addKey(new StringKey("hello"));
             AtomicBoolean received = new AtomicBoolean(false);

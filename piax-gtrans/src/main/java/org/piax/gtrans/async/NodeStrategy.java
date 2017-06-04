@@ -58,7 +58,6 @@ public abstract class NodeStrategy {
 
     public <T> void rangeQuery(Collection<? extends Range<?>> ranges,
             RQAdapter<T> adapter, TransOptions opts) {
-        System.out.println("lower=" + getLower());
         getLower().rangeQuery(ranges, adapter, opts);
     }
 
