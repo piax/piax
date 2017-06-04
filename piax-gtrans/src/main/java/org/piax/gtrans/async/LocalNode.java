@@ -25,7 +25,6 @@ import org.piax.common.TransportId;
 import org.piax.common.subspace.Range;
 import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.IdConflictException;
-import org.piax.gtrans.RPCInvoker;
 import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.async.Event.Lookup;
 import org.piax.gtrans.async.Event.RequestEvent;
