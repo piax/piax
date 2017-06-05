@@ -35,11 +35,11 @@ public abstract class RQAdapter<T> implements Serializable {
         return clazz;
     }
     /**
+     * @param received    the RQAdapter that is received on this node
      * @param localNode   the node that receives the request
      * @param range       the range that should be handled by this node
      * @param qid         query ID
-     * @param key         the key that corresponds to localNode
-     * @return
+     * @return a CompletableFuture that provides the value
      */
     @SuppressWarnings("unchecked")
     protected CompletableFuture<T> getRaw(RQAdapter<T> received,

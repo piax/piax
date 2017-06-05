@@ -299,7 +299,7 @@ public class EventExecutor {
                 logger.trace("-----------------------------------------");
                 logger.trace("T{} {}", getVTime(), s);
                 if (ev.receiver != null) {
-                    logger.trace(ev.receiver.toStringDetail());
+                    logger.trace("{}", ev.receiver.toStringDetail());
                 }
                 //System.out.println("so far:" + ev.route);
             }
