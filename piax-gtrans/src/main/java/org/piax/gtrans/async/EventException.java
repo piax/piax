@@ -9,9 +9,9 @@ public class EventException extends Exception {
     public EventException(String s) {
         super(s);
     }
-    public static class RPCEventException extends EventException {
-        public RPCEventException(RPCException e) {
-            super(e);
+    public static class NetEventException extends EventException {
+        public NetEventException(Throwable th) {
+            super(th.getMessage());
         }
     }
     public static class TimeoutException extends EventException {

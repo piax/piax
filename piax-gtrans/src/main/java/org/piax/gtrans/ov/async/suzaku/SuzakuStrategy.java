@@ -451,7 +451,7 @@ public class SuzakuStrategy extends NodeStrategy {
 
     /**
      * 定期的なfinger table更新
-     * @param isFirst
+     * @param isFirst true if it is the first time update
      */
     public void scheduleFTUpdate(boolean isFirst) {
         if (UPDATE_FINGER_PERIOD.value() == 0) {
@@ -1271,8 +1271,8 @@ public class SuzakuStrategy extends NodeStrategy {
             if (lnk == null) {
                 return false;
             }
-            int key = (int)(n.key.getPrimaryKey());
-            int lnkkey = (int)(lnk.key.getPrimaryKey());
+            int key = (Integer)(n.key.getPrimaryKey());
+            int lnkkey = (Integer)(lnk.key.getPrimaryKey());
             if ((key / 10 + d) % nodes.length != lnkkey / 10) {
                 return false;
             }

@@ -1,5 +1,6 @@
 package org.piax.gtrans.ov.async.rq;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -238,10 +239,9 @@ public class RQStrategy extends NodeStrategy {
     /**
      * @param range the query range
      * @param num   number of nodes to traverse
-     * @param provider the value provider
+     * @param adapter the adapter
      * @param opts the TransOptions
-     * @param resultsReceiver the function to receive the results
-     * @param T the type of returned value
+     * @param <T> the type of returned value
      */
     @Override
     public <T> void forwardQueryLeft(Range<?> range, int num,

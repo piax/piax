@@ -1,6 +1,7 @@
 package org.piax.gtrans.async;
 
 import java.io.IOException;
+import java.util.concurrent.CompletableFuture;
 
 import org.piax.common.Endpoint;
 import org.piax.common.TransportId;
@@ -17,7 +18,7 @@ import org.slf4j.LoggerFactory;
 
 public interface EventSender {
     static final Logger logger = LoggerFactory.getLogger(EventSender.class);
-    void send(Event ev) throws RPCException;
+    CompletableFuture<Void> send(Event ev);
 
     Endpoint getEndpoint();
 
@@ -37,7 +38,7 @@ public interface EventSender {
         }
 
         @Override
-        public void send(Event ev) {
+        public CompletableFuture<Void> send(Event ev) {
             if (ev.delay == Node.NETWORK_LATENCY) {
                 ev.delay = EventExecutor.latency(ev.sender, ev.receiver);
             }
@@ -54,6 +55,7 @@ public interface EventSender {
             Event copy = ev.clone();
             //copy.vtime = EventExecutor.getVTime() + ev.delay;
             EventExecutor.enqueue(copy);
+            return CompletableFuture.completedFuture(null);
         }
     }
 
@@ -76,7 +78,7 @@ public interface EventSender {
         // getEndpoint() is implemented in the super class, RPCInvoker.
 
         @Override
-        public void send(Event ev) throws RPCException {
+        public CompletableFuture<Void> send(Event ev) {
             assert ev.delay == Node.NETWORK_LATENCY;
             //ev.vtime = EventExecutor.getVTime() + ev.delay;
             ev.vtime = 0;
@@ -86,7 +88,15 @@ public interface EventSender {
             @SuppressWarnings("unchecked")
             EventReceiverIf stub = getStub((E) ev.receiver.addr,
                     GTransConfigValues.rpcTimeout);
-            stub.recv(ev);
+            try {
+                stub.recv(ev);
+            }
+            catch (Exception e) {
+                CompletableFuture<Void> f = new CompletableFuture<>();
+                f.completeExceptionally(e);
+                return f;
+            }
+            return CompletableFuture.completedFuture(null);
         }
 
         @Override

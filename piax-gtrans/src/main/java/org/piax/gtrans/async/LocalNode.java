@@ -1,7 +1,6 @@
 package org.piax.gtrans.async;
 
 import java.io.IOException;
-import java.io.ObjectStreamException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -26,11 +25,10 @@ import org.piax.common.TransportId;
 import org.piax.common.subspace.Range;
 import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.IdConflictException;
-import org.piax.gtrans.RPCException;
 import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.async.Event.Lookup;
 import org.piax.gtrans.async.Event.RequestEvent;
-import org.piax.gtrans.async.EventException.RPCEventException;
+import org.piax.gtrans.async.EventException.NetEventException;
 import org.piax.gtrans.async.EventException.RetriableException;
 import org.piax.gtrans.async.EventException.TimeoutException;
 import org.piax.gtrans.async.EventSender.EventSenderNet;
@@ -95,7 +93,7 @@ public class LocalNode extends Node {
             }
         }
     }
-    
+
     public LocalNode(EventSender sender, DdllKey ddllkey) {
         super(ddllkey, sender.getEndpoint());
         assert getInstance(ddllkey) == this; 
@@ -146,7 +144,6 @@ public class LocalNode extends Node {
      * replace this instance with corresponding Node object on serialization.
      * 
      * @return
-     * @throws ObjectStreamException
      */
     private Object writeReplace() {
         Node repl = new Node(this.key, this.addr);
@@ -221,14 +218,15 @@ public class LocalNode extends Node {
         }
         ev.beforeSendHook(this);
         if (!isFailed) {
-            try {
-                sender.send(ev);
-            } catch (RPCException e) {
-                logger.trace("{} got exception: {}", this, e);
-                if (failure != null) {
-                    failure.run(new RPCEventException(e));
+            sender.send(ev).whenComplete((result, e) ->{
+                if (e != null && ev.failureCallback != null) {
+                    // It might be completed on the receiver transport thread.
+                    // Ensure to run on the execution thread.
+                    EventExecutor.runNow("failure", () -> {
+                        ev.failureCallback.run(new NetEventException(e));
+                    });
                 }
-            }
+            });
         }
     }
 
@@ -265,12 +263,15 @@ public class LocalNode extends Node {
 //            }
 //        }
         if (!isFailed()) {
-            try {
-                sender.send(ev);
-            } catch (RPCException e) {
-                logger.trace("{} got exception: {}", this, e);
-                failure.run(new RPCEventException(e));
-            }
+            sender.send(ev).whenComplete((result, e) ->{
+                if (e != null && ev.failureCallback != null) {
+                    // It might be completed on the receiver transport thread.
+                    // Ensure to run on the execution thread.
+                    EventExecutor.runNow("failure", () -> {
+                        ev.failureCallback.run(new NetEventException(e));
+                    });
+                }
+            });
         }
     }
 
@@ -339,7 +340,6 @@ public class LocalNode extends Node {
     /**
      * locate the node position and insert
      * @param introducer
-     * @param success  a callback that is called after join succeeds
      */
     public CompletableFuture<Boolean> joinAsync(Node introducer) { 
         CompletableFuture<Boolean> joinFuture = new CompletableFuture<>();
