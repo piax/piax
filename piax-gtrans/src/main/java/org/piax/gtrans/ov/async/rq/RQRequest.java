@@ -52,6 +52,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
     private static final Logger logger =
             LoggerFactory.getLogger(RQRequest.class);
     private static final long serialVersionUID = 1L;
+    public static int RQ_RETRY_SUCCESSOR_FAILURE_DELAY = 1000;
 
     final long qid;
     Node root;       // DIRECT only
@@ -346,8 +347,16 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                                 getLocalNode().addMaybeFailedNode(dlg);
                                 RetransMode mode = opts.getRetransMode();
                                 if (mode == RetransMode.FAST || mode == RetransMode.RELIABLE) {
-                                    logger.debug("start fast retransmission! {}", sub);
-                                    rqDisseminate(sub);
+                                    if (dlg == getLocalNode().succ) {
+                                        logger.debug("start fast retransmission! (delayed) {}", sub);
+                                        EventExecutor.sched(
+                                                "rq-retry-successor-failure",
+                                                RQ_RETRY_SUCCESSOR_FAILURE_DELAY,
+                                                () -> rqDisseminate(sub));
+                                    } else {
+                                        logger.debug("start fast retransmission! {}", sub);
+                                        rqDisseminate(sub);
+                                    }
                                 }
                             });
                     logger.debug("send to child: {}", m);

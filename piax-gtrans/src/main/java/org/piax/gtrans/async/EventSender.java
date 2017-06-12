@@ -50,6 +50,12 @@ public interface EventSender {
                     logger.trace("{} |send/forward event {}", ev.sender, ev);
                 }
             }
+            if (false && ((LocalNode)ev.receiver).isFailed()) {
+                CompletableFuture<Void> f = new CompletableFuture<>();
+                f.completeExceptionally(new IOException("remote node failure: "
+                        + ev.receiver));
+                return f;
+            }
             // because sender Events and receiver Events are distinguished,
             // we have to clone the event even if sender == receiver.
             Event copy = ev.clone();
