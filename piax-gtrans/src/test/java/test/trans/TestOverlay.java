@@ -37,6 +37,7 @@ import org.piax.gtrans.Transport;
 import org.piax.gtrans.ov.Overlay;
 import org.piax.gtrans.ov.OverlayListener;
 import org.piax.gtrans.ov.OverlayReceivedMessage;
+import org.piax.gtrans.ov.async.ddll.DdllStrategy;
 import org.piax.gtrans.ov.async.suzaku.Suzaku;
 import org.piax.gtrans.ov.combined.CombinedOverlay;
 import org.piax.gtrans.ov.dolr.DOLR;
@@ -1047,6 +1048,7 @@ public class TestOverlay {
     
     @Test
     public void joinToFailedNetTest() throws Exception {
+        DdllStrategy.pingPeriod.set(3000);
         Suzaku<StringKey, StringKey> s1 = new Suzaku<>("id:pid1:tcp:localhost:12367");
         Suzaku<StringKey, StringKey> s2 = new Suzaku<>("id:pid2:tcp:localhost:12368");
         Suzaku<StringKey, StringKey> s3 = new Suzaku<>("id:pid3:tcp:localhost:12369");
