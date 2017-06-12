@@ -83,7 +83,6 @@ public class IdChannelTransport extends ChannelTransportImpl<PrimaryKey> impleme
     protected AtomicInteger seq;
 
     static public int RAW_POOL_SIZE = 30;
-    static public boolean PARALLEL_RECEIVE = false;
     
     public AttributeKey<String> rawChannelKey = AttributeKey.valueOf("rawKey");
 
@@ -117,14 +116,9 @@ public class IdChannelTransport extends ChannelTransportImpl<PrimaryKey> impleme
 
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) {
-            if (NettyChannelTransport.PARALLEL_RECEIVE) {
-                trans.getPeer().execute(() -> {
-                    trans.inboundReceive(ctx, msg);
-                });
-            }
-            else {
+            trans.getPeer().execute(() -> {
                 trans.inboundReceive(ctx, msg);
-            }
+            });
         }
 
         @Override
@@ -159,14 +153,9 @@ public class IdChannelTransport extends ChannelTransportImpl<PrimaryKey> impleme
 
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) {
-            if (NettyChannelTransport.PARALLEL_RECEIVE) {
-                trans.getPeer().execute(() -> {
-                    trans.outboundReceive(ent, ctx, msg);
-                });
-            }
-            else {
+            trans.getPeer().execute(() -> {
                 trans.outboundReceive(ent, ctx, msg);
-            }
+            });
         }
 
         @Override
@@ -379,9 +368,9 @@ public class IdChannelTransport extends ChannelTransportImpl<PrimaryKey> impleme
     @SuppressWarnings("unchecked")
     void outboundReceive(LocatorChannelEntry ent, ChannelHandlerContext ctx, Object msg) {
         if (msg instanceof ControlMessage) {
-            ControlMessage<PrimaryKey> resp = (ControlMessage<PrimaryKey>) msg;
-            logger.debug("outbound attempt response=" + resp.type);
-            switch(resp.type) {
+            ControlMessage<PrimaryKey> cmsg = (ControlMessage<PrimaryKey>) msg;
+            logger.debug("outbound attempt response=" + cmsg.type);
+            switch(cmsg.type) {
             case ATTEMPT:
                 logger.debug("illegal attempt received from server");
                 break;
@@ -410,6 +399,13 @@ public class IdChannelTransport extends ChannelTransportImpl<PrimaryKey> impleme
                         // retry?
                         break;
                     }
+                }
+                break;
+            case CLOSE:
+                logger.debug("close id channel: {}/{}", (int)cmsg.getArg(), (PrimaryKey)cmsg.getSource());
+                IdChannel c = ichannels.get(IdChannel.getKeyString((int)cmsg.getArg(), (PrimaryKey)cmsg.getSource()));
+                if (c != null) {
+                    closeIdChannel(ichannels.get(IdChannel.getKeyString((int)cmsg.getArg(), (PrimaryKey)cmsg.getSource())));
                 }
                 break;
             }
@@ -602,7 +598,9 @@ public class IdChannelTransport extends ChannelTransportImpl<PrimaryKey> impleme
         isRunning = false;
         cchannels.close().awaitUninterruptibly();
         schannels.close().awaitUninterruptibly();
-        serverFuture.channel().close().awaitUninterruptibly();
+        if (serverFuture.channel().isOpen()) {
+            serverFuture.channel().close().awaitUninterruptibly();
+        }
         bossGroup.shutdownGracefully();
         serverGroup.shutdownGracefully();
         clientGroup.shutdownGracefully();
@@ -728,7 +726,7 @@ public class IdChannelTransport extends ChannelTransportImpl<PrimaryKey> impleme
         CompletableFuture<Void> retf = new CompletableFuture<>();
         if (!isRunning) {
             logger.debug("{} is not running", this);
-            retf.completeExceptionally(new IOException("transport is not running."));
+            retf.completeExceptionally(new IOException("transport is not running"));
             return retf;
         }
         CompletableFuture<IdChannel> f = getChannelCreate(0, dst, sender, receiver, opts);

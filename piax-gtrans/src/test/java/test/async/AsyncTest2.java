@@ -133,7 +133,7 @@ public class AsyncTest2 extends AsyncTestBase {
         testFQLeft(new DdllNodeFactory(), opts,
                 receiver -> new FastValueProvider(receiver),
                 new Range<Integer>(0, true, 500, true),
-                Arrays.asList(), "[]", 4);
+                Arrays.asList(100, 200, 300), "[]", 4);
     }
 
     private void testFQLeft(NodeFactory base, 

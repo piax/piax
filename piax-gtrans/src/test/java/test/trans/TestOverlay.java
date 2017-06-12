@@ -417,6 +417,7 @@ public class TestOverlay {
         Peer p1 = Peer.getInstance(new PeerId("p1"));
         Peer p2 = Peer.getInstance(new PeerId("p2"));
         Peer p3 = Peer.getInstance(new PeerId("p3"));
+        Peer.RECEIVE_ASYNC=true;
 
         // base transport
         Endpoint loc;
@@ -518,6 +519,7 @@ public class TestOverlay {
         p1.fin();
         p2.fin();
         p3.fin();
+        Peer.RECEIVE_ASYNC=false;
     }
 
     @Test
@@ -526,6 +528,8 @@ public class TestOverlay {
     }
 
     public void CombinedFloodTest(Net net) throws Exception {
+        Peer.RECEIVE_ASYNC=true;
+        Suzaku.EXEC_ASYNC=false;
         // get peers
         Peer p1 = Peer.getInstance(new PeerId("p1"));
         Peer p2 = Peer.getInstance(new PeerId("p2"));
@@ -633,6 +637,8 @@ public class TestOverlay {
         p1.fin();
         p2.fin();
         p3.fin();
+        Peer.RECEIVE_ASYNC=false;
+        Suzaku.EXEC_ASYNC=false;
     }
 
     @Test
@@ -642,6 +648,8 @@ public class TestOverlay {
 
     @SuppressWarnings("unchecked")
     public void CombinedComblexTest(Ov ov, Net net) throws Exception {
+        Peer.RECEIVE_ASYNC=false;
+        Suzaku.EXEC_ASYNC = true;
         // get peers
         Peer p1 = Peer.getInstance(new PeerId("p1"));
         Peer p2 = Peer.getInstance(new PeerId("p2"));
@@ -812,6 +820,8 @@ public class TestOverlay {
         p1.fin();
         p2.fin();
         p3.fin();
+        Peer.RECEIVE_ASYNC=false;
+        Suzaku.EXEC_ASYNC = false;
     }
 
     @SuppressWarnings("unchecked")

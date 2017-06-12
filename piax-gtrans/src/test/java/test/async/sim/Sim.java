@@ -15,9 +15,6 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.LongStream;
 
-import ocu.p2p.stat.Stat;
-import ocu.p2p.stat.StatSet;
-
 import org.piax.common.PeerId;
 import org.piax.common.PeerLocator;
 import org.piax.common.TransportId;
@@ -39,6 +36,7 @@ import org.piax.gtrans.async.Option.BooleanOption;
 import org.piax.gtrans.async.Option.DoubleOption;
 import org.piax.gtrans.async.Option.EnumOption;
 import org.piax.gtrans.async.Option.IntegerOption;
+import org.piax.gtrans.ov.async.chord.ChordStrategy.ChordNodeFactory;
 import org.piax.gtrans.ov.async.ddll.DdllStrategy;
 import org.piax.gtrans.ov.async.ddll.DdllStrategy.DdllNodeFactory;
 import org.piax.gtrans.ov.async.ddll.DdllStrategy.RetryMode;
@@ -51,6 +49,9 @@ import org.piax.gtrans.raw.udp.UdpLocator;
 import org.piax.util.MersenneTwister;
 import org.piax.util.UniqId;
 
+import ocu.p2p.stat.Stat;
+import ocu.p2p.stat.StatSet;
+
 public class Sim {
     @FunctionalInterface
     public interface GetFactory {
@@ -61,7 +62,8 @@ public class Sim {
         DDLL(() -> new DdllNodeFactory()),
         SUZAKU(() -> new SuzakuNodeFactory(1)), 
         SUZAKU2(() -> new SuzakuNodeFactory(2)), 
-        SUZAKU3(() -> new SuzakuNodeFactory(3)); 
+        SUZAKU3(() -> new SuzakuNodeFactory(3)),
+        CHORD(() -> new ChordNodeFactory()); 
         //SKIPGRAPH(() -> new SkipGraphNodeFactory());
         public GetFactory method;
         private Algorithm(GetFactory method) {
@@ -1302,7 +1304,14 @@ public class Sim {
         Arrays.sort(nodes);
         dump(nodes);
         long start = EventExecutor.getVTime();
-        startSim(nodes);
+        if (factory instanceof ChordNodeFactory) {
+            do {
+                startSim(nodes, 1000); // 1sec
+            } while (!Sim.isFinished());
+        } else {
+            startSim(nodes);
+        }
+        dump(nodes);
         long end = EventExecutor.getVTime();
         System.out.println("start = " + start + ", end = " + end
                 + ", elapsed = " + (end - start));

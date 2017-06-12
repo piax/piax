@@ -233,7 +233,8 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
             super(receiver);
             this.isReceiverHalf = isReceiverHalf;
             super.onReply((rep, exc) -> {
-                logger.trace("SreamingRequestEvent: complete! {}, {}", rep, exc);
+                logger.trace("SreamingRequestEvent: complete! {}, {}", rep,
+                        exc.toString());
                 assert rep == null;
                 exceptionReceiver.accept(exc);
             });
@@ -300,11 +301,18 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
         public void onReply(BiConsumer<U, Throwable> handler) {
             // change Throwable to EventException (?)
             this.future.handle((rep, exc) -> {
+                if (exc != null) {
+                    logger.debug("onReply: got {}", exc.toString());
+                    // replyが得られなかったとしても，途中のノードの故障による場合も
+                    // あるため，故障ノードには追加しない．
+                    // (送信先ノードが故障している場合は AckTimeout で追加される
+                    // ため，ここで追加しなくても問題ない)
+                }
                 handler.accept(rep, exc);
                 return false;
             }).exceptionally(exc -> {
                 // CompletableFuture#handle(handler) conceals exceptions in
-                // handler.  Not to miss such exceptions and make it easy to 
+                // handlers.  Not to miss such exceptions and make it easy to 
                 // debug, we catch them and terminate the process here.
                 if (exc instanceof CompletionException) {
                     exc = exc.getCause();

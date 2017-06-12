@@ -79,6 +79,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
 
     public static TransportId DEFAULT_TRANSPORT_ID = new TransportId("suzaku");
     public static final int DEFAULT_SUZAKU_TYPE = 3; // Suzaku algorithm.
+    public static boolean EXEC_ASYNC = true; // exec get asynchronously 
 
     RQNodeFactory factory;
     SuzakuEventSender sender;
@@ -238,7 +239,12 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         @SuppressWarnings("unchecked")
         @Override
         public CompletableFuture<FutureQueue<Object>> get(RQAdapter<FutureQueue<Object>> received, DdllKey key) {
-            return CompletableFuture.supplyAsync(()->szk.onReceiveRequest(key, ((ExecQueryAdapter)received).nmsg));
+            if (EXEC_ASYNC) {
+                return CompletableFuture.supplyAsync(()->szk.onReceiveRequest(key, ((ExecQueryAdapter)received).nmsg));
+            }
+            else {
+                return CompletableFuture.completedFuture(szk.onReceiveRequest(key, ((ExecQueryAdapter)received).nmsg));
+            }
         }
     }
     

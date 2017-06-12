@@ -276,7 +276,7 @@ public abstract class TransportImpl<D extends Destination> implements Transport<
     
     public void send(TransportId upperTrans, D dst, Object msg)
             throws ProtocolUnsupportedException, IOException {
-        send(upperTrans, upperTrans, dst, msg, null);
+        send(upperTrans, upperTrans, dst, msg, new TransOptions());
     }
 
     public String toString0() {

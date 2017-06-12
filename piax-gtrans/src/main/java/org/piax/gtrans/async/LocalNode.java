@@ -28,7 +28,7 @@ import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.async.Event.Lookup;
 import org.piax.gtrans.async.Event.RequestEvent;
-import org.piax.gtrans.async.EventException.RPCEventException;
+import org.piax.gtrans.async.EventException.NetEventException;
 import org.piax.gtrans.async.EventException.RetriableException;
 import org.piax.gtrans.async.EventException.TimeoutException;
 import org.piax.gtrans.async.EventSender.EventSenderNet;
@@ -222,8 +222,8 @@ public class LocalNode extends Node {
                 if (e != null && ev.failureCallback != null) {
                     // It might be completed on the receiver transport thread.
                     // Ensure to run on the execution thread.
-                    EventExecutor.runNow("failure", () -> {
-                        ev.failureCallback.run(new RPCEventException((Exception)e));
+                    EventExecutor.runNow("post: failureCallback", () -> {
+                        ev.failureCallback.run(new NetEventException(e));
                     });
                 }
             });
@@ -267,8 +267,8 @@ public class LocalNode extends Node {
                 if (e != null && ev.failureCallback != null) {
                     // It might be completed on the receiver transport thread.
                     // Ensure to run on the execution thread.
-                    EventExecutor.runNow("failure", () -> {
-                        ev.failureCallback.run(new RPCEventException((Exception)e));
+                    EventExecutor.runNow("forward: failureCallback", () -> {
+                        ev.failureCallback.run(new NetEventException(e));
                     });
                 }
             });
@@ -292,7 +292,9 @@ public class LocalNode extends Node {
 
     public void addMaybeFailedNode(Node node) {
         logger.trace("{}: addMaybeFailedNode: {}", this, node);
-        maybeFailedNodes.add(node);
+        if (node != this) {
+            maybeFailedNodes.add(node);
+        }
     }
 
     /**

@@ -132,5 +132,11 @@ public abstract class DdllEvent {
             this.candidates = candidates;
             this.succ = succ;
         }
+
+        @Override
+        public String toStringMessage() {
+            return "GetCandidatesResponse[cands="
+                    + candidates + ", succ=" + succ + "]";
+        }
     }
 }

@@ -56,7 +56,8 @@ public class Peer {
 
     public static final String RAW = "RAW";
     public static final String WITH_FRAGMENTATION = "WITH_FRAGMENTATION";
-
+    public static boolean RECEIVE_ASYNC = false;
+    
     static final ConcurrentMap<PeerId, Peer> peers = 
             new ConcurrentHashMap<PeerId, Peer>();
     
@@ -464,7 +465,12 @@ public class Peer {
     }
 
     public void execute(Runnable receiveTask) throws RejectedExecutionException {
-        threadPool.execute(receiveTask);
+        if (RECEIVE_ASYNC) {
+            threadPool.execute(receiveTask);
+        }
+        else {
+            receiveTask.run();
+        }
     }
     
     public void concatPeerId2ThreadName() {

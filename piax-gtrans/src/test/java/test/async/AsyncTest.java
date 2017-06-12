@@ -24,6 +24,7 @@ import org.piax.gtrans.RemoteValue;
 import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.TransOptions.ResponseType;
 import org.piax.gtrans.TransOptions.RetransMode;
+import org.piax.gtrans.async.EventException.NetEventException;
 import org.piax.gtrans.async.EventException.TimeoutException;
 import org.piax.gtrans.async.EventExecutor;
 import org.piax.gtrans.async.Indirect;
@@ -280,7 +281,8 @@ public class AsyncTest extends AsyncTestBase {
                 f1.get();
                 fail();
             } catch (InterruptedException | ExecutionException e) {
-                assertTrue(e.getCause() instanceof TimeoutException);
+                assertTrue(e.getCause() instanceof TimeoutException
+                        || e.getCause() instanceof NetEventException);
             }
         }
     }
