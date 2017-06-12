@@ -487,7 +487,7 @@ public class DdllStrategy extends NodeStrategy {
             logger.debug("not IN");
             return CompletableFuture.completedFuture(true);
         }
-        if (leftSucc == n) {
+        if (n.pred == left && leftSucc == n) {
             logger.trace("no problem");
             return CompletableFuture.completedFuture(true);
         }
