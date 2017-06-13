@@ -307,7 +307,7 @@ public class LocalNode extends Node {
     public boolean addKey(Endpoint introducer) throws IOException,
         InterruptedException {
         logger.debug("{}: addkey", this);
-        Node temp = Node.getTemporaryInstance(introducer);
+        Node temp = Node.getWildcardInstance(introducer);
         CompletableFuture<Boolean> future = joinAsync(temp);
         try {
             return future.get();

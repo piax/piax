@@ -981,12 +981,19 @@ public class SuzakuStrategy extends NodeStrategy {
             FingerTable tab = isBackward ? table.backward : table.forward;
             FingerTable opTab = isBackward ? table.forward : table.backward;
             if (exc != null) {
-                logger.debug("{}: getFingerTable0: TIMEOUT on {}", n, q);
+                logger.debug("{}: getFingerTable0: got exception on {}", n, q);
+                n.addMaybeFailedNode(q);
                 Runnable job = () -> {
-                    // XXX: ここで，getNode() は suspectedNode を考慮していない! 
-                    if (baseEnt.getNode() != null) {
+                    List<Node> nodes = baseEnt.allNodes();
+                    List<Node> altNodes = nodes.stream()
+                        .filter(e -> !n.maybeFailedNodes.contains(e))
+                        .collect(Collectors.toList());
+                    if (!altNodes.isEmpty()) {
                         // we have a backup node
-                        updateFingerTable0(p, isBackward, baseEnt, nextEnt2);
+                        FTEntry altEnt = new FTEntry(altNodes);
+                        logger.debug("{}: we have backup nodes, p={}, altEnt={}, continue", n, altEnt, p);
+                        //updateFingerTable0(p, isBackward, baseEnt, nextEnt2);
+                        updateFingerTable0(p, isBackward, altEnt, nextEnt2);
                     } else {
                         // we have no backup node
                         if (p + 1 < tab.getFingerTableSize()) {
