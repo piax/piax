@@ -117,6 +117,12 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
             //ev.vtime = EventExecutor.getVTime() + ev.delay;
             ev.vtime = 0;
             logger.trace("*** {}|send/forward event {}", ev.sender, ev);
+            
+            if (ev.receiver.addr.equals(getEndpoint())) {
+                recv(ev);
+                return CompletableFuture.completedFuture(null);
+            }
+            
             return trans.sendAsync(transId, (E) ev.receiver.addr, ev);
         }
 
