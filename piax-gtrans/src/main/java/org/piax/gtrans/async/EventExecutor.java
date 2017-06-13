@@ -309,8 +309,8 @@ public class EventExecutor {
                     receiver = (LocalNode) ev.receiver;
                 } else {
                     assert ev.receiver.key == null;
-                    // special case
-                    receiver = Node.getAnyLocalNode();
+                    // wild card case
+                    receiver = Node.getAnyLocalNode(ev.receiver.addr);
                     if (receiver == null) {
                         logger.debug("No valid LocalNode: {}", ev);
                         continue;

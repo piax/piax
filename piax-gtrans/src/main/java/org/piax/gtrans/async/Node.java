@@ -49,14 +49,15 @@ public class Node implements Comparable<Node>, Serializable {
         return instances.get(ddllkey);
     }
 
-    public static Node getTemporaryInstance(Endpoint ep) {
+    public static Node getWildcardInstance(Endpoint ep) {
         return new Node(null, ep);
     }
 
-    public static synchronized LocalNode getAnyLocalNode() {
+    public static synchronized LocalNode getAnyLocalNode(Endpoint addr) {
         Optional<Node> anyNode = instances.values().stream()
                 .filter(v -> (v instanceof LocalNode)
-                        && ((LocalNode)v).mode == NodeMode.INSERTED)
+                        && ((LocalNode)v).mode == NodeMode.INSERTED
+                        && ((LocalNode)v).addr.equals(addr))
                 .findFirst();
         return (LocalNode) anyNode.orElse(null);
     }
@@ -86,6 +87,9 @@ public class Node implements Comparable<Node>, Serializable {
 
     @Override
     public String toString() {
+        if (key == null) {
+            return "N*(" + addr + ")";
+        }
         return "N" + key;
     }
 
