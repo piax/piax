@@ -463,6 +463,7 @@ public class DdllStrategy extends NodeStrategy {
         if (last == null) {
             last = n;
         }
+        LinkNum lseq0 = lseq;
         GetCandidates ev = new GetCandidates(last, n);
         ev.onReply((resp, exc) -> {
             if (exc != null) {
@@ -470,7 +471,15 @@ public class DdllStrategy extends NodeStrategy {
                 n.addMaybeFailedNode(ev.receiver);
                 getLiveLeft(left, leftSucc, candidates, future);
             } else {
-                getLiveLeft(resp.origin, resp.succ, resp.candidates, future);
+                if (lseq.equals(lseq0)) {
+                    getLiveLeft(resp.origin, resp.succ, resp.candidates, future);
+                } else {
+                    // lseq has been changed while waiting GetCandidateResponse.
+                    // we have to retry the discovery.
+                    logger.debug("{}: getLiveLeft: lseq changed!", n);
+                    List<Node> cands = n.getNodesForFix(n.key);
+                    getLiveLeft(n, n.succ, cands, future);
+                }
             }
         });
         n.post(ev);
