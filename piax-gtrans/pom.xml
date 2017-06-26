@@ -199,6 +199,26 @@
             <configuration>
                 <instructions>
                     <Export-Package>org.piax.*</Export-Package>
+                    <Import-Package>
+                        org.piax.agent;resolution:="optional",org.piax.agent.impl;resolution:="optional",
+                        io.netty.bootstrap,
+                        io.netty.buffer,
+                        io.netty.channel,
+                        io.netty.channel.group,
+                        io.netty.channel.nio,
+                        io.netty.channel.socket,
+                        io.netty.channel.socket.nio,
+                        io.netty.channel.udt,
+                        io.netty.channel.udt.nio,
+                        io.netty.handler.codec.serialization,
+                        io.netty.handler.logging,
+                        io.netty.handler.ssl,
+                        io.netty.handler.ssl.util,
+                        io.netty.util,
+                        io.netty.util.concurrent,
+                        javax.net.ssl,
+                        org.slf4j;version="[1.7,2)"
+                    </Import-Package>
                 </instructions>
             </configuration>
         </plugin>
