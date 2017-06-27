@@ -1,7 +1,6 @@
 package org.piax.gtrans.ov.async.ddll;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -13,7 +12,6 @@ import org.piax.gtrans.async.Event.LookupDone;
 import org.piax.gtrans.async.Event.TimerEvent;
 import org.piax.gtrans.async.EventException;
 import org.piax.gtrans.async.EventException.RetriableException;
-import org.piax.gtrans.async.Event;
 import org.piax.gtrans.async.EventExecutor;
 import org.piax.gtrans.async.FTEntry;
 import org.piax.gtrans.async.LocalNode;
@@ -70,7 +68,7 @@ public class DdllStrategy extends NodeStrategy {
     }
 
     public static EnumOption<SetRNakMode> setrnakmode = new EnumOption<>(
-            SetRNakMode.class, SetRNakMode.SETRNAK_NONE, "-setrnak");
+            SetRNakMode.class, SetRNakMode.SETRNAK_OPT2, "-setrnak");
 
     public enum RetryMode {
         IMMED, CONST, RANDOM
@@ -80,7 +78,7 @@ public class DdllStrategy extends NodeStrategy {
 
     // pinging is off by default
     public static IntegerOption pingPeriod =
-            new IntegerOption(0, "-pingperiod");
+            new IntegerOption(10000, "-pingperiod");
 
     LinkNum lseq = new LinkNum(0, 0), rseq = new LinkNum(0, 0);
     DdllStatus status = DdllStatus.OUT;

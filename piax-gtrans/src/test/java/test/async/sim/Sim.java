@@ -36,7 +36,11 @@ import org.piax.gtrans.async.Option.BooleanOption;
 import org.piax.gtrans.async.Option.DoubleOption;
 import org.piax.gtrans.async.Option.EnumOption;
 import org.piax.gtrans.async.Option.IntegerOption;
+import org.piax.gtrans.ov.async.atomic.AtomicRingStrategy;
+import org.piax.gtrans.ov.async.atomic.AtomicRingStrategy.AtomicRingNodeFactory;
 import org.piax.gtrans.ov.async.chord.ChordStrategy.ChordNodeFactory;
+import org.piax.gtrans.ov.async.cmr.CmrStrategy;
+import org.piax.gtrans.ov.async.cmr.CmrStrategy.CmrNodeFactory;
 import org.piax.gtrans.ov.async.ddll.DdllStrategy;
 import org.piax.gtrans.ov.async.ddll.DdllStrategy.DdllNodeFactory;
 import org.piax.gtrans.ov.async.ddll.DdllStrategy.RetryMode;
@@ -58,12 +62,13 @@ public class Sim {
         NodeFactory getFactory();
     }
     public enum Algorithm {
-        //AtomicRing(() -> new AtomicRingNodeFactory()), 
+        AtomicRing(() -> new AtomicRingNodeFactory()), 
         DDLL(() -> new DdllNodeFactory()),
         SUZAKU(() -> new SuzakuNodeFactory(1)), 
         SUZAKU2(() -> new SuzakuNodeFactory(2)), 
         SUZAKU3(() -> new SuzakuNodeFactory(3)),
-        CHORD(() -> new ChordNodeFactory()); 
+        CHORD(() -> new ChordNodeFactory()),
+        CMR(() -> new CmrNodeFactory());
         //SKIPGRAPH(() -> new SkipGraphNodeFactory());
         public GetFactory method;
         private Algorithm(GetFactory method) {
@@ -166,7 +171,8 @@ public class Sim {
         EventExecutor.load();
         SuzakuStrategy.load();
         DdllStrategy.load();
-        //AtomicRingStrategy.load();
+        AtomicRingStrategy.load();
+        CmrStrategy.load();
         //NetworkParams.load();
 
         List<String> argList = new ArrayList<>(Arrays.asList(args));
