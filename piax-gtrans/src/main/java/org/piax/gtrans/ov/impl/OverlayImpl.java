@@ -211,7 +211,7 @@ public abstract class OverlayImpl<D extends Destination, K extends Key> extends
         }
     }
 
-    protected FutureQueue<?> selectOnReceive(OverlayListener<D, K> listener,
+    protected Object selectOnReceive(OverlayListener<D, K> listener,
             Overlay<D, K> trans, OverlayReceivedMessage<K> rmsg) {
         logger.trace("ENTRY:");
         Object msg = rmsg.getMessage();
@@ -221,13 +221,9 @@ public abstract class OverlayImpl<D extends Destination, K extends Key> extends
             rmsg.setMessage(inn);
             logger.debug("select onReceive: trans:{}", trans.getTransportId());
             listener.onReceive(trans, rmsg);
-            return FutureQueue.emptyQueue();
+            return null;//FutureQueue.emptyQueue();
         } else {
-            Object obj = listener.onReceiveRequest(trans, rmsg);
-            if (obj instanceof FutureQueue<?>) {
-                return (FutureQueue<?>)obj;
-            }
-            return trans.singletonFutureQueue(obj);
+            return listener.onReceiveRequest(trans, rmsg);
         }
     }
 

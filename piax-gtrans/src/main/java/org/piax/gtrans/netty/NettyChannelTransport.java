@@ -96,7 +96,7 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
             serverGroup = bs.getChildEventLoopGroup();
             clientGroup = bs.getClientEventLoopGroup();
 
-            ServerBootstrap b = bs.getServerBootstrap(this);
+            ServerBootstrap b = bs.getServerBootstrap(new NettyInboundHandler(this));
             b.bind(new InetSocketAddress(ep.getHost(), ep.getPort()))
                     .syncUninterruptibly();
             logger.debug("bound " + ep);
@@ -248,7 +248,7 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
             raw = new NettyRawChannel<E>(dst, this, true);
             NettyLocator l = directLocator(dst);
             if (l != null) {
-                Bootstrap b = bs.getBootstrap(raw, this);
+                Bootstrap b = bs.getBootstrap(l, new NettyOutboundHandler(raw, this));
                 b.connect(l.getHost(), l.getPort());
             }
             else {
@@ -297,7 +297,7 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
         // is this valid only for tcp channel?
         InetSocketAddress sa = (InetSocketAddress)ctx.channel().remoteAddress();
         E dst = createEndpoint(sa.getHostName(), sa.getPort());
-        ControlMessage<E> attempt = new ControlMessage<E>(ControlType.ATTEMPT, ep, attemptRand);
+        ControlMessage<E> attempt = new ControlMessage<E>(ControlType.ATTEMPT, ep, null, attemptRand);
         synchronized(raws) {
             // NettyRawChannel raw = raws.get(locator);
             synchronized (raw) {
@@ -376,7 +376,7 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
                             raw.setStat(Stat.RUN);
                             raw.setContext(ctx);
                             ctx.writeAndFlush(new ControlMessage<E>(
-                                    ControlType.ACK, ep, null));
+                                    ControlType.ACK, ep, ep, null));
                         }
                     } else if (raw != null && raw.attempt != null) {
                         synchronized (raw) {
@@ -385,13 +385,13 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
                             if (raw.attempt > (int) cmsg.getArg()) {
                                 logger.debug("attempt won on " + raw);
                                 ctx.writeAndFlush(new ControlMessage<E>(
-                                        ControlType.NACK, ep, null));
+                                        ControlType.NACK, ep, null, null));
                                 
                                 
                             } else { // opposite side wins.
                                 logger.debug("attempt lose on " + raw);
                                 ctx.writeAndFlush(new ControlMessage<E>(
-                                        ControlType.ACK, ep, null));
+                                        ControlType.ACK, ep, null, null));
                                 //if (raw.getStat() == Stat.DENIED) {
                                 //logger.info("NACK is already received: " + raw);
                                 // if NACK is already received, it goes to RUN state.
@@ -415,7 +415,7 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
                                     + cmsg.getSource());
                         }
                         ctx.writeAndFlush(new ControlMessage<E>(ControlType.ACK,
-                                ep, null));
+                                ep, null, null));
                         putRaw(cmsg.getSource(), raw);
                     }
                 } // synchronized raws

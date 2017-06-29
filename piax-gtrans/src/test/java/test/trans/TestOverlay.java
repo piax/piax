@@ -34,6 +34,8 @@ import org.piax.gtrans.RemoteValue;
 import org.piax.gtrans.RequestTransport.Response;
 import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.Transport;
+import org.piax.gtrans.netty.bootstrap.NettyBootstrap;
+import org.piax.gtrans.netty.bootstrap.NettyBootstrap.SerializerType;
 import org.piax.gtrans.ov.Overlay;
 import org.piax.gtrans.ov.OverlayListener;
 import org.piax.gtrans.ov.OverlayReceivedMessage;
@@ -76,6 +78,8 @@ public class TestOverlay {
 
     @SuppressWarnings("unchecked")
     public void LLNetTest(Ov ov, Net net) throws Exception {
+        SerializerType orig = NettyBootstrap.SERIALIZER;
+        NettyBootstrap.SERIALIZER = SerializerType.Java;
         // get peers
         Peer p1 = Peer.getInstance(new PeerId(newId()));
         Peer p2 = Peer.getInstance(new PeerId(newId()));
@@ -177,6 +181,7 @@ public class TestOverlay {
         p1.fin();
         p2.fin();
         p3.fin();
+        NettyBootstrap.SERIALIZER = orig;
     }
 
     @Test
@@ -186,6 +191,8 @@ public class TestOverlay {
 
     @SuppressWarnings("unchecked")
     public void DOLRTest(Ov ov, Net net) throws Exception {
+        SerializerType orig = NettyBootstrap.SERIALIZER;
+        NettyBootstrap.SERIALIZER = SerializerType.Java;
         // get peers
         Peer p1 = Peer.getInstance(new PeerId("p1"));
         Peer p2 = Peer.getInstance(new PeerId("p2"));
@@ -287,6 +294,7 @@ public class TestOverlay {
         p1.fin();
         p2.fin();
         p3.fin();
+        NettyBootstrap.SERIALIZER = orig;
     }
 
     @Test
@@ -296,6 +304,8 @@ public class TestOverlay {
 
     @SuppressWarnings({ "unchecked", "rawtypes" })
     public void MaxLessThanTest(Ov ov, Net net) throws Exception {
+        SerializerType orig = NettyBootstrap.SERIALIZER;
+        NettyBootstrap.SERIALIZER = SerializerType.Java;
         // get peers
         Peer p1 = Peer.getInstance(new PeerId("p1"));
         Peer p2 = Peer.getInstance(new PeerId("p2"));
@@ -406,6 +416,7 @@ public class TestOverlay {
         p1.fin();
         p2.fin();
         p3.fin();
+        NettyBootstrap.SERIALIZER = orig;
     }
 
     @Test
@@ -529,6 +540,9 @@ public class TestOverlay {
     }
 
     public void CombinedFloodTest(Net net) throws Exception {
+        SerializerType orig = NettyBootstrap.SERIALIZER;
+        NettyBootstrap.SERIALIZER = SerializerType.Java;
+
         Peer.RECEIVE_ASYNC=true;
         Suzaku.EXEC_ASYNC=false;
         // get peers
@@ -640,16 +654,19 @@ public class TestOverlay {
         p3.fin();
         Peer.RECEIVE_ASYNC=false;
         Suzaku.EXEC_ASYNC=false;
+        NettyBootstrap.SERIALIZER = orig;
     }
 
     @Test
-    public void CombinedComblexTest() throws Exception {
-        CombinedComblexTest(ov, net);
+    public void CombinedComplexTest() throws Exception {
+        CombinedComplexTest(ov, net);
     }
 
     @SuppressWarnings("unchecked")
-    public void CombinedComblexTest(Ov ov, Net net) throws Exception {
-        Peer.RECEIVE_ASYNC=false;
+    public void CombinedComplexTest(Ov ov, Net net) throws Exception {
+        SerializerType orig = NettyBootstrap.SERIALIZER;
+        NettyBootstrap.SERIALIZER = SerializerType.Java;
+        Peer.RECEIVE_ASYNC= true;
         Suzaku.EXEC_ASYNC = true;
         // get peers
         Peer p1 = Peer.getInstance(new PeerId("p1"));
@@ -823,6 +840,7 @@ public class TestOverlay {
         p3.fin();
         Peer.RECEIVE_ASYNC=false;
         Suzaku.EXEC_ASYNC = false;
+        NettyBootstrap.SERIALIZER = orig;
     }
 
     @SuppressWarnings("unchecked")
@@ -1022,7 +1040,7 @@ public class TestOverlay {
     }
 
     @Test
-    public void addDellSendTest() throws Exception {
+    public void addDelSendTest() throws Exception {
         Suzaku<StringKey, StringKey> s1 = new Suzaku<>("tcp:localhost:12367");
         Suzaku<StringKey, StringKey> s2 = new Suzaku<>("tcp:localhost:12368");
         try {
@@ -1057,7 +1075,7 @@ public class TestOverlay {
             s2.join("id:pid1:tcp:localhost:12367");
             // to cause a failure
             s2.getBaseTransport().fin();
-            Thread.sleep(1000);
+            //Thread.sleep(1000);
             s3.join("id:pid1:tcp:localhost:12367");
             s3.addKey(new StringKey("hello"));
             AtomicBoolean received = new AtomicBoolean(false);
@@ -1089,6 +1107,33 @@ public class TestOverlay {
             });
             AtomicBoolean received = new AtomicBoolean(false);
             s1.requestAsync(new StringKey("hello"), "world",
+                    (ret, e)-> { // receive response
+                        if (ret != Response.EOR) {
+                            received.set(true);
+                            assertTrue(ret.equals("world2"));
+                        }
+                    });
+            Thread.sleep(1000); // unless this line, finishes immediately.
+            assertTrue(received.get());
+        }
+        finally {
+            s1.fin();
+            s2.fin();
+        }
+    }
+
+    @Test
+    public void wildcardJoinTest() throws Exception {
+        Suzaku<StringKey, StringKey> s1 = new Suzaku<>("id:p1:tcp:localhost:12367");
+        Suzaku<StringKey, StringKey> s2 = new Suzaku<>("id:p2:tcp:localhost:12368");
+        try {
+            s1.join("tcp:localhost:12367");
+            s2.join("tcp:localhost:12367");
+            s2.setRequestListener((szk, msg) -> { // make a response
+                return msg.getMessage() + "2";
+            });
+            AtomicBoolean received = new AtomicBoolean(false);
+            s1.requestAsync(new StringKey("p2"), "world",
                     (ret, e)-> { // receive response
                         if (ret != Response.EOR) {
                             received.set(true);

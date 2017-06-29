@@ -175,7 +175,7 @@ public abstract class RequestTransportImpl<D extends Destination> extends
         return NON;
     }
     
-    protected FutureQueue<?> selectOnReceive(RequestTransportListener<D> listener,
+    protected Object selectOnReceive(RequestTransportListener<D> listener,
             RequestTransport<D> trans, ReceivedMessage rmsg) {
         logger.trace("ENTRY:");
         Object msg = rmsg.getMessage();
@@ -188,11 +188,7 @@ public abstract class RequestTransportImpl<D extends Destination> extends
             return FutureQueue.emptyQueue();
         } else {
             logger.debug("select onReceiveRequest: trans:{}", trans.getTransportId());
-            Object obj = listener.onReceiveRequest(trans, rmsg);
-            if (obj instanceof FutureQueue<?>) {
-                return (FutureQueue<?>) obj;
-            }
-            return trans.singletonFutureQueue(obj); 
+            return listener.onReceiveRequest(trans, rmsg);
         }
     }
 }

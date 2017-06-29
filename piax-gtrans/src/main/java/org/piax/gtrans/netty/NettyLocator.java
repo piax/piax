@@ -3,14 +3,9 @@ package org.piax.gtrans.netty;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.piax.common.PeerId;
 import org.piax.common.PeerLocator;
-import org.piax.gtrans.ProtocolUnsupportedException;
 import org.piax.gtrans.raw.RawTransport;
 
 public class NettyLocator extends PeerLocator implements NettyEndpoint {

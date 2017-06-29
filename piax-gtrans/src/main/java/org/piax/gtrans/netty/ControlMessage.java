@@ -6,6 +6,7 @@ public class ControlMessage<E extends NettyEndpoint> implements Serializable {
     private static final long serialVersionUID = 4729231253864270776L;
     public final ControlType type;
     final E source;
+    final E dest;
     final Object arg;
     
     public enum ControlType {
@@ -13,9 +14,10 @@ public class ControlMessage<E extends NettyEndpoint> implements Serializable {
         UPDATE, INIT, WAIT,
         CLOSE // for upper layer
     }
-    public ControlMessage(ControlType type, E source, Object arg) {
+    public ControlMessage(ControlType type, E source, E dest, Object arg) {
         this.type = type;
         this.source = source;
+        this.dest = dest;
         this.arg = arg;
     }
 

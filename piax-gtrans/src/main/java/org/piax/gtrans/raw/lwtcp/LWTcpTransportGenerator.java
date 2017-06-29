@@ -29,7 +29,6 @@ package org.piax.gtrans.raw.lwtcp;
 import java.io.IOException;
 
 import org.piax.common.Endpoint;
-import org.piax.common.PeerLocator;
 import org.piax.common.TransportId;
 import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.IdConflictException;

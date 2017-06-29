@@ -7,9 +7,7 @@ import java.net.InetSocketAddress;
 import org.junit.Test;
 import org.piax.common.PeerId;
 import org.piax.gtrans.Peer;
-import org.piax.gtrans.ReceivedMessage;
 import org.piax.gtrans.Transport;
-import org.piax.gtrans.TransportListener;
 import org.piax.gtrans.netty.NettyLocator;
 import org.piax.gtrans.netty.idtrans.PrimaryKey;
 

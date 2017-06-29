@@ -27,7 +27,7 @@ import org.piax.gtrans.netty.NettyLocator;
 import org.piax.gtrans.netty.NettyOutboundHandler;
 import org.piax.gtrans.netty.NettyRawChannel;
 
-public class UdtBootstrap<E extends NettyEndpoint> implements NettyBootstrap<E> {
+public class UdtBootstrap<E extends NettyEndpoint> extends NettyBootstrap<E> {
     EventLoopGroup parentGroup;
     EventLoopGroup childGroup;
     EventLoopGroup clientGroup;
@@ -40,35 +40,6 @@ public class UdtBootstrap<E extends NettyEndpoint> implements NettyBootstrap<E> 
         parentGroup = new NioEventLoopGroup(1, bossFactory, NioUdtProvider.BYTE_PROVIDER);
         childGroup = new NioEventLoopGroup(NettyBootstrap.NUMBER_OF_THREADS_FOR_SERVER, serverFactory, NioUdtProvider.BYTE_PROVIDER);
         clientGroup = new NioEventLoopGroup(NettyBootstrap.NUMBER_OF_THREADS_FOR_CLIENT, clientFactory, NioUdtProvider.BYTE_PROVIDER);
-    }
-
-    private ChannelInitializer<?> getChannelInboundInitializer(
-            NettyChannelTransport<E> trans) {
-        return new ChannelInitializer<UdtChannel>() {
-            @Override
-            public void initChannel(UdtChannel ch) throws Exception {
-                ChannelPipeline p = ch.pipeline();
-                p.addLast(
-                        new ObjectEncoder(),
-                        new ObjectDecoder(ClassResolvers.cacheDisabled(null)));
-                p.addLast(new NettyInboundHandler(trans));
-            }
-        };
-    }
-
-     private ChannelInitializer<?> getChannelOutboundInitializer(
-            NettyRawChannel<E> raw, NettyChannelTransport<E> trans) {
-        return new ChannelInitializer<UdtChannel>() {
-            @Override
-            public void initChannel(UdtChannel sch)
-                    throws Exception {
-                ChannelPipeline p = sch.pipeline();
-                p.addLast(
-                        new ObjectEncoder(),
-                        new ObjectDecoder(ClassResolvers.cacheDisabled(null)));
-                p.addLast(new NettyOutboundHandler(raw, trans));
-            }
-        };
     }
 
     @Override
@@ -84,30 +55,6 @@ public class UdtBootstrap<E extends NettyEndpoint> implements NettyBootstrap<E> 
     @Override
     public EventLoopGroup getClientEventLoopGroup() {
         return clientGroup;
-    }
-
-    @Override
-    public ServerBootstrap getServerBootstrap(NettyChannelTransport<E> trans) {
-        ServerBootstrap b = new ServerBootstrap();
-        b.group(parentGroup, childGroup)
-        .channelFactory(NioUdtProvider.BYTE_ACCEPTOR)
-        //.channel(transType.getServerChannelClass())//NioServerSocketChannel.class)
-        .option(ChannelOption.SO_BACKLOG, 10)
-        .option(ChannelOption.SO_REUSEADDR, true);
-        //.option(ChannelOption.AUTO_READ, true)
-        b.handler(new LoggingHandler(LogLevel.INFO))
-        .childHandler(getChannelInboundInitializer(trans));
-        return b;
-    }
-
-    @Override
-    public Bootstrap getBootstrap(NettyRawChannel<E> raw, NettyChannelTransport<E> trans) {
-        Bootstrap b = new Bootstrap();
-        b.group(clientGroup)
-        //.channel(transType.getChannelClass())
-        .channelFactory(NioUdtProvider.BYTE_CONNECTOR)
-        .handler(getChannelOutboundInitializer(raw, trans));
-        return b;
     }
 
     @Override
@@ -128,9 +75,7 @@ public class UdtBootstrap<E extends NettyEndpoint> implements NettyBootstrap<E> 
             public void initChannel(UdtChannel sch)
                     throws Exception {
                 ChannelPipeline p = sch.pipeline();
-                p.addLast(
-                        new ObjectEncoder(),
-                        new ObjectDecoder(ClassResolvers.cacheDisabled(null)));
+                setupSerializers(p);
                 p.addLast(ohandler);
             }
         };
@@ -157,9 +102,7 @@ public class UdtBootstrap<E extends NettyEndpoint> implements NettyBootstrap<E> 
             @Override
             public void initChannel(UdtChannel ch) throws Exception {
                 ChannelPipeline p = ch.pipeline();
-                p.addLast(
-                        new ObjectEncoder(),
-                        new ObjectDecoder(ClassResolvers.cacheDisabled(null)));
+                setupSerializers(p);
                 p.addLast(ihandler);
             }
         };

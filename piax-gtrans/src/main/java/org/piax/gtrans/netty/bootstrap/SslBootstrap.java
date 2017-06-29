@@ -32,7 +32,7 @@ import org.piax.gtrans.netty.NettyLocator;
 import org.piax.gtrans.netty.NettyOutboundHandler;
 import org.piax.gtrans.netty.NettyRawChannel;
 
-public class SslBootstrap<E extends NettyEndpoint> implements NettyBootstrap<E> {
+public class SslBootstrap<E extends NettyEndpoint> extends NettyBootstrap<E> {
 //    private static final Logger logger = LoggerFactory.getLogger(NettySslTransport.class.getName());
     String host;
     int port;
@@ -64,36 +64,6 @@ public class SslBootstrap<E extends NettyEndpoint> implements NettyBootstrap<E> 
         return clientGroup;
     }
 
-    private ChannelInitializer<?> getChannelInboundInitializer(
-            NettyChannelTransport<E> trans) {
-        return new ChannelInitializer<SocketChannel>() {
-            @Override
-            public void initChannel(SocketChannel ch) throws Exception {
-                final SslContext sslCtx;
-                SelfSignedCertificate ssc = null;
-                try {
-                    ssc = new SelfSignedCertificate();
-                } catch (CertificateException e) {
-                    e.printStackTrace();
-                }
-                if (ssc != null) {
-                    sslCtx = SslContextBuilder.forServer(ssc.certificate(), ssc.privateKey()).build();
-                }
-                else {
-                    sslCtx = null;
-                }
-                ChannelPipeline p = ch.pipeline();
-                if (sslCtx != null) {
-                    p.addLast(sslCtx.newHandler(ch.alloc()));
-                }
-                p.addLast(
-                        new ObjectEncoder(),
-                        new ObjectDecoder(ClassResolvers.cacheDisabled(null)));
-                p.addLast(new NettyInboundHandler(trans));
-            }
-        };
-    }
-
     private ChannelInitializer<?> getChannelInboundInitializer(ChannelInboundHandlerAdapter ihandler) {
         return new ChannelInitializer<SocketChannel>() {
             @Override
@@ -115,39 +85,8 @@ public class SslBootstrap<E extends NettyEndpoint> implements NettyBootstrap<E> 
                 if (sslCtx != null) {
                     p.addLast(sslCtx.newHandler(ch.alloc()));
                 }
-                p.addLast(
-                        new ObjectEncoder(),
-                        new ObjectDecoder(ClassResolvers.cacheDisabled(null)));
+                setupSerializers(p);
                 p.addLast(ihandler);
-            }
-        };
-    }
-
-    private ChannelInitializer<?> getChannelOutboundInitializer(
-            NettyRawChannel<E> raw, NettyChannelTransport<E> trans) {
-        return new ChannelInitializer<SocketChannel>() {
-            @Override
-            public void initChannel(SocketChannel ch) throws Exception {
-                
-                final SslContext sslCtx;
-                SslContext ssl;
-                try {
-                    ssl = SslContextBuilder.forClient()
-                            .trustManager(InsecureTrustManagerFactory.INSTANCE)
-                            .build();
-                } catch (SSLException e) {
-                    ssl = null;
-                }
-                sslCtx = ssl;
-                ChannelPipeline p = ch.pipeline();
-                if (sslCtx != null) {
-                    p.addLast(sslCtx.newHandler(ch.alloc(), raw.getRemote().getHost(),
-                            raw.getRemote().getPort()));
-                }
-                p.addLast(
-                        new ObjectEncoder(),
-                        new ObjectDecoder(ClassResolvers.cacheDisabled(null)));
-                p.addLast(new NettyOutboundHandler(raw, trans));
             }
         };
     }
@@ -172,23 +111,10 @@ public class SslBootstrap<E extends NettyEndpoint> implements NettyBootstrap<E> 
                 if (sslCtx != null) {
                     p.addLast(sslCtx.newHandler(ch.alloc(), raw.getHost(), raw.getPort()));
                 }
-                p.addLast(
-                        new ObjectEncoder(),
-                        new ObjectDecoder(ClassResolvers.cacheDisabled(null)));
+                setupSerializers(p);
                 p.addLast(ohandler);
             }
         };
-    }
-
-    @Override
-    public ServerBootstrap getServerBootstrap(NettyChannelTransport<E> trans) {
-        ServerBootstrap b = new ServerBootstrap();
-        b.group(parentGroup, childGroup)
-        .channel(NioServerSocketChannel.class)
-        .option(ChannelOption.AUTO_READ, true);
-        b.handler(new LoggingHandler(LogLevel.INFO))
-        .childHandler(getChannelInboundInitializer(trans));
-        return b;
     }
 
     @Override
@@ -199,15 +125,6 @@ public class SslBootstrap<E extends NettyEndpoint> implements NettyBootstrap<E> 
         .option(ChannelOption.AUTO_READ, true);
         b.handler(new LoggingHandler(LogLevel.INFO))
         .childHandler(getChannelInboundInitializer(ihandler));
-        return b;
-    }
-
-    @Override
-    public Bootstrap getBootstrap(NettyRawChannel<E> raw, NettyChannelTransport<E> trans) {
-        Bootstrap b = new Bootstrap();
-        b.group(clientGroup)
-        .channel(NioSocketChannel.class)
-        .handler(getChannelOutboundInitializer(raw, trans));
         return b;
     }
 

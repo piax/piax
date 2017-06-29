@@ -261,7 +261,7 @@ public abstract class TransportImpl<D extends Destination> implements Transport<
     
     public void send(ObjectId appId, D dst, Object msg)
             throws ProtocolUnsupportedException, IOException {
-    		send(appId, appId, dst, msg, null);
+    		send(appId, appId, dst, msg, new TransOptions());
     }
     
     public void send(ObjectId appId, D dst, Object msg, TransOptions opts)

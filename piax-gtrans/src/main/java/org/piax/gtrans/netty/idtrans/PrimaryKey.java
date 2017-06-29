@@ -6,9 +6,12 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.piax.common.ComparableKey;
+import org.piax.common.Endpoint;
+import org.piax.common.PeerLocator;
 import org.piax.common.wrapper.BooleanKey;
 import org.piax.common.wrapper.DoubleKey;
 import org.piax.common.wrapper.StringKey;
+import org.piax.gtrans.ProtocolUnsupportedException;
 import org.piax.gtrans.netty.NettyEndpoint;
 import org.piax.gtrans.netty.NettyLocator;
 import org.piax.util.KeyComparator;
@@ -54,9 +57,14 @@ public class PrimaryKey implements ComparableKey<PrimaryKey>, NettyEndpoint {
 
     // a widlcard constructor.
     // at least one PeerLocator is required
-    public PrimaryKey(NettyLocator locator) {
+    public PrimaryKey(Endpoint seed) {
         key = null;
-        this.locator = locator;
+        if (seed instanceof NettyLocator) {
+            this.locator = (NettyLocator)seed;
+        }
+        else {
+            //XX
+        }
         version = System.currentTimeMillis();
     }
 
@@ -137,6 +145,18 @@ public class PrimaryKey implements ComparableKey<PrimaryKey>, NettyEndpoint {
         }
         return keyComp.compare(key, o.key);
     }
+    
+    @Override
+    public PrimaryKey newSameTypeEndpoint(String spec) throws ProtocolUnsupportedException {
+        Endpoint ep = Endpoint.newEndpoint(spec);
+        if (ep instanceof PeerLocator) {
+            ep = new PrimaryKey(ep);
+        }
+        if (!(ep instanceof PrimaryKey)) {
+            throw new ProtocolUnsupportedException("primary key or locator expected.");
+        }
+        return (PrimaryKey)ep;
+    }
 
     @Override
     public boolean equals(Object o) {
@@ -144,8 +164,14 @@ public class PrimaryKey implements ComparableKey<PrimaryKey>, NettyEndpoint {
             return true;
         if (o == null)
             return false;
+        if ((key == null) && o instanceof PeerLocator) { // WILDCARD
+            return locator.equals(o);
+        }
         if (getClass() != o.getClass())
             return false;
+        if ((key == null) || (((PrimaryKey)o).key == null)) { // WILDCARD
+            return ((PrimaryKey)o).locator.equals(locator);
+        }
         return key.equals(((PrimaryKey) o).key);
     }
 

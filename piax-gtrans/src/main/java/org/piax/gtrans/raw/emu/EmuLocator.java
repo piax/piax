@@ -14,7 +14,6 @@
 package org.piax.gtrans.raw.emu;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 
 import org.piax.common.PeerId;

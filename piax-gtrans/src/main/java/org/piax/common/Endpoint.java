@@ -21,13 +21,16 @@ import org.piax.gtrans.netty.NettyEndpoint;
  */
 public interface Endpoint extends Key {
     public static Endpoint newEndpoint(String spec) throws ProtocolUnsupportedException {
-        
         if (spec.startsWith("-")) {
             return PeerLocator.newLocator(spec.substring(1)); // -tcp:localhost:12367
         }
         else {
             return NettyEndpoint.newEndpoint(spec);
         }
+    }
+    
+    default public Endpoint newSameTypeEndpoint(String spec) throws ProtocolUnsupportedException {
+        return newEndpoint(spec);
     }
 
     public static void main(String args[]) throws Exception {

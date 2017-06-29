@@ -15,6 +15,9 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.LongStream;
 
+import ocu.p2p.stat.Stat;
+import ocu.p2p.stat.StatSet;
+
 import org.piax.common.PeerId;
 import org.piax.common.PeerLocator;
 import org.piax.common.TransportId;
@@ -52,9 +55,6 @@ import org.piax.gtrans.raw.tcp.TcpLocator;
 import org.piax.gtrans.raw.udp.UdpLocator;
 import org.piax.util.MersenneTwister;
 import org.piax.util.UniqId;
-
-import ocu.p2p.stat.Stat;
-import ocu.p2p.stat.StatSet;
 
 public class Sim {
     @FunctionalInterface

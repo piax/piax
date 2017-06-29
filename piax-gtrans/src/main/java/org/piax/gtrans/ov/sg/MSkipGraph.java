@@ -222,9 +222,9 @@ public class MSkipGraph<D extends Destination, K extends ComparableKey<?>>
        		return FutureQueue.emptyQueue();
        	}
        	if (listener instanceof OverlayListener) {
-            return selectOnReceive((OverlayListener) listener, this, rcvMsg);
+            return (FutureQueue<?>)selectOnReceive((OverlayListener) listener, this, rcvMsg);
        	} else if (listener instanceof RequestTransportListener) {
-            return selectOnReceive((RequestTransportListener) listener, this, rcvMsg);
+            return (FutureQueue<?>)selectOnReceive((RequestTransportListener) listener, this, rcvMsg);
         } else {
             Object inn = checkAndClearIsEasySend(rcvMsg.getMessage());
             rcvMsg.setMessage(inn);

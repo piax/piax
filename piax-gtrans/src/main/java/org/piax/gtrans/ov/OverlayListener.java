@@ -14,7 +14,6 @@
 package org.piax.gtrans.ov;
 
 import org.piax.common.Destination;
-import org.piax.gtrans.FutureQueue;
 import org.piax.gtrans.ReceivedMessage;
 import org.piax.gtrans.Transport;
 import org.piax.gtrans.TransportListener;

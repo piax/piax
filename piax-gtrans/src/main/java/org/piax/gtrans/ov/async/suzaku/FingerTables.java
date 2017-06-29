@@ -9,7 +9,6 @@ import java.util.stream.Stream;
 import org.piax.gtrans.async.FTEntry;
 import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.async.Node;
-import org.piax.gtrans.ov.async.rq.RQConditionalAdapter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

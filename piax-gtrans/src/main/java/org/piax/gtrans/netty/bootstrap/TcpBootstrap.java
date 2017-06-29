@@ -16,18 +16,27 @@ import io.netty.handler.codec.serialization.ClassResolvers;
 import io.netty.handler.codec.serialization.ObjectDecoder;
 import io.netty.handler.codec.serialization.ObjectEncoder;
 
+import org.objenesis.strategy.StdInstantiatorStrategy;
+import org.piax.gtrans.impl.NestedMessage;
+import org.piax.gtrans.netty.ControlMessage;
 import org.piax.gtrans.netty.NettyChannelTransport;
 import org.piax.gtrans.netty.NettyEndpoint;
 import org.piax.gtrans.netty.NettyInboundHandler;
 import org.piax.gtrans.netty.NettyLocator;
+import org.piax.gtrans.netty.NettyMessage;
 import org.piax.gtrans.netty.NettyOutboundHandler;
 import org.piax.gtrans.netty.NettyRawChannel;
+import org.piax.gtrans.netty.kryo.KryoDecoder;
+import org.piax.gtrans.netty.kryo.KryoEncoder;
+import org.piax.gtrans.netty.kryo.KryoUtil;
 
-public class TcpBootstrap<E extends NettyEndpoint> implements NettyBootstrap<E> {
+import com.esotericsoftware.kryo.Kryo;
+
+public class TcpBootstrap<E extends NettyEndpoint> extends NettyBootstrap<E> {
     EventLoopGroup parentGroup;
     EventLoopGroup childGroup;
     EventLoopGroup clientGroup;
-
+    
     public TcpBootstrap() {
         parentGroup = new NioEventLoopGroup(1);
         childGroup = new NioEventLoopGroup(NettyBootstrap.NUMBER_OF_THREADS_FOR_SERVER);
@@ -49,54 +58,6 @@ public class TcpBootstrap<E extends NettyEndpoint> implements NettyBootstrap<E> 
         return clientGroup;
     }
 
-    private ChannelInitializer<?> getChannelInboundInitializer(
-            NettyChannelTransport<E> trans) {
-        return new ChannelInitializer<SocketChannel>() {
-            @Override
-            public void initChannel(SocketChannel ch) throws Exception {
-                ChannelPipeline p = ch.pipeline();
-                p.addLast(
-                        new ObjectEncoder(),
-                        new ObjectDecoder(ClassResolvers.cacheDisabled(null)));
-                p.addLast(new NettyInboundHandler(trans));
-            }
-        };
-    }
-
-    private ChannelInitializer<?> getChannelOutboundInitializer(NettyRawChannel<E> raw, NettyChannelTransport<E> trans) {
-        return new ChannelInitializer<SocketChannel>() {
-            @Override
-            public void initChannel(SocketChannel sch)
-                    throws Exception {
-                ChannelPipeline p = sch.pipeline();
-                p.addLast(
-                        new ObjectEncoder(),
-                        new ObjectDecoder(ClassResolvers.cacheDisabled(null)));
-                p.addLast(new NettyOutboundHandler(raw, trans));
-            }
-        };
-    }
-
-    @Override
-    public ServerBootstrap getServerBootstrap(NettyChannelTransport<E> trans) {
-        ServerBootstrap b = new ServerBootstrap();
-        b.group(parentGroup, childGroup)
-        .channel(NioServerSocketChannel.class)
-        .option(ChannelOption.AUTO_READ, true);
-        //b.handler(new LoggingHandler(LogLevel.INFO))
-        b.childHandler(getChannelInboundInitializer(trans));
-        return b;
-    }
-
-    @Override
-    public Bootstrap getBootstrap(NettyRawChannel<E> raw, NettyChannelTransport<E> trans) {
-        Bootstrap b = new Bootstrap();
-        b.group(clientGroup)
-        .channel(NioSocketChannel.class)
-        .handler(getChannelOutboundInitializer(raw, trans));
-        return b;
-    }
-
     @Override
     public Bootstrap getBootstrap(NettyLocator dst,
             ChannelInboundHandlerAdapter ohandler) {
@@ -114,9 +75,7 @@ public class TcpBootstrap<E extends NettyEndpoint> implements NettyBootstrap<E> 
             public void initChannel(SocketChannel sch)
                     throws Exception {
                 ChannelPipeline p = sch.pipeline();
-                p.addLast(
-                        new ObjectEncoder(),
-                        new ObjectDecoder(ClassResolvers.cacheDisabled(null)));
+                setupSerializers(p);
                 p.addLast(ohandler);
             }
         };
@@ -140,9 +99,7 @@ public class TcpBootstrap<E extends NettyEndpoint> implements NettyBootstrap<E> 
             @Override
             public void initChannel(SocketChannel ch) throws Exception {
                 ChannelPipeline p = ch.pipeline();
-                p.addLast(
-                        new ObjectEncoder(),
-                        new ObjectDecoder(ClassResolvers.cacheDisabled(null)));
+                setupSerializers(p);
                 p.addLast(ihandler);
             }
         };

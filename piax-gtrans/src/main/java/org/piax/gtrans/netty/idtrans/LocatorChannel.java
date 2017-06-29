@@ -21,6 +21,7 @@ public class LocatorChannel {
     private static final Logger logger = LoggerFactory.getLogger(LocatorChannel.class.getName());
     Integer attempt = null;
     long lastUse;
+    PrimaryKey primaryKey;
     AtomicInteger useCount;
 
     public enum Stat {
@@ -51,7 +52,16 @@ public class LocatorChannel {
         this.useCount = new AtomicInteger(0); 
         lastUse = System.currentTimeMillis();
     }
+
+    public synchronized void setPrimaryKey(PrimaryKey key) {
+        logger.debug("set primary key for {} on {} as {}", remote, trans.getEndpoint(), key);
+        this.primaryKey = key; 
+    }
     
+    public synchronized PrimaryKey getPrimaryKey() {
+        return primaryKey;
+    }
+
     public void use() {
         useCount.incrementAndGet();
     }
@@ -125,11 +135,11 @@ public class LocatorChannel {
     synchronized public Stat getStat() {
         return stat;
     }
-    
+
     synchronized public void setChannel(Channel channel) {
         this.channel = channel;
     }
-    
+
     synchronized public Channel getChannel() {
         return this.channel;
     }

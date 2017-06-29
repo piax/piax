@@ -117,7 +117,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
             //ev.vtime = EventExecutor.getVTime() + ev.delay;
             ev.vtime = 0;
             logger.trace("*** {}|send/forward event {}", ev.sender, ev);
-            
+
             if (ev.receiver.addr.equals(getEndpoint())) {
                 recv(ev);
                 return CompletableFuture.completedFuture(null);
@@ -208,18 +208,18 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         return request3(sender, receiver, new KeyRanges<K>(dst), msg, opts);
     }
     
-    public static class ExecQueryAdapter extends RQAdapter<FutureQueue<Object>> {
+    public static class ExecQueryAdapter extends RQAdapter<Object> {
         private static final long serialVersionUID = -2672546268071889814L;
         public NestedMessage nmsg;
         @SuppressWarnings("rawtypes")
         transient public Suzaku szk;
         public boolean isMaxLessThan;
-        public ExecQueryAdapter(ObjectId objId, NestedMessage nmsg, Consumer<RemoteValue<FutureQueue<Object>>> resultsReceiver) {
+        public ExecQueryAdapter(ObjectId objId, NestedMessage nmsg, Consumer<RemoteValue<Object>> resultsReceiver) {
             super(resultsReceiver);
             this.nmsg = nmsg;
             this.isMaxLessThan = false;
         }
-        public ExecQueryAdapter(ObjectId objId, NestedMessage nmsg, boolean isMaxLessThan, Consumer<RemoteValue<FutureQueue<Object>>> resultsReceiver) {
+        public ExecQueryAdapter(ObjectId objId, NestedMessage nmsg, boolean isMaxLessThan, Consumer<RemoteValue<Object>> resultsReceiver) {
             super(resultsReceiver);
             this.nmsg = nmsg;
             this.isMaxLessThan = isMaxLessThan;
@@ -231,7 +231,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         }
 
         @Override
-        protected CompletableFuture<FutureQueue<Object>> getRaw(RQAdapter<FutureQueue<Object>> received,
+        protected CompletableFuture<Object> getRaw(RQAdapter<Object> received,
                 LocalNode localNode, DdllKeyRange range, long qid) {
             ExecQueryAdapter r = (ExecQueryAdapter) received; 
             if (r.isMaxLessThan) {
@@ -244,7 +244,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         
         @SuppressWarnings("unchecked")
         @Override
-        public CompletableFuture<FutureQueue<Object>> get(RQAdapter<FutureQueue<Object>> received, DdllKey key) {
+        public CompletableFuture<Object> get(RQAdapter<Object> received, DdllKey key) {
             if (EXEC_ASYNC) {
                 return CompletableFuture.supplyAsync(()->szk.onReceiveRequest(key, ((ExecQueryAdapter)received).nmsg));
             }
@@ -281,9 +281,15 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
                     fq.setEOFuture();
                 }
                 else {
-                    FutureQueue<Object> o = ret.get();
-                    for (RemoteValue<Object> r : o) {
-                        fq.add(r);
+                    if (ret instanceof RemoteValue<?> &&
+                            ((RemoteValue<Object>)ret).getValue() instanceof FutureQueue<?>) {
+                        Object val = ret.get();
+                        for (RemoteValue<Object> r : (FutureQueue<Object>)val) {
+                            fq.add(r);
+                        }
+                    }
+                    else {
+                        fq.add(ret);
                     }
                 }
             } catch (Exception e) {
@@ -358,7 +364,6 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         else {
             logger.warn("unknown destination type:" + d); // XXX oops, LowerUpper 
         }
-        logger.info("dest=" + d);
         NestedMessage nmsg = new NestedMessage(sender, receiver, null, peerId, msg);
         
         getEntryPoint()
@@ -368,10 +373,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
                     responseReceiver.accept(Response.EOR, null); // End of response.
                 }
                 else {
-                    FutureQueue<Object> o = ret.get();
-                    for (RemoteValue<Object> r : o) {
-                        responseReceiver.accept(r.getValue(), (Exception)r.getException());
-                    }
+                    responseReceiver.accept(ret.getValue(), (Exception)ret.getException());
                 }
             }
             catch (Exception e) {
@@ -394,10 +396,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
                                 responseReceiver.accept(Response.EOR, null); // End of response
                             }
                             else {
-                                FutureQueue<Object> o = ret.get();
-                                for (RemoteValue<Object> r : o) {
-                                    responseReceiver.accept(r.getValue(), (Exception)r.getException());
-                                }
+                                responseReceiver.accept(ret.getValue(), (Exception)ret.getException());
                             }
                         }
                         catch (Exception e) {
@@ -414,10 +413,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
                                 responseReceiver.accept(Response.EOR, null); // End of response.
                             }
                             else {
-                                FutureQueue<Object> o = ret.get();
-                                for (RemoteValue<Object> r : o) {
-                                    responseReceiver.accept(r.getValue(), (Exception)r.getException());
-                                }
+                                responseReceiver.accept(ret.getValue(), (Exception)ret.getException());
                             }
                         }
                         catch (Exception e) {
@@ -452,11 +448,15 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
                             if (ret == null) {
                                 fq.setEOFuture();
                             }
-                            else {
-                                FutureQueue<Object> o = ret.get();
-                                for (RemoteValue<Object> r : o) {
-                                    fq.put(r);
+                            else if (ret instanceof RemoteValue<?> &&
+                                    ((RemoteValue<Object>)ret).getValue() instanceof FutureQueue<?>) {
+                                Object val = ret.get();
+                                for (RemoteValue<Object> r : (FutureQueue<Object>)val) {
+                                    fq.add(r);
                                 }
+                            }
+                            else {
+                                fq.add(ret);
                             }
                         } catch (Exception e) {
                             e.printStackTrace();
@@ -471,11 +471,15 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
                             if (ret == null) {
                                 fq.setEOFuture();
                             }
-                            else {
-                                FutureQueue<Object> o = ret.get();
-                                for (RemoteValue<Object> r : o) {
-                                    fq.put(r);
+                            else if (ret instanceof RemoteValue<?> &&
+                                    ((RemoteValue<Object>)ret).getValue() instanceof FutureQueue<?>) {
+                                Object val = ret.get();
+                                for (RemoteValue<Object> r : (FutureQueue<Object>)val) {
+                                    fq.add(r);
                                 }
+                            }
+                            else {
+                                fq.add(ret);
                             }
                         } catch (Exception e) {
                             e.printStackTrace();
@@ -490,7 +494,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
      * Invokes LL-Net, ALM-type execQuery
      */
     @SuppressWarnings({ "unchecked", "rawtypes" })
-    public FutureQueue<?> onReceiveRequest(DdllKey key, NestedMessage nmsg) {
+    public Object onReceiveRequest(DdllKey key, NestedMessage nmsg) {
         logger.trace("ENTRY:");
         Collection<K> matchedKeys = Collections.<K>singleton((K) key.getRawKey());
         
@@ -509,18 +513,26 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         if (listener == null) {
             logger.debug("onReceiveRequest data purged as no such listener {}",
                     nmsg.receiver);
-            return FutureQueue.emptyQueue();
+            return null; // not a valid response.
         }
         if (listener instanceof OverlayListener) {
-            return selectOnReceive((OverlayListener) listener, this, rcvMsg);
+            Object ret = selectOnReceive((OverlayListener) listener, this, rcvMsg);
+            if (ret instanceof FutureQueue<?>) { // just for compatibility.
+                return ((FutureQueue<Object>)ret).poll().getValue();
+            }
+            return ret;
         } else if (listener instanceof RequestTransportListener) {
-            return selectOnReceive((RequestTransportListener) listener, this, rcvMsg);
+            Object ret = selectOnReceive((RequestTransportListener) listener, this, rcvMsg);
+            if (ret instanceof FutureQueue<?>) {
+                return ((FutureQueue<Object>)ret).poll().getValue();
+            }
+            return ret;
         } else {
             Object inn = checkAndClearIsEasySend(rcvMsg.getMessage());
             rcvMsg.setMessage(inn);
             //listener.onReceive((Transport<D>) getLowerTransport(), rcvMsg);
             listener.onReceive(this, rcvMsg);
-            return FutureQueue.emptyQueue();
+            return null; // thrown away: FutureQueue.emptyQueue();
         }
     }
     /*
@@ -548,7 +560,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
     }
     
     public boolean join(String spec) throws ProtocolUnsupportedException, IOException {
-        return join(Endpoint.newEndpoint(spec));
+        return join(lowerTrans.getEndpoint().newSameTypeEndpoint(spec));
     }
 
     /*
@@ -559,7 +571,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
     @Override
     public boolean join(Collection<? extends Endpoint> seeds) throws IOException {
         synchronized (keyRegister) {
-            logger.trace("ENTRY:");
+            logger.trace("ENTRY: seeds={}", seeds);
             if (isJoined) {
                 return false;
             }
@@ -581,8 +593,10 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
             if (seeds.size() == 1) {
                 for (Endpoint peerLocator : seeds) {
                     if (meansRoot(peerLocator)) {
+                        boolean first = true;
                         for (K key : keyRegister.keySet()) {
-                            szAddKey(null, key, true);
+                            szAddKey(null, key, first);
+                            first = false;
                         }
                         isJoined = true;
                         // this.seeds = seeds;

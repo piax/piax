@@ -111,7 +111,7 @@ public class SimpleFlooding<D extends Destination, K extends Key> extends
         }
         OverlayReceivedMessage<K> rcvMsg = new OverlayReceivedMessage<K>(
                 nmsg.sender, nmsg.src, matchedKeys, nmsg.getInner());
-        return selectOnReceive(ovl, this, rcvMsg);
+        return (FutureQueue<?>)selectOnReceive(ovl, this, rcvMsg);
     }
     
     @Override

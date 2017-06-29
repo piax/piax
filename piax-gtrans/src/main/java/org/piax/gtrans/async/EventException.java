@@ -1,6 +1,5 @@
 package org.piax.gtrans.async;
 
-import org.piax.gtrans.RPCException;
 
 public class EventException extends Exception {
     public EventException(Exception cause) {

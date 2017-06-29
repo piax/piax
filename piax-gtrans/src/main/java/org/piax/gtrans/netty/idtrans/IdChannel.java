@@ -69,7 +69,7 @@ public class IdChannel implements Channel<PrimaryKey> {
     public CompletableFuture<Boolean> closeAsync() {
         CompletableFuture<Boolean> f = new CompletableFuture<>();
         // send a control message to close id channel.
-        raw.getChannel().writeAndFlush(new ControlMessage<PrimaryKey>(ControlType.CLOSE, channelInitiator, id));
+        raw.getChannel().writeAndFlush(new ControlMessage<PrimaryKey>(ControlType.CLOSE, channelInitiator, dst, id));
         // close locator channel
         raw.closeAsync(false).whenComplete((ret, e) -> {
             this.isClosed = true;

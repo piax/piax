@@ -2,7 +2,6 @@ package org.piax.gtrans.netty;
 
 import java.io.Serializable;
 
-import org.piax.common.Endpoint;
 import org.piax.common.ObjectId;
 import org.piax.common.PeerId;
 
