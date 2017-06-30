@@ -92,7 +92,8 @@ public interface RequestTransport<D extends Destination> extends Transport<D> {
 			throws ProtocolUnsupportedException, IOException;
 
     public enum Response {
-        EOR // Response.EOR end of request
+        EOR, // Response.EOR : end of request
+        EMPTY // Response.EMPTY : empty response
     }
     
     // async request interface

@@ -138,7 +138,7 @@ public abstract class RequestTransportImpl<D extends Destination> extends
         resultsReceiver.accept(null, new ProtocolUnsupportedException("not implemented yet."));
     }
 
-    static class IsEasySend implements Serializable {
+    public static class IsEasySend implements Serializable {
         private static final long serialVersionUID = 1L;
         final Object msg;
         public IsEasySend(Object msg) {

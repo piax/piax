@@ -9,7 +9,8 @@ import com.esotericsoftware.kryo.Kryo;
 public class KryoEncoder extends MessageToByteEncoder<Object> {
 
     private final Kryo kryo;
-    static int KRYO_BUFSIZE = 4096;
+    static int KRYO_BUFSIZE = 1024;
+    static int KRYO_BUFSIZE_MAX = 256 * 1024 * 1024; // 256 MB
     
     public KryoEncoder(Kryo kryo) {
         this.kryo = kryo;
@@ -17,8 +18,8 @@ public class KryoEncoder extends MessageToByteEncoder<Object> {
 
     @Override
     protected void encode(ChannelHandlerContext ctx, Object obj, ByteBuf out) throws Exception {
-        byte[] buf = KryoUtil.encode(kryo, obj, KRYO_BUFSIZE);
-        out.writeShort(buf.length);
+        byte[] buf = KryoUtil.encode(kryo, obj, KRYO_BUFSIZE, KRYO_BUFSIZE_MAX);
+        out.writeInt(buf.length);
         out.writeBytes(buf);
     }
 }

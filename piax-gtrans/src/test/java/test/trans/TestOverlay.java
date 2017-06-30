@@ -78,8 +78,6 @@ public class TestOverlay {
 
     @SuppressWarnings("unchecked")
     public void LLNetTest(Ov ov, Net net) throws Exception {
-        SerializerType orig = NettyBootstrap.SERIALIZER;
-        NettyBootstrap.SERIALIZER = SerializerType.Java;
         // get peers
         Peer p1 = Peer.getInstance(new PeerId(newId()));
         Peer p2 = Peer.getInstance(new PeerId(newId()));
@@ -181,7 +179,6 @@ public class TestOverlay {
         p1.fin();
         p2.fin();
         p3.fin();
-        NettyBootstrap.SERIALIZER = orig;
     }
 
     @Test
@@ -191,8 +188,6 @@ public class TestOverlay {
 
     @SuppressWarnings("unchecked")
     public void DOLRTest(Ov ov, Net net) throws Exception {
-        SerializerType orig = NettyBootstrap.SERIALIZER;
-        NettyBootstrap.SERIALIZER = SerializerType.Java;
         // get peers
         Peer p1 = Peer.getInstance(new PeerId("p1"));
         Peer p2 = Peer.getInstance(new PeerId("p2"));
@@ -294,7 +289,6 @@ public class TestOverlay {
         p1.fin();
         p2.fin();
         p3.fin();
-        NettyBootstrap.SERIALIZER = orig;
     }
 
     @Test
@@ -304,8 +298,6 @@ public class TestOverlay {
 
     @SuppressWarnings({ "unchecked", "rawtypes" })
     public void MaxLessThanTest(Ov ov, Net net) throws Exception {
-        SerializerType orig = NettyBootstrap.SERIALIZER;
-        NettyBootstrap.SERIALIZER = SerializerType.Java;
         // get peers
         Peer p1 = Peer.getInstance(new PeerId("p1"));
         Peer p2 = Peer.getInstance(new PeerId("p2"));
@@ -416,7 +408,6 @@ public class TestOverlay {
         p1.fin();
         p2.fin();
         p3.fin();
-        NettyBootstrap.SERIALIZER = orig;
     }
 
     @Test
@@ -540,9 +531,6 @@ public class TestOverlay {
     }
 
     public void CombinedFloodTest(Net net) throws Exception {
-        SerializerType orig = NettyBootstrap.SERIALIZER;
-        NettyBootstrap.SERIALIZER = SerializerType.Java;
-
         Peer.RECEIVE_ASYNC=true;
         Suzaku.EXEC_ASYNC=false;
         // get peers
@@ -654,7 +642,6 @@ public class TestOverlay {
         p3.fin();
         Peer.RECEIVE_ASYNC=false;
         Suzaku.EXEC_ASYNC=false;
-        NettyBootstrap.SERIALIZER = orig;
     }
 
     @Test
@@ -664,8 +651,6 @@ public class TestOverlay {
 
     @SuppressWarnings("unchecked")
     public void CombinedComplexTest(Ov ov, Net net) throws Exception {
-        SerializerType orig = NettyBootstrap.SERIALIZER;
-        NettyBootstrap.SERIALIZER = SerializerType.Java;
         Peer.RECEIVE_ASYNC= true;
         Suzaku.EXEC_ASYNC = true;
         // get peers
@@ -840,7 +825,6 @@ public class TestOverlay {
         p3.fin();
         Peer.RECEIVE_ASYNC=false;
         Suzaku.EXEC_ASYNC = false;
-        NettyBootstrap.SERIALIZER = orig;
     }
 
     @SuppressWarnings("unchecked")

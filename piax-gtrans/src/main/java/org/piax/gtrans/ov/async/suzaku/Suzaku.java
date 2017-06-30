@@ -373,7 +373,12 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
                     responseReceiver.accept(Response.EOR, null); // End of response.
                 }
                 else {
-                    responseReceiver.accept(ret.getValue(), (Exception)ret.getException());
+                    if (ret.getValue().equals(Response.EMPTY)) {
+                        responseReceiver.accept(null, (Exception)ret.getException());
+                    }
+                    else {
+                        responseReceiver.accept(ret.getValue(), (Exception)ret.getException());
+                    }
                 }
             }
             catch (Exception e) {
@@ -513,7 +518,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         if (listener == null) {
             logger.debug("onReceiveRequest data purged as no such listener {}",
                     nmsg.receiver);
-            return null; // not a valid response.
+            return Response.EMPTY; // not a valid response.
         }
         if (listener instanceof OverlayListener) {
             Object ret = selectOnReceive((OverlayListener) listener, this, rcvMsg);
@@ -532,7 +537,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
             rcvMsg.setMessage(inn);
             //listener.onReceive((Transport<D>) getLowerTransport(), rcvMsg);
             listener.onReceive(this, rcvMsg);
-            return null; // thrown away: FutureQueue.emptyQueue();
+            return Response.EMPTY; // thrown away: FutureQueue.emptyQueue();
         }
     }
     /*

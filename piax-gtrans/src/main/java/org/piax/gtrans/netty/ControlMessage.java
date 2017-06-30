@@ -32,4 +32,8 @@ public class ControlMessage<E extends NettyEndpoint> implements Serializable {
     public E getSource() {
         return source;
     }
+    
+    public String toString() {
+        return "[ControlMessage: " + type + "]";
+    }
 }

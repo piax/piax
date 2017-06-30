@@ -25,7 +25,7 @@ public class KryoDecoder extends ByteToMessageDecoder {
         if (in.readableBytes() < 2)
             return;
         in.markReaderIndex();
-        int len = in.readUnsignedShort();
+        int len = in.readInt();
         if (in.readableBytes() < len) {
             in.resetReaderIndex();
             return;

@@ -308,7 +308,7 @@ public class SuzakuStrategy extends NodeStrategy {
                 if (l.trace == null) {
                     l.trace = new StringBuilder();
                 }
-                l.trace.append("trace\n" + n.toStringDetail() + "\n");
+                ((StringBuilder)l.trace).append("trace\n" + n.toStringDetail() + "\n");
             }
             if (l.route.size() > 80) {
                 System.out.println("too many hops!");

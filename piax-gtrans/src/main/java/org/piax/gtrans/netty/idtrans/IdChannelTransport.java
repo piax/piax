@@ -128,11 +128,13 @@ public class IdChannelTransport extends ChannelTransportImpl<PrimaryKey> impleme
 
         @Override
         public void channelInactive(ChannelHandlerContext ctx) {
+            logger.debug("Inactive={}", ctx);
             trans.inboundInactive(ctx);
         }
 
         @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
+            logger.info("exception={}", cause);
             ctx.close();
         }
     }
@@ -167,11 +169,13 @@ public class IdChannelTransport extends ChannelTransportImpl<PrimaryKey> impleme
         @Override
         public void channelInactive(ChannelHandlerContext ctx) {
             // this handler is a client-side handler.
+            logger.debug("Inactive={}", ctx);
             trans.outboundInactive(ctx);
         }
 
         @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
+            logger.info("exception={}", cause);
             trans.outboundInactive(ctx);
         }
     }

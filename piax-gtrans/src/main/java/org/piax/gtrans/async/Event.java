@@ -521,7 +521,8 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
         // true when the sender node is requesting the receiver node's local
         // FTEntry.
         public boolean fill;
-        public StringBuilder trace;
+        // for debugging
+        public Object trace;
 
         public Lookup(Node receiver, DdllKey key) {
             super(receiver);
