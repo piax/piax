@@ -44,10 +44,9 @@ public abstract class NettyBootstrap<E extends NettyEndpoint> {
     protected void setupSerializers(ChannelPipeline p) {
         switch(SERIALIZER) {
         case Kryo:
-            Kryo kryo = KryoUtil.getKryoInstance();
             p.addLast(
-                    new KryoEncoder(kryo),
-                    new KryoDecoder(kryo));
+                    new KryoEncoder(),
+                    new KryoDecoder());
             break;
         case Java:
             p.addLast(

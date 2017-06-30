@@ -11,10 +11,10 @@ import com.esotericsoftware.kryo.io.Output;
 
 public class NodeSerializer extends Serializer<Node> {
     public void write (Kryo kryo, Output output, Node node) {
-        byte[] keyBytes = KryoUtil.encode(kryo, node.key, 256, 256);
+        byte[] keyBytes = KryoUtil.encode(node.key, 256, 256);
         output.writeShort(keyBytes.length);
         output.writeBytes(keyBytes);
-        byte[] epBytes = KryoUtil.encode(kryo, node.addr, 256, 256);
+        byte[] epBytes = KryoUtil.encode(node.addr, 256, 256);
         output.writeShort(epBytes.length);
         output.writeBytes(epBytes);
     }
@@ -23,7 +23,7 @@ public class NodeSerializer extends Serializer<Node> {
         short len = input.readShort();
         byte[] buf = new byte[len];
         input.readBytes(buf);
-        Object obj = KryoUtil.decode(kryo, buf);
+        Object obj = KryoUtil.decode(buf);
         DdllKey key = null;
         if (obj instanceof DdllKey) {
             key = (DdllKey)obj;
@@ -31,7 +31,7 @@ public class NodeSerializer extends Serializer<Node> {
         len = input.readShort();
         byte[] epbuf = new byte[len];
         input.readBytes(epbuf);
-        obj = KryoUtil.decode(kryo, epbuf);
+        obj = KryoUtil.decode(epbuf);
         Endpoint ep = null;
         if (obj instanceof Endpoint) {
             ep = (Endpoint)obj;

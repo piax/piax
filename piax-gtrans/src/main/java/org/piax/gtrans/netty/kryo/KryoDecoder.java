@@ -13,10 +13,7 @@ import org.piax.gtrans.async.Node;
 import com.esotericsoftware.kryo.Kryo;
 
 public class KryoDecoder extends ByteToMessageDecoder {
-    private final Kryo kryo;
-
-    public KryoDecoder(Kryo kryo) {
-        this.kryo = kryo;
+    public KryoDecoder() {
     }
 
     @Override
@@ -32,7 +29,7 @@ public class KryoDecoder extends ByteToMessageDecoder {
         }
         byte[] buf = new byte[len];
         in.readBytes(buf);
-        Object object = KryoUtil.decode(kryo, buf);
+        Object object = KryoUtil.decode(buf);
         out.add(object);
     }
 }
