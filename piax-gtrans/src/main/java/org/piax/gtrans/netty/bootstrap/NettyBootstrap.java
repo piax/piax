@@ -9,6 +9,7 @@ import io.netty.handler.codec.serialization.ClassResolvers;
 import io.netty.handler.codec.serialization.ObjectDecoder;
 import io.netty.handler.codec.serialization.ObjectEncoder;
 
+import org.piax.gtrans.GTransConfigValues;
 import org.piax.gtrans.netty.NettyChannelTransport;
 import org.piax.gtrans.netty.NettyEndpoint;
 import org.piax.gtrans.netty.NettyLocator;
@@ -23,7 +24,7 @@ public abstract class NettyBootstrap<E extends NettyEndpoint> {
     
     static int NUMBER_OF_THREADS_FOR_CLIENT = 1;
     static int NUMBER_OF_THREADS_FOR_SERVER = 1;
-    
+
     public abstract EventLoopGroup getParentEventLoopGroup();
     public abstract EventLoopGroup getChildEventLoopGroup();
     public abstract EventLoopGroup getClientEventLoopGroup();
@@ -51,7 +52,7 @@ public abstract class NettyBootstrap<E extends NettyEndpoint> {
         case Java:
             p.addLast(
                     new ObjectEncoder(),
-                    new ObjectDecoder(ClassResolvers.cacheDisabled(null)));
+                    new ObjectDecoder(ClassResolvers.cacheDisabled(GTransConfigValues.classLoaderForDeserialize)));
             break;
         }    
     }

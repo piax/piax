@@ -86,4 +86,6 @@ public class GTransConfigValues {
      */
     public static boolean HT_DEFAULT_PIGGYBACK_MODE = true;
     public static int HT_BROADCAST_LOCATOR_INTERVAL = 5 * 60 * 1000;
+    
+    public static ClassLoader classLoaderForDeserialize = ClassLoader.getSystemClassLoader();
 }
