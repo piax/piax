@@ -18,6 +18,7 @@ import io.netty.util.concurrent.DefaultThreadFactory;
 
 import java.util.concurrent.ThreadFactory;
 
+import org.piax.gtrans.GTransConfigValues;
 import org.piax.gtrans.netty.NettyChannelTransport;
 import org.piax.gtrans.netty.NettyInboundHandler;
 import org.piax.gtrans.netty.NettyOutboundHandler;
@@ -61,7 +62,7 @@ public class UdtBootstrap implements NettyBootstrap {
                 ChannelPipeline p = sch.pipeline();
                 p.addLast(
                         new ObjectEncoder(),
-                        new ObjectDecoder(ClassResolvers.cacheDisabled(null)));
+                        new ObjectDecoder(ClassResolvers.cacheDisabled(GTransConfigValues.classLoaderForDeserialize)));
                 p.addLast(new NettyOutboundHandler(raw, trans));
             }
         };

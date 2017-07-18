@@ -13,9 +13,8 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.serialization.ClassResolvers;
 import io.netty.handler.codec.serialization.ObjectDecoder;
 import io.netty.handler.codec.serialization.ObjectEncoder;
-import io.netty.handler.logging.LogLevel;
-import io.netty.handler.logging.LoggingHandler;
 
+import org.piax.gtrans.GTransConfigValues;
 import org.piax.gtrans.netty.NettyChannelTransport;
 import org.piax.gtrans.netty.NettyInboundHandler;
 import org.piax.gtrans.netty.NettyOutboundHandler;
@@ -69,7 +68,7 @@ public class TcpBootstrap implements NettyBootstrap {
                 ChannelPipeline p = sch.pipeline();
                 p.addLast(
                         new ObjectEncoder(),
-                        new ObjectDecoder(ClassResolvers.cacheDisabled(null)));
+                        new ObjectDecoder(ClassResolvers.cacheDisabled(GTransConfigValues.classLoaderForDeserialize)));
                 p.addLast(new NettyOutboundHandler(raw, trans));
             }
         };

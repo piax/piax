@@ -24,6 +24,7 @@ import java.security.cert.CertificateException;
 
 import javax.net.ssl.SSLException;
 
+import org.piax.gtrans.GTransConfigValues;
 import org.piax.gtrans.netty.NettyChannelTransport;
 import org.piax.gtrans.netty.NettyInboundHandler;
 import org.piax.gtrans.netty.NettyOutboundHandler;
@@ -85,7 +86,7 @@ public class SslBootstrap implements NettyBootstrap {
                 }
                 p.addLast(
                         new ObjectEncoder(),
-                        new ObjectDecoder(ClassResolvers.cacheDisabled(null)));
+                        new ObjectDecoder(ClassResolvers.cacheDisabled(GTransConfigValues.classLoaderForDeserialize)));
                 p.addLast(new NettyInboundHandler(trans));
             }
         };
