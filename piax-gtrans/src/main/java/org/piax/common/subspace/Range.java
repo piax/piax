@@ -1,7 +1,7 @@
 /*
  * Range.java - A class to define a range.
- * 
- * Copyright (c) 2012-2015 National Institute of Information and 
+ *
+ * Copyright (c) 2012-2015 National Institute of Information and
  * Communications Technology
  *
  * You can redistribute it and/or modify it under either the terms of
@@ -53,11 +53,11 @@ public class Range<K extends Comparable<?>> implements Serializable, Cloneable {
     public Range(K from, boolean fromInclusive, K to, boolean toInclusive) {
         this(true, from, fromInclusive, to, toInclusive);
     }
-    
+
     /**
      * サブクラス（具体的には、CircularRangeのような拡張）のために、引数のチェックを選択できる
-     * 
-     * @param checkArgs if true, check the validation of arguments 
+     *
+     * @param checkArgs if true, check the validation of arguments
      * @param from low endpoint
      * @param fromInclusive true if the low endpoint is to be included in the Range
      * @param to high endpoint
@@ -87,11 +87,11 @@ public class Range<K extends Comparable<?>> implements Serializable, Cloneable {
 
     /**
      * constructor to allow the form like Range('[', 10, 20, ')');
-     * 
-     * @param fromEdgeSpec the lower-side edge specifier of range 
+     *
+     * @param fromEdgeSpec the lower-side edge specifier of range
      * @param from lower value of the range.
      * @param to upper value of the range.
-     * @param toEdgeSpec the upper-side edge specifier of range 
+     * @param toEdgeSpec the upper-side edge specifier of range
      */
     public Range(char fromEdgeSpec, K from, K to, char toEdgeSpec) {
         this(from, fromEdgeSpec == '[', to, toEdgeSpec == ']');
@@ -113,7 +113,7 @@ public class Range<K extends Comparable<?>> implements Serializable, Cloneable {
      * Returns true if a key is within this Range.
      * <p>
      * Comparable wildcard type key is specified.
-     * 
+     *
      * @param key the target key.
      * @return true if the key is within this range.
      */
@@ -135,8 +135,10 @@ public class Range<K extends Comparable<?>> implements Serializable, Cloneable {
                 Node.isOrdered(from, key, to)
                         && (fromInclusive || keyComp.compare(from, key) != 0)
                         && (toInclusive || keyComp.compare(key, to) != 0);
-        logger.debug("\"{} contains {}:{}\" returns {}", this.toString2(), key,
-                key.getClass().getSimpleName(), ret2);
+        if (logger.isDebugEnabled()) {
+            logger.debug("\"{} contains {}:{}\" returns {}", this.toString2(), key,
+                    key.getClass().getSimpleName(), ret2);
+        }
         /*if (ret != ret2) {
             logger.debug("ret = {}, ret2 = {}, this={}, key={}", ret, ret2, this, key);
         }*/
@@ -145,7 +147,7 @@ public class Range<K extends Comparable<?>> implements Serializable, Cloneable {
 
     /**
      * check if another range is fully-contained in this range.
-     * 
+     *
      * @param another   another range
      * @return true if this range contains another.
      */
@@ -244,7 +246,7 @@ public class Range<K extends Comparable<?>> implements Serializable, Cloneable {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     public boolean isSameRange(Range<K> another) {
-        return ((Comparable)another.from).compareTo(from) == 0 
+        return ((Comparable)another.from).compareTo(from) == 0
                 && another.fromInclusive == fromInclusive
                 && ((Comparable)another.to).compareTo(to) == 0
                 && another.toInclusive == toInclusive;
@@ -280,7 +282,7 @@ public class Range<K extends Comparable<?>> implements Serializable, Cloneable {
             return false;
         return true;
     }
-    
+
     @SuppressWarnings("unchecked")
     public Range<K>[] split(K k) {
         if (keyComp.compare(from, k) < 0 && keyComp.compare(k, to) < 0) {
@@ -301,14 +303,14 @@ public class Range<K extends Comparable<?>> implements Serializable, Cloneable {
             throw new Error(e);
         }
     }
-    
+
 
     /**
      * create a new range.
      * <p>this method is used for manipulating ranges such as retain().
      * <p>subclasses must override this method to create an instance of
      * the same class.
-     * 
+     *
      * @param from
      * @param fromInclusive
      * @param to
@@ -319,7 +321,7 @@ public class Range<K extends Comparable<?>> implements Serializable, Cloneable {
             boolean toInclusive) {
         return new Range<K>(false, from, fromInclusive, to, toInclusive);
     }
-    
+
     public Range<K> newRange(Range<K> another) {
         return newRange(another.from, another.fromInclusive,
                 another.to, another.toInclusive);
@@ -328,7 +330,7 @@ public class Range<K extends Comparable<?>> implements Serializable, Cloneable {
    /**
      * このインスタンスが表す範囲からrを削除した場合に残る範囲のリストを返す．
      * 削除した範囲のリストは intersect に追加する．
-     * 
+     *
      * このクラスのサブクラス X から呼び出す場合，返り値の型は List&lt;X&gt; である．
      *
      * <pre>
@@ -450,13 +452,13 @@ public class Range<K extends Comparable<?>> implements Serializable, Cloneable {
             ranges.add(r);
         }
     }
-    
+
     public boolean intersects(Range<K> another) {
         List<Range<K>> intersect = new ArrayList<>();
         retain(another, intersect);
         return !intersect.isEmpty();
     }
-    
+
     public boolean isFollowedBy(Range<K> another) {
         return (keyComp.compare(this.to, another.from) == 0
                 && (this.toInclusive ^ another.fromInclusive));
