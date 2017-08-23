@@ -139,15 +139,7 @@ public class AsyncTestBase {
 
         // clear strong references to "Node" to cleanup Node.instances.
         EventExecutor.reset();
-        if (nodes != null) {
-            // reset the previous execution
-            for (LocalNode n : nodes) {
-                if (n != null) {
-                    n.cleanup();
-                }
-            }
-            nodes = null;
-        }
+        nodes = null;
         latencyProvider = new StarLatencyProvider();
         EventExecutor.setLatencyProvider(latencyProvider);
         System.gc(); // force gc for cleaning Node.instances

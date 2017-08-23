@@ -64,6 +64,7 @@ public class Sim {
     public enum Algorithm {
         AtomicRing(() -> new AtomicRingNodeFactory()), 
         DDLL(() -> new DdllNodeFactory()),
+        CHORDSHARP(() -> new SuzakuNodeFactory(0)), 
         SUZAKU(() -> new SuzakuNodeFactory(1)), 
         SUZAKU2(() -> new SuzakuNodeFactory(2)), 
         SUZAKU3(() -> new SuzakuNodeFactory(3)),
@@ -791,6 +792,7 @@ public class Sim {
      */
     private void msgs4Join(NodeFactory factory) {
         StatSet msgset = new StatSet();
+        // !!! Chord#では大きすぎる
         int ITER = 60;
         long T = convertSecondsToVTime(30);
         int seed = random().nextInt();
@@ -806,6 +808,7 @@ public class Sim {
         int initial = 256;  // 最初に挿入するノード数
         int nLater = 10;      // 後から追加するノード数
         int num = initial + nLater;   // 全ノード数
+        EventExecutor.reset();
         LocalNode[] allNodes = new LocalNode[num];
         for (int i = 0; i < allNodes.length; i++) {
             allNodes[i] = createNode(factory, i * 10, NetworkParams.HALFWAY_DELAY);
@@ -824,9 +827,10 @@ public class Sim {
                 (Node x) -> !aNodes.contains(x)).collect(Collectors.toList());
         LocalNode[] nodes = iNodes.toArray(new LocalNode[0]);
 
-        EventExecutor.reset();
         nodes[0].joinInitialNode();
-        insOrder.value().method.insert(this, nodes, 1, initial, 0, 0, null);
+        insOrder.value().method.insert(this, nodes, 1, initial, 0, 0, () -> {
+            System.out.println("*** initial insertion finished");
+        });
         System.out.println("*****************************");
 
         for (int j = 0; j < nLater; j++) {

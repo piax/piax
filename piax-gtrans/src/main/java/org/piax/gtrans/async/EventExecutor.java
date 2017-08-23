@@ -59,6 +59,7 @@ public class EventExecutor {
         nmsgs = 0;
         eventCount = 0;
         timeq.clear();
+        LocalNode.resetLocalNodeMap();
         Node.resetInstances();
     }
 

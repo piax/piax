@@ -338,12 +338,11 @@ public class SuzakuStrategy extends NodeStrategy {
             l.delay = Node.NETWORK_LATENCY;
             {
                 FTEntry ent = table.getFTEntry(next);
-                if (ent == null) {
-                    logger.debug("ent == null, next={}\n{}", next,
-                            toStringDetail());
-                    assert false;
+                // multi-keyの場合，上のn.getClosestPredecessor(l.key)は他のkeyの
+                // FTEを用いた結果を返す可能性があり，その場合 ent == null となる．
+                if (ent != null) {
+                    l.fill = ent.needUpdate();
                 }
-                l.fill = ent.needUpdate();
             }
             logger.debug("T={}: {}: handleLookup evid={} next={}", EventExecutor.getVTime(), n, l.getEventId(), next);
             n.forward(next, l, (exc) -> {
@@ -636,6 +635,9 @@ public class SuzakuStrategy extends NodeStrategy {
     }
 
     public int getBackwardFingerTableSize() {
+        if (!USE_BFT) {
+            return 0;
+        }
         return table.backward.getFingerTableSize();
     }
     
@@ -1039,7 +1041,9 @@ public class SuzakuStrategy extends NodeStrategy {
                     }
                     if (isCirculated(isBackward, q, e)) {
                         tab.shrink(indQ + m);
-                        opTab.shrink(indQ + m);
+                        if (opTab != null) {
+                            opTab.shrink(indQ + m);
+                        }
                         break;
                     }
                     // System.out.println("m=" + m + ": e=" + e);

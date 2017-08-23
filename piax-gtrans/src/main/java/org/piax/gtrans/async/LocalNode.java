@@ -534,4 +534,9 @@ public class LocalNode extends Node {
     public void cleanup() {
         localNodeMap.get(peerId).remove(this);
     }
+
+    // called from EventExecutor.reset()
+    public static void resetLocalNodeMap() {
+        localNodeMap.clear();
+    }
 }
