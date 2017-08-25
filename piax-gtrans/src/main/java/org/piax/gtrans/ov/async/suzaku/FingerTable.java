@@ -67,7 +67,15 @@ public class FingerTable {
         }
     }
 
-    public void change(int index, FTEntry ent, boolean addtorev) {
+    /**
+     * update a finger table entry.
+     * 
+     * @param index index to update
+     * @param ent entry to replace
+     * @param addtorev true if ent should be added to the reverse pointer set.
+     * @return true if RemoveReversePointerEvent is sent
+     */
+    public boolean change(int index, FTEntry ent, boolean addtorev) {
         assert index != LOCALINDEX;
         FTEntry old = getFTEntry(index);
         //System.out.println(vnode + ": change: index=" + index + ", " + old + " to " + ent);
@@ -76,8 +84,10 @@ public class FingerTable {
             if (old.getNode() != null && old.getNode() != ent.getNode()) {
                 //System.out.println(vnode + ": ptr changed, index=" + index + " from " + old + " to " + ent);
                 suzakuStr.cleanRemoteRevPtr(old.getNode());
+                return true;
             }
         }
+        return false;
     }
 
     /**

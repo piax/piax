@@ -11,7 +11,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.LongStream;
 
@@ -28,7 +27,6 @@ import org.piax.gtrans.async.FailureCallback;
 import org.piax.gtrans.async.LatencyProvider.StarLatencyProvider;
 import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.async.NetworkParams;
-import org.piax.gtrans.async.Node;
 import org.piax.gtrans.async.Node.NodeMode;
 import org.piax.gtrans.async.NodeFactory;
 import org.piax.gtrans.async.Option;
@@ -44,6 +42,7 @@ import org.piax.gtrans.ov.async.cmr.CmrStrategy.CmrNodeFactory;
 import org.piax.gtrans.ov.async.ddll.DdllStrategy;
 import org.piax.gtrans.ov.async.ddll.DdllStrategy.DdllNodeFactory;
 import org.piax.gtrans.ov.async.ddll.DdllStrategy.RetryMode;
+import org.piax.gtrans.ov.async.sg.SkipGraphStrategy.SkipGraphNodeFactory;
 import org.piax.gtrans.ov.async.suzaku.SuzakuStrategy;
 import org.piax.gtrans.ov.async.suzaku.SuzakuStrategy.SuzakuNodeFactory;
 import org.piax.gtrans.ov.ddll.DdllKey;
@@ -53,6 +52,7 @@ import org.piax.gtrans.raw.udp.UdpLocator;
 import org.piax.util.MersenneTwister;
 import org.piax.util.UniqId;
 
+import ocu.p2p.stat.MultiStatSet;
 import ocu.p2p.stat.Stat;
 import ocu.p2p.stat.StatSet;
 
@@ -69,8 +69,8 @@ public class Sim {
         SUZAKU2(() -> new SuzakuNodeFactory(2)), 
         SUZAKU3(() -> new SuzakuNodeFactory(3)),
         CHORD(() -> new ChordNodeFactory()),
-        CMR(() -> new CmrNodeFactory());
-        //SKIPGRAPH(() -> new SkipGraphNodeFactory());
+        CMR(() -> new CmrNodeFactory()),
+        SKIPGRAPH(() -> new SkipGraphNodeFactory());
         public GetFactory method;
         private Algorithm(GetFactory method) {
             this.method = method;
@@ -445,24 +445,25 @@ public class Sim {
     private void insertSeqLR(LocalNode[] nodes, int from, int to, 
             long delay1, long delay2, Runnable after) {
         List<Integer> order = new ArrayList<>();
-        IntStream.range(from,  to).forEachOrdered(order::add);
+        IntStream.range(from, to).forEachOrdered(order::add);
         insertSeq(nodes, order, 0, delay1, delay2, after); 
     }
 
     private void insertSeqRL(LocalNode[] nodes, int from, int to,
             long delay1, long delay2, Runnable after) {
         List<Integer> order = new ArrayList<>();
-        IntStream.range(from,  to).forEachOrdered(order::add);
+        IntStream.range(from, to).forEachOrdered(order::add);
         Collections.reverse(order);
         insertSeq(nodes, order, 0, delay1, delay2, after); 
     }
 
-    private void insertRandom(LocalNode[] nodes, int from, int to, long delay1,
+    private List<Integer> insertRandom(LocalNode[] nodes, int from, int to, long delay1,
             long delay2, Runnable after) {
         List<Integer> order = new ArrayList<>();
-        IntStream.range(from,  to).forEach(order::add);
+        IntStream.range(from, to).forEach(order::add);
         Collections.shuffle(order, EventExecutor.random());
         insertSeq(nodes, order, 0, delay1, delay2, after);
+        return order;
     }
 
     /**
@@ -488,7 +489,7 @@ public class Sim {
             if (index + 1 < order.size()) {
                 insertSeq(nodes, order, index + 1, afterDelay, afterDelay, after);
             } else {
-                System.out.println("** Initial insertion finished: vtime="
+                System.out.println("** insertion finished: vtime="
                         + EventExecutor.getVTime() + ", rtime="
                         + NetworkParams.toRealTime(EventExecutor.getVTime())
                     );
@@ -585,7 +586,7 @@ public class Sim {
 
     private void insertFailLookupTest(NodeFactory factory,
             InsertOrder insOrder, boolean doFail) {
-        int num = 128;   // 全ノード数
+        int num = 256;   // 全ノード数
         int initial = num;  // 最初に挿入するノード数
         // 後で挿入するノード数
         int later = num - initial;
@@ -597,42 +598,29 @@ public class Sim {
             nodes[i] = createNode(factory, i * 10, NetworkParams.HALFWAY_DELAY);
         }
 
-        // 30秒ごとに検索
+        // T=30秒ごとにLOOKUP_TIMES回，lookupTestを実行
         long T = convertSecondsToVTime(30);
-        // T 毎に LOOKUP_TIMES 回，lookupTest を実行
-        int LOOKUP_TIMES = 20;
+        int LOOKUP_TIMES = 40;
         AllLookupStats all = new AllLookupStats();
         StatSet msgset = new StatSet();
-        StatSet symset = new StatSet();
         StatSet numStatSet = new StatSet();
-        //boolean isSzk = nodes[0].topStrategy instanceof SuzakuStrategy;
 
         Runnable doLookup = () -> {
-            if (true) for (int i = 0; i < LOOKUP_TIMES; i++) {
+            if (true) for (int i = 0; i <= LOOKUP_TIMES; i++) {
                 long t = i * T;
-                System.out.println("!!! sched lookup + " + t);
                 LookupStat s = all.getLookupStat(i);
-                //EventDispatcher.sched(t, lookupTest(nodes, s));
                 distLookupTest(nodes, s, t, (int)T);
-                Stat as = symset.getStat(i);
-                EventExecutor.sched(t, () -> symmetricDegree(nodes, as));
                 Stat ms = msgset.getStat(i);
-                EventExecutor.sched(t, () -> collectMessageCounts(nodes, ms));
                 Stat ns = numStatSet.getStat(i);
+                final int i0 = i;
                 EventExecutor.sched(t, () -> {
+                    System.err.println("!!! " + i0 + "/" + LOOKUP_TIMES
+                            + ", T=" + EventExecutor.getVTime());
+                    collectMessageCounts(nodes, ms);
                     ns.addSample(cNode);
-                });
-                EventExecutor.sched(t, () -> {
                     System.out.println("T = " + t
                             + " (real=" + NetworkParams.toRealTime(t) +")");
                     dump(nodes);
-//                    if (isSzk) {
-//                        boolean rc = SuzakuStrategy.isAllConverged(nodes);
-//                        if (rc) {
-//                            System.out.println("Converged Time = " + t
-//                                    + " (real=" + t * NetworkParams.LATENCY_FACTOR +")");
-//                        }
-//                    }
                 });
             }
         };
@@ -678,7 +666,12 @@ public class Sim {
                     });//);
         }
 
-        startSim(nodes, num * num * 1000 + T * LOOKUP_TIMES + convertSecondsToVTime(4*60));
+//        double logNum = Math.log(num) / Math.log(2);
+//        long duration = (int)(logNum * logNum * 
+//                SuzakuStrategy.UPDATE_FINGER_PERIOD.value());
+        long duration = T * LOOKUP_TIMES + convertSecondsToVTime(10*60);
+        System.err.println("duration=" + duration);
+        startSim(nodes, duration);
         System.out.println("*****************************");
         dump(nodes);
         System.out.println("*****************************");
@@ -690,7 +683,6 @@ public class Sim {
         all.hopSet.getStat(1).outputFreqDist("dist-1", 1, false);
         all.hopSet.getStat(all.hopSet.lastKey()).outputFreqDist("dist-last", 1, false);
 
-        symset.printBasicStat("symmetric");
         msgset.printBasicStat("ftmsgs");
         numStatSet.printBasicStat("numNodes");
         EventExecutor.dumpMessageCounters();
@@ -791,58 +783,45 @@ public class Sim {
      * @param factory
      */
     private void msgs4Join(NodeFactory factory) {
-        StatSet msgset = new StatSet();
+        MultiStatSet msgset = new MultiStatSet();
         // !!! Chord#では大きすぎる
-        int ITER = 60;
-        long T = convertSecondsToVTime(30);
-        int seed = random().nextInt();
-        for (int i = 1; i < ITER; i++) {
-            random().setSeed(seed);
-            msgs4Join(factory, i * T, msgset.getStat(i));
+        int ITER = 5;
+        for (int i = 0; i < ITER; i++) {
+            System.err.println("!!! iteration " + i);
+            msgs4Join(factory, msgset);
         }
-        msgset.printBasicStat("joinmsgs");
+        msgset.printBasicStatAll();
         EventExecutor.dumpMessageCounters();
     }
-
-    private void msgs4Join(NodeFactory factory, long timing, Stat stat) {
-        int initial = 256;  // 最初に挿入するノード数
-        int nLater = 10;      // 後から追加するノード数
-        int num = initial + nLater;   // 全ノード数
+    
+    /**
+     * numノードをランダムな順序で挿入し，その際各ノードのjoinに要したメッセージ数を
+     * 計測する．
+     * 
+     * @param factory
+     * @param statset
+     */
+    private void msgs4Join(NodeFactory factory, MultiStatSet cset) {
+        int num = 100; // 挿入するノード数
         EventExecutor.reset();
         LocalNode[] allNodes = new LocalNode[num];
         for (int i = 0; i < allNodes.length; i++) {
             allNodes[i] = createNode(factory, i * 10, NetworkParams.HALFWAY_DELAY);
         }
-        List<LocalNode> aNodes = new ArrayList<LocalNode>();
-        for (int i = 0; i < nLater; i++) {
-            int j = random().nextInt(num);
-            if (j == 0 || aNodes.contains(allNodes[j])) {
-                i--;
-                continue;
-            }
-            aNodes.add(allNodes[j]);
-        }
-        System.out.println("aNodes = " + aNodes);
-        List<Node> iNodes = Arrays.asList(allNodes).stream().filter(
-                (Node x) -> !aNodes.contains(x)).collect(Collectors.toList());
-        LocalNode[] nodes = iNodes.toArray(new LocalNode[0]);
 
-        nodes[0].joinInitialNode();
-        insOrder.value().method.insert(this, nodes, 1, initial, 0, 0, () -> {
-            System.out.println("*** initial insertion finished");
+        allNodes[0].joinInitialNode();
+        List<Integer> insOrder = insertRandom(allNodes, 1, num, 0, 0, () -> {
+            // ノード挿入が終わったら最後の方に挿入したノードのfinger tableの更新のために
+            // 2分間待ってから終了する．
+            EventExecutor.sched("terminate", convertSecondsToVTime(2*60), () ->{
+                EventExecutor.terminate();
+            });
         });
         System.out.println("*****************************");
-
-        for (int j = 0; j < nLater; j++) {
-            LocalNode x = aNodes.get(j);
-            EventExecutor.sched(timing, () -> {
-                joinAsync(x, nodes[0], null);
-            });
-        }
-        startSim(nodes, timing + convertSecondsToVTime(10));
-        for (int j = 0; j < nLater; j++) {
-            LocalNode x = aNodes.get(j);
-            stat.addSample(x.getMessages4Join());
+        startSim(allNodes, convertSecondsToVTime(10*60));
+        for (int j = 0; j < insOrder.size(); j++) {
+            LocalNode node = allNodes[insOrder.get(j)];
+            cset.addCounter(j + 1, node.counter);
         }
     }
 
@@ -979,10 +958,13 @@ public class Sim {
         // collect msg counts
         StatSet msgs = new StatSet();
         for (int i = 0; i < order.size(); i++) {
-            int m = nodes[order.get(i)].getMessages4Join();
+            LocalNode node = nodes[order.get(i)];
+            int joinmsgs = node.counter.get("join.lookup")
+                    + node.counter.get("join.ddll")
+                    + node.counter.get("join.ftupdate");
             Stat s = msgs.getStat(((i / STEP) + 1) * STEP);
-            s.addSample(m);
-            System.out.println(nodes[order.get(i)] + ": " + m + " msgs");
+            s.addSample(joinmsgs);
+            System.out.println(nodes[order.get(i)] + ": " + joinmsgs + " msgs");
         }
 
         all.hopSet.printBasicStat("hops");
