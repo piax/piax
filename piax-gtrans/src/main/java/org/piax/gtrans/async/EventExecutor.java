@@ -288,6 +288,10 @@ public class EventExecutor {
             }
             if (ev.sender != ev.receiver) {
                 nmsgs++;
+                if (nmsgs % 10000 == 0) {
+                    System.err.println("EventExecutor: " + nmsgs+ " msgs, T="
+                            + getVTime());
+                }
             }
             addCounter(ev.getType());
             if (logger.isTraceEnabled()) {

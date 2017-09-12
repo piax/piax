@@ -130,6 +130,8 @@ public class SuzakuStrategy extends NodeStrategy {
     public static boolean DELAY_ENTRY_UPDATE = false;
     /** ジグザグに更新 */
     public static boolean ZIGZAG_UPDATE = false;
+    /** あるFTEを更新する際に，取得してきたり後でパッシブ更新されていたら後者を優先する */
+    public static boolean PREFER_NEWER_ENTRY_THAN_FETCHED_ONE = false;
 
     /** finger tables */
     FingerTables table;
@@ -345,7 +347,7 @@ public class SuzakuStrategy extends NodeStrategy {
                     l.fill = ent.needUpdate();
                 }
             }
-            logger.debug("T={}: {}: handleLookup evid={} next={}", EventExecutor.getVTime(), n, l.getEventId(), next);
+            //logger.debug("T={}: {}: handleLookup evid={} next={}", EventExecutor.getVTime(), n, l.getEventId(), next);
             n.forward(next, l, (exc) -> {
                 /* 
                  * 相手ノード障害時は，handleLookupを再実行する．．
@@ -882,8 +884,20 @@ public class SuzakuStrategy extends NodeStrategy {
         }
         int distQ = 1 << p;
         int indQ = FingerTable.getFTIndex(distQ);
-        FTEntry baseEnt = (nextEnt1 != null
-                ? nextEnt1 : getFingerTableEntry(isBackward, indQ)); 
+        FTEntry baseEnt;
+        FTEntry current = getFingerTableEntry(isBackward, indQ);
+        if (nextEnt1 == null) {
+            baseEnt = current;
+        } else {
+            if (current == null || (PREFER_NEWER_ENTRY_THAN_FETCHED_ONE
+                    && current.time < nextEnt1.time)) {
+                //logger.debug("use nextEnt1: nextEnt1={}, cur={}", nextEnt1, current);
+                baseEnt = nextEnt1;
+            } else {
+                logger.debug("use current: nextEnt1={}, cur={}", nextEnt1, current);
+                baseEnt = current;
+            }
+        }
         if (baseEnt == null) {
             logger.debug("{}: null-entry-1, index = {}, {}", n, indQ, toStringDetail());
             updateNext(p, isBackward, nextEnt2, null);
@@ -1084,6 +1098,10 @@ public class SuzakuStrategy extends NodeStrategy {
                         nextEntX = e;
                     }
                 }
+                // used when PREFER_NEWER_ENTRY_THAN_FETCHED_ONE
+                if (nextEntX != null) {
+                    nextEntX.time = EventExecutor.getVTime();
+                }
                 updateNext(p, isBackward, nextEnt2, nextEntX);
             }
         });
@@ -1175,6 +1193,7 @@ public class SuzakuStrategy extends NodeStrategy {
             } else {
                 nextLevel = p + 1;
                 logger.trace("nextLevel={}, nextEntX={}", nextLevel, nextEntX);
+                // XXX: 次回更新までの間に，nextEntXは既に古い可能性がある!
                 EventExecutor.sched(UPDATE_FINGER_PERIOD.value(),
                         () -> updateFingerTable0(p + 1, isBackward, nextEntX, null));
             }

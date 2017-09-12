@@ -381,8 +381,8 @@ public class Sim {
                         + done.routeWithFailed + ", evid="
                         + done.req.getEventId() + ")");
             } else {
-                System.out.println("lookup done: " + done.route + " (" + h
-                        + " hops, " + elapsed + ")");
+//                System.out.println("lookup done: " + done.route + " (" + h
+//                        + " hops, " + elapsed + ")");
             }
         });
         from.post(ev);
@@ -519,7 +519,7 @@ public class Sim {
         System.out.println("*****************************");
     }
 
-    final static int NQUERY = 100;//2000;
+    final static int NQUERY = 2000;
     Runnable lookupTest(LocalNode[] nodes, LookupStat s) {
         return () -> {
             System.out.println("start lookupTest: " + EventExecutor.getVTime());
@@ -600,13 +600,13 @@ public class Sim {
 
         // T=30秒ごとにLOOKUP_TIMES回，lookupTestを実行
         long T = convertSecondsToVTime(30);
-        int LOOKUP_TIMES = 40;
+        int LOOKUP_TIMES = 50;//90;//42;
         AllLookupStats all = new AllLookupStats();
-        StatSet msgset = new StatSet();
-        StatSet numStatSet = new StatSet();
+        StatSet msgset = new StatSet(); // # of messages for finger table update
+        StatSet numStatSet = new StatSet(); // # of nodes
 
         Runnable doLookup = () -> {
-            if (true) for (int i = 0; i <= LOOKUP_TIMES; i++) {
+            if (true) for (int i = 0; i < LOOKUP_TIMES; i++) {
                 long t = i * T;
                 LookupStat s = all.getLookupStat(i);
                 distLookupTest(nodes, s, t, (int)T);
@@ -614,7 +614,7 @@ public class Sim {
                 Stat ns = numStatSet.getStat(i);
                 final int i0 = i;
                 EventExecutor.sched(t, () -> {
-                    System.err.println("!!! " + i0 + "/" + LOOKUP_TIMES
+                    System.err.println("!!! " + (i0+1) + "/" + LOOKUP_TIMES
                             + ", T=" + EventExecutor.getVTime());
                     collectMessageCounts(nodes, ms);
                     ns.addSample(cNode);
@@ -669,7 +669,7 @@ public class Sim {
 //        double logNum = Math.log(num) / Math.log(2);
 //        long duration = (int)(logNum * logNum * 
 //                SuzakuStrategy.UPDATE_FINGER_PERIOD.value());
-        long duration = T * LOOKUP_TIMES + convertSecondsToVTime(10*60);
+        long duration = T * LOOKUP_TIMES + convertSecondsToVTime(2*60);
         System.err.println("duration=" + duration);
         startSim(nodes, duration);
         System.out.println("*****************************");
@@ -785,7 +785,7 @@ public class Sim {
     private void msgs4Join(NodeFactory factory) {
         MultiStatSet msgset = new MultiStatSet();
         // !!! Chord#では大きすぎる
-        int ITER = 5;
+        int ITER = 10;
         for (int i = 0; i < ITER; i++) {
             System.err.println("!!! iteration " + i);
             msgs4Join(factory, msgset);
