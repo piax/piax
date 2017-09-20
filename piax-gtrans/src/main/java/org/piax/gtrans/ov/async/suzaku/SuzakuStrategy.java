@@ -131,7 +131,7 @@ public class SuzakuStrategy extends NodeStrategy {
     /** ジグザグに更新 */
     public static boolean ZIGZAG_UPDATE = false;
     /** あるFTEを更新する際に，取得してきたり後でパッシブ更新されていたら後者を優先する */
-    public static boolean PREFER_NEWER_ENTRY_THAN_FETCHED_ONE = false;
+    public static boolean PREFER_NEWER_ENTRY_THAN_FETCHED_ONE = true;
 
     /** finger tables */
     FingerTables table;
@@ -719,7 +719,7 @@ public class SuzakuStrategy extends NodeStrategy {
                 } else {
                     assert passive2.ents.length == 1;
                     FTEntry last = passive2.ents[0];
-                    if (p > 0 && last != null) {
+                    if (last != null) {
                         if (isBackward) {
                             int index = FingerTable.getFTIndex(1 << (p + 1));
                             logger.debug("pasv2 index={}, {}", index, last);
@@ -891,10 +891,10 @@ public class SuzakuStrategy extends NodeStrategy {
         } else {
             if (current == null || (PREFER_NEWER_ENTRY_THAN_FETCHED_ONE
                     && current.time < nextEnt1.time)) {
-                //logger.debug("use nextEnt1: nextEnt1={}, cur={}", nextEnt1, current);
                 baseEnt = nextEnt1;
             } else {
-                logger.debug("use current: nextEnt1={}, cur={}", nextEnt1, current);
+                logger.debug("use current: nextEnt1={} (T={}), cur={} (T={})",
+                        nextEnt1, nextEnt1.time, current, current.time);
                 baseEnt = current;
             }
         }
@@ -987,7 +987,18 @@ public class SuzakuStrategy extends NodeStrategy {
                     int d0 = distQ;
                     int d1 = d0 + delta2;
                     FTEntry e = getFTEntryToSendTop(d0, d1);
-                    p2ents.add(e);
+                    // baseEntからみて一周以上回るエントリは送らない
+                    if (e != null && e.getNode() != null
+                            && baseEnt.getNode() != e.getNode()
+                            && Node.isOrdered(baseEnt.getNode().key, false,
+                            n.key, e.getNode().key, false)) {
+                        p2ents.add(e);
+                    } else {
+                        //System.out.println("drop baseEnt=" + baseEnt);
+                        //System.out.println("drop n=" + n.key);
+                        //System.out.println("drop e=" + e);
+                        p2ents.add(null);
+                    }
                 } else {
                     p2ents.add(nextEnt2 != null ? nextEnt2.clone() : null);
                 }
