@@ -1,6 +1,6 @@
 package test.trans;
 
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -34,8 +34,6 @@ import org.piax.gtrans.RemoteValue;
 import org.piax.gtrans.RequestTransport.Response;
 import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.Transport;
-import org.piax.gtrans.netty.bootstrap.NettyBootstrap;
-import org.piax.gtrans.netty.bootstrap.NettyBootstrap.SerializerType;
 import org.piax.gtrans.ov.Overlay;
 import org.piax.gtrans.ov.OverlayListener;
 import org.piax.gtrans.ov.OverlayReceivedMessage;
@@ -999,7 +997,7 @@ public class TestOverlay {
             }
         }
     }
-    
+
     @Test
     public void minimalSendTest() throws Exception {
         Suzaku<StringKey, StringKey> s1 = new Suzaku<>("tcp:localhost:12367");
@@ -1018,8 +1016,8 @@ public class TestOverlay {
             assertTrue(received.get());
         }
         finally {
-            s1.fin();
-            s2.fin();
+            s1.close();
+            s2.close();
         }
     }
 
@@ -1043,11 +1041,11 @@ public class TestOverlay {
             assertTrue(received.get());
         }
         finally {
-            s1.fin();
-            s2.fin();
+            s1.close();
+            s2.close();
         }
     }
-    
+
     @Test
     public void joinToFailedNetTest() throws Exception {
         DdllStrategy.pingPeriod.set(3000);
@@ -1072,9 +1070,9 @@ public class TestOverlay {
             assertTrue(received.get());
         }
         finally {
-            s1.fin();
-            s2.fin();
-            s3.fin();
+            s1.close();
+            s2.close();
+            s3.close();
         }
     }
 
@@ -1101,8 +1099,8 @@ public class TestOverlay {
             assertTrue(received.get());
         }
         finally {
-            s1.fin();
-            s2.fin();
+            s2.close();
+            s1.close();
         }
     }
 
@@ -1128,8 +1126,45 @@ public class TestOverlay {
             assertTrue(received.get());
         }
         finally {
-            s1.fin();
-            s2.fin();
+            s1.close();
+            s2.close();
+        }
+    }
+
+    @Test
+    public void tryWithResourcesTest() {
+        try (
+            Suzaku<StringKey, StringKey> s1 = new Suzaku<>("id:p1:tcp:localhost:12367");
+            Suzaku<StringKey, StringKey> s2 = new Suzaku<>("id:p2:tcp:localhost:12368");
+        ) {
+            s1.join("tcp:localhost:12367");
+            s2.join("tcp:localhost:12367");
+            s2.setRequestListener((szk, msg) -> { // make a response
+                return msg.getMessage() + "2";
+            });
+            AtomicBoolean received = new AtomicBoolean(false);
+            s1.requestAsync(new StringKey("p2"), "world",
+                    (ret, e)-> { // receive response
+                        if (e != null) {
+                            e.printStackTrace();
+                        }
+                        if (ret != Response.EOR) {
+                            received.set(true);
+                            assertTrue(ret.equals("world2"));
+                        }
+                    });
+            //throw new IOException("test!");
+            //Thread.sleep(1000); // unless this line, finishes immediately.
+        }
+        catch (Exception e) {
+            //e.printStackTrace();
+        }
+        try (Suzaku<StringKey, StringKey> s3 = new Suzaku<StringKey, StringKey>("id:p1:tcp:localhost:12367")) {
+            // ensure the address is not already in use.
+            assertTrue(s3.isUp());
+        }
+        catch (Exception e) {
+           // 
         }
     }
 
@@ -1155,8 +1190,8 @@ public class TestOverlay {
             assertTrue(received.get());
         }
         finally {
-            s1.fin();
-            s2.fin();
+            s1.close();
+            s2.close();
         }
     }
 
@@ -1193,8 +1228,9 @@ public class TestOverlay {
             assertTrue(received2.get() && received3.get());
         }
         finally {
-            s1.fin();
-            s2.fin();
+            s1.close();
+            s2.close();
+            s3.close();
         }
     }
 }

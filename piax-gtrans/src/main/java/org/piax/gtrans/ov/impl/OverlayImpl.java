@@ -20,6 +20,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 
 import org.piax.common.Destination;
@@ -54,7 +55,7 @@ public abstract class OverlayImpl<D extends Destination, K extends Key> extends
 
     private final Map<ObjectId, Map<K, Integer>> keysByUpper =
             new HashMap<ObjectId, Map<K, Integer>>();
-    protected final Map<K, Integer> keyRegister = new HashMap<K, Integer>();
+    protected final Map<K, Integer> keyRegister = new ConcurrentHashMap<K, Integer>();
     protected volatile boolean isJoined = false;
     final DCLTranslator parser = new DCLTranslator();
 
@@ -227,7 +228,7 @@ public abstract class OverlayImpl<D extends Destination, K extends Key> extends
         }
     }
 
-    private int numOfRegisteredKey(K key) {
+    protected int numOfRegisteredKey(K key) {
         Integer count = keyRegister.get(key);
         if (count == null) {
             return 0;
@@ -245,7 +246,7 @@ public abstract class OverlayImpl<D extends Destination, K extends Key> extends
         }
     }
     
-    private void registerKey(ObjectId upper, K key) {
+    protected void registerKey(ObjectId upper, K key) {
         Map<K, Integer> keyCounts = keysByUpper.get(upper);
         if (keyCounts == null) {
             keyCounts = new HashMap<K, Integer>();
@@ -271,7 +272,7 @@ public abstract class OverlayImpl<D extends Destination, K extends Key> extends
         return true;
     }
     
-    private boolean unregisterKey(ObjectId upper, K key) {
+    protected boolean unregisterKey(ObjectId upper, K key) {
         Map<K, Integer> keyCounts = keysByUpper.get(upper);
         if (keyCounts == null) return false;
         Integer count = keyCounts.get(key);
@@ -294,7 +295,7 @@ public abstract class OverlayImpl<D extends Destination, K extends Key> extends
     public boolean addKey(ObjectId upper, K key) throws IOException {
         this.checkActive();
         synchronized (keyRegister) {
-            // if this key not exists, do add to overlay
+            // if this key not exists, add to overlay
             if (!keyRegister.containsKey(key)) {
                 lowerAddKey(key);
             }

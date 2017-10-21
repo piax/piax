@@ -575,7 +575,6 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
     @SuppressWarnings("unchecked")
     @Override
     public boolean join(Collection<? extends Endpoint> seeds) throws IOException {
-        synchronized (keyRegister) {
             logger.trace("ENTRY: seeds={}", seeds);
             if (isJoined) {
                 return false;
@@ -627,7 +626,6 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
             isJoined = true;
             // this.seeds = seeds;
             return true;
-        }
     }
 
     /*
@@ -636,7 +634,6 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
      */
     @Override
     public boolean leave() throws IOException {
-        synchronized (keyRegister) {
             logger.trace("ENTRY:");
             if (!isJoined) {
                 return false;
@@ -648,7 +645,6 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
             }
             isJoined = false;
             return true;
-        }
     }
 
     @Override
@@ -660,7 +656,6 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         logger.trace("ENTRY:");
         try {
             LocalNode node = new LocalNode(sender, new DdllKey(key, peer.getPeerId(), "", null));
-
             factory.setupNode(node);
             RQStrategy s = (RQStrategy)node.getTopStrategy();
             s.registerAdapter(new ExecQueryAdapter(this));
@@ -693,7 +688,19 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         if (key == null) {
             throw new IllegalArgumentException("null key specified");
         }
-        return super.addKey(upper, key);
+        boolean exists = false;
+        synchronized(keyRegister) {
+            exists = keyRegister.containsKey(key);
+        }
+        if (!exists) {
+            lowerAddKey(key);
+        }
+        synchronized(keyRegister) {
+            if (!keyRegister.containsKey(key)) {
+                super.registerKey(upper, key);
+            }
+        }
+        return true;
     }
 
     private void szRemoveKey(K key) throws IOException {
@@ -730,7 +737,23 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         if (key == null) {
             throw new IllegalArgumentException("null key specified");
         }
-        return super.removeKey(upper, key);
+        
+        this.checkActive();
+        synchronized (keyRegister) {
+            if (!keyRegister.containsKey(key)) {
+                return false;
+            }
+        }
+        // if this key is single, do remove from overlay
+        if (numOfRegisteredKey(key) == 1) {
+            lowerRemoveKey(key);
+        }
+        synchronized (keyRegister) {
+            if (keyRegister.containsKey(key)) {
+                unregisterKey(upper, key);
+            }
+        }
+        return true;
     }
 
     private Link[] nodes2Links(List<Node> nodes) {
