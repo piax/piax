@@ -14,19 +14,17 @@
 package org.piax.common;
 
 import org.piax.gtrans.ProtocolUnsupportedException;
-import org.piax.gtrans.netty.NettyEndpoint;
 
 /**
  * A class that corresponds to an endpoint.
  */
 public interface Endpoint extends Key {
     public static Endpoint newEndpoint(String spec) throws ProtocolUnsupportedException {
-        if (spec.startsWith("-")) {
-            return PeerLocator.newLocator(spec.substring(1)); // -tcp:localhost:12367
+        Endpoint ret = EndpointParser.parse(spec);
+        if (ret == null) {
+            throw new ProtocolUnsupportedException(EndpointParser.getSpec(spec) + " is not supported.");
         }
-        else {
-            return NettyEndpoint.newEndpoint(spec);
-        }
+        return ret;
     }
     
     default public Endpoint newSameTypeEndpoint(String spec) throws ProtocolUnsupportedException {
@@ -39,6 +37,10 @@ public interface Endpoint extends Key {
         ep = Endpoint.newEndpoint("-tcp:localhost:12367");
         System.out.println(ep + " "+ ep.getClass());
         ep = Endpoint.newEndpoint("tcp:localhost:12367");
+        System.out.println(ep + " "+ ep.getClass());
+        ep = Endpoint.newEndpoint("ssl:localhost:12367");
+        System.out.println(ep + " "+ ep.getClass());
+        ep = Endpoint.newEndpoint("udt:localhost:12367");
         System.out.println(ep + " "+ ep.getClass());
     }
 }

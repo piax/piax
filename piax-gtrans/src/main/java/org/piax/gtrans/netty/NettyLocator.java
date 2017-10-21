@@ -104,7 +104,7 @@ public class NettyLocator extends PeerLocator implements NettyEndpoint {
 
     @Override
     public String toString() {
-        return host +":"+ port;
+        return type + ":" + host +":"+ port;
     }
 
 }

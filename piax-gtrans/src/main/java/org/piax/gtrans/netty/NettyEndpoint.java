@@ -12,14 +12,15 @@ import org.piax.common.Endpoint;
 import org.piax.common.wrapper.DoubleKey;
 import org.piax.common.wrapper.IntegerKey;
 import org.piax.common.wrapper.StringKey;
-import org.piax.gtrans.ProtocolUnsupportedException;
 import org.piax.gtrans.netty.idtrans.PrimaryKey;
 
+
+// should be merged to Endpoint in the future.
 public interface NettyEndpoint extends Endpoint {
     public int getPort();
     public String getHost();
     public String getKeyString();
-
+    
     static final Pattern SPLITTER = Pattern.compile("[^\\\\]:");
 
     static public List<String> parse(String input) {
@@ -54,46 +55,14 @@ public interface NettyEndpoint extends Endpoint {
         }
         return key;
     }
-    
-    public static void main(String args[]) {
-        String in = "locator\\:123";
-        ComparableKey<?> key;
-        try {
-            Number number = NumberFormat.getInstance().parse(in);
-            int dot = in.indexOf('.');
-            if (dot > 0) {
-                key = new DoubleKey(number.doubleValue());
-            }
-            else {
-                key= new IntegerKey(number.intValue());
-            }
-        } catch (ParseException e) {
-            key = new StringKey(in);
-        }
-        System.out.println("" + key + key.getClass());
-        
-        for (String x: parse("tcp:localhost\\:1234:localhost:1234")) {
-            System.out.println(x);
-        }
+
+    static public NettyEndpoint parsePrimaryKey(String spec) {
+        List<String> specs = NettyEndpoint.parse(spec);
+        return new PrimaryKey(parseKey(specs.get(1)), new NettyLocator(specs.get(2), specs.get(3), Integer.parseInt(specs.get(4))));
     }
 
-    public static NettyEndpoint newEndpoint(String spec) throws ProtocolUnsupportedException {
-        // "id:pid1\:1:tcp:localhost:12367"
-        // "tcp:localhost:12367"
-        // "ssl:localhost:12367"
-        // "udt:localhost:12367"
-        List<String> specs = parse(spec);
-        String s;
-        if ((s = specs.get(0)) != null) {
-            if (s.equals("id")) {
-                return new PrimaryKey(parseKey(specs.get(1)), new NettyLocator(specs.get(2), specs.get(3), Integer.parseInt(specs.get(4))));
-            }
-            else {
-                return new NettyLocator(specs.get(0), specs.get(1), Integer.parseInt(specs.get(2)));
-            }
-        }
-        else {
-            throw new ProtocolUnsupportedException("illegal use of constructor:");
-        }
+    static public NettyEndpoint parseLocator(String spec) {
+        List<String> specs = NettyEndpoint.parse(spec);
+        return new NettyLocator(specs.get(0), specs.get(1), Integer.parseInt(specs.get(2)));
     }
 }

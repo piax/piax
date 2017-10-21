@@ -1,8 +1,5 @@
 package org.piax.gtrans.netty.idtrans;
 
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
-
 import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -12,6 +9,9 @@ import org.piax.gtrans.netty.NettyLocator;
 import org.piax.gtrans.netty.NettyMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
 
 public class LocatorChannel {
 

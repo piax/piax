@@ -1,18 +1,5 @@
 package org.piax.gtrans.netty.idtrans;
 
-import io.netty.bootstrap.Bootstrap;
-import io.netty.bootstrap.ServerBootstrap;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelHandler.Sharable;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundHandlerAdapter;
-import io.netty.channel.ChannelOption;
-import io.netty.channel.EventLoopGroup;
-import io.netty.channel.group.ChannelGroup;
-import io.netty.channel.group.DefaultChannelGroup;
-import io.netty.util.AttributeKey;
-import io.netty.util.concurrent.GlobalEventExecutor;
-
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
@@ -48,6 +35,19 @@ import org.piax.gtrans.netty.bootstrap.UdtBootstrap;
 import org.piax.gtrans.netty.idtrans.LocatorChannel.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import io.netty.bootstrap.Bootstrap;
+import io.netty.bootstrap.ServerBootstrap;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelHandler.Sharable;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.channel.ChannelOption;
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.group.ChannelGroup;
+import io.netty.channel.group.DefaultChannelGroup;
+import io.netty.util.AttributeKey;
+import io.netty.util.concurrent.GlobalEventExecutor;
 
 /* TODO:
  * - close asynchronously & gracefully.
@@ -268,7 +268,7 @@ public class IdChannelTransport extends ChannelTransportImpl<PrimaryKey> impleme
                 }
                 break;
             default:
-                handleControlMessage(cmsg);
+                logger.error("Unimplemented control message was received.");
                 break;
             }
         } else if (msg instanceof NettyMessage<?>) {
@@ -580,6 +580,7 @@ public class IdChannelTransport extends ChannelTransportImpl<PrimaryKey> impleme
         }
     }
 */
+    /*
     // handle the control message for IdChannelTrans.
     protected void handleControlMessage(ControlMessage<PrimaryKey> cmsg) {
         switch(cmsg.getType()) {
@@ -599,7 +600,7 @@ public class IdChannelTransport extends ChannelTransportImpl<PrimaryKey> impleme
         default:
             break;
         }
-    }
+    }*/
 
     public void waitForFin() {
         serverFuture.channel().closeFuture().awaitUninterruptibly();
