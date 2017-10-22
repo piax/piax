@@ -746,6 +746,9 @@ public class IdChannelTransport extends ChannelTransportImpl<PrimaryKey> impleme
     @Override
     public CompletableFuture<Void> sendAsync(ObjectId sender, ObjectId receiver, PrimaryKey dst,
             Object msg, TransOptions opts) {
+        if (opts == null) {
+            opts = new TransOptions();
+        }
         // opts is ignored in this layer.
         NettyMessage<PrimaryKey> nmsg = new NettyMessage<PrimaryKey>(receiver, ep, dst, null, getPeerId(), msg, false, 0);
         if (ep.equals(dst)) { // loop back

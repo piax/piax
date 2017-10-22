@@ -135,16 +135,16 @@ public class BaseTransportMgr implements LocatorStatusObserver {
 
     /**
      * Remove the specified PeerLocator
-     * @param myLocator the locator.
+     * @param ep the Endpoint.
      * @param <E> the type of peer locator.
      * @return the removed transport.
      */
     @SuppressWarnings("unchecked")
-    public <E extends Endpoint> Transport<E> removeBaseTransport(E myLocator) {
+    public <E extends Endpoint> Transport<E> removeBaseTransport(E ep) {
         Transport<E> match = null;
         synchronized (baseTransList) {
             for (Transport<?> bt : baseTransList) {
-                if (bt.getEndpoint().equals(myLocator)) {
+                if (bt.getEndpoint().equals(ep)) {
                     match = (Transport<E>) bt;
                     break;
                 }
