@@ -1,6 +1,7 @@
 package org.piax.gtrans.netty.bootstrap;
 
 import org.piax.gtrans.GTransConfigValues;
+import org.piax.gtrans.async.Option.EnumOption;
 import org.piax.gtrans.netty.NettyEndpoint;
 import org.piax.gtrans.netty.NettyLocator;
 import org.piax.gtrans.netty.kryo.KryoDecoder;
@@ -35,10 +36,13 @@ public abstract class NettyBootstrap<E extends NettyEndpoint> {
     }
 
     // by default, use Kryo serializer.
-    public static SerializerType SERIALIZER = SerializerType.Kryo;
+    //public static SerializerType SERIALIZER = SerializerType.Kryo;
+    
+    public static EnumOption<SerializerType> SERIALIZER
+        = new EnumOption<>(SerializerType.class, SerializerType.Kryo, "-serializer");
 
     protected void setupSerializers(ChannelPipeline p) {
-        switch(SERIALIZER) {
+        switch(SERIALIZER.value()) {
         case Kryo:
             p.addLast(
                     new KryoEncoder(),

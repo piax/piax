@@ -27,6 +27,7 @@ import org.piax.gtrans.FutureQueue;
 import org.piax.gtrans.ProtocolUnsupportedException;
 import org.piax.gtrans.RequestTransport;
 import org.piax.gtrans.TransOptions;
+import org.piax.gtrans.async.Option.StringOption;
 
 /**
  * The common overlay interface. 
@@ -36,7 +37,11 @@ import org.piax.gtrans.TransOptions;
  */
 public interface Overlay<D extends Destination, K extends Destination> extends
         RequestTransport<D> {
-    
+    public static StringOption DEFAULT_ENDPOINT
+    = new StringOption(null, "-endpoint");
+    public static StringOption DEFAULT_SEED
+    = new StringOption(null, "-seed");
+
     void setListener(ObjectId upper, OverlayListener<D, K> listener);
     OverlayListener<D, K> getListener(ObjectId upper);
 

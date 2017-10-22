@@ -17,10 +17,11 @@ import org.piax.gtrans.GTransConfigValues;
 import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.Peer;
 import org.piax.gtrans.netty.NettyLocator;
+import org.piax.gtrans.netty.bootstrap.NettyBootstrap;
+import org.piax.gtrans.netty.bootstrap.NettyBootstrap.SerializerType;
 import org.piax.gtrans.netty.idtrans.PrimaryKey;
 import org.piax.gtrans.ov.Overlay;
 import org.piax.gtrans.ov.async.suzaku.Suzaku;
-import org.piax.gtrans.ov.async.suzaku.SuzakuStrategy;
 import org.piax.gtrans.ov.ddll.NodeMonitor;
 import org.piax.gtrans.ov.sg.MSkipGraph;
 import org.piax.gtrans.raw.emu.EmuLocator;
@@ -72,7 +73,7 @@ public class TestOnDHT {
         }
     }
 
-    static int numPeer = 32;
+    static int numPeer = 16;
     //
 
     enum L {
@@ -110,12 +111,24 @@ public class TestOnDHT {
     
     @Test
     public void DHTOnOCSOnNettyTest() throws Exception {
-        DHTRun(O.OCS, L.NETTY);
+        try {
+            NettyBootstrap.SERIALIZER.set(SerializerType.Java);
+            DHTRun(O.OCS, L.NETTY);
+        }
+        finally {
+            NettyBootstrap.SERIALIZER.set(SerializerType.Kryo);
+        }
     }
     
     @Test
     public void DHTOnOCSOnIdTest() throws Exception {
-        DHTRun(O.OCS, L.ID);
+        try {
+            NettyBootstrap.SERIALIZER.set(SerializerType.Java);
+            DHTRun(O.OCS, L.ID);
+        }
+        finally {
+            NettyBootstrap.SERIALIZER.set(SerializerType.Kryo);
+        }
     }
     
     @Test

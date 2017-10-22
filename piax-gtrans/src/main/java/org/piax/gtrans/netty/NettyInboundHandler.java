@@ -1,8 +1,10 @@
 package org.piax.gtrans.netty;
 
+import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 
+@Sharable
 public class NettyInboundHandler extends ChannelInboundHandlerAdapter {
     NettyChannelTransport trans;
     public NettyInboundHandler(NettyChannelTransport trans) {

@@ -4,12 +4,15 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.piax.common.PeerLocator;
 import org.piax.gtrans.netty.NettyLocator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class LocatorManager {
     // a map of primarykey hash code -> primarykey with locator info
     ConcurrentHashMap<PrimaryKey, PrimaryKey> map;
     ConcurrentHashMap<PeerLocator, PrimaryKey> reverseMap;
-    
+    protected static final Logger logger = LoggerFactory.getLogger(LocatorManager.class.getName());
+
     public LocatorManager() {
         map = new ConcurrentHashMap<>();
         reverseMap = new ConcurrentHashMap<>();
@@ -21,9 +24,11 @@ public class LocatorManager {
             synchronized(reverseMap) {
                 got = reverseMap.get(primaryKey.getLocator());
                 if (got == null) {
+                    logger.debug("new Locator:" + primaryKey.getLocator());
                     reverseMap.put(primaryKey.getLocator(), primaryKey);
                 }
                 else {
+                    // XXX why is this needed?
                     if (!got.getLocator().equals(primaryKey.getLocator())) {
                         if (primaryKey.getLocatorVersion() > got.getLocatorVersion()) {
                             // replace the corresponding key.
@@ -42,6 +47,7 @@ public class LocatorManager {
             synchronized(map) {
                 got = map.get(primaryKey);
                 if (got == null) {
+                    logger.debug("new key:" + primaryKey.getRawKey());
                     map.put(primaryKey, primaryKey);
                     got = primaryKey;
                     ret = got;
@@ -49,6 +55,7 @@ public class LocatorManager {
                     if (primaryKey.getLocatorVersion() > got.getLocatorVersion()) {
                         got.setLocator(primaryKey.getLocator());
                         got.setNeighbors(primaryKey.getNeighbors());
+                        logger.debug("replace key: {} -> {}", primaryKey.getRawKey(), primaryKey.getLocator());
                         map.put(primaryKey, got);
                     }
                     else {
@@ -75,6 +82,14 @@ public class LocatorManager {
             ret += p + ":" + p.getNeighbors() + "\n";
         }
         return ret;
+    }
+    
+    public NettyLocator getLocator(PrimaryKey primaryKey) {
+        if (primaryKey.getLocator() != null) {
+            return primaryKey.getLocator();
+        }
+        PrimaryKey got = map.get(primaryKey);
+        return got.getLocator();
     }
 
     public void updateKey(NettyLocator direct, PrimaryKey primaryKey) {

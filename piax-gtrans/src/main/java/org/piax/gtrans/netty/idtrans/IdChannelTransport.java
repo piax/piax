@@ -134,7 +134,7 @@ public class IdChannelTransport extends ChannelTransportImpl<PrimaryKey> impleme
 
         @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-            logger.info("exception={}", cause);
+            logger.info("Exception:" + cause);
             ctx.close();
         }
     }
@@ -689,7 +689,7 @@ public class IdChannelTransport extends ChannelTransportImpl<PrimaryKey> impleme
             // dst.key == null means wildcard. should be new.
             IdChannel ch = (dst.key == null) ? null : ichannels.get(IdChannel.getKeyString(channelNo, dst));
             if (ch == null) {
-                NettyLocator direct = dst.getLocator();
+                NettyLocator direct = mgr.getLocator(dst);//dst.getLocator();
                 if (direct != null) {// outside NAT
                     PrimaryKey curDst = mgr.updateAndGet(dst); 
                     CompletableFuture<IdChannel> future = new CompletableFuture<>();

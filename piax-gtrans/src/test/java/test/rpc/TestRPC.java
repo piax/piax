@@ -1,9 +1,6 @@
 package test.rpc;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 import java.io.IOException;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -919,8 +916,10 @@ public class TestRPC extends Util {
     
     @Test
     public void callbackTest() {
+        Peer.RECEIVE_ASYNC.set(true);
         int sum = invokerApp1.getStub(transport2.getEndpoint()).callback((PeerLocator)transport1.getEndpoint());
         assertEquals(56, sum);
+        Peer.RECEIVE_ASYNC.set(false);
     }
     
     /**

@@ -31,6 +31,7 @@ import org.piax.common.PeerId;
 import org.piax.common.StatusRepo;
 import org.piax.common.TransportId;
 import org.piax.common.TransportIdPath;
+import org.piax.gtrans.async.Option.BooleanOption;
 import org.piax.gtrans.impl.BaseTransportGenerator;
 import org.piax.gtrans.impl.BaseTransportMgr;
 import org.piax.gtrans.impl.IdResolver;
@@ -56,7 +57,7 @@ public class Peer {
 
     public static final String RAW = "RAW";
     public static final String WITH_FRAGMENTATION = "WITH_FRAGMENTATION";
-    public static boolean RECEIVE_ASYNC = false;
+    public static final BooleanOption RECEIVE_ASYNC = new BooleanOption(false, "-receive-async");
     
     static final ConcurrentMap<PeerId, Peer> peers = 
             new ConcurrentHashMap<PeerId, Peer>();
@@ -465,7 +466,7 @@ public class Peer {
     }
 
     public void execute(Runnable receiveTask) throws RejectedExecutionException {
-        if (RECEIVE_ASYNC) {
+        if (RECEIVE_ASYNC.value()) {
             threadPool.execute(receiveTask);
         }
         else {

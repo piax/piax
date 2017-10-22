@@ -54,8 +54,10 @@ import org.piax.gtrans.async.EventSender;
 import org.piax.gtrans.async.FTEntry;
 import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.async.Node;
+import org.piax.gtrans.async.Option.BooleanOption;
 import org.piax.gtrans.impl.NestedMessage;
 import org.piax.gtrans.netty.idtrans.PrimaryKey;
+import org.piax.gtrans.ov.Overlay;
 import org.piax.gtrans.ov.OverlayListener;
 import org.piax.gtrans.ov.OverlayReceivedMessage;
 import org.piax.gtrans.ov.RoutingTableAccessor;
@@ -79,7 +81,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
 
     public static TransportId DEFAULT_TRANSPORT_ID = new TransportId("suzaku");
     public static final int DEFAULT_SUZAKU_TYPE = 3; // Suzaku algorithm.
-    public static boolean EXEC_ASYNC = true; // exec get asynchronously 
+    public static final BooleanOption EXEC_ASYNC = new BooleanOption(true, "-exec-async"); // exec get asynchronously 
 
     RQNodeFactory factory;
     SuzakuEventSender sender;
@@ -139,6 +141,10 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         public boolean isRunning() {
             return trans.isUp();
         }
+    }
+
+    public Suzaku() throws IdConflictException, IOException {
+        this(Overlay.DEFAULT_ENDPOINT.value());
     }
     
     public Suzaku(String spec) throws IdConflictException, IOException {
@@ -245,7 +251,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         @SuppressWarnings("unchecked")
         @Override
         public CompletableFuture<Object> get(RQAdapter<Object> received, DdllKey key) {
-            if (EXEC_ASYNC) {
+            if (EXEC_ASYNC.value()) {
                 return CompletableFuture.supplyAsync(()->szk.onReceiveRequest(key, ((ExecQueryAdapter)received).nmsg));
             }
             else {
@@ -562,6 +568,10 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         return lowerTrans.getEndpoint().equals(seed);
         
         //return getEndpoint().equals(seed);
+    }
+    
+    public boolean join() throws ProtocolUnsupportedException, IOException {
+        return join(lowerTrans.getEndpoint().newSameTypeEndpoint(Overlay.DEFAULT_SEED.value()));
     }
     
     public boolean join(String spec) throws ProtocolUnsupportedException, IOException {

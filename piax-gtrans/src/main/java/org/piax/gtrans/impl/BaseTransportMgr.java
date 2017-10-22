@@ -104,7 +104,7 @@ public class BaseTransportMgr implements LocatorStatusObserver {
             String desc, TransportId transId, E myLocator) throws IOException,
             IdConflictException {
         if (myLocator == null)
-            throw new IllegalArgumentException("me should not be null");
+            throw new IllegalArgumentException("The endpopint is not specified.");
         synchronized (baseTransList) {
             if (getRelatedBaseTransport(myLocator) != null) {
                 throw new IOException("this locator is already used:" + myLocator);

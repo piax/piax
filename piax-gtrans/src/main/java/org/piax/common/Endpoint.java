@@ -20,6 +20,9 @@ import org.piax.gtrans.ProtocolUnsupportedException;
  */
 public interface Endpoint extends Key {
     public static Endpoint newEndpoint(String spec) throws ProtocolUnsupportedException {
+        if (spec == null) {
+            throw new ProtocolUnsupportedException("The endpoint is not specified.");
+        }
         Endpoint ret = EndpointParser.parse(spec);
         if (ret == null) {
             throw new ProtocolUnsupportedException(EndpointParser.getSpec(spec) + " is not supported.");
@@ -28,6 +31,9 @@ public interface Endpoint extends Key {
     }
     
     default public Endpoint newSameTypeEndpoint(String spec) throws ProtocolUnsupportedException {
+        if (spec == null) {
+            throw new ProtocolUnsupportedException("The endpoint is not specified.");
+        }
         return newEndpoint(spec);
     }
 

@@ -14,19 +14,18 @@ package org.piax.gtrans;
 
 import java.io.Serializable;
 
+import org.piax.gtrans.async.Option.EnumOption;
+import org.piax.gtrans.async.Option.IntegerOption;
+
 /**
  * A transport options
  */
 public class TransOptions implements Serializable {
 	private static final long serialVersionUID = 8743238717571271663L;
 
-	private static final long DEFAULT_TIMEOUT = 30000; // 30 seconds
-	
 	public enum ResponseType {
 		NO_RESPONSE, DIRECT, AGGREGATE
 	};
-	private static final ResponseType DEFAULT_RESPONSE_TYPE = ResponseType.AGGREGATE; 
-	
 	public enum RetransMode {
 		NONE,
 		NONE_ACK, // records ack and filters suspected nodes but no retransmission.
@@ -38,9 +37,25 @@ public class TransOptions implements Serializable {
 	public enum DeliveryMode {
 		ACCEPT_ONCE, ACCEPT_REPEATED
 	}
+
+//	private static final long DEFAULT_TIMEOUT = 30000; // 30 seconds
+
+    public static final IntegerOption DEFAULT_TIMEOUT
+    = new IntegerOption(30000, "-timeout"); // 30 seconds
 	
-	private static final RetransMode DEFAULT_RETRANS_MODE = RetransMode.SLOW;
-	private static final DeliveryMode DEFAULT_DELIVERY_MODE = DeliveryMode.ACCEPT_ONCE;
+    public static final EnumOption<ResponseType> DEFAULT_RESPONSE_TYPE
+    = new EnumOption<>(ResponseType.class, ResponseType.AGGREGATE, "-response-type"); 
+    
+//    ResponseType DEFAULT_RESPONSE_TYPE = ResponseType.AGGREGATE; 
+    
+    public static final EnumOption<RetransMode> DEFAULT_RETRANS_MODE
+    = new EnumOption<>(RetransMode.class, RetransMode.SLOW, "-retrans-mode");
+
+    public static final EnumOption<DeliveryMode> DEFAULT_DELIVERY_MODE
+    = new EnumOption<>(DeliveryMode.class, DeliveryMode.ACCEPT_ONCE, "-delivery-mode");
+	
+	//private static final RetransMode DEFAULT_RETRANS_MODE = RetransMode.SLOW;
+	//private static final DeliveryMode DEFAULT_DELIVERY_MODE = DeliveryMode.ACCEPT_ONCE;
 	private static final boolean DEFAULT_INSPECT = false;
 	
 	private long timeout; // timeout for the response.
@@ -54,7 +69,7 @@ public class TransOptions implements Serializable {
 	/**
 	 */
 	public TransOptions() {
-		this(DEFAULT_TIMEOUT);
+		this(DEFAULT_TIMEOUT.value());
 	}
 	
 	public TransOptions(TransOptions opts) {
@@ -79,14 +94,14 @@ public class TransOptions implements Serializable {
 	 * @param type the response type.
 	 */
 	public TransOptions(ResponseType type) {
-		this(DEFAULT_TIMEOUT, type);
+		this(DEFAULT_TIMEOUT.value(), type);
 	}
 	
 	/**
 	 * @param mode the retrans mode.
 	 */
 	public TransOptions(RetransMode mode) {
-		this(DEFAULT_TIMEOUT, DEFAULT_RESPONSE_TYPE, mode);
+		this(DEFAULT_TIMEOUT.value(), DEFAULT_RESPONSE_TYPE.value(), mode);
 	}
 	
 	/**
@@ -94,7 +109,7 @@ public class TransOptions implements Serializable {
 	 * @param retransMode the retrans mode.
 	 */
 	public TransOptions(ResponseType responseType, RetransMode retransMode) {
-		this(DEFAULT_TIMEOUT, responseType, retransMode, DEFAULT_DELIVERY_MODE);
+		this(DEFAULT_TIMEOUT.value(), responseType, retransMode, DEFAULT_DELIVERY_MODE.value());
 	}
 
 	/**
@@ -112,7 +127,7 @@ public class TransOptions implements Serializable {
 	 */
 	public TransOptions(long timeout, RetransMode mode) {
 		 // default is slow
-		this(timeout, DEFAULT_RESPONSE_TYPE, mode);
+		this(timeout, DEFAULT_RESPONSE_TYPE.value(), mode);
 	}
 	
 	/**
@@ -121,7 +136,7 @@ public class TransOptions implements Serializable {
 	 * @param inspect true if inspection is needed.
 	 */
 	public TransOptions(long timeout, ResponseType type, boolean inspect) {
-		this(timeout, type, DEFAULT_RETRANS_MODE, DEFAULT_DELIVERY_MODE, inspect);
+		this(timeout, type, DEFAULT_RETRANS_MODE.value(), DEFAULT_DELIVERY_MODE.value(), inspect);
 	}
 	
 	/**
@@ -130,7 +145,7 @@ public class TransOptions implements Serializable {
 	 * @param retransMode the retrans mode.
 	 */
 	public TransOptions(long timeout, ResponseType responseType, RetransMode retransMode) {
-		this(timeout, responseType, retransMode, DEFAULT_DELIVERY_MODE, false);
+		this(timeout, responseType, retransMode, DEFAULT_DELIVERY_MODE.value(), false);
 	}
 	
 	/**
@@ -163,7 +178,7 @@ public class TransOptions implements Serializable {
 	 * @return timeout.
 	 */
 	public static long timeout(TransOptions opts) {
-		if (opts == null) return DEFAULT_TIMEOUT;
+		if (opts == null) return DEFAULT_TIMEOUT.value();
 		return opts.timeout;
 	}
 	
@@ -172,7 +187,7 @@ public class TransOptions implements Serializable {
 	 * @return responseType.
 	 */
 	public static ResponseType responseType(TransOptions opts) {
-		if (opts == null) return DEFAULT_RESPONSE_TYPE;
+		if (opts == null) return DEFAULT_RESPONSE_TYPE.value();
 		return opts.responseType;
 	}
 	
@@ -181,7 +196,7 @@ public class TransOptions implements Serializable {
 	 * @return retransMode.
 	 */
 	public static RetransMode retransMode(TransOptions opts) {
-		if (opts == null) return DEFAULT_RETRANS_MODE;
+		if (opts == null) return DEFAULT_RETRANS_MODE.value();
 		return opts.retransMode;
 	}
 	
@@ -190,7 +205,7 @@ public class TransOptions implements Serializable {
 	 * @return deliveryMode.
 	 */
 	public static DeliveryMode deliveryMode(TransOptions opts) {
-		if (opts == null) return DEFAULT_DELIVERY_MODE;
+		if (opts == null) return DEFAULT_DELIVERY_MODE.value();
 		return opts.deliveryMode;
 	}
 	
