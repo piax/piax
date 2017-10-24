@@ -1,6 +1,6 @@
 package test.trans;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -74,17 +74,17 @@ public class TestIdTransport {
         boolean succ3 = tr1.addKey(new PrimaryKey(1.0));
         boolean succ4 = tr2.addKey(new PrimaryKey(2.0));
 
-        assertTrue("SG1 join failed", succ1);
-        assertTrue("SG2 join failed", succ2);
-        assertTrue("SG1 addKey failed", succ3);
-        assertTrue("SG2 addKey failed", succ4);
+        assertTrue(succ1, "SG1 join failed");
+        assertTrue(succ2, "SG2 join failed");
+        assertTrue(succ3, "SG1 addKey failed");
+        assertTrue(succ4, "SG2 addKey failed");
         Thread.sleep(500);
 
         tr1.send(new PrimaryKey(2.0), "1.0");
 
         Thread.sleep(1000);
-        assertTrue("SG2 receive failed", sg_received2);
-        assertTrue("SG1 receive failed", sg_received1);
+        assertTrue(sg_received2, "SG2 receive failed");
+        assertTrue(sg_received1, "SG1 receive failed");
 
         p1.fin();
         p2.fin();

@@ -1,7 +1,6 @@
 package test.async;
 
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -202,7 +201,7 @@ public class AsyncTestBase {
                     .filter(req -> !isTransientRequest(req)).findAny();
             if (o1.isPresent()) {
                 System.out.println(nodes[i] + ": ongoingRequests: " + m1);
-                fail();
+                fail("");
             }
             Map<Integer, RequestEvent<?, ?>> m2 =
                     (Map) getPrivateField(nodes[i], "unAckedRequests");
@@ -210,7 +209,7 @@ public class AsyncTestBase {
                     .filter(req -> !isTransientRequest(req)).findAny();
             if (o2.isPresent()) {
                 System.out.println(nodes[i] + ": unAckedRequests: " + m2);
-                fail();
+                fail("");
             }
         }
     }
