@@ -1,6 +1,6 @@
 package test.trans;
 
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -10,7 +10,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.piax.common.ComparableKey;
 import org.piax.common.Destination;
 import org.piax.common.ObjectId;

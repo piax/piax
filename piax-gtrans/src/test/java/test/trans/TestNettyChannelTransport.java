@@ -4,7 +4,7 @@ import static org.junit.Assert.*;
 
 import java.net.InetSocketAddress;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.piax.common.PeerId;
 import org.piax.common.wrapper.StringKey;
 import org.piax.gtrans.Peer;

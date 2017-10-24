@@ -43,19 +43,19 @@ public class TestOnDHT {
         Overlay<D, K> ov = null;
         switch(ovt) {
         case SG:
-            Peer.RECEIVE_ASYNC = true;
+            Peer.RECEIVE_ASYNC.set(true);
             ov = new MSkipGraph<D, K>(tr);
             break;
         case OCS:
-            Peer.RECEIVE_ASYNC = true;
+            Peer.RECEIVE_ASYNC.set(true);
             ov = new org.piax.gtrans.ov.szk.Suzaku<D, K>(tr);
             break;
         case CS:
-            Peer.RECEIVE_ASYNC = false;
+            Peer.RECEIVE_ASYNC.set(true);
             ov = new Suzaku<D, K>(tr, 1);
             break;
         case SZK:
-            Peer.RECEIVE_ASYNC = false;
+            Peer.RECEIVE_ASYNC.set(false);
             ov = new Suzaku<D, K>(tr, 3);
             break;
         }

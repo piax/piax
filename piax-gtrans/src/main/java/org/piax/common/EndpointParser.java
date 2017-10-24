@@ -15,20 +15,20 @@ public class EndpointParser {
         registerParser("ssl", (in)->NettyEndpoint.parseLocator(in));
     }
     
-    static void registerParser(String spec, EndpointParsable parser) {
+    public static void registerParser(String spec, EndpointParsable parser) {
         map.put(spec, parser);
     }
     
-    static void unregisterParser(String spec) {
+    public static void unregisterParser(String spec) {
         map.remove(spec);
     }
     
-    static public String getSpec(String input) {
+    public static String getSpec(String input) {
         String specs[] = input.split(":", 2);
         return specs[0];
     }
     
-    static public Endpoint parse(String input) {
+    public static Endpoint parse(String input) {
         if (input.startsWith("-")) {
             return PeerLocator.newLocator(input.substring(1)); // -tcp:localhost:12367
         }

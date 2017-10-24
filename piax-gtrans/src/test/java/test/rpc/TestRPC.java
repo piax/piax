@@ -1,14 +1,14 @@
 package test.rpc;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.io.IOException;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.piax.common.CalleeId;
 import org.piax.common.ObjectId;
 import org.piax.common.PeerId;
@@ -287,7 +287,7 @@ public class TestRPC extends Util {
      * 前準備
      * ピアやトランスポート、RPC対象のオブジェクトの作成など
      */
-    @BeforeClass
+    @BeforeAll
     public static void setup() {
         Net ntype = Net.NETTY;//TCP
         logger.debug("- start -%n");
@@ -636,11 +636,13 @@ public class TestRPC extends Util {
      * クラス指定
      * IllegalArgumentExceprtionが発生するはず
      */
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void calAppNormalWithClass() throws RPCException {
+        assertThrows(IllegalArgumentException.class, () -> {
         int sum = invokerApp1.getStub(App.class,
                 new ObjectId("app"),transport2.getEndpoint()).sum(10);
         assertEquals(56,sum);
+        });
     }
     
     /**
@@ -770,12 +772,14 @@ public class TestRPC extends Util {
      * local methodへのoneway Dynamic RPC
      * IllegalRPCAccessExceptionが発生するはず
      */
-    @Test(expected = IllegalRPCAccessException.class)
+    @Test
     public void callAppLocalOnewayDynamic() throws Throwable {
+        assertThrows(IllegalRPCAccessException.class, () -> {
         invokerApp1.rcall(new ObjectId("app"),
                 transport2.getEndpoint(),"localOneway");
         String r = resultQueue.poll(11000,TimeUnit.MILLISECONDS);
         assertNull(r);
+        });
     }
     
     /**
@@ -889,14 +893,16 @@ public class TestRPC extends Util {
      * クラス指定。
      * IllegalArgumentExceptionが発生するはず。
      */
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void callAppVoidOneway1WithClass() throws RPCException, InterruptedException {
+        assertThrows(IllegalArgumentException.class, () -> {
         invokerApp1.getStub(App.class,new ObjectId("app"),
                 transport2.getEndpoint(),RPCMode.ONEWAY).syncRPC();
         String r = resultQueue.poll();
         assertNull(r);
         r = resultQueue.take();
         assertEquals("syncRPC",r);
+        });
     }
     
     /**
@@ -927,7 +933,7 @@ public class TestRPC extends Util {
      * RPCInvokerのサブクラスの終了処理
      * ピアの終了処理
      */
-    @AfterClass
+    @AfterAll
     public static void fin() {
         invokerApp1.fin();
         invokerApp2.fin();

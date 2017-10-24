@@ -1,12 +1,11 @@
 package test.trans;
 
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.piax.common.PeerId;
 import org.piax.common.PeerLocator;
 import org.piax.gtrans.ChannelTransport;
