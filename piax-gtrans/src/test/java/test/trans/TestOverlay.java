@@ -1,6 +1,6 @@
 package test.trans;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -153,8 +153,8 @@ public class TestOverlay {
         received2 = l.contains("recv2");
         received3 = l.contains("recv3");
 
-        assertTrue("SG2 receive failed", received2);
-        assertTrue("SG3 receive failed", received3);
+        assertTrue(received2, "SG2 receive failed");
+        assertTrue(received3, "SG3 receive failed");
 
         received1 = false;
         received2 = false;
@@ -164,15 +164,15 @@ public class TestOverlay {
         received2 = l2.contains("recv2");
         received3 = l2.contains("recv3");
 
-        assertTrue("SG2 receive failed", received2);
-        assertTrue("SG3 falsely received", !received3);
+        assertTrue(received2, "SG2 receive failed");
+        assertTrue(!received3, "SG3 falsely received");
 
         send_recv2 = false;
         send_recv3 = false;
         tr1.send("rect(point(0, 0), 5, 5)", "req");
         Thread.sleep(1000);
-        assertTrue("SG2 receive failed", send_recv2);
-        assertTrue("SG3 receive failed", send_recv3);
+        assertTrue(send_recv2, "SG2 receive failed");
+        assertTrue(send_recv3, "SG3 receive failed");
 
         p1.fin();
         p2.fin();
@@ -263,8 +263,8 @@ public class TestOverlay {
         received2 = l.contains("recv2");
         received3 = l.contains("recv3");
 
-        assertTrue("SG2 receive failed", received2);
-        assertTrue("SG3 falsely received", !received3);
+        assertTrue(received2, "SG2 receive failed");
+        assertTrue(!received3, "SG3 falsely received");
 
         received1 = false;
         received2 = false;
@@ -274,15 +274,15 @@ public class TestOverlay {
         received2 = l2.contains("recv2");
         received3 = l2.contains("recv3");
 
-        assertTrue("SG2 falsely received", !received2);
-        assertTrue("SG3 receive failed", received3);
+        assertTrue(!received2, "SG2 falsely received");
+        assertTrue(received3, "SG3 receive failed");
 
         send_recv2 = false;
         send_recv3 = false;
         tr1.send("\"ishi\"", "req");
         Thread.sleep(1000);
-        assertTrue("SG2 receive failed", send_recv2);
-        assertTrue("SG3 falsely received", !send_recv3);
+        assertTrue(send_recv2, "SG2 receive failed");
+        assertTrue(!send_recv3, "SG3 falsely received");
 
         p1.fin();
         p2.fin();
@@ -388,8 +388,8 @@ public class TestOverlay {
         received2 = l.contains("recv2");
         received3 = l.contains("recv3");
 
-        assertTrue("SG2 receive failed", received2);
-        assertTrue("SG3 falsely received", !received3);
+        assertTrue(received2, "SG2 receive failed");
+        assertTrue(!received3, "SG3 falsely received");
 
         k = new DoubleKey(3.5);
         range = new KeyRange(KeyComparator.getMinusInfinity(DoubleKey.class),
@@ -400,8 +400,8 @@ public class TestOverlay {
         received2 = l.contains("recv2");
         received3 = l.contains("recv3");
 
-        assertTrue("SG2 falsely received", !received2);
-        assertTrue("SG3 not received", received3);
+        assertTrue(!received2, "SG2 falsely received");
+        assertTrue(received3, "SG3 not received");
 
         p1.fin();
         p2.fin();
@@ -497,8 +497,8 @@ public class TestOverlay {
                 .getAllValues());
         received2 = l.contains("recv2");
         received3 = l.contains("recv3");
-        assertTrue("SG2 receive failed", received2);
-        assertTrue("SG3 falsely received", !received3);
+        assertTrue(received2, "SG2 receive failed");
+        assertTrue(!received3, "SG3 falsely received");
 
         received1 = false;
         received2 = false;
@@ -507,15 +507,15 @@ public class TestOverlay {
                 .request(new StringKey("yos"), "req").getAllValues());
         received3 = l2.contains("recv3");
         received3 = l2.contains("recv3");
-        assertTrue("SG2 falsely received", !received2);
-        assertTrue("SG3 receive failed", received3);
+        assertTrue(!received2, "SG2 falsely received");
+        assertTrue(received3, "SG3 receive failed");
 
         send_recv2 = false;
         send_recv3 = false;
         tr1.send("\"ishi\"", "req");
         Thread.sleep(1000);
-        assertTrue("SG2 receive failed", send_recv2);
-        assertTrue("SG3 falsely received", !send_recv3);
+        assertTrue(send_recv2, "SG2 receive failed");
+        assertTrue(!send_recv3, "SG3 falsely received");
 
         p1.fin();
         p2.fin();
@@ -625,15 +625,15 @@ public class TestOverlay {
 
         received2 = l.contains("recv2");
         received3 = l.contains("recv3");
-        assertTrue("SG2 receive failed", received2);
-        assertTrue("SG3 falsely received", !received3);
+        assertTrue(received2, "SG2 receive failed");
+        assertTrue(!received3, "SG3 falsely received");
 
         send_recv2 = false;
         send_recv3 = false;
         tr1.send("age in (..3]", "req");
         Thread.sleep(1000);
-        assertTrue("SG2 falsely received", !send_recv2);
-        assertTrue("SG3 receive failed", send_recv3);
+        assertTrue(!send_recv2, "SG2 falsely received");
+        assertTrue(send_recv3, "SG3 receive failed");
 
         p1.fin();
         p2.fin();
@@ -788,8 +788,8 @@ public class TestOverlay {
                 .getAllValues());
         received2 = l.contains("recv2");
         received3 = l.contains("recv3");
-        assertTrue("SG2 receive failed", received2);
-        assertTrue("SG3 falsely received", !received3);
+        assertTrue(received2, "SG2 receive failed");
+        assertTrue(!received3, "SG3 falsely received");
 
         received2 = false;
         received3 = false;
@@ -798,8 +798,8 @@ public class TestOverlay {
                 .asList(tr1.request("name eq \"ishi\"", "req").getAllValues());
         received2 = l.contains("recv2");
         received3 = l.contains("recv3");
-        assertTrue("SG2 falsely received", !received2);
-        assertTrue("SG3 receive failed", received3);
+        assertTrue(!received2, "SG2 falsely received");
+        assertTrue(received3, "SG3 receive failed");
 
         received2 = false;
         received3 = false;
@@ -808,15 +808,15 @@ public class TestOverlay {
                 "req").getAllValues());
         received2 = l.contains("recv2");
         received3 = l.contains("recv3");
-        assertTrue("SG3 receive failed", received3);
-        assertTrue("SG2 falsely received", !received2);
+        assertTrue(received3, "SG3 receive failed");
+        assertTrue(!received2, "SG2 falsely received");
 
         send_recv2 = false;
         send_recv3 = false;
         tr1.send("age in (3..8) and hobby eq \"ski\"", "req");
         Thread.sleep(1000);
-        assertTrue("SG2 falsely received", !send_recv2);
-        assertTrue("SG3 receive failed", send_recv3);
+        assertTrue(!send_recv2, "SG2 falsely received");
+        assertTrue(send_recv3, "SG3 receive failed");
 
         p1.fin();
         p2.fin();
