@@ -88,7 +88,9 @@ public abstract class Option<E> {
         public void parse(List<String> args) {
             if (args.size() == 0 || !(args.get(0).equals("true")) && !(args.get(0).equals("false"))) {
                 value = !defaultValue;
+                return;
             }
+            // next argument is true or false
             String arg = args.remove(0);
             value = Boolean.parseBoolean(arg);
         }
