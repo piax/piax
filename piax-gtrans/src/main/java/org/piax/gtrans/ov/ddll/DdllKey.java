@@ -13,8 +13,8 @@
 package org.piax.gtrans.ov.ddll;
 
 import java.io.Serializable;
-import java.util.Random;
 
+import org.piax.gtrans.async.EventExecutor;
 import org.piax.util.KeyComparator;
 import org.piax.util.UniqId;
 import org.slf4j.Logger;
@@ -43,7 +43,6 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
     private static final long serialVersionUID = 1L;
     
     private static KeyComparator keyComp = KeyComparator.getInstance();
-    private static Random rand = new Random(System.currentTimeMillis());
 
     // 主キー
     final Comparable<?> rawKey;
@@ -80,7 +79,7 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
         if (uniqId != null) {
             h ^= uniqId.hashCode();
         }
-        this.nonce = rand.nextInt();
+        this.nonce = EventExecutor.random().nextInt();
         this.hash = h ^ nonce;
         this.appData = appData;
     }
