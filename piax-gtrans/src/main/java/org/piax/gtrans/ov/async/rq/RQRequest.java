@@ -77,6 +77,11 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
     }
 
     /**
+     * RQHook for Collective Store and Forwarding
+     */
+    RQHookIf<T> hook;
+    
+    /**
      * create a root RQRequest.
      * 
      * @param ranges set of query ranges
@@ -294,6 +299,14 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         }
 
         private void rqDisseminate(List<RQRange> ranges) {
+        		boolean sendChild = true;
+        		if (hook != null) {
+        			sendChild = hook.hook(RQRequest.this);
+        		}
+        		rqDisseminate0(ranges, sendChild);
+        }
+
+        private void rqDisseminate0(List<RQRange> ranges, boolean sendChild) {
             if (logger.isTraceEnabled()) {
                 logger.trace("rqDisseminate start: {}", this);
                 logger.trace("                     {}", RQRequest.this);
@@ -370,8 +383,14 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                 });
 
             // obtain values for local ranges
-            CompletableFuture<List<DKRangeRValue<T>>> future
-                = rqExecuteLocal(map.get(peerId));
+            CompletableFuture<List<DKRangeRValue<T>>> future = null;
+            if (hook != null) {
+                RQRequest<T> copied = null;
+            		copied = hook.removeReceivedMessage(RQRequest.this);
+            		future = copied.catcher.rqExecuteLocal(map.get(peerId));
+            } else {
+            		future = rqExecuteLocal(map.get(peerId));
+            }
             future.thenAccept((List<DKRangeRValue<T>> rvals) -> {
                 addRemoteValues(rvals);
                 responder.rqDisseminateFinish();
@@ -380,6 +399,9 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                 exc.getCause().printStackTrace();
                 return null; // or System.exit(1);
             });
+            if (hook != null) {
+            		hook.addHistory(RQRequest.this);
+            }
             logger.trace("rqDisseminate finished");
         }
 
