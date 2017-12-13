@@ -14,6 +14,7 @@ package org.piax.gtrans.ov.ddll;
 
 import java.io.Serializable;
 
+import org.piax.gtrans.async.EventExecutor;
 import org.piax.util.KeyComparator;
 import org.piax.util.UniqId;
 import org.slf4j.Logger;
@@ -78,7 +79,7 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
         if (uniqId != null) {
             h ^= uniqId.hashCode();
         }
-        this.nonce = System.identityHashCode(this);
+        this.nonce = EventExecutor.random().nextInt();
         this.hash = h ^ nonce;
         this.appData = appData;
     }
