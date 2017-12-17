@@ -81,6 +81,10 @@ public abstract class RQAdapter<T> implements Serializable {
     public Object reduceCollectedData(List<?> value) {
         return null;
     }
+    
+    public RQHookIf<T> getHook() {
+    		return null;
+    }
 
     public static class KeyAdapter extends RQAdapter<DdllKey> {
         public KeyAdapter(Consumer<RemoteValue<DdllKey>> resultsReceiver) {

@@ -112,6 +112,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         this.rootEventId = 0; // overridden by DirectResponder at root node
         this.targetRanges = Collections.unmodifiableCollection(ranges);
         this.adapter = adapter;
+        this.hook = adapter.getHook();
         this.opts = opts;
         this.obstacles = new HashSet<>();
     }
@@ -138,6 +139,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         this.rootEventId = parent.rootEventId;
         this.targetRanges = newRanges;
         this.adapter = parent.adapter;
+        this.hook = parent.adapter.getHook();
         this.opts = parent.opts;
         this.obstacles = parent.obstacles;
         this.catcher = parent.catcher;
@@ -349,7 +351,8 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             /*
              * send aggregated requests to children.
              */
-            map.entrySet().stream()
+            if (sendChild) {
+            	map.entrySet().stream()
                 .filter(ent -> !ent.getKey().equals(peerId))
                 .forEach(ent -> {
                     List<RQRange> sub = ent.getValue();
@@ -381,7 +384,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                     getLocalNode().post(m);
                     cleanup.add(() -> m.cleanup());
                 });
-
+            }
             // obtain values for local ranges
             CompletableFuture<List<DKRangeRValue<T>>> future = null;
             if (hook != null) {
