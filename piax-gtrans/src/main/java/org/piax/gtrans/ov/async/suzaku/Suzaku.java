@@ -86,6 +86,8 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
     RQNodeFactory factory;
     SuzakuEventSender sender;
     Map<K,LocalNode> nodes;
+    ExecQueryAdapterFactory adapterFactory = new ExecQueryAdapterFactory();
+;
 
     static class SuzakuEventSender<E extends Endpoint> implements EventSender, TransportListener<E> {
         TransportId transId;
@@ -214,6 +216,19 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         return request3(sender, receiver, new KeyRanges<K>(dst), msg, opts);
     }
     
+    public static class ExecQueryAdapterFactory {
+    		public ExecQueryAdapter newAdapter(ObjectId objId, NestedMessage nmsg, Consumer<RemoteValue<Object>> resultsReceiver) {
+    			return new ExecQueryAdapter(objId, nmsg, resultsReceiver);
+    		}
+    		public ExecQueryAdapter newAdapter(ObjectId objId, NestedMessage nmsg, boolean isMaxLessThan, Consumer<RemoteValue<Object>> resultsReceiver) {
+    			return new ExecQueryAdapter(objId, nmsg, isMaxLessThan, resultsReceiver);
+    		}
+    		@SuppressWarnings("rawtypes")
+        public ExecQueryAdapter newAdapter(Suzaku szk) {
+    			return new ExecQueryAdapter(szk);
+        }
+    }
+
     public static class ExecQueryAdapter extends RQAdapter<Object> {
         private static final long serialVersionUID = -2672546268071889814L;
         public NestedMessage nmsg;
@@ -281,7 +296,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         
         FutureQueue<Object> fq = new FutureQueue<>();
         getEntryPoint()
-        .rangeQueryAsync(ranges, new ExecQueryAdapter(receiver, nmsg, (ret)-> {
+        .rangeQueryAsync(ranges, adapterFactory.newAdapter(receiver, nmsg, (ret)-> {
             try {
                 if (ret == null) {
                     fq.setEOFuture();
@@ -373,7 +388,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         NestedMessage nmsg = new NestedMessage(sender, receiver, null, peerId, msg);
         
         getEntryPoint()
-        .rangeQueryAsync(ranges, new ExecQueryAdapter(receiver, nmsg, (ret)-> {
+        .rangeQueryAsync(ranges, adapterFactory.newAdapter(receiver, nmsg, (ret)-> {
             try {
                 if (ret == null) {
                     responseReceiver.accept(Response.EOR, null); // End of response.
@@ -401,7 +416,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         if (lu.getMaxNum() == 1) {
             KeyRange<?> range = lu.getRange();
             getEntryPoint().rangeQueryAsync(Collections.singleton(new KeyRange<>(range.to, true, range.to, true)),
-                    new ExecQueryAdapter(receiver, nmsg, true, (ret)-> {
+                    adapterFactory.newAdapter(receiver, nmsg, true, (ret)-> {
                         try {
                             if (ret == null) {
                                 responseReceiver.accept(Response.EOR, null); // End of response
@@ -418,7 +433,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         }
         else {
             getEntryPoint().forwardQueryLeftAsync(lu.getRange(), lu.getMaxNum(),
-                    new ExecQueryAdapter(receiver, nmsg, (ret)-> {
+                    adapterFactory.newAdapter(receiver, nmsg, (ret)-> {
                         try {
                             if (ret == null) {
                                 responseReceiver.accept(Response.EOR, null); // End of response.
@@ -454,7 +469,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         if (lu.getMaxNum() == 1) {
             KeyRange<?> range = lu.getRange();
             getEntryPoint().rangeQueryAsync(Collections.singleton(new KeyRange<>(range.to, true, range.to, true)),
-                    new ExecQueryAdapter(receiver, nmsg, true, (ret)-> {
+                    adapterFactory.newAdapter(receiver, nmsg, true, (ret)-> {
                         try {
                             if (ret == null) {
                                 fq.setEOFuture();
@@ -477,7 +492,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         }
         else {
             getEntryPoint().forwardQueryLeftAsync(lu.getRange(), lu.getMaxNum(),
-                    new ExecQueryAdapter(receiver, nmsg, (ret)-> {
+                    adapterFactory.newAdapter(receiver, nmsg, (ret)-> {
                         try {
                             if (ret == null) {
                                 fq.setEOFuture();
@@ -668,7 +683,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
             LocalNode node = new LocalNode(sender, new DdllKey(key, peer.getPeerId(), "", null));
             factory.setupNode(node);
             RQStrategy s = (RQStrategy)node.getTopStrategy();
-            s.registerAdapter(new ExecQueryAdapter(this));
+            s.registerAdapter(adapterFactory.newAdapter(this));
 
             if (initial) {
                 logger.debug("initial=" + node.key + "self=" + node.addr);
