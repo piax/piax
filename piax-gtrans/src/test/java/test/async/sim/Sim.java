@@ -11,6 +11,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 import java.util.stream.IntStream;
 import java.util.stream.LongStream;
 
@@ -23,10 +24,12 @@ import org.piax.gtrans.Peer;
 import org.piax.gtrans.async.Event.Lookup;
 import org.piax.gtrans.async.EventException;
 import org.piax.gtrans.async.EventExecutor;
+import org.piax.gtrans.async.FTEntry;
 import org.piax.gtrans.async.FailureCallback;
 import org.piax.gtrans.async.LatencyProvider.StarLatencyProvider;
 import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.async.NetworkParams;
+import org.piax.gtrans.async.Node;
 import org.piax.gtrans.async.Node.NodeMode;
 import org.piax.gtrans.async.NodeFactory;
 import org.piax.gtrans.async.Option;
@@ -87,9 +90,9 @@ public class Sim {
         MIXLATENCY((sim, factory) -> sim.mixedLatencyTest(factory)),
         SIMPLE((sim, factory) -> sim.simpleTest(factory)),
         INSERTSEQ((sim, factory) -> sim.insertSeqTest(factory)),
-        INSERTLOOKUP((sim, factory) -> sim.insertFailLookupTest(factory,
+        INSERTLOOKUP((sim, factory) -> sim.expInsertLookupTest(factory,
                 insOrder.value(), false)),
-        INSERTFAILLOOKUP((sim, factory) -> sim.insertFailLookupTest(factory,
+        INSERTFAILLOOKUP((sim, factory) -> sim.expInsertLookupTest(factory,
                 insOrder.value(), true)),
         DELETELOOKUP((sim, factory) -> sim.deleteLookupTest(factory)),
         INSERTFAILREPEAT((sim, factory) -> sim.insertFailRepeat(factory,
@@ -98,8 +101,11 @@ public class Sim {
         PERMUTATIONS((sim, factory) -> sim.permutation(factory)),
         SPECIFICORDER((sim, factory) -> sim.specificOrder(factory)),
         INSERTDELETE((sim, factory) -> sim.insertDelete(factory)),
-        HOPSBYDIST((sim, factory) -> sim.hopsByDistance(factory)),
-        JOINMSGS((sim, factory) -> sim.msgs4Join(factory));
+        HOPSBYDIST((sim, factory) -> sim.expHopsByDistance(factory)),
+        JOINMSGS((sim, factory) -> sim.msgs4Join(factory)),
+        FTDISTANCE((sim, factory) -> sim.expFtDistance(factory)),
+        NODESVSHOPS((sim, factory) -> sim.expNodesVsHops(factory));
+
         public ExpMethod method;
         private ExpType(ExpMethod exp) {
             this.method = exp;
@@ -145,7 +151,6 @@ public class Sim {
     public static BooleanOption netOpt = new BooleanOption(false, "-net");
     public static EnumOption<ExpType> exptype
         = new EnumOption<>(ExpType.class, ExpType.CONCURRENTJOIN, "-type");
-    @SuppressWarnings("unused")
     private static IntegerOption seedOption = new IntegerOption(-1, "-seed", val -> {
         if (val == -1) {
             EventExecutor.setRandom(new MersenneTwister());
@@ -153,7 +158,10 @@ public class Sim {
             EventExecutor.setRandom(new MersenneTwister(val));
         }
     });
- 
+    // used by expNodesVsHops
+    private static IntegerOption numNodesOption = new IntegerOption(0, "-nodes");
+    // used by expFtDistance
+    private static IntegerOption numIteration = new IntegerOption(1, "-iter");
     public static EnumOption<InsertOrder> insOrder
         = new EnumOption<InsertOrder>(InsertOrder.class, InsertOrder.RANDOM,
                 "-insorder");
@@ -165,7 +173,7 @@ public class Sim {
     public static DoubleOption failRate
         = new DoubleOption(0.0, "-failRate");
     StarLatencyProvider latencyProvider = new StarLatencyProvider();
-    
+
     public static void main(String[] args) {
         Log.init();
         // force load to initialize Options
@@ -194,7 +202,12 @@ public class Sim {
         }
         System.out.println();
         // start simulation
+        long startTime = System.currentTimeMillis();
         new Sim().sim(algorithm.value(), exptype.value());
+        long endTime = System.currentTimeMillis();
+        long elapsed = endTime - startTime;
+        System.out.println("\n");
+        System.out.println("Simulation time: " + elapsed/1000 + " sec");
         System.exit(0);
     }
 
@@ -219,7 +232,10 @@ public class Sim {
     
     /**
      * locate the node position and insert
+     * @param n
      * @param introducer
+     * @param delay
+     * @param callback
      */
     public static void joinLater(LocalNode n, LocalNode introducer, long delay,
             Runnable callback) {
@@ -348,7 +364,7 @@ public class Sim {
      * @param stat
      */
     public static void lookup(LocalNode from, DdllKey key, LookupStat stat) {
-        System.out.println(from + " lookup " + key);
+        // System.out.println(from + " lookup " + key);
         long start = EventExecutor.getVTime();
         Lookup ev = new Lookup(from, key);
         ev.onReply((done, exc) -> {
@@ -457,13 +473,24 @@ public class Sim {
         insertSeq(nodes, order, 0, delay1, delay2, after); 
     }
 
-    private List<Integer> insertRandom(LocalNode[] nodes, int from, int to, long delay1,
-            long delay2, Runnable after) {
+    private List<Integer> insertRandom(LocalNode[] nodes, int from, int to,
+            long delay1, long delay2, Runnable after) {
+        return insertRandom(nodes, from, to, delay1, delay2, after, null);
+    }
+
+    private List<Integer> insertRandom(LocalNode[] nodes, int from, int to,
+            long delay1, long delay2, Runnable after,
+            Consumer<LocalNode> insertCallback) {
         List<Integer> order = new ArrayList<>();
         IntStream.range(from, to).forEach(order::add);
         Collections.shuffle(order, EventExecutor.random());
-        insertSeq(nodes, order, 0, delay1, delay2, after);
+        insertSeq(nodes, order, 0, delay1, delay2, after, insertCallback);
         return order;
+    }
+
+    private void insertSeq(LocalNode[] nodes, List<Integer> order, int index,
+            long initialDelay, long afterDelay, Runnable after) {
+        insertSeq(nodes, order, index, initialDelay, afterDelay, after, null);
     }
 
     /**
@@ -480,14 +507,21 @@ public class Sim {
      * @param initialDelay
      * @param afterDelay
      * @param after
+     * @param insertCallback
      */
     private void insertSeq(LocalNode[] nodes, List<Integer> order, int index,
-            long initialDelay, long afterDelay, Runnable after) {
+            long initialDelay, long afterDelay, Runnable after,
+            Consumer<LocalNode> insertCallback) {
         LocalNode introducer = nodes[0];
-        joinLater(nodes[order.get(index)], introducer, initialDelay, () -> {
+        LocalNode node = nodes[order.get(index)];
+        joinLater(node, introducer, initialDelay, () -> {
             cNode++;
+            if (insertCallback != null) {
+                insertCallback.accept(node);
+            }
             if (index + 1 < order.size()) {
-                insertSeq(nodes, order, index + 1, afterDelay, afterDelay, after);
+                insertSeq(nodes, order, index + 1, afterDelay, afterDelay,
+                        after, insertCallback);
             } else {
                 System.out.println("** insertion finished: vtime="
                         + EventExecutor.getVTime() + ", rtime="
@@ -521,14 +555,16 @@ public class Sim {
 
     final static int NQUERY = 2000;
     Runnable lookupTest(LocalNode[] nodes, LookupStat s) {
+        return lookupTest(nodes, s, NQUERY);
+    }
+    Runnable lookupTest(LocalNode[] nodes, LookupStat s, int nquery) {
         return () -> {
             System.out.println("start lookupTest: " + EventExecutor.getVTime());
-            for (int i = 0; i < NQUERY; i++) {
+            for (int i = 0; i < nquery; i++) {
                 lookup1(nodes, s, null, null);
             }
         };
     }
-    
     private void distLookupTest(LocalNode[] nodes, LookupStat s, long tFrom,
             int tWidth) {
         distLookupTest(nodes, s, tFrom, tWidth, null);
@@ -550,7 +586,7 @@ public class Sim {
     private void distLookupTest(LocalNode[] nodes, LookupStat s, long tFrom,
             int tWidth, boolean[] ignFrom, boolean[] ignTo, int nquery) {
         for (int i = 0; i < nquery; i++) {
-            long t = tFrom + random().nextInt(tWidth);
+            long t = tFrom + (tWidth > 0 ? random().nextInt(tWidth) : 0);
             EventExecutor.sched(t, () -> {
                 lookup1(nodes, s, ignFrom, ignTo);
             });
@@ -584,9 +620,15 @@ public class Sim {
         };
     }
 
-    private void insertFailLookupTest(NodeFactory factory,
+    private void expInsertLookupTest(NodeFactory factory,
             InsertOrder insOrder, boolean doFail) {
-        int num = 256;   // 全ノード数
+        DdllStrategy.pingPeriod.set(0);
+//        boolean pu2 = SuzakuStrategy.PASSIVE_UPDATE_2.value();
+//        boolean pu2bid = SuzakuStrategy.PASSIVE_UPDATE_2_BIDIRECTIONAL.value();
+//        String postfix = (pu2 ? ("pu2"
+//                + (pu2bid ? "-bid" : "")) : "nopu2");
+//        postfix += "-" + insOrder.toString().toLowerCase();
+        int num = numNodesOption.value();   // 全ノード数
         int initial = num;  // 最初に挿入するノード数
         // 後で挿入するノード数
         int later = num - initial;
@@ -598,9 +640,9 @@ public class Sim {
             nodes[i] = createNode(factory, i * 10, NetworkParams.HALFWAY_DELAY);
         }
 
-        // T=30秒ごとにLOOKUP_TIMES回，lookupTestを実行
-        long T = convertSecondsToVTime(30);
-        int LOOKUP_TIMES = 50;//90;//42;
+        // T秒ごとにLOOKUP_TIMES回，lookupTestを実行
+        long T = convertSecondsToVTime(60);
+        int LOOKUP_TIMES = 36;
         AllLookupStats all = new AllLookupStats();
         StatSet msgset = new StatSet(); // # of messages for finger table update
         StatSet numStatSet = new StatSet(); // # of nodes
@@ -609,7 +651,7 @@ public class Sim {
             if (true) for (int i = 0; i < LOOKUP_TIMES; i++) {
                 long t = i * T;
                 LookupStat s = all.getLookupStat(i);
-                distLookupTest(nodes, s, t, (int)T);
+                distLookupTest(nodes, s, t, 0*(int)T);
                 Stat ms = msgset.getStat(i);
                 Stat ns = numStatSet.getStat(i);
                 final int i0 = i;
@@ -669,7 +711,8 @@ public class Sim {
 //        double logNum = Math.log(num) / Math.log(2);
 //        long duration = (int)(logNum * logNum * 
 //                SuzakuStrategy.UPDATE_FINGER_PERIOD.value());
-        long duration = T * LOOKUP_TIMES + convertSecondsToVTime(2*60);
+        // 2*60 だと Chord# で不足
+        long duration = T * LOOKUP_TIMES + convertSecondsToVTime(4*60);
         System.err.println("duration=" + duration);
         startSim(nodes, duration);
         System.out.println("*****************************");
@@ -679,9 +722,12 @@ public class Sim {
         all.timeSet.printBasicStat("time");
         all.failSet.printBasicStat("lookupFails");
         all.failedNodeSet.printBasicStat("encounterFailedNodes");
+        
+        all.hopSet.printCSV("hopsdata");
 
-        all.hopSet.getStat(1).outputFreqDist("dist-1", 1, false);
-        all.hopSet.getStat(all.hopSet.lastKey()).outputFreqDist("dist-last", 1, false);
+        all.hopSet.getStat(1).outputFreqDist("dist-1", 1);
+        all.hopSet.getStat(all.hopSet.lastKey()).outputFreqDist(
+                "dist-last", 1);
 
         msgset.printBasicStat("ftmsgs");
         numStatSet.printBasicStat("numNodes");
@@ -769,7 +815,7 @@ public class Sim {
         all.failSet.printBasicStat("lookupFails");
         all.failedNodeSet.printBasicStat("encounterFailedNodes");
         for (int i = 0; i < LOOKUP_TIMES; i++) {
-            all.timeSet.getStat(i).outputFreqDist("time-dist-" + i, 10000, false);
+            all.timeSet.getStat(i).outputFreqDist("time-dist-" + i, 10000);
             //all.failedNodeSet.getStat(i).outputFreqDist("failed-dist-" + i, 1, false);
         }
         //msgset.printBasicStat("ftmsgs");
@@ -916,6 +962,7 @@ public class Sim {
 
         symset.printBasicStat("symmetric");
     }
+
     
     /**
      * ノード数を増やしながら検索ホップ数を測定
@@ -970,6 +1017,38 @@ public class Sim {
         all.hopSet.printBasicStat("hops");
         msgs.printBasicStat("msgs");
         //dump(nodes);
+    }
+
+    /**
+     * ノード数を増やしながら，挿入直後（Finger Table更新なし）の検索ホップ数を測定する．
+     * 
+     * @param name
+     * @param factory
+     */
+    private void expNodesVsHops(NodeFactory factory) {
+        SuzakuStrategy.UPDATE_FINGER_PERIOD.set(0);
+        DdllStrategy.pingPeriod.set(0);
+        AllLookupStats all = new AllLookupStats();
+        Consumer<Integer> exp = (num) -> {
+            EventExecutor.reset();
+            LocalNode[] nodes = new LocalNode[num];
+            for (int i = 0; i < nodes.length; i++) {
+                nodes[i] = createNode(factory, i * 10, NetworkParams.HALFWAY_DELAY);
+            }
+            nodes[0].joinInitialNode();
+            insOrder.value().method.insert(this, nodes, 1, num, 0, 0, () -> {
+                LookupStat s = all.getLookupStat(num);
+                lookupTest(nodes, s, 4000).run();
+            });
+            startSim(nodes);
+        };
+        /*for (int i = 16; i <= 16384; i *= 4) {
+            System.err.println("i=" + i);
+            exp.accept(i);
+        }*/
+        exp.accept(numNodesOption.value());
+        all.hopSet.printBasicStat("hops");
+        all.hopSet.printCSV("hopsdata");
     }
 
     int cNode = 0;
@@ -1055,7 +1134,7 @@ public class Sim {
         symset.printBasicStat("symmetric");
         
         all.timeSet.outputFreqDist("timefreq", 100);
-        unified.time.outputFreqDist("unifiedTimeFreq", 100, false);
+        unified.time.outputFreqDist("unifiedTimeFreq", 100);
 
         numStatSet.printBasicStat("numNodes");
         istatset.printBasicStat("iNodes");
@@ -1066,7 +1145,7 @@ public class Sim {
      * ノードN0~N63, N65~N127までを挿入し，その後 N64からすべてのノードを
      * 検索するときの検索時間を求める．
      */
-    private void hopsByDistance(NodeFactory factory) {
+    private void expHopsByDistance(NodeFactory factory) {
         // 全ノード数
         int num = 128;      // 最初に挿入するノード数
         LocalNode[] nodes = new LocalNode[num];
@@ -1109,6 +1188,126 @@ public class Sim {
             all.hopSet.printBasicStat("hops#" + i + "#");
         }
     }
+
+    /**
+     * Finger Table の距離の統計を取る
+     * 
+     * @param factory
+     */
+    private void expFtDistance(NodeFactory factory) {
+        boolean pu2 = SuzakuStrategy.PASSIVE_UPDATE_2.value();
+        boolean pu2bid = SuzakuStrategy.PASSIVE_UPDATE_2_BIDIRECTIONAL.value();
+        String postfix = (pu2 ? ("pu2"
+                + (pu2bid ? "-bid" : "")) : "nopu2");
+        if (numIteration.value() > 1) {
+            SuzakuStrategy.UPDATE_FINGER_PERIOD.set(60*1000);
+        } else {
+            SuzakuStrategy.UPDATE_FINGER_PERIOD.set(0);
+        }
+        DdllStrategy.pingPeriod.set(0);
+
+        StatSet n0stats = new StatSet();
+        List<StatSet> allstats = new ArrayList<>();
+        Stat ins = new Stat();
+        int ITER = 1;
+        for (int i = 0; i < ITER; i++) {
+            System.err.println("!!! iteration " + (i + 1) + "/" + ITER);
+            expFtDistance0(factory, n0stats, allstats, ins);
+        }
+        
+        n0stats.printBasicStat("fft-dist-n0-" + postfix);
+        ins.outputFreqDist("fft-initial-fft1-dist-" + postfix, 1);
+        for (int i = 0; i < allstats.size(); i++) {
+            allstats.get(i).printCSV("fftdist-" + i);
+        }
+    }
+
+    private void expFtDistance0(NodeFactory factory, StatSet n0stats,
+            List<StatSet> allstats, Stat ins) {
+        EventExecutor.reset();
+        int num = numNodesOption.value(); // 400
+
+        LocalNode[] nodes = new LocalNode[num];
+        for (int i = 0; i < nodes.length; i++) {
+            nodes[i] = createNode(factory, i * 10, NetworkParams.HALFWAY_DELAY);
+        }
+        nodes[0].joinInitialNode();
+
+        Consumer<Integer> run = (ith) -> {
+            StatSet s;
+            if (ith < allstats.size()) {
+                s = allstats.get(ith);
+            } else {
+                s = new StatSet();
+                allstats.add(s);
+                assert allstats.size() == ith + 1;
+            }
+            for (int i = 0; i < num; i++) {
+                SuzakuStrategy t = SuzakuStrategy.getSuzakuStrategy(nodes[i]);
+                // 各ノードのFFTの，レベルごとの距離の統計
+                for (int lv = 1; lv < t.getFingerTableSize(); lv++) {
+                    FTEntry ent = t.getFingerTableEntry(lv);
+                    if (ent == null) {
+                        System.out.println("ent=null!\n" + nodes[i].toStringDetail());
+                        continue;
+                    }
+                    int key = (Integer)ent.getNode().key.getPrimaryKey() / 10;
+                    int distance = key - (Integer)nodes[i].key.getPrimaryKey() / 10;
+                    if (distance < 0) {
+                        distance = (distance + num) % num;
+                    }
+                    s.getStat(lv).addSample(distance);
+                    if (distance == 0) {
+                        System.out.println("ZeroDist! " + lv + "\n" + nodes[i].toStringDetail());
+                    }
+                }
+            }
+        };
+        
+        insertRandom(nodes, 1, num, 0, 0, () -> {
+            // 最後のノードのFinger Table構築完了を待って終了
+            int iter = numIteration.value();
+            for (int i = 0; i < iter; i++) {
+                int i0 = i;
+                EventExecutor.sched((i+1)*60*1000, () -> {
+                    run.accept(i0);
+                    if (i0 == iter - 1) {
+                        EventExecutor.terminate();
+                    }
+                });
+                
+            }
+        }, (node) -> {
+            EventExecutor.sched(NetworkParams.ONEWAY_DELAY * 7, () -> {
+                SuzakuStrategy sz = SuzakuStrategy.getSuzakuStrategy(node);
+                FTEntry ent = sz.getFingerTableEntry(1);
+                if (ent != null) {
+                    Node remote = ent.getNode();
+                    int distance = ((int)(remote.key.getPrimaryKey())
+                            - (int)node.key.getPrimaryKey()) / 10;
+                    if (distance < 0) {
+                        distance += num;
+                    }
+                    ins.addSample(distance);
+                }
+            });
+        });
+        EventExecutor.startSimulation(0);
+
+        // N0のFFTの，レベルごとの距離の統計
+        {
+            SuzakuStrategy s = SuzakuStrategy.getSuzakuStrategy(nodes[0]);
+            System.out.println(s.toStringDetail());
+            for (int i = 1; i < s.getFingerTableSize(); i++) {
+                FTEntry ent = s.getFingerTableEntry(i);
+                int key = (Integer)ent.getNode().key.getPrimaryKey() / 10;
+                Stat stat = n0stats.getStat(i);
+                stat.addSample(key);
+            }
+        }
+    }
+
+    
     /*
      * Poisson distribution
      * 
@@ -1160,7 +1359,7 @@ public class Sim {
         System.out.println("*****************************");
         all.hopSet.printBasicStat("hops");
         merged.hops.printBasicStat("mergedHops", 0);
-        merged.hops.outputFreqDist("mergedDist", 1, false);
+        merged.hops.outputFreqDist("mergedDist", 1);
     }
 
     /**
@@ -1211,7 +1410,7 @@ public class Sim {
         LookupStat s = new LookupStat();
         specificOrder(factory, num, p, s);
         s.hops.printBasicStat("hops", order.length);
-        s.hops.outputFreqDist("hopdist", 1, false);
+        s.hops.outputFreqDist("hopdist", 1);
     }
 
     private void concurrentJoin(NodeFactory factory) {
@@ -1396,12 +1595,12 @@ public class Sim {
         String name = factory.toString();
         istats.printBasicStat("ratio:" + name);
         
-        istats.getStat(0).outputFreqDist("dist#0", 0.05, true);
-        istats.getStat(STEP).outputFreqDist("dist#1", 0.05, true);
-        istats.getStat(2*STEP).outputFreqDist("dist#2", 0.05, true);
-        istats.getStat(3*STEP).outputFreqDist("dist#3", 0.05, true);
-        istats.getStat(4*STEP).outputFreqDist("dist#4", 0.05, true);
-        istats.getStat(5*STEP).outputFreqDist("dist#5", 0.05, true);
+        istats.getStat(0).outputFreqDist("dist#0", 0.05);
+        istats.getStat(STEP).outputFreqDist("dist#1", 0.05);
+        istats.getStat(2*STEP).outputFreqDist("dist#2", 0.05);
+        istats.getStat(3*STEP).outputFreqDist("dist#3", 0.05);
+        istats.getStat(4*STEP).outputFreqDist("dist#4", 0.05);
+        istats.getStat(5*STEP).outputFreqDist("dist#5", 0.05);
 
         mstats.printBasicStat("msg:" + name);
         tstats.printBasicStat("time:" + name);

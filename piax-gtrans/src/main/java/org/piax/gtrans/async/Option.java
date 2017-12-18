@@ -86,7 +86,12 @@ public abstract class Option<E> {
         }
         @Override
         public void parse(List<String> args) {
-            value = !defaultValue;
+            if (args.size() == 0 || !(args.get(0).equals("true")) && !(args.get(0).equals("false"))) {
+                value = !defaultValue;
+            } else {
+                String arg = args.remove(0);
+                value = Boolean.parseBoolean(arg);
+            }
         }
         @Override
         public String possibleArgs() {

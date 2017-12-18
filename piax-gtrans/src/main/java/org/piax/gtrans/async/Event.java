@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
@@ -28,7 +29,9 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
     public long vtime;
     int serial; // filled by EventExecutor#enqueue();
 
-    private int eventId = System.identityHashCode(this);
+    // private int eventId = System.identityHashCode(this);
+    private static AtomicInteger nextEventId = new AtomicInteger(0x10000000);
+    private int eventId = nextEventId.getAndIncrement();
 
     public long delay;
     transient public FailureCallback failureCallback;    // run at sender node
@@ -347,7 +350,10 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
 
         public void receiveReply(U reply) {
             cleanup();
-            assert !future.isDone();
+            // if the request has already been timed-out, the following
+            // future.complete(reply) does nothing and the reply message is
+            // ignored.
+            // assert !future.isDone();
             future.complete(reply);
         }
         
@@ -396,6 +402,7 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
                 // node and failureCallback relies on this.
                 registerNotAckedEvent(n, this);
                 cleanup.add(() -> removeNotAckedEvent(n, getEventId()));
+                assert this.failureCallback != null;
                 this.ackTimeoutEvent = EventExecutor.sched(
                         "acktimer-" + getEventId(),
                         acktimeout,
