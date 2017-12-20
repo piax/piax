@@ -11,6 +11,7 @@ import java.util.function.Consumer;
 
 import org.piax.gtrans.async.EventException.AckTimeoutException;
 import org.piax.gtrans.async.EventException.TimeoutException;
+import org.piax.gtrans.async.Node.NodeMode;
 import org.piax.gtrans.ov.ddll.DdllKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -407,6 +408,9 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
                         "acktimer-" + getEventId(),
                         acktimeout,
                         () -> {
+                            if (n.mode == NodeMode.DELETED) {
+                                return;
+                            }
                             if (receiver != n) {
                                 n.addMaybeFailedNode(receiver);
                             }
@@ -425,6 +429,9 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
                         "replyTimer-" + getEventId(),
                         replytimeout,
                         () -> {
+                            if (n.mode == NodeMode.DELETED) {
+                                return;
+                            }
                             RequestEvent<?, ?> ev1 = removeNotAckedEvent(n, getEventId());
                             RequestEvent<?, ?> ev2 = removeRequestEvent(n, getEventId());
                             if (ev1 == null) {
@@ -568,10 +575,14 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
         @Override
         public void run() {
             logger.debug("ErrorEvent");
-            if (req.failureCallback != null) {
-                FailureCallback h = req.failureCallback;
-                req.failureCallback = null;
-                h.run(reason);
+            TimerEvent ev = req.ackTimeoutEvent;
+            if (ev != null) {
+                // for now, ErrorEvent is sent if the recipient node is DELETED.
+                // we treat this ErrorEvent as ACK timed out.
+                logger.debug("invoke ackTimeoutEvent handler");
+                EventExecutor.cancelEvent(ev);
+                req.ackTimeoutEvent = null;
+                ev.run();
             }
         }
         @Override

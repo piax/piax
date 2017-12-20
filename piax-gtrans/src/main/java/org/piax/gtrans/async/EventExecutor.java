@@ -339,7 +339,6 @@ public class EventExecutor {
                             new GraceStateException()));
                 }
             } else if (receiver != null && (receiver.isFailed()
-                    || receiver.mode == NodeMode.OUT
                     || receiver.mode == NodeMode.DELETED)) {
                 logger.trace("message received by not inserted or failed node: {}", ev);
             } else {

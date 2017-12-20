@@ -212,6 +212,7 @@ public class LocalNode extends Node {
             RequestEvent<?, ?> req = (RequestEvent<?, ?>)ev;
             failure = exc -> {
                 logger.trace("post: got exception: {}. {}", exc, ev);
+                req.cleanup();
                 req.future.completeExceptionally(exc);
             };
         }
