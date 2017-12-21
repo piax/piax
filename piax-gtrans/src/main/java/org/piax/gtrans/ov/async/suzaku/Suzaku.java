@@ -762,7 +762,9 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         if (key == null) {
             throw new IllegalArgumentException("null key specified");
         }
-        
+        if (key instanceof PrimaryKey || key instanceof PeerId) {
+            throw new IllegalArgumentException("Primary key or Peer Id cannot be removed (leave instead)");
+        }
         this.checkActive();
         synchronized (keyRegister) {
             if (!keyRegister.containsKey(key)) {

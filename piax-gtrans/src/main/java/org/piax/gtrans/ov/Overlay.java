@@ -209,7 +209,8 @@ public interface Overlay<D extends Destination, K extends Destination> extends
     Set<K> getKeys();
 
     boolean join(Endpoint seed) throws IOException;
-    
+    boolean join() throws IOException;
+    boolean join(String seedSpec) throws IOException;
     /**
      * 引数で指定されたseedのリストをseedピアとして、Overlayをjoinする。
      * <p>

@@ -77,10 +77,11 @@ public class TestOverlay {
     @SuppressWarnings("unchecked")
     public void LLNetTest(Ov ov, Net net) throws Exception {
         // get peers
+        try (
         Peer p1 = Peer.getInstance(new PeerId(newId()));
         Peer p2 = Peer.getInstance(new PeerId(newId()));
         Peer p3 = Peer.getInstance(new PeerId(newId()));
-
+        ) {
         // base transport
         Endpoint loc;
         ChannelTransport<?> bt1 = p1.newBaseChannelTransport(loc = Util
@@ -173,10 +174,7 @@ public class TestOverlay {
         Thread.sleep(1000);
         assertTrue(send_recv2, "SG2 receive failed");
         assertTrue(send_recv3, "SG3 receive failed");
-
-        p1.fin();
-        p2.fin();
-        p3.fin();
+        }
     }
 
     @Test
@@ -186,11 +184,11 @@ public class TestOverlay {
 
     @SuppressWarnings("unchecked")
     public void DOLRTest(Ov ov, Net net) throws Exception {
-        // get peers
+        try (
         Peer p1 = Peer.getInstance(new PeerId("p1"));
         Peer p2 = Peer.getInstance(new PeerId("p2"));
         Peer p3 = Peer.getInstance(new PeerId("p3"));
-
+                ) {
         // base transport
         Endpoint loc;
         ChannelTransport<?> bt1 = p1.newBaseChannelTransport(loc = Util
@@ -199,13 +197,11 @@ public class TestOverlay {
                 net, p2.getPeerId(), "localhost", portNumber++));
         ChannelTransport<?> bt3 = p3.newBaseChannelTransport(Util.genEndpoint(
                 net, p3.getPeerId(), "localhost", portNumber++));
-
         // top level
         Overlay<Key, Key> tr1, tr2, tr3;
         tr1 = new DOLR<Key>(Util.genOverlay(ov, bt1));
         tr2 = new DOLR<Key>(Util.genOverlay(ov, bt2));
         tr3 = new DOLR<Key>(Util.genOverlay(ov, bt3));
-
         received2 = false;
         received3 = false;
 
@@ -283,10 +279,7 @@ public class TestOverlay {
         Thread.sleep(1000);
         assertTrue(send_recv2, "SG2 receive failed");
         assertTrue(!send_recv3, "SG3 falsely received");
-
-        p1.fin();
-        p2.fin();
-        p3.fin();
+        }
     }
 
     @Test
@@ -297,10 +290,11 @@ public class TestOverlay {
     @SuppressWarnings({ "unchecked", "rawtypes" })
     public void MaxLessThanTest(Ov ov, Net net) throws Exception {
         // get peers
+        try(
         Peer p1 = Peer.getInstance(new PeerId("p1"));
         Peer p2 = Peer.getInstance(new PeerId("p2"));
         Peer p3 = Peer.getInstance(new PeerId("p3"));
-
+                ) {
         // base transport
         Endpoint loc;
         ChannelTransport<?> bt1 = p1.newBaseChannelTransport(loc = Util
@@ -402,10 +396,7 @@ public class TestOverlay {
 
         assertTrue(!received2, "SG2 falsely received");
         assertTrue(received3, "SG3 not received");
-
-        p1.fin();
-        p2.fin();
-        p3.fin();
+        }
     }
 
     @Test
@@ -415,9 +406,11 @@ public class TestOverlay {
 
     public void FloodTest(Net net) throws Exception {
         // get peers
+        try(
         Peer p1 = Peer.getInstance(new PeerId("p1"));
         Peer p2 = Peer.getInstance(new PeerId("p2"));
         Peer p3 = Peer.getInstance(new PeerId("p3"));
+        ) {
         Peer.RECEIVE_ASYNC.set(true);
 
         // base transport
@@ -516,11 +509,8 @@ public class TestOverlay {
         Thread.sleep(1000);
         assertTrue(send_recv2, "SG2 receive failed");
         assertTrue(!send_recv3, "SG3 falsely received");
-
-        p1.fin();
-        p2.fin();
-        p3.fin();
         Peer.RECEIVE_ASYNC.set(false);
+        }
     }
 
     @Test
@@ -532,10 +522,12 @@ public class TestOverlay {
         Peer.RECEIVE_ASYNC.set(true);
         Suzaku.EXEC_ASYNC.set(false);
         // get peers
+        
+        try (
         Peer p1 = Peer.getInstance(new PeerId("p1"));
         Peer p2 = Peer.getInstance(new PeerId("p2"));
         Peer p3 = Peer.getInstance(new PeerId("p3"));
-
+                ) {
         // base transport
         Endpoint loc;
         ChannelTransport<?> bt1 = p1.newBaseChannelTransport(loc = Util
@@ -634,10 +626,7 @@ public class TestOverlay {
         Thread.sleep(1000);
         assertTrue(!send_recv2, "SG2 falsely received");
         assertTrue(send_recv3, "SG3 receive failed");
-
-        p1.fin();
-        p2.fin();
-        p3.fin();
+        }
         Peer.RECEIVE_ASYNC.set(false);
         Suzaku.EXEC_ASYNC.set(false);
     }
@@ -652,10 +641,11 @@ public class TestOverlay {
         Peer.RECEIVE_ASYNC.set(true);
         Suzaku.EXEC_ASYNC.set(true);
         // get peers
+        try(
         Peer p1 = Peer.getInstance(new PeerId("p1"));
         Peer p2 = Peer.getInstance(new PeerId("p2"));
         Peer p3 = Peer.getInstance(new PeerId("p3"));
-
+                ) {
         // base transport
         Endpoint loc;
         ChannelTransport<?> bt1 = p1.newBaseChannelTransport(loc = Util
@@ -817,10 +807,7 @@ public class TestOverlay {
         Thread.sleep(1000);
         assertTrue(!send_recv2, "SG2 falsely received");
         assertTrue(send_recv3, "SG3 receive failed");
-
-        p1.fin();
-        p2.fin();
-        p3.fin();
+        }
         Peer.RECEIVE_ASYNC.set(false);
         Suzaku.EXEC_ASYNC.set(false);
     }

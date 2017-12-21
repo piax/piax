@@ -13,6 +13,7 @@
 
 package org.piax.gtrans;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -51,7 +52,7 @@ import org.slf4j.LoggerFactory;
  * <li> RPCInvokerを含むRPCの対象オブジェクトを管理する。
  * </ul>
  */
-public class Peer {
+public class Peer implements Closeable {
     /*--- logger ---*/
     private static final Logger logger = LoggerFactory.getLogger(Peer.class);
 
@@ -490,5 +491,10 @@ public class Peer {
                 + ", \n    baseTransports=" + baseTransMgr.getBaseTransportIdPaths()
                 + ", \n    baseOverlays=" + baseOverlays
                 + ", \n    rpcObjects=" + rpcObjects.keySet() + "}";
+    }
+
+    @Override
+    public void close() throws IOException {
+        fin();
     }
 }
