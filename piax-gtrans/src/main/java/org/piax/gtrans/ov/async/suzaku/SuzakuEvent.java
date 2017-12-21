@@ -55,8 +55,8 @@ public abstract class SuzakuEvent {
         public void run() {
             LocalNode r = (LocalNode)receiver;
             SuzakuStrategy s = SuzakuStrategy.getSuzakuStrategy(r);
-            FTEntrySet ent = s.getFingers(isBackward, x, y, k, passive1, passive2);
-            r.post(this.composeReply(ent));
+            GetFTEntReplyEvent ev = s.getFingers(this);
+            r.post(ev);
         }
         @Override
         public String toStringMessage() {
@@ -64,15 +64,12 @@ public abstract class SuzakuEvent {
                     + ", x=" + x + ", y=" + y
                     + ", passive1=" + passive1 + ", passive2=" + passive2 + ")";
         }
-        // to be overridden
-        public GetFTEntReplyEvent composeReply(FTEntrySet ent) {
-            return new GetFTEntReplyEvent(this, ent);
-        }
     }
 
     public static class GetFTEntReplyEvent
         extends ReplyEvent<GetFTEntEvent, GetFTEntReplyEvent> {
         FTEntrySet ent;
+        int msgCount = 0;
         public GetFTEntReplyEvent(GetFTEntEvent req, FTEntrySet ent) {
             super(req);
             this.ent = ent;

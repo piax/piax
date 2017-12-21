@@ -13,6 +13,7 @@ package org.piax.gtrans.ov.async.suzaku;
 
 import java.util.stream.Stream;
 
+import org.piax.gtrans.async.EventExecutor;
 import org.piax.gtrans.async.FTEntry;
 import org.piax.gtrans.async.LocalNode;
 import org.piax.gtrans.async.Node;
@@ -61,13 +62,22 @@ public class FingerTable {
 
     public void set(int index, FTEntry ent, boolean addtorev) {
         table.set(index, ent);
+        ent.time = EventExecutor.getVTime();
         // XXX: should replace other entries that points to the same node
         if (addtorev && ent != null && ent.getNode() != null) {
             tables.addReversePointer(ent.getNode());
         }
     }
 
-    public void change(int index, FTEntry ent, boolean addtorev) {
+    /**
+     * update a finger table entry.
+     * 
+     * @param index index to update
+     * @param ent entry to replace
+     * @param addtorev true if ent should be added to the reverse pointer set.
+     * @return true if RemoveReversePointerEvent is sent
+     */
+    public boolean change(int index, FTEntry ent, boolean addtorev) {
         assert index != LOCALINDEX;
         FTEntry old = getFTEntry(index);
         //System.out.println(vnode + ": change: index=" + index + ", " + old + " to " + ent);
@@ -76,8 +86,10 @@ public class FingerTable {
             if (old.getNode() != null && old.getNode() != ent.getNode()) {
                 //System.out.println(vnode + ": ptr changed, index=" + index + " from " + old + " to " + ent);
                 suzakuStr.cleanRemoteRevPtr(old.getNode());
+                return true;
             }
         }
+        return false;
     }
 
     /**

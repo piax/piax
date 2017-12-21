@@ -26,6 +26,7 @@ public class EventExecutor {
     // run in real-time
     public static BooleanOption realtime = new BooleanOption(false, "-realtime");
     public static boolean REALWORLD = false;
+    public static boolean SHOW_PROGRESS = false;
 
     private static long startTime; // init by reset();
     private static long vtime; // init by reset();
@@ -59,6 +60,7 @@ public class EventExecutor {
         nmsgs = 0;
         eventCount = 0;
         timeq.clear();
+        LocalNode.resetLocalNodeMap();
         Node.resetInstances();
     }
 
@@ -287,6 +289,10 @@ public class EventExecutor {
             }
             if (ev.sender != ev.receiver) {
                 nmsgs++;
+                if (SHOW_PROGRESS && nmsgs % 10000 == 0) {
+                    System.err.println("EventExecutor: " + nmsgs+ " msgs, T="
+                            + getVTime());
+                }
             }
             addCounter(ev.getType());
             if (logger.isTraceEnabled()) {
@@ -334,7 +340,6 @@ public class EventExecutor {
                             new GraceStateException()));
                 }
             } else if (receiver != null && (receiver.isFailed()
-                    || receiver.mode == NodeMode.OUT
                     || receiver.mode == NodeMode.DELETED)) {
                 logger.trace("message received by not inserted or failed node: {}", ev);
             } else {

@@ -91,10 +91,6 @@ public abstract class NodeStrategy {
         return getLower().getLocalCollectedData(clazz);
     }
 
-    public int getMessages4Join() {
-        return getLower().getMessages4Join();
-    }
-
     protected NodeStrategy getLower() {
         NodeStrategy lower = n.getLowerStrategy(this);
         return lower;

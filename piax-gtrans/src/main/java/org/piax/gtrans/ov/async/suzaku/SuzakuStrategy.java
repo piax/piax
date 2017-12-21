@@ -30,6 +30,7 @@ import org.piax.gtrans.ov.async.suzaku.SuzakuEvent.FTEntRemoveEvent;
 import org.piax.gtrans.ov.async.suzaku.SuzakuEvent.FTEntUpdateEvent;
 import org.piax.gtrans.ov.async.suzaku.SuzakuEvent.GetFTAllEvent;
 import org.piax.gtrans.ov.async.suzaku.SuzakuEvent.GetFTEntEvent;
+import org.piax.gtrans.ov.async.suzaku.SuzakuEvent.GetFTEntReplyEvent;
 import org.piax.gtrans.ov.async.suzaku.SuzakuEvent.RemoveReversePointerEvent;
 import org.piax.gtrans.ov.ring.rq.FlexibleArray;
 import org.slf4j.Logger;
@@ -44,7 +45,7 @@ public class SuzakuStrategy extends NodeStrategy {
                 SuzakuStrategy.USE_BFT = false;
                 SuzakuStrategy.COPY_FINGERTABLES = true;
                 SuzakuStrategy.ACTIVE_UPDATE_ON_JOIN = false;
-                SuzakuStrategy.PASSIVE_UPDATE_2 = false;
+                SuzakuStrategy.PASSIVE_UPDATE_2.set(false);
                 SuzakuStrategy.DELAY_ENTRY_UPDATE = false;
                 SuzakuStrategy.ZIGZAG_UPDATE = false;
                 break;
@@ -52,7 +53,7 @@ public class SuzakuStrategy extends NodeStrategy {
                 SuzakuStrategy.USE_BFT = true;
                 SuzakuStrategy.COPY_FINGERTABLES = true;
                 SuzakuStrategy.ACTIVE_UPDATE_ON_JOIN = false;
-                SuzakuStrategy.PASSIVE_UPDATE_2 = false;
+                SuzakuStrategy.PASSIVE_UPDATE_2.set(false);
                 SuzakuStrategy.DELAY_ENTRY_UPDATE = false;
                 SuzakuStrategy.ZIGZAG_UPDATE = false;
                 break;
@@ -60,7 +61,7 @@ public class SuzakuStrategy extends NodeStrategy {
                 SuzakuStrategy.USE_BFT = true;
                 SuzakuStrategy.COPY_FINGERTABLES = false;
                 SuzakuStrategy.ACTIVE_UPDATE_ON_JOIN = true;
-                SuzakuStrategy.PASSIVE_UPDATE_2 = false;
+                SuzakuStrategy.PASSIVE_UPDATE_2.set(false);
                 SuzakuStrategy.DELAY_ENTRY_UPDATE = false;
                 SuzakuStrategy.ZIGZAG_UPDATE = false;
                 break;
@@ -68,7 +69,7 @@ public class SuzakuStrategy extends NodeStrategy {
                 SuzakuStrategy.USE_BFT = true;
                 SuzakuStrategy.COPY_FINGERTABLES = false;
                 SuzakuStrategy.ACTIVE_UPDATE_ON_JOIN = true;
-                SuzakuStrategy.PASSIVE_UPDATE_2 = true;
+                // SuzakuStrategy.PASSIVE_UPDATE_2.set(true);
                 SuzakuStrategy.DELAY_ENTRY_UPDATE = true;
                 SuzakuStrategy.ZIGZAG_UPDATE = true;
                 break;
@@ -99,6 +100,7 @@ public class SuzakuStrategy extends NodeStrategy {
         = new BooleanOption(false, "-notify-rev", (val) -> {
             sanityCheck();
         });
+    final static boolean USE_P2U_BUG = false; // true to use buggy code
 
     // parameter to compute the base of log
     /** the base of log. K = 2<sup>B</sup> */
@@ -123,11 +125,17 @@ public class SuzakuStrategy extends NodeStrategy {
     /** 挿入時にfinger tableをアクティブに更新 */
     public static boolean ACTIVE_UPDATE_ON_JOIN = false;
     /** パッシブ更新2 */
-    public static boolean PASSIVE_UPDATE_2 = false;
+    public static BooleanOption PASSIVE_UPDATE_2
+        = new BooleanOption(true, "-pu2");
+    /** BFT方向でもパッシブ更新2を行う */
+    public static BooleanOption PASSIVE_UPDATE_2_BIDIRECTIONAL
+        = new BooleanOption(false, "-pu2-bid");
     /** 取得したエントリを生存が確認できるまで格納しない */
     public static boolean DELAY_ENTRY_UPDATE = false;
     /** ジグザグに更新 */
     public static boolean ZIGZAG_UPDATE = false;
+    /** あるFTEを更新する際に，取得してきたり後でパッシブ更新されていたら後者を優先する */
+    public static boolean PREFER_NEWER_ENTRY_THAN_FETCHED_ONE = true;
 
     /** finger tables */
     FingerTables table;
@@ -138,8 +146,6 @@ public class SuzakuStrategy extends NodeStrategy {
 
     DdllStrategy ddll;
 
-    int joinMsgs = 0;
-    
     public static void load() {
         // dummy
     }
@@ -181,7 +187,7 @@ public class SuzakuStrategy extends NodeStrategy {
         logger.trace("Suzaku#join: {} joins between {} and {}", n.key
                 , lookupDone.pred, lookupDone.succ);
         assert Node.isOrdered(lookupDone.pred.key, n.key, lookupDone.succ.key);
-        joinMsgs += lookupDone.hops();
+        n.counter.add("join.lookup", lookupDone.hops());
         CompletableFuture<Boolean> future = new CompletableFuture<>();
         ddll.join(lookupDone, future);
         future.whenComplete((rc, exc) -> {
@@ -329,7 +335,8 @@ public class SuzakuStrategy extends NodeStrategy {
             Node next = n.getClosestPredecessor(l.key);
             // successorがfailしていると，next.node == n になる
             if (next == null || next == n) {
-                logger.debug("{}: handleLookup! key={}, evid={}, next={}, {}", n, l.key, l.getEventId(), next, toStringDetail());
+                logger.debug("{}: handleLookup! key={}, evid={}, next={}, {}",
+                        n, l.key, l.getEventId(), next, toStringDetail());
                 //System.out.println(n.toStringDetail());
                 n.post(new LookupDone(l, n, n.succ));
                 return;
@@ -338,14 +345,13 @@ public class SuzakuStrategy extends NodeStrategy {
             l.delay = Node.NETWORK_LATENCY;
             {
                 FTEntry ent = table.getFTEntry(next);
-                if (ent == null) {
-                    logger.debug("ent == null, next={}\n{}", next,
-                            toStringDetail());
-                    assert false;
+                // multi-keyの場合，上のn.getClosestPredecessor(l.key)は他のkeyの
+                // FTEを用いた結果を返す可能性があり，その場合 ent == null となる．
+                if (ent != null) {
+                    l.fill = ent.needUpdate();
                 }
-                l.fill = ent.needUpdate();
             }
-            logger.debug("T={}: {}: handleLookup evid={} next={}", EventExecutor.getVTime(), n, l.getEventId(), next);
+            //logger.debug("T={}: {}: handleLookup evid={} next={}", EventExecutor.getVTime(), n, l.getEventId(), next);
             n.forward(next, l, (exc) -> {
                 /* 
                  * 相手ノード障害時は，handleLookupを再実行する．．
@@ -418,8 +424,7 @@ public class SuzakuStrategy extends NodeStrategy {
         return buf.toString();
     }
 
-    public void nodeInserted() {
-        joinMsgs += ddll.getMessages4Join();    // add messages consumed in DDLL 
+    private void nodeInserted() {
         if (COPY_FINGERTABLES) {
             // copy predecessor's finger table
             GetFTAllEvent ev = new GetFTAllEvent(n.pred);
@@ -427,7 +432,7 @@ public class SuzakuStrategy extends NodeStrategy {
                 if (exc != null) {
                     logger.debug("getFTAll failed: {}", exc);
                 } else {
-                    joinMsgs += 2;
+                    n.counter.add("join.ftupdate", 2); // GetFTAllEvent/Reply
                     FTEntry[][] fts = rep.ents;
                     for (int i = 1; i < fts[0].length; i++) {
                         table.forward.set(i, fts[0][i]);
@@ -453,12 +458,12 @@ public class SuzakuStrategy extends NodeStrategy {
      * 定期的なfinger table更新
      * @param isFirst true if it is the first time update
      */
-    public void scheduleFTUpdate(boolean isFirst) {
+    private void scheduleFTUpdate(boolean isFirst) {
         if (UPDATE_FINGER_PERIOD.value() == 0) {
             return;
         }
         long delay;
-        if (isFirst) {
+        if (false && isFirst) {
             delay = EventExecutor.random().nextInt(UPDATE_FINGER_PERIOD.value());
         } else {
             delay = UPDATE_FINGER_PERIOD.value();
@@ -636,6 +641,9 @@ public class SuzakuStrategy extends NodeStrategy {
     }
 
     public int getBackwardFingerTableSize() {
+        if (!USE_BFT) {
+            return 0;
+        }
         return table.backward.getFingerTableSize();
     }
     
@@ -651,9 +659,15 @@ public class SuzakuStrategy extends NodeStrategy {
      * @param passive2 finger table entries used for passive update 2
      * @return list of finger table entries
      */
-    public FTEntrySet getFingers(boolean isBackward, int x, int y, int k,
-            FTEntrySet passive1, FTEntrySet passive2) {
+    public GetFTEntReplyEvent getFingers(GetFTEntEvent req) {
+        boolean isBackward = req.isBackward;
+        int x = req.x;
+        int y = req.y;
+        FTEntrySet passive1 = req.passive1;
+        FTEntrySet passive2 = req.passive2;
         FTEntrySet returnSet = new FTEntrySet();
+        GetFTEntReplyEvent reply = new GetFTEntReplyEvent(req, returnSet);
+
         // {tk^x | 0 < t <= 2^y}
         // x = floor(p/b), y = p-bx = p % b
         // ---> p = y + bx 
@@ -674,33 +688,53 @@ public class SuzakuStrategy extends NodeStrategy {
                 delta = 1;
             }
             FingerTable opTable = isBackward ? table.forward: table.backward;
-            if (passive1.ents.length > 0) {
+            if (p > 0 && passive1.ents.length > 0) {
                 // Passive Update 1
-                assert p >= 0;
-                //int index = FingerTable.getFTIndex(1 << p);
-                //opTable.change(index, passive1.ents[0], true);
-                int index2 = FingerTable.getFTIndex(delta);
+                int index2 = FingerTable.getFTIndex((1 << (p - 1)) + delta);
                 for (int i = 0; i < passive1.ents.length; i++) {
-                    logger.debug("pasv1 {}, {}: {}", index2, i, passive1.ents[i]);
-                    opTable.change(index2 + i, passive1.ents[i], true);
+                    logger.trace("pasv1 index={}: {}", index2 + i, passive1.ents[i]);
+                    boolean rc = opTable.change(index2 + i, passive1.ents[i], true);
+                    if (rc) {
+                        reply.msgCount++;
+                    }
                 }
             }
             if (passive2 != null && passive2.ents.length > 0) {
-                assert PASSIVE_UPDATE_2;
+                assert PASSIVE_UPDATE_2.value();
                 // Passive Update 2
-                int index2 = p == 0 ? 1 : FingerTable.getFTIndex((1 << (p - 1)) + delta);
-                assert index2 != FingerTable.LOCALINDEX;
-                for (int i = 0; i < passive2.ents.length + (isBackward ? 0 : -1); i++) {
-                    if (passive2.ents[i] != null) {
-                        logger.debug("pasv2 {}, {}: {}", index2, i, passive2.ents[i]);
-                        opTable.change(index2 + i, passive2.ents[i], true);
+                if (USE_P2U_BUG) {
+                    int index2 = p == 0 ? 1 : FingerTable.getFTIndex((1 << (p - 1)) + delta);
+                    assert index2 != FingerTable.LOCALINDEX;
+                    for (int i = 0; i < passive2.ents.length + (isBackward ? 0 : -1); i++) {
+                        if (passive2.ents[i] != null) {
+                            // logger.trace("pasv2 index={}: {}", index2 + i, passive2.ents[i]);
+                            boolean rc = opTable.change(index2 + i, passive2.ents[i], true);
+                            if (rc) {
+                                reply.msgCount++;
+                            }
+                        }
                     }
-                }
-                if (!isBackward && p > 0) {
-                     FTEntry last = passive2.ents[passive2.ents.length - 1];
-                     if (last != null) {
-                         table.addReversePointer(last.getNode());
-                     }
+                    if (!isBackward && p > 0) {
+                        FTEntry last = passive2.ents[passive2.ents.length - 1];
+                        if (last != null) {
+                            table.addReversePointer(last.getNode());
+                        }
+                    }
+                } else {
+                    assert passive2.ents.length == 1;
+                    FTEntry last = passive2.ents[0];
+                    if (last != null) {
+                        if (PASSIVE_UPDATE_2_BIDIRECTIONAL.value() || isBackward) {
+                            int index = FingerTable.getFTIndex(1 << (p + 1));
+                            // logger.debug("pasv2 index={}, {}", index, last);
+                            boolean rc = opTable.change(index, last, true);
+                            if (rc) {
+                                reply.msgCount++;
+                            }
+                        } else {
+                            table.addReversePointer(last.getNode());
+                        }
+                    }
                 }
 //                int index = FingerTable.getFTIndex(1 << (p + 1));
 //                if (!NOTIFY_WITH_REVERSE_POINTER.value() || isBackward) {
@@ -717,7 +751,7 @@ public class SuzakuStrategy extends NodeStrategy {
                     x, y, k, given, set);
             System.out.printf(n.toStringDetail());*/
         }
-        return returnSet;
+        return reply;
     }
 
     public FTEntry[][] getFingerTable() {
@@ -854,8 +888,22 @@ public class SuzakuStrategy extends NodeStrategy {
         }
         int distQ = 1 << p;
         int indQ = FingerTable.getFTIndex(distQ);
-        FTEntry baseEnt = (nextEnt1 != null
-                ? nextEnt1 : getFingerTableEntry(isBackward, indQ)); 
+        FTEntry baseEnt;
+        FTEntry current = getFingerTableEntry(isBackward, indQ);
+        if (nextEnt1 == null) {
+            baseEnt = current;
+        } else {
+            if (current == null
+                    || !DELAY_ENTRY_UPDATE
+                    || (PREFER_NEWER_ENTRY_THAN_FETCHED_ONE
+                            && current.time < nextEnt1.time)) {
+                baseEnt = nextEnt1;
+            } else {
+                logger.debug("use current: nextEnt1={} (T={}), cur={} (T={})",
+                        nextEnt1, nextEnt1.time, current, current.time);
+                baseEnt = current;
+            }
+        }
         if (baseEnt == null) {
             logger.debug("{}: null-entry-1, index = {}, {}", n, indQ, toStringDetail());
             updateNext(p, isBackward, nextEnt2, null);
@@ -886,74 +934,90 @@ public class SuzakuStrategy extends NodeStrategy {
          *       = 2 ^ (B * ⌊(p - 1) / B⌋)
          *       = 2 ^ (⌊(p - 1) / B⌋ * B)
          *
-         * K = 4 の場合のN0の経路表:
-         *                          (p-1)/B  delta=(K^⌊(p-1)/B⌋)
-         *  N1  N2  N3      (p=0, 1)     0          1
-         *  N4  N8 N12      (p=2, 3)     1          4
-         * N16 N32 N48      (p=4, 5)     2          8
+         * K = 4 (B = 2) の場合のN0の経路表:
+         *                        (p-1)/B  delta=(K^⌊(p-1)/B⌋)
+         *  N1  N2  N3  (p=0, 1)   N/A, 0      N/A, 1
+         *  N4  N8 N12  (p=2, 3)     0, 1        1, 4
+         * N16 N32 N48  (p=4, 5)     1, 2        4, 16
          */
         FTEntrySet passive1 = new FTEntrySet();
         int delta = 1, max = 1;
         if (p > 0) {
             delta = 1 << ((p - 1) / B * B);
-            max = 1 << p;//(p - 1);
+            max = 1 << (p - 1);
         }
         {
-            /* 
-             * |-------------------------------> distQ = 2^p
-             * |---------------> 2^(p - 1)
-             * |--> delta
-             * N==A==B==...====P===============Q
-             * 
-             * NがQに対してgetFingersを呼ぶ時，[A, B, ... P) を送る．
-             * delta = N-A間の距離
-             *       = K ^ ⌊(p - 1) / B⌋
-             *       = 2 ^ (B * ⌊(p - 1) / B⌋)
-             *       = 2 ^ (⌊(p - 1) / B⌋ * B)
-             *
-             * K = 4 (B = 2) の場合のN0の経路表:
-             *                        (p-1)/B  delta=(K^⌊(p-1)/B⌋)
-             *  N1  N2  N3  (p=0, 1)   N/A, 0      N/A, 1
-             *  N4  N8 N12  (p=2, 3)     0, 1        1, 4
-             * N16 N32 N48  (p=4, 5)     1, 2        4, 16
-             */
             ArrayList<FTEntry> p1ents = new ArrayList<>();
             for (int d = 0; d < max; d += delta) {
                 int dist1 = d * (isBackward ? -1 : 1);
                 int dist2 = dist1 + delta;
                 FTEntry e = getFTEntryToSendTop(dist1, dist2);
-                int dis = distQ - d;  // 当該エントリから Q までの距離
-                if (false && dis < K) {
-                    // XXX: THINK!: remove neighbors part
-                    // note that this part is never executed when K=1.
-                    FTEntry e0 = e;
-                    e = new FTEntry(e.getNode());
-                }
+//                int dis = distQ - d;  // 当該エントリから Q までの距離
+//                if (false && dis < K) {
+//                    // XXX: THINK!: remove neighbors part
+//                    // note that this part is never executed when K=1.
+//                    FTEntry e0 = e;
+//                    e = new FTEntry(e.getNode());
+//                }
                 p1ents.add(0, e);  // 逆順に格納
             }
             passive1.ents = p1ents.toArray(new FTEntry[p1ents.size()]);
         }
         // Passive Update 2で送信するエントリを収集
         FTEntrySet passive2 = null;
-        if (PASSIVE_UPDATE_2 && isFirst) {
+        if (PASSIVE_UPDATE_2.value() && isFirst) {
             List<FTEntry> p2ents = new ArrayList<>();
-            for (int d = delta; isBackward ? d <= distQ : d < distQ; d += delta) {
-                int d0 = d * (isBackward ? 1 : -1);
-                int d1 = d0 + delta;
-                FTEntry e = getFTEntryToSendTop(d0, d1);
-                int dis = distQ - d;  // 当該エントリから Q までの距離
-                if (dis < K) {
-                    // XXX: THINK!: remove neighbors part
-                    FTEntry e0 = e;
-                    if (e != null) {
-                        e = new FTEntry(e.getNode());
+            if (USE_P2U_BUG) {
+                // K > 2 の場合にバグがある
+                for (int d = delta; isBackward ? d <= distQ : d < distQ; d += delta) {
+                    int d0 = d * (isBackward ? 1 : -1);
+                    int d1 = d0 + delta;
+                    FTEntry e = getFTEntryToSendTop(d0, d1);
+                    int dis = distQ - d;  // 当該エントリから Q までの距離
+                    if (dis < K) {
+                        // XXX: THINK!: remove neighbors part
+                        if (e != null) {
+                            e = new FTEntry(e.getNode());
+                        }
                     }
+                    p2ents.add(e);
                 }
-                p2ents.add(e);
-            }
-            if (p > 0 && !isBackward) {
-                // FFT側ノードのReverse Pointer更新用
-                p2ents.add(nextEnt2 != null ? nextEnt2.clone() : null);
+                if (p > 0 && !isBackward) {
+                    // FFT側ノードのReverse Pointer更新用
+                    p2ents.add(nextEnt2 != null ? nextEnt2.clone() : null);
+                }
+            } else {
+                // tentative version
+                if (isBackward) {
+                    int delta2 = 1 << (p / B * B);
+                    int d0 = distQ;
+                    int d1 = d0 + delta2;
+                    FTEntry e = getFTEntryToSendTop(d0, d1);
+                    // baseEntからみて一周以上回るエントリは送らない
+                    if (e != null && e.getNode() != null
+                            && baseEnt.getNode() != e.getNode()
+                            && Node.isOrdered(baseEnt.getNode().key, false,
+                            n.key, e.getNode().key, false)) {
+                        p2ents.add(e);
+                    } else {
+                        //System.out.println("drop baseEnt=" + baseEnt);
+                        //System.out.println("drop n=" + n.key);
+                        //System.out.println("drop e=" + e);
+                        p2ents.add(null);
+                    }
+                } else {
+                    FTEntry e = nextEnt2;
+                    // baseEntからみて一周以上回るエントリは送らない
+                    if (e != null && e.getNode() != null
+                            && baseEnt.getNode() != e.getNode()
+                            && Node.isOrdered(e.getNode().key, false,
+                            n.key, baseEnt.getNode().key, false)) {
+                        p2ents.add(e);
+                    } else {
+                        p2ents.add(null);
+                    }
+                    //p2ents.add(nextEnt2 != null ? nextEnt2.clone() : null);
+                }
             }
             passive2 = new FTEntrySet();
             passive2.ents = p2ents.toArray(new FTEntry[p2ents.size()]);
@@ -1014,12 +1078,14 @@ public class SuzakuStrategy extends NodeStrategy {
                 }
             } else {
                 if (ACTIVE_UPDATE_ON_JOIN && isFirst) {
-                    joinMsgs += 2;
+                    // logger.debug("join.ftupdate: {}", 2 + repl.msgCount);
+                    n.counter.add("join.ftupdate", 2 + repl.msgCount);
+                    // getFTEntEvent/Reply + RemoveReversePointerEvent
                 }
                 FTEntry[] replEnts = repl.ent.ents;
                 /* 取得したエントリをfinger tableにセットする */
                 // the first entry (ents[0]) represents the sender of this 
-                // RQReply.  we have confirmed the aliveness of the node.
+                // reply.  we have confirmed the aliveness of the node.
                 {
                     FTEntry e = replEnts[0];
                     assert e.getNode() == q;
@@ -1039,7 +1105,9 @@ public class SuzakuStrategy extends NodeStrategy {
                     }
                     if (isCirculated(isBackward, q, e)) {
                         tab.shrink(indQ + m);
-                        opTab.shrink(indQ + m);
+                        if (opTab != null) {
+                            opTab.shrink(indQ + m);
+                        }
                         break;
                     }
                     // System.out.println("m=" + m + ": e=" + e);
@@ -1056,6 +1124,10 @@ public class SuzakuStrategy extends NodeStrategy {
                         tab.change(indQ + m, e, true);
                         nextEntX = e;
                     }
+                }
+                // used when PREFER_NEWER_ENTRY_THAN_FETCHED_ONE
+                if (nextEntX != null) {
+                    nextEntX.time = EventExecutor.getVTime();
                 }
                 updateNext(p, isBackward, nextEnt2, nextEntX);
             }
@@ -1139,7 +1211,6 @@ public class SuzakuStrategy extends NodeStrategy {
         if (ZIGZAG_UPDATE) {
             // XXX: UPDATE_ONCE is ignored
             if (isFirst) {
-                //assert p == 0 || nextEnt2 != null;
                 if (!isBackward) {
                     updateFingerTable0(p, true, nextEnt2, nextEntX);
                 } else {
@@ -1153,7 +1224,7 @@ public class SuzakuStrategy extends NodeStrategy {
             }
         } else {
             assert nextEnt2 == null;
-            if (isFirst || UPDATE_ONCE.value()) {
+            if (/*isFirst ||*/ UPDATE_ONCE.value()) {
                 updateFingerTable0(p + 1, isBackward, nextEntX, null);
             } else {
                 EventExecutor.sched(UPDATE_FINGER_PERIOD.value(),
@@ -1190,11 +1261,6 @@ public class SuzakuStrategy extends NodeStrategy {
             backwardUpdateCount++;
         }
         return;
-    }
-
-    @Override
-    public int getMessages4Join() {
-        return joinMsgs;
     }
 
     /**
