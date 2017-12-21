@@ -26,6 +26,7 @@ public class EventExecutor {
     // run in real-time
     public static BooleanOption realtime = new BooleanOption(false, "-realtime");
     public static boolean REALWORLD = false;
+    public static boolean SHOW_PROGRESS = false;
 
     private static long startTime; // init by reset();
     private static long vtime; // init by reset();
@@ -288,7 +289,7 @@ public class EventExecutor {
             }
             if (ev.sender != ev.receiver) {
                 nmsgs++;
-                if (nmsgs % 10000 == 0) {
+                if (SHOW_PROGRESS && nmsgs % 10000 == 0) {
                     System.err.println("EventExecutor: " + nmsgs+ " msgs, T="
                             + getVTime());
                 }
