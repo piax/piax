@@ -60,6 +60,22 @@ public class Util {
     public enum Ov {
         SZK, SG
     }
+    
+    @SuppressWarnings("unchecked")
+    public static <O extends Overlay> O genOverlay(Ov ov, String spec) throws IOException, IdConflictException{
+        Overlay ret;
+        switch (ov) {
+        case SZK:
+            ret = new Suzaku(spec);
+            break;
+        case SG:
+            ret = new MSkipGraph(spec);
+            break;
+        default:
+            ret = null;
+        }
+        return (O) ret;
+    }
 
     @SuppressWarnings("unchecked")
     public static <O extends Overlay> O genOverlay(Ov ov, ChannelTransport<?> bt) throws IOException, IdConflictException{

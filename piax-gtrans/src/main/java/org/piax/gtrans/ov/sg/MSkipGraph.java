@@ -25,6 +25,7 @@ import org.piax.common.ComparableKey;
 import org.piax.common.Destination;
 import org.piax.common.Endpoint;
 import org.piax.common.ObjectId;
+import org.piax.common.PeerId;
 import org.piax.common.TransportId;
 import org.piax.common.subspace.KeyRange;
 import org.piax.common.subspace.KeyRanges;
@@ -32,6 +33,7 @@ import org.piax.common.subspace.LowerUpper;
 import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.FutureQueue;
 import org.piax.gtrans.IdConflictException;
+import org.piax.gtrans.Peer;
 import org.piax.gtrans.ProtocolUnsupportedException;
 import org.piax.gtrans.RemoteValue;
 import org.piax.gtrans.RequestTransportListener;
@@ -39,6 +41,7 @@ import org.piax.gtrans.ReturnValue;
 import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.TransportListener;
 import org.piax.gtrans.impl.NestedMessage;
+import org.piax.gtrans.ov.Overlay;
 import org.piax.gtrans.ov.OverlayListener;
 import org.piax.gtrans.ov.OverlayReceivedMessage;
 import org.piax.gtrans.ov.RoutingTableAccessor;
@@ -61,6 +64,15 @@ public class MSkipGraph<D extends Destination, K extends ComparableKey<?>>
 
     SkipGraph<Endpoint> ddllSG;
 
+    public MSkipGraph() throws IdConflictException, IOException {
+        this(Overlay.DEFAULT_ENDPOINT.value());
+    }
+    
+    public MSkipGraph(String spec) throws IdConflictException, IOException {
+        this(DEFAULT_TRANSPORT_ID,
+                Peer.getInstance(PeerId.newId()).newBaseChannelTransport(Endpoint.newEndpoint(spec)));
+    }
+    
     public MSkipGraph(ChannelTransport<?> lowerTrans) throws IdConflictException,
             IOException {
         this(DEFAULT_TRANSPORT_ID, lowerTrans);
