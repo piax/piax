@@ -5,11 +5,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import org.piax.gtrans.async.EventException.AckTimeoutException;
 import org.piax.gtrans.async.EventException.TimeoutException;
+import org.piax.gtrans.async.Node.NodeMode;
 import org.piax.gtrans.ov.ddll.DdllKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,7 +30,9 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
     public long vtime;
     int serial; // filled by EventExecutor#enqueue();
 
-    private int eventId = System.identityHashCode(this);
+    // private int eventId = System.identityHashCode(this);
+    private static AtomicInteger nextEventId = new AtomicInteger(0x10000000);
+    private int eventId = nextEventId.getAndIncrement();
 
     public long delay;
     transient public FailureCallback failureCallback;    // run at sender node
@@ -347,7 +351,10 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
 
         public void receiveReply(U reply) {
             cleanup();
-            assert !future.isDone();
+            // if the request has already been timed-out, the following
+            // future.complete(reply) does nothing and the reply message is
+            // ignored.
+            // assert !future.isDone();
             future.complete(reply);
         }
         
@@ -396,10 +403,14 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
                 // node and failureCallback relies on this.
                 registerNotAckedEvent(n, this);
                 cleanup.add(() -> removeNotAckedEvent(n, getEventId()));
+                assert this.failureCallback != null;
                 this.ackTimeoutEvent = EventExecutor.sched(
                         "acktimer-" + getEventId(),
                         acktimeout,
                         () -> {
+                            if (n.mode == NodeMode.DELETED) {
+                                return;
+                            }
                             if (receiver != n) {
                                 n.addMaybeFailedNode(receiver);
                             }
@@ -418,6 +429,9 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
                         "replyTimer-" + getEventId(),
                         replytimeout,
                         () -> {
+                            if (n.mode == NodeMode.DELETED) {
+                                return;
+                            }
                             RequestEvent<?, ?> ev1 = removeNotAckedEvent(n, getEventId());
                             RequestEvent<?, ?> ev2 = removeRequestEvent(n, getEventId());
                             if (ev1 == null) {
@@ -562,10 +576,14 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
         @Override
         public void run() {
             logger.debug("ErrorEvent");
-            if (req.failureCallback != null) {
-                FailureCallback h = req.failureCallback;
-                req.failureCallback = null;
-                h.run(reason);
+            TimerEvent ev = req.ackTimeoutEvent;
+            if (ev != null) {
+                // for now, ErrorEvent is sent if the recipient node is DELETED.
+                // we treat this ErrorEvent as ACK timed out.
+                logger.debug("invoke ackTimeoutEvent handler");
+                EventExecutor.cancelEvent(ev);
+                req.ackTimeoutEvent = null;
+                ev.run();
             }
         }
         @Override

@@ -141,20 +141,15 @@ public class Stat {
     }
 
     /**
-     * 度数分布（累積度数分布）を出力する．
+     * 度数分布と累積度数分布を出力する．
      * 出力は合計が1.0になるように正規化している．
      * #begin から #end までを切り取ると，gnuplotのデータファイルになる．
      * 
      * @param title
      * @param step
-     * @param cumulative trueならば累積度数分布を出力．
      */
-    public void outputFreqDist(String title, double step, boolean cumulative) {
-        if (cumulative) {
-            System.out.println("#begin#" + title + ": freq (cumulative)");
-        } else {
-            System.out.println("#begin#" + title + ": freq");
-        }
+    public void outputFreqDist(String title, double step) {
+        System.out.println("#begin#" + title);
         if (list.size() > 0) {
             sort();
             double max = list.get(list.size() - 1);
@@ -164,20 +159,17 @@ public class Stat {
                 int ind = (int) (v / step);
                 freq[ind]++;
             }
-            double val = 0.0;
+            double val = 0.0, sum = 0.0;
             for (int i = 0; i <= n; i++) {
                 double ratio = freq[i] / list.size();
                 if (ratio == 0.0) {
                     continue;
                 }
-                if (cumulative) {
-                    val += ratio;
-                } else {
-                    val = ratio;
-                }
-                System.out.println((i * step) + " " + val);
+                val = ratio;
+                sum += Math.min(ratio, 1.0); // avoid sum > 1 by cumulative error
+                System.out.println((i * step) + " " + val + " " + sum);
             }
-            System.out.println(((n + 1) * step) + " 0.0");
+            System.out.println(((n + 1) * step) + " 0.0 " + sum);
         }
         System.out.println("#end " + title);
     }
