@@ -38,6 +38,8 @@ import org.piax.gtrans.ov.ddll.DdllKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import ocu.p2p.stat.Counter;
+
 public class LocalNode extends Node {
     private static final Logger logger = LoggerFactory.getLogger(LocalNode.class);
     public static final int INSERTION_DELETION_RETRY = 10; 
@@ -49,6 +51,9 @@ public class LocalNode extends Node {
     public Node succ, pred;
     public NodeMode mode = NodeMode.OUT;
     private boolean isFailed = false;   // for simulation
+
+    // for statistics
+    public Counter counter = new Counter();
 
     // to support multi-keys
     private static Map<PeerId, SortedSet<LocalNode>> localNodeMap
@@ -207,6 +212,7 @@ public class LocalNode extends Node {
             RequestEvent<?, ?> req = (RequestEvent<?, ?>)ev;
             failure = exc -> {
                 logger.trace("post: got exception: {}. {}", exc, ev);
+                req.cleanup();
                 req.future.completeExceptionally(exc);
             };
         }
@@ -284,10 +290,6 @@ public class LocalNode extends Node {
             throw new Error("not inserted");
         }
         return insertionEndTime - insertionStartTime;
-    }
-
-    public int getMessages4Join() {
-        return getTopStrategy().getMessages4Join();
     }
 
     public void addMaybeFailedNode(Node node) {
@@ -533,5 +535,10 @@ public class LocalNode extends Node {
 
     public void cleanup() {
         localNodeMap.get(peerId).remove(this);
+    }
+
+    // called from EventExecutor.reset()
+    public static void resetLocalNodeMap() {
+        localNodeMap.clear();
     }
 }

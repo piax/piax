@@ -31,6 +31,7 @@ public class FTEntry implements Cloneable, Serializable {
     private List<Node> nodes = new ArrayList<>();
     private DdllKeyRange range;
     private Map<Class<? extends RQAdapter<?>>, Object> extData = null;
+    public long time; // fetch time or finger-table set time
 
     public FTEntry(LocalNode node, boolean isLocal) {
         nodes.add(node);
