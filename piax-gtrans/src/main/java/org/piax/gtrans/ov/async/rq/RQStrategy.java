@@ -376,31 +376,16 @@ public class RQStrategy extends NodeStrategy {
         // RQAdapter.getRaw may be executed by a separate thread.
         // To avoid scattering mutual exclusion code, we let the event executor
         // thread handle the successive jobs.
-        CompletableFuture<T> ret = unparallel(f);
-        return ret.handle((T val, Throwable exc) -> {
-            RemoteValue<T> rval;
-            if (exc != null) {
-                rval = new RemoteValue<>(getLocalNode().peerId, exc);
-            } else {
-                rval = new RemoteValue<>(getLocalNode().peerId, val);
-            }
-            return rval;
-        });
-    }
-
-    /**
-     * 別スレッドで実行されるCompletableFutureが終了したら
-     * event executor thread で実行される CompletableFuture を返す．
-     */
-    private <T> CompletableFuture<T> unparallel(CompletableFuture<T> f) {
-        CompletableFuture<T> ret = new CompletableFuture<>();
+        CompletableFuture<RemoteValue<T>> ret = new CompletableFuture<>();
         f.whenComplete((T val, Throwable exc) -> {
-            EventExecutor.runNow("unparallel", () -> {
+            EventExecutor.runNow("getLocalValue-finish", () -> {
+                RemoteValue<T> rval;
                 if (exc != null) {
-                    ret.completeExceptionally(exc);
+                    rval = new RemoteValue<>(getLocalNode().peerId, exc);
                 } else {
-                    ret.complete(val);
+                    rval = new RemoteValue<>(getLocalNode().peerId, val);
                 }
+                ret.complete(rval);
             });
         });
         return ret;
