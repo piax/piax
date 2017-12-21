@@ -27,6 +27,7 @@ import org.piax.common.Destination;
 import org.piax.common.Endpoint;
 import org.piax.common.Key;
 import org.piax.common.ObjectId;
+import org.piax.common.PeerId;
 import org.piax.common.TransportId;
 import org.piax.common.dcl.DCLTranslator;
 import org.piax.common.dcl.parser.ParseException;
@@ -38,6 +39,7 @@ import org.piax.gtrans.RemoteValue;
 import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.Transport;
 import org.piax.gtrans.impl.RequestTransportImpl;
+import org.piax.gtrans.netty.idtrans.PrimaryKey;
 import org.piax.gtrans.ov.Overlay;
 import org.piax.gtrans.ov.OverlayListener;
 import org.piax.gtrans.ov.OverlayReceivedMessage;
@@ -322,6 +324,9 @@ public abstract class OverlayImpl<D extends Destination, K extends Key> extends
 
     public boolean removeKey(ObjectId upper, K key) throws IOException {
         this.checkActive();
+        if (key instanceof PrimaryKey || key instanceof PeerId) {
+            throw new IllegalArgumentException("Primary key or Peer Id cannot be removed (leave instead)");
+        }
         synchronized (keyRegister) {
             if (!keyRegister.containsKey(key)) {
                 return false;
@@ -361,6 +366,14 @@ public abstract class OverlayImpl<D extends Destination, K extends Key> extends
         synchronized (keyRegister) {
             return new HashSet<K>(keyRegister.keySet());
         }
+    }
+    
+    public boolean join() throws ProtocolUnsupportedException, IOException {
+        return join(lowerTrans.getEndpoint().newSameTypeEndpoint(Overlay.DEFAULT_SEED.value()));
+    }
+    
+    public boolean join(String spec) throws ProtocolUnsupportedException, IOException {
+        return join(lowerTrans.getEndpoint().newSameTypeEndpoint(spec));
     }
 
     public boolean join(Endpoint seed) throws IOException {
