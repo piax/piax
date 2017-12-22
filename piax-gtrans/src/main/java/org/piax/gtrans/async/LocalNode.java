@@ -38,8 +38,6 @@ import org.piax.gtrans.ov.ddll.DdllKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import ocu.p2p.stat.Counter;
-
 public class LocalNode extends Node {
     private static final Logger logger = LoggerFactory.getLogger(LocalNode.class);
     public static final int INSERTION_DELETION_RETRY = 10; 

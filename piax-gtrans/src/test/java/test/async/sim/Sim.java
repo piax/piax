@@ -55,9 +55,9 @@ import org.piax.gtrans.raw.udp.UdpLocator;
 import org.piax.util.MersenneTwister;
 import org.piax.util.UniqId;
 
-import ocu.p2p.stat.MultiStatSet;
-import ocu.p2p.stat.Stat;
-import ocu.p2p.stat.StatSet;
+import test.async.sim.stats.MultiStatSet;
+import test.async.sim.stats.Stat;
+import test.async.sim.stats.StatSet;
 
 public class Sim {
     @FunctionalInterface
