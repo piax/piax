@@ -28,6 +28,7 @@ import org.piax.gtrans.GTransConfigValues;
 import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.ProtocolUnsupportedException;
 import org.piax.gtrans.ReceivedMessage;
+import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.Transport;
 import org.piax.gtrans.impl.ExceededSizeException;
 import org.piax.gtrans.impl.NestedMessage;
@@ -122,7 +123,7 @@ public class FragmentationTransport<E extends Endpoint> extends
 
     @Override
     protected void lowerSend(ObjectId sender, ObjectId receiver, E dst,
-            NestedMessage nmsg) throws ProtocolUnsupportedException, IOException {
+            NestedMessage nmsg, TransOptions opts) throws ProtocolUnsupportedException, IOException {
         ByteBuffer bb;
         try {
             bb = nmsg.serialize();

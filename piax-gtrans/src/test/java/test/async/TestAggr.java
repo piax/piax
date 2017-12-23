@@ -1,6 +1,6 @@
 package test.async;
 
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -13,7 +13,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.piax.common.subspace.Range;
 import org.piax.gtrans.RemoteValue;
 import org.piax.gtrans.TransOptions;
@@ -124,7 +124,7 @@ public class TestAggr extends AsyncTestBase {
             //  100  ->    10
             //  200  ->   100
             //  300  ->  1000
-            int k = (int)(key.getPrimaryKey()) / 100;
+            int k = (Integer)(key.getRawKey()) / 100;
             k = (int)Math.pow(10, k);
             return CompletableFuture.completedFuture(k);
         }
@@ -145,7 +145,7 @@ public class TestAggr extends AsyncTestBase {
         @Override
         public CompletableFuture<Integer> get(RQAdapter<Integer> received,
                 DdllKey key) {
-            int k = (int)key.getPrimaryKey();
+            int k = (Integer)key.getRawKey();
             return CompletableFuture.completedFuture(k);
         }
         @Override
@@ -155,7 +155,7 @@ public class TestAggr extends AsyncTestBase {
             //  100  ->    10
             //  200  ->   100
             //  300  ->  1000
-            int k = (int)(localNode.key.getPrimaryKey()) / 100;
+            int k = (Integer)(localNode.key.getRawKey()) / 100;
             return 1 << k;
         }
         @Override

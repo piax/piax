@@ -16,6 +16,7 @@ package org.piax.gtrans.base;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+import org.piax.common.Endpoint;
 import org.piax.common.PeerLocator;
 import org.piax.common.TransportId;
 import org.piax.gtrans.GTransConfigValues;
@@ -44,7 +45,7 @@ public class BaseDatagramTransport<E extends PeerLocator> extends
 
     public BaseDatagramTransport(Peer peer, TransportId transId,
             E locator) throws IdConflictException, IOException {
-        super(peer, transId, locator.newRawTransport(peer.getPeerId()), true);
+        super(peer, transId, ((PeerLocator)locator).newRawTransport(peer.getPeerId()), true);
         this.locator = locator;
         getLowerTransport().setListener(this);
     }

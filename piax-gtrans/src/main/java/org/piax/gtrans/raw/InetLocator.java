@@ -68,12 +68,16 @@ public abstract class InetLocator extends PeerLocator {
     /*
      * patch for GCJ-4.1.0 bug
      */
-    private transient InetSocketAddress addr;
+    protected transient InetSocketAddress addr;
     
     protected InetLocator(InetSocketAddress addr) {
         if (addr == null)
             throw new IllegalArgumentException("argument should not be null");
         this.addr = addr;
+    }
+
+    public InetLocator() {
+        // TODO Auto-generated constructor stub
     }
 
     public String getHostName() {

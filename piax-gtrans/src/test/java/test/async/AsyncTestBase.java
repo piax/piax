@@ -1,7 +1,6 @@
 package test.async;
 
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -51,7 +50,7 @@ public class AsyncTestBase {
     static LocalNode[] nodes;
     static StarLatencyProvider latencyProvider;
 
-    static boolean REALTIME = false;
+    static boolean REALTIME = true;
 
     static LocalNode createNode(NodeFactory factory, int key) {
         return createNode(factory, key, NetworkParams.HALFWAY_DELAY);
@@ -194,7 +193,7 @@ public class AsyncTestBase {
                     .filter(req -> !isTransientRequest(req)).findAny();
             if (o1.isPresent()) {
                 System.out.println(nodes[i] + ": ongoingRequests: " + m1);
-                fail();
+                fail("");
             }
             Map<Integer, RequestEvent<?, ?>> m2 =
                     (Map) getPrivateField(nodes[i], "unAckedRequests");
@@ -202,7 +201,7 @@ public class AsyncTestBase {
                     .filter(req -> !isTransientRequest(req)).findAny();
             if (o2.isPresent()) {
                 System.out.println(nodes[i] + ": unAckedRequests: " + m2);
-                fail();
+                fail("");
             }
         }
     }
@@ -316,7 +315,7 @@ public class AsyncTestBase {
         }
 
         int result(DdllKey key) {
-            int pkey = (int) key.getPrimaryKey();
+            int pkey = (Integer) key.getRawKey();
             return pkey;
         }
     }
@@ -342,7 +341,7 @@ public class AsyncTestBase {
         }
 
         int result(DdllKey key) {
-            int pkey = (int) key.getPrimaryKey();
+            int pkey = (Integer) key.getRawKey();
             return pkey;
         }
     }
@@ -373,7 +372,7 @@ public class AsyncTestBase {
         }
 
         int result(DdllKey key) {
-            int pkey = (int) key.getPrimaryKey();
+            int pkey = (Integer) key.getRawKey();
             return count * 1000 + pkey;
         }
     }

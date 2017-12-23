@@ -16,6 +16,7 @@ package org.piax.gtrans.handover;
 import java.io.IOException;
 import java.util.List;
 
+import org.piax.common.Endpoint;
 import org.piax.common.PeerId;
 import org.piax.common.PeerIdWithLocator;
 import org.piax.common.PeerLocator;
@@ -213,16 +214,16 @@ public class HandoverTransport extends
     }
 
     @Override
-    public synchronized void onEnabled(PeerLocator loc, boolean isNew) {
+    public synchronized void onEnabled(Endpoint loc, boolean isNew) {
         try {
             Transport<PeerLocator> bt = baseTransMgr.newBaseTransport(null,
-                    null, loc);
+                    null, (PeerLocator)loc);
             bt.setListener(transId, this);
             if (bt instanceof ChannelTransport<?>) {
                 ((ChannelTransport<PeerLocator>) bt).setChannelListener(
                         transId, this);
             }
-            broadcastLocatorChange(loc, null);
+            broadcastLocatorChange((PeerLocator)loc, null);
         } catch (IOException e) {
             logger.warn("", e);
         } catch (IdConflictException e) {
@@ -231,13 +232,13 @@ public class HandoverTransport extends
     }
 
     @Override
-    public synchronized void onFadeout(PeerLocator loc, boolean isFin) {
-        Transport<PeerLocator> bt = baseTransMgr.removeBaseTransport(loc);
+    public synchronized void onFadeout(Endpoint loc, boolean isFin) {
+        Transport<PeerLocator> bt = baseTransMgr.removeBaseTransport((PeerLocator)loc);
         if (bt != null) {
             // btはfinしているので、listenerを削除する必要はない
 //            bt.setListener(transId, null);
 //            bt.setChannelListener(transId, null);
-            broadcastLocatorChange(null, loc);
+            broadcastLocatorChange(null, (PeerLocator)loc);
         }
     }
 

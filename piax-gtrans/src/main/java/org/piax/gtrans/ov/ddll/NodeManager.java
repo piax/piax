@@ -135,7 +135,7 @@ public class NodeManager extends RPCInvoker<NodeManagerIf, Endpoint> implements
     public synchronized Set<Comparable<?>> getKeys() {
         Set<Comparable<?>> keys = new HashSet<Comparable<?>>();
         for (DdllKey k : map.keySet()) {
-            keys.add(k.primaryKey);
+            keys.add(k.rawKey);
         }
         return keys;
     }

@@ -536,9 +536,11 @@ public class TestAgentPeer extends Util {
           IncompatibleTypeException, SetupTransportException {
         String attrName = "number";
         localAgentPeer.declareAttrib(attrName);
-        localAgentPeer.bindOverlay(attrName, "MSG");
+        //localAgentPeer.bindOverlay(attrName, "MSG");
+        localAgentPeer.bindOverlay(attrName, "SZK");
         remoteAgentPeer.declareAttrib(attrName);
-        remoteAgentPeer.bindOverlay(attrName, "MSG");
+        //remoteAgentPeer.bindOverlay(attrName, "MSG");
+        remoteAgentPeer.bindOverlay(attrName, "SZK");
         remoteAgentPeer.setAttrib(attrName, 1);
         List<String> r = localAgent.getList(
                 localAgent.getDCStub(attrName+" eq 1",
@@ -563,9 +565,11 @@ public class TestAgentPeer extends Util {
           IncompatibleTypeException, SetupTransportException {
         String attrName = "number";
         localAgentPeer.declareAttrib(attrName);
-        localAgentPeer.bindOverlay(attrName, "MSG");
+        //localAgentPeer.bindOverlay(attrName, "MSG");
+        localAgentPeer.bindOverlay(attrName, "SZK");
         remoteAgentPeer.declareAttrib(attrName);
-        remoteAgentPeer.bindOverlay(attrName, "MSG");
+        //remoteAgentPeer.bindOverlay(attrName, "MSG");
+        remoteAgentPeer.bindOverlay(attrName, "SZK");
         remoteAgentPeer.setAttrib(attrName, 1);
         List<String> r = localAgent.getList(
                 localAgent.getDCStub(attrName+" eq 1",
@@ -598,9 +602,11 @@ public class TestAgentPeer extends Util {
           IncompatibleTypeException, SetupTransportException {
         String attrName = "number";
         localAgentPeer.declareAttrib(attrName);
-        localAgentPeer.bindOverlay(attrName, "MSG");
+        //localAgentPeer.bindOverlay(attrName, "MSG");
+        localAgentPeer.bindOverlay(attrName, "SZK");
         remoteAgentPeer.declareAttrib(attrName);
-        remoteAgentPeer.bindOverlay(attrName, "MSG");
+        //remoteAgentPeer.bindOverlay(attrName, "MSG");
+        remoteAgentPeer.bindOverlay(attrName, "SZK");
         remoteAgentPeer.setAttrib(attrName, 1);
         List<String> r = localAgent.getList(
                 localAgent.getDCStub(attrName+" eq 1",

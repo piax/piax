@@ -1,6 +1,6 @@
 package test.async.sim;
 
-import static org.piax.gtrans.async.EventExecutor.random;
+import static org.piax.gtrans.async.EventExecutor.*;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -1251,8 +1251,8 @@ public class Sim {
                         System.out.println("ent=null!\n" + nodes[i].toStringDetail());
                         continue;
                     }
-                    int key = (Integer)ent.getNode().key.getPrimaryKey() / 10;
-                    int distance = key - (Integer)nodes[i].key.getPrimaryKey() / 10;
+                    int key = (Integer)ent.getNode().key.getRawKey() / 10;
+                    int distance = key - (Integer)nodes[i].key.getRawKey() / 10;
                     if (distance < 0) {
                         distance = (distance + num) % num;
                     }
@@ -1283,8 +1283,8 @@ public class Sim {
                 FTEntry ent = sz.getFingerTableEntry(1);
                 if (ent != null) {
                     Node remote = ent.getNode();
-                    int distance = ((int)(remote.key.getPrimaryKey())
-                            - (int)node.key.getPrimaryKey()) / 10;
+                    int distance = ((int)(remote.key.getRawKey())
+                            - (int)node.key.getRawKey()) / 10;
                     if (distance < 0) {
                         distance += num;
                     }
@@ -1300,7 +1300,7 @@ public class Sim {
             System.out.println(s.toStringDetail());
             for (int i = 1; i < s.getFingerTableSize(); i++) {
                 FTEntry ent = s.getFingerTableEntry(i);
-                int key = (Integer)ent.getNode().key.getPrimaryKey() / 10;
+                int key = (Integer)ent.getNode().key.getRawKey() / 10;
                 Stat stat = n0stats.getStat(i);
                 stat.addSample(key);
             }

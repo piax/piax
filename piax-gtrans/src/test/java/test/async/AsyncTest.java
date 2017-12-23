@@ -1,9 +1,6 @@
 package test.async;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -18,7 +15,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.piax.common.subspace.Range;
 import org.piax.gtrans.RemoteValue;
 import org.piax.gtrans.TransOptions;
@@ -279,7 +276,7 @@ public class AsyncTest extends AsyncTestBase {
             assertTrue(f1.isDone());
             try {
                 f1.get();
-                fail();
+                fail("");
             } catch (InterruptedException | ExecutionException e) {
                 assertTrue(e.getCause() instanceof TimeoutException
                         || e.getCause() instanceof NetEventException);
@@ -681,7 +678,7 @@ public class AsyncTest extends AsyncTestBase {
             List<?> rvals = results.stream()
                     .filter(Objects::nonNull)
                     .map(rv -> rv.getValue())   // extract DdllKey
-                    .map(rv -> rv.getPrimaryKey()) // extract Comparable
+                    .map(rv -> rv.getRawKey()) // extract Comparable
                     .sorted()
                     .collect(Collectors.toList());
             System.out.println("RVALS = " + rvals);

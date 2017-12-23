@@ -13,10 +13,12 @@
 
 package org.piax.common;
 
+import org.piax.util.UniqId;
+
 /**
  * A class which represents Peer Id.
  */
-public class PeerId extends Id implements Endpoint, ComparableKey<Id> {
+public class PeerId extends UniqId {
     private static final long serialVersionUID = 1L;
     public static final int DEFAULT_BYTE_LENGTH = 16;
 

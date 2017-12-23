@@ -13,6 +13,7 @@
 
 package org.piax.gtrans.raw;
 
+import org.piax.common.Endpoint;
 import org.piax.common.PeerLocator;
 
 /**
@@ -24,8 +25,8 @@ import org.piax.common.PeerLocator;
  * 
  */
 public interface LocatorStatusObserver {
-    void onEnabled(PeerLocator loc, boolean isNew);
-    void onFadeout(PeerLocator loc, boolean isFin);
+    void onEnabled(Endpoint loc, boolean isNew);
+    void onFadeout(Endpoint loc, boolean isFin);
     
     /**
      * PeerLocatorの変更通知を受理する。

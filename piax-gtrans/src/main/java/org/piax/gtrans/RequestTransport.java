@@ -14,6 +14,7 @@
 package org.piax.gtrans;
 
 import java.io.IOException;
+import java.util.function.BiConsumer;
 
 import org.piax.common.Destination;
 import org.piax.common.ObjectId;
@@ -89,7 +90,71 @@ public interface RequestTransport<D extends Destination> extends Transport<D> {
     
     FutureQueue<?> request(D dst, Object msg, int timeout)
 			throws ProtocolUnsupportedException, IOException;
+
+    public enum Response {
+        EOR, // Response.EOR : end of request
+        EMPTY // Response.EMPTY : empty response
+    }
     
+    // async request interface
+    public void requestAsync(ObjectId sender, ObjectId receiver,
+            D dst, Object msg,
+            BiConsumer<Object, Exception> resultsReceiver,
+            TransOptions opts);
+
+    /* Reduced argument versions of requestAsync */
+    default public void requestAsync(String appIdStr, 
+            D dst, Object msg,
+            BiConsumer<Object, Exception> responseReceiver,
+            TransOptions opts
+            ) {
+        requestAsync(new ObjectId(appIdStr), new ObjectId(appIdStr), dst, msg, responseReceiver, opts);
+    }
+    
+    /* Reduced argument versions of requestAsync */
+    default public void requestAsync(ObjectId appId, 
+            D dst, Object msg,
+            BiConsumer<Object, Exception> responseReceiver,
+            TransOptions opts
+            ) {
+        requestAsync(appId, appId, dst, msg, responseReceiver, opts);
+    }
+    
+    /* Reduced argument versions of requestAsync */
+    default public void requestAsync(String appIdStr, 
+            D dst, Object msg,
+            BiConsumer<Object, Exception> responseReceiver
+            ) {
+        requestAsync(new ObjectId(appIdStr), new ObjectId(appIdStr), dst, msg, responseReceiver, null);
+    }
+    
+    /* Reduced argument versions of requestAsync */
+    default public void requestAsync(ObjectId appId, 
+            D dst, Object msg,
+            BiConsumer<Object, Exception> responseReceiver
+            ) {
+        requestAsync(appId, appId, dst, msg, responseReceiver, null);
+    }
+
+    /* Reduced argument versions of requestAsync */
+    default public void requestAsync(D dst, Object msg,
+            BiConsumer<Object, Exception> responseReceiver,
+            TransOptions opts
+            ) {
+        requestAsync(null, null, dst, msg, responseReceiver, opts);
+    }
+
+    /* Reduced argument versions of requestAsync */
+    default public void requestAsync(D dst, Object msg,
+            BiConsumer<Object, Exception> responseReceiver
+            ) {
+        requestAsync(null, null, dst, msg, responseReceiver, null);
+    }
+    
+    <E> FutureQueue<E> singletonFutureQueue(E value);
+    
+    <E> FutureQueue<E> singletonFutureQueue(E value, Throwable t);
+
     // for Transport
     /**
      * Send a request message. FutureQueue object is returned to access arrived responses.

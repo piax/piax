@@ -27,6 +27,7 @@ import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.ProtocolUnsupportedException;
 import org.piax.gtrans.ReceivedMessage;
+import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.Transport;
 import org.piax.gtrans.TransportListener;
 import org.slf4j.Logger;
@@ -216,11 +217,11 @@ public abstract class OneToOneMappingTransport<E extends Endpoint> extends
     };
     
     protected void lowerSend(ObjectId sender, ObjectId receiver,
-            E dst, NestedMessage nmsg) throws ProtocolUnsupportedException,
+            E dst, NestedMessage nmsg, TransOptions opts) throws ProtocolUnsupportedException,
             IOException {
         @SuppressWarnings("unchecked")
         ChannelTransport<E> lower = (ChannelTransport<E>) lowerTrans;
-        lower.send(sender, receiver, dst, nmsg);
+        lower.send(sender, receiver, dst, nmsg, opts);
     }
 
     protected void lowerChSend(Channel<E> ch, NestedMessage nmsg) throws IOException {
@@ -228,7 +229,7 @@ public abstract class OneToOneMappingTransport<E extends Endpoint> extends
     }
     
     @Override
-    public void send(ObjectId sender, ObjectId receiver, E dst, Object msg)
+    public void send(ObjectId sender, ObjectId receiver, E dst, Object msg, TransOptions opts)
             throws ProtocolUnsupportedException, IOException {
         logger.trace("ENTRY:");
         // サブクラスで定義する送信前処理
@@ -239,7 +240,7 @@ public abstract class OneToOneMappingTransport<E extends Endpoint> extends
         NestedMessage nmsg = new NestedMessage(sender, receiver, null,
                 getEndpoint(), _msg);
         // 下位層のsendを呼ぶ
-        lowerSend(transId, transId, dst, nmsg);
+        lowerSend(transId, transId, dst, nmsg, opts);
     }
 
     protected void chSend(OneToOneChannel<E> ch, Object msg)

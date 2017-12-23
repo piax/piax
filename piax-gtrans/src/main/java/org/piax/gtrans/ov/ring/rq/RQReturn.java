@@ -42,7 +42,6 @@ import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.gtrans.ov.ddll.Link;
 import org.piax.gtrans.ov.ring.ReplyMessage;
 import org.piax.gtrans.ov.ring.RequestMessage;
-import org.piax.gtrans.ov.ring.RingManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

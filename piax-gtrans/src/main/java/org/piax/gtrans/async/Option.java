@@ -95,7 +95,7 @@ public abstract class Option<E> {
         }
         @Override
         public String possibleArgs() {
-            return "";
+            return "true | false";
         }
     }
     public static class IntegerOption extends Option<Integer> {
@@ -192,6 +192,35 @@ public abstract class Option<E> {
         public String possibleArgs() {
             E[] enums = clazz.getEnumConstants();
             return Arrays.toString(enums);
+        }
+    }
+    public static class StringOption extends Option<String> {
+        public StringOption(String defaultValue, String argName) {
+            this(defaultValue, argName, null);
+        }
+        public StringOption(String defaultValue, String argName, 
+                Consumer<String> run) {
+            super(defaultValue, argName, run);
+        }
+        @Override
+        public String toString() {
+            return value;
+        }
+        @Override
+        public void parse(List<String> args) {
+            if (args.size() == 0) {
+                throw new IllegalArgumentException(argName + ": specify string");
+            }
+            String arg = args.remove(0);
+            try {
+                value = arg;
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException(argName + ": specify string");
+            }
+        }
+        @Override
+        public String possibleArgs() {
+            return "string";
         }
     }
 }

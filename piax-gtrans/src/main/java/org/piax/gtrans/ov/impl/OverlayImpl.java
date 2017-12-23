@@ -20,14 +20,16 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiConsumer;
 
 import org.piax.common.Destination;
 import org.piax.common.Endpoint;
 import org.piax.common.Key;
 import org.piax.common.ObjectId;
+import org.piax.common.PeerId;
 import org.piax.common.TransportId;
 import org.piax.common.dcl.DCLTranslator;
-import org.piax.common.dcl.DestinationCondition;
 import org.piax.common.dcl.parser.ParseException;
 import org.piax.gtrans.FutureQueue;
 import org.piax.gtrans.IdConflictException;
@@ -37,6 +39,7 @@ import org.piax.gtrans.RemoteValue;
 import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.Transport;
 import org.piax.gtrans.impl.RequestTransportImpl;
+import org.piax.gtrans.netty.idtrans.PrimaryKey;
 import org.piax.gtrans.ov.Overlay;
 import org.piax.gtrans.ov.OverlayListener;
 import org.piax.gtrans.ov.OverlayReceivedMessage;
@@ -54,7 +57,7 @@ public abstract class OverlayImpl<D extends Destination, K extends Key> extends
 
     private final Map<ObjectId, Map<K, Integer>> keysByUpper =
             new HashMap<ObjectId, Map<K, Integer>>();
-    protected final Map<K, Integer> keyRegister = new HashMap<K, Integer>();
+    protected final Map<K, Integer> keyRegister = new ConcurrentHashMap<K, Integer>();
     protected volatile boolean isJoined = false;
     final DCLTranslator parser = new DCLTranslator();
 
@@ -170,7 +173,7 @@ public abstract class OverlayImpl<D extends Destination, K extends Key> extends
     public FutureQueue<?> request(ObjectId appId, String dstExp,
             Object msg, int timeout) throws ParseException,
             ProtocolUnsupportedException, IOException {
-        return request(transId, transId, dstExp, msg, timeout);
+        return request(appId, appId, dstExp, msg, timeout);
     }
     
     public FutureQueue<?> request(ObjectId appId, String dstExp, Object msg) throws ParseException,
@@ -192,8 +195,26 @@ public abstract class OverlayImpl<D extends Destination, K extends Key> extends
 			throws ParseException, ProtocolUnsupportedException, IOException {
 		return request(getDefaultAppId(), dstExp, msg, timeout);
     }
+    
+    // async request interface
+    public void requestAsync(ObjectId sender, ObjectId receiver,
+            String dstExp, Object msg,
+            BiConsumer<Object, Exception> responseReceiver,
+            TransOptions opts) throws ParseException, ProtocolUnsupportedException, IOException {
+        try {
+            @SuppressWarnings("unchecked")
+            D dst = (D) parser.parseDestination(dstExp);
+            requestAsync(sender, receiver, dst, msg, responseReceiver, opts);
+        }
+        catch (ParseException e) {
+            /* XXX Try parse as DCL */
+            @SuppressWarnings("unchecked")
+            D dc = (D) parser.parseDCL(dstExp);
+            requestAsync(sender, receiver, dc, msg, responseReceiver, opts);
+        }
+    }
 
-    protected FutureQueue<?> selectOnReceive(OverlayListener<D, K> listener,
+    protected Object selectOnReceive(OverlayListener<D, K> listener,
             Overlay<D, K> trans, OverlayReceivedMessage<K> rmsg) {
         logger.trace("ENTRY:");
         Object msg = rmsg.getMessage();
@@ -203,13 +224,13 @@ public abstract class OverlayImpl<D extends Destination, K extends Key> extends
             rmsg.setMessage(inn);
             logger.debug("select onReceive: trans:{}", trans.getTransportId());
             listener.onReceive(trans, rmsg);
-            return FutureQueue.emptyQueue();
+            return null;//FutureQueue.emptyQueue();
         } else {
             return listener.onReceiveRequest(trans, rmsg);
         }
     }
 
-    private int numOfRegisteredKey(K key) {
+    protected int numOfRegisteredKey(K key) {
         Integer count = keyRegister.get(key);
         if (count == null) {
             return 0;
@@ -227,7 +248,7 @@ public abstract class OverlayImpl<D extends Destination, K extends Key> extends
         }
     }
     
-    private void registerKey(ObjectId upper, K key) {
+    protected void registerKey(ObjectId upper, K key) {
         Map<K, Integer> keyCounts = keysByUpper.get(upper);
         if (keyCounts == null) {
             keyCounts = new HashMap<K, Integer>();
@@ -253,7 +274,7 @@ public abstract class OverlayImpl<D extends Destination, K extends Key> extends
         return true;
     }
     
-    private boolean unregisterKey(ObjectId upper, K key) {
+    protected boolean unregisterKey(ObjectId upper, K key) {
         Map<K, Integer> keyCounts = keysByUpper.get(upper);
         if (keyCounts == null) return false;
         Integer count = keyCounts.get(key);
@@ -276,7 +297,7 @@ public abstract class OverlayImpl<D extends Destination, K extends Key> extends
     public boolean addKey(ObjectId upper, K key) throws IOException {
         this.checkActive();
         synchronized (keyRegister) {
-            // if this key not exists, do add to overlay
+            // if this key not exists, add to overlay
             if (!keyRegister.containsKey(key)) {
                 lowerAddKey(key);
             }
@@ -303,6 +324,9 @@ public abstract class OverlayImpl<D extends Destination, K extends Key> extends
 
     public boolean removeKey(ObjectId upper, K key) throws IOException {
         this.checkActive();
+        if (key instanceof PrimaryKey || key instanceof PeerId) {
+            throw new IllegalArgumentException("Primary key or Peer Id cannot be removed (leave instead)");
+        }
         synchronized (keyRegister) {
             if (!keyRegister.containsKey(key)) {
                 return false;
@@ -342,6 +366,14 @@ public abstract class OverlayImpl<D extends Destination, K extends Key> extends
         synchronized (keyRegister) {
             return new HashSet<K>(keyRegister.keySet());
         }
+    }
+    
+    public boolean join() throws ProtocolUnsupportedException, IOException {
+        return join(lowerTrans.getEndpoint().newSameTypeEndpoint(Overlay.DEFAULT_SEED.value()));
+    }
+    
+    public boolean join(String spec) throws ProtocolUnsupportedException, IOException {
+        return join(lowerTrans.getEndpoint().newSameTypeEndpoint(spec));
     }
 
     public boolean join(Endpoint seed) throws IOException {

@@ -314,7 +314,7 @@ public class SuzakuStrategy extends NodeStrategy {
                 if (l.trace == null) {
                     l.trace = new StringBuilder();
                 }
-                l.trace.append("trace\n" + n.toStringDetail() + "\n");
+                ((StringBuilder)l.trace).append("trace\n" + n.toStringDetail() + "\n");
             }
             if (l.route.size() > 80) {
                 System.out.println("too many hops!");
@@ -1344,8 +1344,8 @@ public class SuzakuStrategy extends NodeStrategy {
             if (lnk == null) {
                 return false;
             }
-            int key = (Integer)(n.key.getPrimaryKey());
-            int lnkkey = (Integer)(lnk.key.getPrimaryKey());
+            int key = (Integer)(n.key.getRawKey());
+            int lnkkey = (Integer)(lnk.key.getRawKey());
             if ((key / 10 + d) % nodes.length != lnkkey / 10) {
                 return false;
             }

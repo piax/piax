@@ -1,6 +1,6 @@
 package test.trans;
 
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -10,7 +10,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.piax.common.ComparableKey;
 import org.piax.common.Destination;
 import org.piax.common.ObjectId;
@@ -32,10 +32,10 @@ import org.piax.gtrans.Transport;
 import org.piax.gtrans.ov.Overlay;
 import org.piax.gtrans.ov.OverlayListener;
 import org.piax.gtrans.ov.OverlayReceivedMessage;
+import org.piax.gtrans.ov.async.suzaku.Suzaku;
 import org.piax.gtrans.ov.ddll.NodeMonitor;
 import org.piax.gtrans.ov.ring.MessagingFramework;
 import org.piax.gtrans.ov.ring.rq.RQManager;
-import org.piax.gtrans.ov.szk.Suzaku;
 import org.piax.gtrans.raw.udp.UdpLocator;
 import org.piax.gtrans.util.FailureSimulationChannelTransport;
 import org.piax.gtrans.util.ThroughTransport;
@@ -280,9 +280,9 @@ public class TestRetrans {
         
         System.out.println("start sleep 20 sec");
         Thread.sleep(20000);
-        for (int i = 0; i < numOfPeers; i++) {
-        		mcs[i].scheduleFingerTableUpdate(1000000, 5000);
-        }
+//        for (int i = 0; i < numOfPeers; i++) {
+//        		mcs[i].scheduleFingerTableUpdate(1000000, 5000);
+//        }
 
         List<Object> failures = new ArrayList<Object>();
         for (int i = 1; i * 10 < numOfPeers; i++) {

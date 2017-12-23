@@ -14,6 +14,7 @@ package org.piax.gtrans.ov.ddll;
 
 import java.io.Serializable;
 
+import org.piax.gtrans.async.EventExecutor;
 import org.piax.util.KeyComparator;
 import org.piax.util.UniqId;
 import org.slf4j.Logger;
@@ -44,7 +45,7 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
     private static KeyComparator keyComp = KeyComparator.getInstance();
 
     // 主キー
-    final Comparable<?> primaryKey;
+    final Comparable<?> rawKey;
     final UniqId uniqId;
     // 以下は大小比較の際考慮しない．
     // 同一物理ノードの間でキーを識別するための識別子
@@ -58,10 +59,10 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
     private final int nonce;
 
     public DdllKey(Comparable<?> key, UniqId uniqId, String id, int nonce, Object appData) {
-        this.primaryKey = key;
+        this.rawKey = key;
         this.uniqId = uniqId;
         this.id = id;
-        int h = primaryKey.hashCode();
+        int h = rawKey.hashCode();
         if (uniqId != null) {
             h ^= uniqId.hashCode();
         }
@@ -71,14 +72,14 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
     }
 
     public DdllKey(Comparable<?> key, UniqId uniqId, String id, Object appData) {
-        this.primaryKey = key;
+        this.rawKey = key;
         this.uniqId = uniqId;
         this.id = id;
-        int h = primaryKey.hashCode();
+        int h = rawKey.hashCode();
         if (uniqId != null) {
             h ^= uniqId.hashCode();
         }
-        this.nonce = System.identityHashCode(this);
+        this.nonce = EventExecutor.random().nextInt();
         this.hash = h ^ nonce;
         this.appData = appData;
     }
@@ -92,12 +93,12 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
     }
 
     /**
-     * get primaryKey portion of the key
+     * get rawKey portion of the key
      * 
-     * @return the primary key
+     * @return the raw key
      **/
-    public Comparable<?> getPrimaryKey() {
-        return primaryKey;
+    public Comparable<?> getRawKey() {
+        return rawKey;
     }
 
     /**
@@ -114,7 +115,7 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
     }
 
     public int compareTo(DdllKey o) {
-        int cmp = keyComp.compare(primaryKey, o.primaryKey);
+        int cmp = keyComp.compare(rawKey, o.rawKey);
         if (cmp != 0) {
 //            if (logger.isDebugEnabled()) {
 //                logger.debug("compareTo: {}, {} = {}", this, o, cmp);
@@ -147,7 +148,7 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
             return false;
         }
         DdllKey o = (DdllKey)obj;
-        if (!primaryKey.equals(o.primaryKey)) {
+        if (!rawKey.equals(o.rawKey)) {
             return false;
         }
         if (!uniqId.equals(o.uniqId)) {
@@ -169,7 +170,7 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
      * @return  comparison results
      */
     public boolean equals2(DdllKey o) {
-        if (!primaryKey.equals(o.primaryKey)) {
+        if (!rawKey.equals(o.rawKey)) {
             return false;
         }
         if (!uniqId.equals(o.uniqId)) {
@@ -205,7 +206,7 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
                 s = s.substring(0, 4);
             }
         }
-        return primaryKey.toString() + "!" + s
+        return rawKey.toString() + "!" + s
             + (id.equals("") ? "" : "." + id);
     }
 
@@ -221,10 +222,10 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
     /**
      * get a DdllKey instance with the specified ID
      * 
-     * @param id    an id to be set
+     * @param   id an id to be set
      * @return  the DdllKey with the specified ID
      */
     public DdllKey getIdChangedKey(String id) {
-        return new DdllKey(primaryKey, uniqId, id, nonce, appData);
+        return new DdllKey(rawKey, uniqId, id, nonce, appData);
     }
 }

@@ -15,7 +15,7 @@ package org.piax.gtrans.impl;
 
 import java.io.IOException;
 
-import org.piax.common.PeerLocator;
+import org.piax.common.Endpoint;
 import org.piax.common.TransportId;
 import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.IdConflictException;
@@ -50,7 +50,7 @@ public abstract class BaseTransportGenerator {
         }
     }
 
-    public final synchronized <E extends PeerLocator> Transport<E> newBaseTransport(
+    public final synchronized <E extends Endpoint> Transport<E> newBaseTransport(
             String desc, TransportId transId, E loc)
             throws IdConflictException, IOException {
         Transport<E> trans = _newBaseTransport(desc, transId, loc);
@@ -61,7 +61,7 @@ public abstract class BaseTransportGenerator {
         return next.newBaseTransport(desc, transId, loc);
     }
     
-    public final synchronized <E extends PeerLocator> ChannelTransport<E> newBaseChannelTransport(
+    public final synchronized <E extends Endpoint> ChannelTransport<E> newBaseChannelTransport(
             String desc, TransportId transId, E loc)
             throws IdConflictException, IOException {
         ChannelTransport<E> trans = _newBaseChannelTransport(desc, transId, loc);
@@ -72,11 +72,11 @@ public abstract class BaseTransportGenerator {
         return next.newBaseChannelTransport(desc, transId, loc);
     }
 
-    public abstract <E extends PeerLocator> ChannelTransport<E> _newBaseChannelTransport(
+    public abstract <E extends Endpoint> ChannelTransport<E> _newBaseChannelTransport(
             String desc, TransportId transId, E loc)
             throws IdConflictException, IOException;
 
-    public abstract <E extends PeerLocator> Transport<E> _newBaseTransport(
+    public abstract <E extends Endpoint> Transport<E> _newBaseTransport(
             String desc, TransportId transId, E loc)
             throws IdConflictException, IOException;
 }
