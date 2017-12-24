@@ -1,6 +1,5 @@
 package org.piax.gtrans.async;
 
-
 public class EventException extends Exception {
     public EventException(Exception cause) {
         super(cause);
