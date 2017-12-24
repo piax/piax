@@ -1,7 +1,9 @@
-package ocu.p2p.stat;
+package test.async.sim.stats;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentSkipListMap;
+
+import org.piax.gtrans.async.Counter;
 
 public class MultiStatSet {
     Map<String, StatSet> stats = new ConcurrentSkipListMap<>();
