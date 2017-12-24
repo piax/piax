@@ -110,6 +110,12 @@
           <source>8</source>
           <target>8</target>
           <compilerArgument>-Xlint:unchecked</compilerArgument>
+	  <excludes>
+	    <exclude>**/org/piax/gtrans/ov/async/sg/**</exclude>
+	  </excludes>
+	  <testExcludes>
+	    <testExclude>**/test/async/sim/**</testExclude>
+	  </testExcludes>
         </configuration>
       </plugin>
       <plugin>
