@@ -50,7 +50,7 @@ public class AsyncTestBase {
     static LocalNode[] nodes;
     static StarLatencyProvider latencyProvider;
 
-    static boolean REALTIME = true;
+    static boolean REALTIME = false;
 
     static LocalNode createNode(NodeFactory factory, int key) {
         return createNode(factory, key, NetworkParams.HALFWAY_DELAY);
