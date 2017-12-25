@@ -11,37 +11,37 @@ import org.piax.gtrans.async.Node;
 import org.piax.gtrans.ov.async.suzaku.SuzakuStrategy.FTEntrySet;
 
 public abstract class SuzakuEvent {
-    public static class GetFTAllEvent
-        extends RequestEvent<GetFTAllEvent, GetFTAllReplyEvent> {
-        public GetFTAllEvent(Node receiver) {
+    public static class GetFTAllRequest
+        extends RequestEvent<GetFTAllRequest, GetFTAllReply> {
+        public GetFTAllRequest(Node receiver) {
             super(receiver);
         }
         @Override
         public void run() {
             LocalNode r = (LocalNode)receiver;
             FTEntry[][] ents = SuzakuStrategy.getSuzakuStrategy(r).getFingerTable();
-            r.post(new GetFTAllReplyEvent(this, ents));
+            r.post(new GetFTAllReply(this, ents));
         }
     }
 
-    public static class GetFTAllReplyEvent
-        extends ReplyEvent<GetFTAllEvent, GetFTAllReplyEvent> {
+    public static class GetFTAllReply
+        extends ReplyEvent<GetFTAllRequest, GetFTAllReply> {
         FTEntry[][] ents;
-        public GetFTAllReplyEvent(GetFTAllEvent req, FTEntry[][] ents) {
+        public GetFTAllReply(GetFTAllRequest req, FTEntry[][] ents) {
             super(req);
             this.ents = ents;
         }
     }
 
-    public static class GetFTEntEvent
-        extends RequestEvent<GetFTEntEvent, GetFTEntReplyEvent> {
+    public static class GetEntRequest
+        extends RequestEvent<GetEntRequest, GetEntReply> {
         final boolean isBackward;
         final int x;
         final int y;
         final int k;
         final FTEntrySet passive1;
         final FTEntrySet passive2;
-        public GetFTEntEvent(Node receiver, boolean isBackward, int x, int y, int k,
+        public GetEntRequest(Node receiver, boolean isBackward, int x, int y, int k,
                 FTEntrySet passive1, FTEntrySet passive2) { 
             super(receiver);
             this.isBackward = isBackward;
@@ -55,28 +55,28 @@ public abstract class SuzakuEvent {
         public void run() {
             LocalNode r = (LocalNode)receiver;
             SuzakuStrategy s = SuzakuStrategy.getSuzakuStrategy(r);
-            GetFTEntReplyEvent ev = s.getFingers(this);
+            GetEntReply ev = s.getFingers(this);
             r.post(ev);
         }
         @Override
         public String toStringMessage() {
-            return getClass().getSimpleName() + "(isBackward=" + isBackward
+            return "GetEntRequest(isBackward=" + isBackward
                     + ", x=" + x + ", y=" + y
                     + ", passive1=" + passive1 + ", passive2=" + passive2 + ")";
         }
     }
 
-    public static class GetFTEntReplyEvent
-        extends ReplyEvent<GetFTEntEvent, GetFTEntReplyEvent> {
+    public static class GetEntReply
+        extends ReplyEvent<GetEntRequest, GetEntReply> {
         FTEntrySet ent;
         int msgCount = 0;
-        public GetFTEntReplyEvent(GetFTEntEvent req, FTEntrySet ent) {
+        public GetEntReply(GetEntRequest req, FTEntrySet ent) {
             super(req);
             this.ent = ent;
         }
         @Override
         public String toStringMessage() {
-            return getClass().getSimpleName() + "(" + ent + ")";
+            return "GetEntReply(" + ent + ")";
         }
     }
 
@@ -127,7 +127,7 @@ public abstract class SuzakuEvent {
     }
 
     /**
-     * リモートノードのReverse Pointerを削除するイベント
+     * リモートノードのReverse Pointerを削除するイベント (RemoveRev)
      */
     public static class RemoveReversePointerEvent extends Event {
         public RemoveReversePointerEvent(Node receiver) {

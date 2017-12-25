@@ -28,9 +28,9 @@ import org.piax.gtrans.ov.async.ddll.DdllEvent.SetRJob;
 import org.piax.gtrans.ov.async.ddll.DdllStrategy;
 import org.piax.gtrans.ov.async.suzaku.SuzakuEvent.FTEntRemoveEvent;
 import org.piax.gtrans.ov.async.suzaku.SuzakuEvent.FTEntUpdateEvent;
-import org.piax.gtrans.ov.async.suzaku.SuzakuEvent.GetFTAllEvent;
-import org.piax.gtrans.ov.async.suzaku.SuzakuEvent.GetFTEntEvent;
-import org.piax.gtrans.ov.async.suzaku.SuzakuEvent.GetFTEntReplyEvent;
+import org.piax.gtrans.ov.async.suzaku.SuzakuEvent.GetFTAllRequest;
+import org.piax.gtrans.ov.async.suzaku.SuzakuEvent.GetEntRequest;
+import org.piax.gtrans.ov.async.suzaku.SuzakuEvent.GetEntReply;
 import org.piax.gtrans.ov.async.suzaku.SuzakuEvent.RemoveReversePointerEvent;
 import org.piax.gtrans.ov.ring.rq.FlexibleArray;
 import org.slf4j.Logger;
@@ -46,7 +46,7 @@ public class SuzakuStrategy extends NodeStrategy {
                 SuzakuStrategy.COPY_FINGERTABLES = true;
                 SuzakuStrategy.ACTIVE_UPDATE_ON_JOIN = false;
                 SuzakuStrategy.PASSIVE_UPDATE_2.set(false);
-                SuzakuStrategy.DELAY_ENTRY_UPDATE = false;
+                SuzakuStrategy.DELAYED_UPDATE = false;
                 SuzakuStrategy.ZIGZAG_UPDATE = false;
                 break;
             case 1: // Suzaku1: finger table双方向化
@@ -54,7 +54,7 @@ public class SuzakuStrategy extends NodeStrategy {
                 SuzakuStrategy.COPY_FINGERTABLES = true;
                 SuzakuStrategy.ACTIVE_UPDATE_ON_JOIN = false;
                 SuzakuStrategy.PASSIVE_UPDATE_2.set(false);
-                SuzakuStrategy.DELAY_ENTRY_UPDATE = false;
+                SuzakuStrategy.DELAYED_UPDATE = false;
                 SuzakuStrategy.ZIGZAG_UPDATE = false;
                 break;
             case 2: // Suzaku2: 挿入時に両側をアクティブに更新
@@ -62,7 +62,7 @@ public class SuzakuStrategy extends NodeStrategy {
                 SuzakuStrategy.COPY_FINGERTABLES = false;
                 SuzakuStrategy.ACTIVE_UPDATE_ON_JOIN = true;
                 SuzakuStrategy.PASSIVE_UPDATE_2.set(false);
-                SuzakuStrategy.DELAY_ENTRY_UPDATE = false;
+                SuzakuStrategy.DELAYED_UPDATE = false;
                 SuzakuStrategy.ZIGZAG_UPDATE = false;
                 break;
             case 3: // Suzaku3: ジグザグ，パッシブな更新2，遅延更新
@@ -70,7 +70,7 @@ public class SuzakuStrategy extends NodeStrategy {
                 SuzakuStrategy.COPY_FINGERTABLES = false;
                 SuzakuStrategy.ACTIVE_UPDATE_ON_JOIN = true;
                 // SuzakuStrategy.PASSIVE_UPDATE_2.set(true);
-                SuzakuStrategy.DELAY_ENTRY_UPDATE = true;
+                SuzakuStrategy.DELAYED_UPDATE = true;
                 SuzakuStrategy.ZIGZAG_UPDATE = true;
                 break;
             default:
@@ -89,7 +89,6 @@ public class SuzakuStrategy extends NodeStrategy {
     }
     
     public static boolean USE_BFT = false;
-    public static boolean DBEUG_FT_UPDATES = false;
     public static boolean DEBUG_REVPTR = false;
     // trueならば一周期ですべてのFinger Tableエントリを更新する
     public static BooleanOption UPDATE_ONCE
@@ -116,10 +115,9 @@ public class SuzakuStrategy extends NodeStrategy {
             assert !val || SUCCESSOR_LIST_SIZE <= K;
         });
 
-    private boolean updatingFT = false;
     private int forwardUpdateCount = 0;
     private int backwardUpdateCount = 0;
-    
+
     /** 挿入時にpredecessorからfinger tableをコピーする */
     public static boolean COPY_FINGERTABLES = false;
     /** 挿入時にfinger tableをアクティブに更新 */
@@ -131,7 +129,7 @@ public class SuzakuStrategy extends NodeStrategy {
     public static BooleanOption PASSIVE_UPDATE_2_BIDIRECTIONAL
         = new BooleanOption(false, "-pu2-bid");
     /** 取得したエントリを生存が確認できるまで格納しない */
-    public static boolean DELAY_ENTRY_UPDATE = false;
+    public static boolean DELAYED_UPDATE = false;
     /** ジグザグに更新 */
     public static boolean ZIGZAG_UPDATE = false;
     /** あるFTEを更新する際に，取得してきたり後でパッシブ更新されていたら後者を優先する */
@@ -167,10 +165,10 @@ public class SuzakuStrategy extends NodeStrategy {
     @Override
     public void initInitialNode() {
         ddll.initInitialNode();
-        // FINGER_UPDATE_PERIOD後に最初のFinger Table更新を行う際に
+        // UPDATE_FINGER_PERIOD後に最初のFinger Table更新を行う際に
         // zigzag updateを行わないようにするため，forwardUpdateCount = 1 とする．
         forwardUpdateCount = 1;
-        scheduleFTUpdate(true);
+        schedFFT1Update();
     }
 
     @Override
@@ -208,9 +206,9 @@ public class SuzakuStrategy extends NodeStrategy {
             this.reversePointers = revPtrs;
         }
 
+        // この関数はSetRを受信したノードで動作する
         @Override
         public void run(LocalNode node) {
-            // このラムダ式は，SetRを受信したノードで動作することに注意!
             // node: SetR受信ノード, n: SetR送信ノード
 
             // 右ノードが変更された契機でリバースポインタの不要なエントリを削除
@@ -354,8 +352,6 @@ public class SuzakuStrategy extends NodeStrategy {
 
     // handles FTEntUpdateEvent
     public void updateFTEntry(FTEntUpdateEvent event) {
-        //FTEntry ent = table.getFTEntry(event.sender);
-        //table.change(index.ftIndex, event.ent, true);
         table.replace(event.sender, event.ent);
     }
 
@@ -405,7 +401,7 @@ public class SuzakuStrategy extends NodeStrategy {
     private void nodeInserted() {
         if (COPY_FINGERTABLES) {
             // copy predecessor's finger table
-            GetFTAllEvent ev = new GetFTAllEvent(n.pred);
+            GetFTAllRequest ev = new GetFTAllRequest(n.pred);
             ev.onReply((rep, exc) -> {
                 if (exc != null) {
                     logger.debug("getFTAll failed: {}", exc);
@@ -418,50 +414,12 @@ public class SuzakuStrategy extends NodeStrategy {
                     for (int i = 1; USE_BFT && i < fts[1].length; i++) {
                         table.backward.set(i, fts[1][i]);
                     }
-                    //System.out.println(n + ": FT copied\n" + n.toStringDetail());
-                    if (ACTIVE_UPDATE_ON_JOIN) {
-                        initialFTUpdate();
-                    } else {
-                        scheduleFTUpdate(true);
-                    }
+                    initialFTUpdate();
                 }
             });
             n.post(ev);
         } else {
             initialFTUpdate();
-        }
-    }
-
-    /**
-     * 定期的なfinger table更新
-     * @param isFirst true if it is the first time update
-     */
-    private void scheduleFTUpdate(boolean isFirst) {
-        if (UPDATE_FINGER_PERIOD.value() == 0) {
-            return;
-        }
-        long delay = UPDATE_FINGER_PERIOD.value();
-        updateSchedEvent = EventExecutor.sched(delay, () -> {
-            updateFingerTable(false);
-        });
-        logger.trace("{}: add schedEvent: {}", n, updateSchedEvent.getEventId());
-    }
-    
-    /**
-     * レベル0リング挿入直後のアクティブなfinger table更新処理
-     */
-    private void initialFTUpdate() {
-        assert ZIGZAG_UPDATE;
-        if (ZIGZAG_UPDATE) {
-            // FFT->BFT->FFT...の順に更新
-            updateFingerTable(false);
-        } else {
-            // FFTを更新
-            updateFingerTable(false);
-            if (USE_BFT) {
-                // BFTを更新 (FFTの更新と並行して行う)
-                updateFingerTable(true);
-            }
         }
     }
 
@@ -548,37 +506,7 @@ public class SuzakuStrategy extends NodeStrategy {
         return rc;
     }
 
-    /*@SuppressWarnings("unused")
-    private List<NodeAndIndex> sorted(int key) {
-        Comparator<NodeAndIndex> comp = (NodeAndIndex a, NodeAndIndex b) -> {
-            // aの方がkeyに近ければ正の数，bの方がkeyに近ければ負の数を返す
-            int ax = a.node.key - key;
-            int bx = b.node.key - key;
-            if (ax == bx) {
-                return 0;
-            } else if (ax == 0) {
-                return +1;
-            } else if (bx == 0) {
-                return -1;
-            } else if (Integer.signum(ax) == Integer.signum(bx)) {
-                return ax - bx;
-            } else if (ax > 0) {
-                return -1;
-            } else {
-                return +1;
-            }
-        };
-        Comparator<NodeAndIndex> compx = (NodeAndIndex a, NodeAndIndex b) -> {
-            int rc = comp.compare(a, b);
-            System.out.println("compare " + a.node.key + " with " + b.node.key + " -> " + rc);
-            return rc;
-        };
-        List<NodeAndIndex> nodes = getAllLinks2();
-        Collections.sort(nodes, compx);
-        return nodes;
-    }*/
-    
-    public List<Node> getNeighbors() {
+    private List<Node> getNeighbors() {
         List<Node> neighbors;
         if (USE_SUCCESSOR_LIST.value()) {
             neighbors = getSuccessorList();
@@ -627,14 +555,14 @@ public class SuzakuStrategy extends NodeStrategy {
      * @param passive2 finger table entries used for passive update 2
      * @return list of finger table entries
      */
-    public GetFTEntReplyEvent getFingers(GetFTEntEvent req) {
+    public GetEntReply getFingers(GetEntRequest req) {
         boolean isBackward = req.isBackward;
         int x = req.x;
         int y = req.y;
         FTEntrySet passive1 = req.passive1;
         FTEntrySet passive2 = req.passive2;
         FTEntrySet returnSet = new FTEntrySet();
-        GetFTEntReplyEvent reply = new GetFTEntReplyEvent(req, returnSet);
+        GetEntReply reply = new GetEntReply(req, returnSet);
 
         // {tk^x | 0 < t <= 2^y}
         // x = floor(p/b), y = p-bx = p % b
@@ -704,20 +632,7 @@ public class SuzakuStrategy extends NodeStrategy {
                         }
                     }
                 }
-//                int index = FingerTable.getFTIndex(1 << (p + 1));
-//                if (!NOTIFY_WITH_REVERSE_POINTER.value() || isBackward) {
-//                    // opTable = FFT
-//                    opTable.change(index, passive2, !isBackward);
-//                    if (false) System.out.println/*Node.verbose*/(n.key
-//                            + ": use passive2 (" + passive2 + "), index="
-//                            + index + ", " + n.toStringDetail());
-//                } else {
-//                    table.addReversePointer(passive2.getNode());
-//                }
             }
-            /*System.out.printf(n.id + ": getFingers(x=%d, y=%d, k=%d, given=%s) returns %s\n",
-                    x, y, k, given, set);
-            System.out.printf(n.toStringDetail());*/
         }
         return reply;
     }
@@ -757,8 +672,9 @@ public class SuzakuStrategy extends NodeStrategy {
     protected FTEntry getBackwardFingerTableEntry(int index) {
         return table.backward.getFTEntry(index);
     }
-    
+
     public Stream<FTEntry> getFTEntryStream() {
+        // XXX: no implementation
         return null;
     }
 
@@ -796,31 +712,67 @@ public class SuzakuStrategy extends NodeStrategy {
         return ent;
     }
 
-    void updateFingerTable(boolean isBackward) {
-        if (n.mode == NodeMode.OUT || n.mode == NodeMode.DELETED || updatingFT) {
+    /**
+     * update the finger table immediately after insertion to level 0 ring is
+     * finished.
+     */
+    private void initialFTUpdate() {
+        if (!ACTIVE_UPDATE_ON_JOIN) {
+            schedFFT1Update();
             return;
         }
-        updatingFT = true;
-        logger.trace("start finger table update: {}, {}", n.key, 
-                EventExecutor.getVTime());
+        assert ZIGZAG_UPDATE;
+        if (ZIGZAG_UPDATE) {
+            // FFT->BFT->FFT...の順に更新
+            updateFingerTable(false);
+        } else {
+            // FFTを更新
+            updateFingerTable(false);
+            if (USE_BFT) {
+                // BFTを更新 (FFTの更新と並行して行う)
+                updateFingerTable(true);
+            }
+        }
+    }
+
+    /**
+     * schedule next update of FFT[1].
+     */
+    private void schedFFT1Update() {
+        if (UPDATE_FINGER_PERIOD.value() == 0) {
+            return;
+        }
+        long delay = UPDATE_FINGER_PERIOD.value();
+        updateSchedEvent = EventExecutor.sched(delay, () -> {
+            updateFingerTable(false);
+        });
+        logger.trace("{}: add schedEvent: {}", n, updateSchedEvent.getEventId());
+    }
+
+    /**
+     * update xFT[1].
+     *
+     * @param isBackward
+     */
+    private void updateFingerTable(boolean isBackward) {
         updateFingerTable0(0, isBackward, null, null);
-        updatingFT = false;
     }
 
     /**
      * update the finger table.
      * 
-     * 自ノードNから時計回り方向(!isBackwardの場合)あるいは反時計回り方向(isBackwardの場合)
-     * に，2<sup>p</sup>個離れたノード Q に問い合わせる．
-     * 
-     * nextEnt1は同一方向で2<sup>p-1</sup>離れたエントリ．．
+     * <p>nextEnt1が指すノードに問い合わせることで，
+     * 自ノードNから時計回り方向(!isBackwardの場合)あるいは
+     * 反時計回り方向(isBackwardの場合)に，2<sup>p</sup>個離れたノードQへのポインタを
+     * 取得する．
+     * <p>nextEnt1は同一方向で2<sup>p-1</sup>離れたエントリ
      * 
      * <pre>
      * isBackward = false:
      * 
      *                 |            |-----------2^p------->|
      *                 |<--2^(p-1)--|--2^(p-1)-->|         |
-     *             nextEnt2<--------N-------->nextEnt1----->Q
+     *             nextEnt2<--------N-------->nextEnt1---->Q
      *
      * isBackward = true:
      * 
@@ -830,14 +782,9 @@ public class SuzakuStrategy extends NodeStrategy {
      *
      * </pre>
      *
-     * SUZAKU1: 最初の更新かどうかは特に関係ない．
-     * SUZAKU2: 最初のForward側の更新が終わってからforwardUpdateCount == 1となる
-     * 同様にBackward側の更新が終わってからbackwardUpdateCount == 1となる
-     * SUZAKU3: 最初の更新が終わってからforwardUpdateCount == 1となる．
-     *
      * @param p         distance parameter
-     * @param isBackward direction of node N
-     * @param nextEnt1  ベースとなるFTEntry
+     * @param isBackward represents the direction of Q from N
+     * @param nextEnt1  the previously fetched FTEntry
      * @param nextEnt2  次の更新でベースとなる反対方向のFTEntry．
      *                  isBackward = false ならば，反時計回り方向に 2^<sup>p-1<sup>
      *                  離れている．isBackward = true ならば，時計回り方向に
@@ -862,7 +809,7 @@ public class SuzakuStrategy extends NodeStrategy {
             baseEnt = current;
         } else {
             if (current == null
-                    || !DELAY_ENTRY_UPDATE
+                    || !DELAYED_UPDATE
                     || (PREFER_NEWER_ENTRY_THAN_FETCHED_ONE
                             && current.time < nextEnt1.time)) {
                 baseEnt = nextEnt1;
@@ -874,19 +821,19 @@ public class SuzakuStrategy extends NodeStrategy {
         }
         if (baseEnt == null) {
             logger.debug("{}: null-entry-1, index = {}, {}", n, indQ, toStringDetail());
-            updateNext(p, isBackward, nextEnt2, null);
+            schedNextLevel(p, isBackward, nextEnt2, null);
             return;
         }
         if (baseEnt.getNode() == null) {
             logger.debug("{}: null-entry-2, index = {}, {}", n, indQ, toStringDetail());
-            updateNext(p, isBackward, nextEnt2, null);
+            schedNextLevel(p, isBackward, nextEnt2, null);
             return;
         }
         if (baseEnt.getNode() == n) {
             // FTEntryの先頭ノードが削除された場合に発生する可能性がある
             logger.debug("{}: self-pointing-entry, index ={}, {} ", n, 
                     indQ, toStringDetail());
-            updateNext(p, isBackward, nextEnt2, null);
+            schedNextLevel(p, isBackward, nextEnt2, null);
             return;
         }
         // Passive Update 1 で送信するエントリを収集
@@ -920,13 +867,6 @@ public class SuzakuStrategy extends NodeStrategy {
                 int dist1 = d * (isBackward ? -1 : 1);
                 int dist2 = dist1 + delta;
                 FTEntry e = getFTEntryToSendTop(dist1, dist2);
-//                int dis = distQ - d;  // 当該エントリから Q までの距離
-//                if (false && dis < K) {
-//                    // XXX: THINK!: remove neighbors part
-//                    // note that this part is never executed when K=1.
-//                    FTEntry e0 = e;
-//                    e = new FTEntry(e.getNode());
-//                }
                 p1ents.add(0, e);  // 逆順に格納
             }
             passive1.ents = p1ents.toArray(new FTEntry[p1ents.size()]);
@@ -1008,7 +948,7 @@ public class SuzakuStrategy extends NodeStrategy {
         Node q = baseEnt.getNode();
         logger.trace("update: {}, {}, ent = {}, p ={}", n.key, isBackward,
                 q.key, p);
-        GetFTEntEvent ev = new GetFTEntEvent(q, isBackward, x, y, K, passive1, passive2);
+        GetEntRequest ev = new GetEntRequest(q, isBackward, x, y, K, passive1, passive2);
         ev.onReply((repl, exc) -> {
             FingerTable tab = isBackward ? table.backward : table.forward;
             FingerTable opTab = isBackward ? table.forward : table.backward;
@@ -1024,7 +964,6 @@ public class SuzakuStrategy extends NodeStrategy {
                         // we have a backup node
                         FTEntry altEnt = new FTEntry(altNodes);
                         logger.debug("{}: we have backup nodes, p={}, altEnt={}, continue", n, altEnt, p);
-                        //updateFingerTable0(p, isBackward, baseEnt, nextEnt2);
                         updateFingerTable0(p, isBackward, altEnt, nextEnt2);
                     } else {
                         // we have no backup node
@@ -1033,7 +972,7 @@ public class SuzakuStrategy extends NodeStrategy {
                             updateFingerTable0(p + 1, isBackward, null, null);
                         } else {
                             logger.debug("{}: No backup node, p={}, no continue", n, p);
-                            updateNext(p, isBackward, nextEnt2, null);
+                            schedNextLevel(p, isBackward, nextEnt2, null);
                         }
                     }
                 };
@@ -1046,7 +985,6 @@ public class SuzakuStrategy extends NodeStrategy {
                 }
             } else {
                 if (ACTIVE_UPDATE_ON_JOIN && isFirst) {
-                    // logger.debug("join.ftupdate: {}", 2 + repl.msgCount);
                     n.counter.add("join.ftupdate", 2 + repl.msgCount);
                     // getFTEntEvent/Reply + RemoveReversePointerEvent
                 }
@@ -1079,7 +1017,7 @@ public class SuzakuStrategy extends NodeStrategy {
                         break;
                     }
                     // System.out.println("m=" + m + ": e=" + e);
-                    if (DELAY_ENTRY_UPDATE) {
+                    if (DELAYED_UPDATE) {
                         if (m != replEnts.length - 1) {
                             tab.change(indQ + m, e, true);
                         } else {
@@ -1097,14 +1035,62 @@ public class SuzakuStrategy extends NodeStrategy {
                 if (nextEntX != null) {
                     nextEntX.time = EventExecutor.getVTime();
                 }
-                updateNext(p, isBackward, nextEnt2, nextEntX);
+                schedNextLevel(p, isBackward, nextEnt2, nextEntX);
             }
         });
         n.post(ev);
     }
 
     /**
-     * Finger Tableにpがなければ，pのreverse pointerからpを削除する．
+     * schedule the next level finger table update
+     *
+     * @param p
+     * @param isBackward
+     * @param nextEnt2
+     * @param nextEntX
+     */
+    private void schedNextLevel(int p, boolean isBackward,
+            FTEntry nextEnt2, FTEntry nextEntX) {
+        if (nextEnt2 == null && nextEntX == null) {
+            logger.trace(
+                    "{}: finger table update done: isBackward={}, p={}\n{}",
+                    n, isBackward, p, n.toStringDetail());
+            if (ZIGZAG_UPDATE || !isBackward) {
+                forwardUpdateCount++;
+                schedFFT1Update();
+            } else {
+                backwardUpdateCount++;
+            }
+            return;
+        }
+        boolean isFirst = isFirst(isBackward);
+        if (ZIGZAG_UPDATE) {
+            if (isFirst) {
+                if (!isBackward) {
+                    updateFingerTable0(p, true, nextEnt2, nextEntX);
+                } else {
+                    updateFingerTable0(p + 1, false, nextEnt2, nextEntX);
+                }
+            } else {
+                // XXX: UPDATE_ONCE is ignored
+                nextLevel = p + 1;
+                logger.trace("nextLevel={}, nextEntX={}", nextLevel, nextEntX);
+                EventExecutor.sched(UPDATE_FINGER_PERIOD.value(),
+                        () -> updateFingerTable0(p + 1, isBackward, nextEntX, null));
+            }
+        } else {
+            assert nextEnt2 == null;
+            if (UPDATE_ONCE.value()) {
+                updateFingerTable0(p + 1, isBackward, nextEntX, null);
+            } else {
+                EventExecutor.sched(UPDATE_FINGER_PERIOD.value(),
+                        () -> updateFingerTable0(p + 1, isBackward, nextEntX, null));
+            }
+        }
+    }
+
+    /**
+     * 自ノードのFinger Tableにpがなければ，pのreverse pointerからnを削除する．
      * @param p
      */
     void cleanRemoteRevPtr(Node p) {
@@ -1162,73 +1148,6 @@ public class SuzakuStrategy extends NodeStrategy {
                 || n.key.compareTo(fetched.getNode().key) == 0
                 || isBackward && Node.isOrdered(fetched.getNode().key, true, n.key, fetchFrom.key, true))
                 || (!isBackward && Node.isOrdered(fetchFrom.key, true, n.key, fetched.getNode().key, true));
-    }
-
-    /**
-     * 次のFinger Table更新をスケジュールする．
-     * @param p
-     * @param isBackward
-     */
-    private void updateNext(int p, boolean isBackward,
-            FTEntry nextEnt2, FTEntry nextEntX) {
-        if (nextEnt2 == null && nextEntX == null) {
-            finish(isBackward, p);
-            return;
-        }
-        boolean isFirst = isFirst(isBackward);
-        if (ZIGZAG_UPDATE) {
-            // XXX: UPDATE_ONCE is ignored
-            if (isFirst) {
-                if (!isBackward) {
-                    updateFingerTable0(p, true, nextEnt2, nextEntX);
-                } else {
-                    updateFingerTable0(p + 1, false, nextEnt2, nextEntX);
-                }
-            } else {
-                nextLevel = p + 1;
-                logger.trace("nextLevel={}, nextEntX={}", nextLevel, nextEntX);
-                EventExecutor.sched(UPDATE_FINGER_PERIOD.value(),
-                        () -> updateFingerTable0(p + 1, isBackward, nextEntX, null));
-            }
-        } else {
-            assert nextEnt2 == null;
-            if (/*isFirst ||*/ UPDATE_ONCE.value()) {
-                updateFingerTable0(p + 1, isBackward, nextEntX, null);
-            } else {
-                EventExecutor.sched(UPDATE_FINGER_PERIOD.value(),
-                        () -> updateFingerTable0(p + 1, isBackward, nextEntX, null));
-            }
-        }
-    }
-    
-    /**
-     * 最高位レベルのFinger Table Entry更新が終了した場合の処理．
-     * 
-     * @param isBackward
-     * @param lastIndexPlus1
-     */
-    private void finish(boolean isBackward, int level) {
-        boolean isFirst = isFirst(isBackward);
-        logger.trace(
-            "{}: finger table update done: {}, level={}, {}, {}, \n{}",
-            n, isBackward, level,
-            (isBackward ? backwardUpdateCount : forwardUpdateCount) + "th", 
-            EventExecutor.getVTime(),
-            n.toStringDetail());
-//        if (!isFirst) {
-//            // truncate the finger tables
-//            table.forward.shrink(level + 1);
-//            if (USE_BFT) {
-//                table.backward.shrink(level + 1);
-//            }
-//        }
-        if (ZIGZAG_UPDATE || !isBackward) {
-            forwardUpdateCount++;
-            scheduleFTUpdate(isFirst);
-        } else {
-            backwardUpdateCount++;
-        }
-        return;
     }
 
     /**

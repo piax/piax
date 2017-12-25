@@ -73,10 +73,10 @@ public class KryoUtil {
             kryo.register(org.piax.gtrans.ov.async.rq.RQRange.class);
             kryo.register(org.piax.gtrans.ov.async.rq.RQReply.class);
             kryo.register(org.piax.gtrans.ov.async.rq.RQRequest.class); 
-            kryo.register(org.piax.gtrans.ov.async.suzaku.SuzakuEvent.GetFTEntReplyEvent.class);
+            kryo.register(org.piax.gtrans.ov.async.suzaku.SuzakuEvent.GetEntReply.class);
             kryo.register(org.piax.gtrans.ov.async.suzaku.SuzakuStrategy.FTEntrySet.class);
             kryo.register(org.piax.gtrans.ov.async.suzaku.Suzaku.ExecQueryAdapter.class);
-            kryo.register(org.piax.gtrans.ov.async.suzaku.SuzakuEvent.GetFTEntEvent.class);
+            kryo.register(org.piax.gtrans.ov.async.suzaku.SuzakuEvent.GetEntRequest.class);
             kryo.register(org.piax.gtrans.ov.async.ddll.DdllEvent.GetCandidates.class);
             kryo.register(org.piax.gtrans.ov.async.ddll.DdllEvent.GetCandidatesResponse.class);
             kryo.register(org.piax.gtrans.ov.async.ddll.DdllEvent.SetL.class);

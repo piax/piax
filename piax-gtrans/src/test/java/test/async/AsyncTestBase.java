@@ -39,7 +39,7 @@ import org.piax.gtrans.ov.async.rq.RQAdapter.CacheAdapter;
 import org.piax.gtrans.ov.async.rq.RQAdapter.InsertionPointAdapter;
 import org.piax.gtrans.ov.async.rq.RQAdapter.KeyAdapter;
 import org.piax.gtrans.ov.async.rq.RQStrategy;
-import org.piax.gtrans.ov.async.suzaku.SuzakuEvent.GetFTEntEvent;
+import org.piax.gtrans.ov.async.suzaku.SuzakuEvent.GetEntRequest;
 import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.gtrans.raw.emu.EmuLocator;
 import org.piax.gtrans.raw.tcp.TcpLocator;
@@ -178,7 +178,7 @@ public class AsyncTestBase {
         if (req instanceof GetCandidates) {
             return true;
         }
-        if (req instanceof GetFTEntEvent) {
+        if (req instanceof GetEntRequest) {
             return true;
         }
         return false;
