@@ -163,13 +163,7 @@ public class SuzakuStrategy extends NodeStrategy {
         ddll = (DdllStrategy)node.getLowerStrategy(this);
         table = new FingerTables(n);
     }
-    
-    public void setupLinkChangeListener(Node n) {
-//        n.setLinkChangeEventHandler((prev, cur) -> {
-//        }, (prev, cur) -> {
-//        });
-    }
-    
+
     @Override
     public void initInitialNode() {
         ddll.initInitialNode();
@@ -308,22 +302,6 @@ public class SuzakuStrategy extends NodeStrategy {
     }
 
     public void handleLookup(Lookup l, int nRetry) {
-        // for debugging!
-        if (false) {
-            if (l.route.size() > 50) {
-                if (l.trace == null) {
-                    l.trace = new StringBuilder();
-                }
-                ((StringBuilder)l.trace).append("trace\n" + n.toStringDetail() + "\n");
-            }
-            if (l.route.size() > 80) {
-                System.out.println("too many hops!");
-                System.out.println(l);
-                System.out.println(l.route);
-                System.out.println(l.trace);
-                System.exit(1);
-            }
-        }
         if (l.fill) {
             FTEntry ent = getFTEntryToSendTop(0, 1);
             logger.debug("handleLookup: {} sends FTEntUpdateEvent: ", n, ent);
@@ -462,12 +440,7 @@ public class SuzakuStrategy extends NodeStrategy {
         if (UPDATE_FINGER_PERIOD.value() == 0) {
             return;
         }
-        long delay;
-        if (false && isFirst) {
-            delay = EventExecutor.random().nextInt(UPDATE_FINGER_PERIOD.value());
-        } else {
-            delay = UPDATE_FINGER_PERIOD.value();
-        }
+        long delay = UPDATE_FINGER_PERIOD.value();
         updateSchedEvent = EventExecutor.sched(delay, () -> {
             updateFingerTable(false);
         });
@@ -630,11 +603,6 @@ public class SuzakuStrategy extends NodeStrategy {
         list.addAll(nbrs);
         return list;
     }
-
-    // to be overridden
-//    protected FTEntry getLocalFTEnetry() {
-//        return new FTEntry(getLocalNode());
-//    }
 
     public int getFingerTableSize() {
         return table.forward.getFingerTableSize();
@@ -1264,50 +1232,6 @@ public class SuzakuStrategy extends NodeStrategy {
     }
 
     /**
-     * 自ノードが指しているすべてのノードのうち，生存しているノードの率を求める．
-     * 
-     * @param nodes すべてのノードの配列
-     * @return 対称率
-     */
-    public double livenessDegree(LocalNode[] nodes) {
-        Set<Node> a0 = this.gatherRemoteLinks();
-        Set<LocalNode> a = (Set)a0;
-        long nAlive = a.stream()
-                .filter(node -> node.isInserted())
-                .count();
-        if (nAlive != a.size()) {
-            List<Node> list = a.stream()
-                    .filter(node -> !node.isInserted())
-                    .collect(Collectors.toList());
-            logger.debug("Node {}: dead pointers = {}", n.key, list);
-        }
-        return (double)nAlive / a.size();
-    }
-
-    private Set<Node> gatherRemoteLinks() {
-        return table.stream()
-            .map(ent -> ent.getNode())
-            .filter(node -> node != n)
-            .collect(Collectors.toSet());
-    }
-
-    private boolean doesPointTo(Node x) {
-        for (int i = 0; i < getFingerTableSize(); i++) {
-            FTEntry ent = getFingerTableEntry(i);
-            if (ent != null && ent.getNode() == x) {
-                return true;
-            }
-        }
-        for (int i = 0; i < getBackwardFingerTableSize(); i++) {
-            FTEntry ent = getBackwardFingerTableEntry(i);
-            if (ent != null && ent.getNode() == x) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
      * a class for sending/receiving finger table entries between nodes.
      */
     public static class FTEntrySet implements Serializable {
@@ -1318,39 +1242,5 @@ public class SuzakuStrategy extends NodeStrategy {
         public String toString() {
             return "[ents=" + Arrays.deepToString(ents) + "]";
         }
-    }
-
-    public static boolean isAllConverged(LocalNode[] nodes) {
-        int count = 0;
-        for (int i = 0; i < nodes.length; i++) {
-            LocalNode n = nodes[i];
-            SuzakuStrategy szk = SuzakuStrategy.getSuzakuStrategy(n);
-            boolean rc = szk.isConverged(nodes);
-            if (rc) count++;
-        }
-        logger.debug("# of converged nodes: {}", count);
-        return count == nodes.length;
-    }
-
-    private boolean isConverged(Node[] nodes) {
-        int fftsiz = getFingerTableSize();
-        for (int i = 0; i < fftsiz; i++) {
-            int d = 1 << i;
-            FTEntry ent = getFingerTableEntry(i);
-            if (ent == null) {
-                return false;
-            }
-            Node lnk = ent.getNode();
-            if (lnk == null) {
-                return false;
-            }
-            int key = (Integer)(n.key.getRawKey());
-            int lnkkey = (Integer)(lnk.key.getRawKey());
-            if ((key / 10 + d) % nodes.length != lnkkey / 10) {
-                return false;
-            }
-        }
-        //System.out.println(n + " is converged");
-        return true;
     }
 }
