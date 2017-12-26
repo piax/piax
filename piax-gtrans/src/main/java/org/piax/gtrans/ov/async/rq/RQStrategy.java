@@ -78,6 +78,12 @@ public class RQStrategy extends NodeStrategy {
      * {@link org.piax.gtrans.ov.async.rq.RQAdapter.CacheAdapter}
      *  */ 
     Map<PeerId, Map<Long, CompletableFuture<?>>> resultCache = new HashMap<>();
+    
+    /**
+     * query history for request gathering
+     */
+    Map<Object, Map<Long, RQRequest<?>>> requestStorage = new HashMap<>();
+    Set<Long> requestHistory;
 
     @Override
     public void handleLookup(Lookup l) {

@@ -60,7 +60,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
     // XXX: note that wrap-around query ranges such as [10, 5) do not work
     // for now (k-abe)
     protected final Collection<RQRange> targetRanges;
-    final RQAdapter<T> adapter;
+    public final RQAdapter<T> adapter;
     final TransOptions opts;
     final boolean isRoot;
 
@@ -388,9 +388,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             // obtain values for local ranges
             CompletableFuture<List<DKRangeRValue<T>>> future = null;
             if (hook != null) {
-                RQRequest<T> copied = null;
-            		copied = hook.removeReceivedMessage(RQRequest.this);
-            		future = copied.catcher.rqExecuteLocal(map.get(peerId));
+            		future = hook.executeLocal(RQRequest.this);
             } else {
             		future = rqExecuteLocal(map.get(peerId));
             }
@@ -605,7 +603,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
          * @param ranges このノードが担当する範囲のリスト．各範囲はtargetRangeに含まれる
          * @returns CompletableFuture
          */
-        private CompletableFuture<List<DKRangeRValue<T>>>
+        public CompletableFuture<List<DKRangeRValue<T>>>
         rqExecuteLocal(List<RQRange> ranges) {
             logger.trace("rqExecuteLocal: ranges={}", ranges);
             // results of locally-resolved ranges
