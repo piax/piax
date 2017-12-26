@@ -55,7 +55,7 @@ public abstract class SuzakuEvent {
         public void run() {
             LocalNode r = (LocalNode)receiver;
             SuzakuStrategy s = SuzakuStrategy.getSuzakuStrategy(r);
-            GetEntReply ev = s.getFingers(this);
+            GetEntReply ev = s.getEnts(this);
             r.post(ev);
         }
         @Override
