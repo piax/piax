@@ -150,6 +150,9 @@ public class FloodingNode<D extends Destination, K extends Key> extends
             if (!keys.isEmpty() || nmsg.passthrough == SpecialKey.WILDCARD) {
                 // gatewayのための処理
                 FutureQueue<?> fq = mother.onReceiveRequest(keys, nmsg);
+                if (fq == null) {
+                    fq = FutureQueue.emptyQueue();
+                }
                 for (RemoteValue<?> rv : fq) {
                     rets.add(rv);
                 }

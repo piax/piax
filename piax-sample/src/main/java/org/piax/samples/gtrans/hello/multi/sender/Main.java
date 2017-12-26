@@ -14,10 +14,11 @@ package org.piax.samples.gtrans.hello.multi.sender;
 import java.net.InetSocketAddress;
 
 import org.piax.common.PeerId;
+import org.piax.common.PeerLocator;
 import org.piax.common.wrapper.StringKey;
 import org.piax.gtrans.Peer;
-import org.piax.gtrans.ov.sg.MSkipGraph;
-import org.piax.gtrans.raw.tcp.TcpLocator;
+import org.piax.gtrans.netty.NettyLocator;
+import org.piax.gtrans.ov.async.suzaku.Suzaku;
 
 /* To run on the localhost, type as follows on the shell:
  *  $ java -jar Receiver.jar localhost 10000 &
@@ -33,7 +34,7 @@ public class Main {
 		int selfPort = -1;
 		String seedHostName = null;
 		int seedPort = -1;
-		TcpLocator seedLocator = null;
+		PeerLocator seedLocator = null;
 		
 		if (!(args.length == 4)) {
 			System.out.println("Usage: Sender self-hostname self-port introducer-hostname introducer-port");
@@ -43,11 +44,11 @@ public class Main {
 		selfPort = Integer.parseInt(args[1]);
 		seedHostName = args[2];
 		seedPort = Integer.parseInt(args[3]);
-		seedLocator = new TcpLocator(new InetSocketAddress(seedHostName, seedPort));
+		seedLocator = new NettyLocator(new InetSocketAddress(seedHostName, seedPort));
 		
 		Peer p = Peer.getInstance(PeerId.newId());
-		MSkipGraph<StringKey, StringKey> t = new MSkipGraph<StringKey, StringKey>(
-				p.newBaseChannelTransport(new TcpLocator(new InetSocketAddress(selfHostName, selfPort))));
+		Suzaku<StringKey, StringKey> t = new Suzaku<>(
+				p.newBaseChannelTransport(new NettyLocator(new InetSocketAddress(selfHostName, selfPort))));
 		if (seedLocator != null) {
 			t.join(seedLocator);
 		}

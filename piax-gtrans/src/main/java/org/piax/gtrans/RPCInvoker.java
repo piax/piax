@@ -122,7 +122,7 @@ public class RPCInvoker<T extends RPCIf, E extends Endpoint> implements RPCIf {
     private static final Logger logger = 
             LoggerFactory.getLogger(RPCInvoker.class);
 
-    public static boolean POOL_CHANNEL = true;
+    public static final boolean POOL_CHANNEL = false;
     public static int POOL_CHANNEL_SIZE = 100; // at most 100 channels are pooled.
     public Map<E, ChannelPoolEntry> channelPool;
     // Experimental
@@ -199,6 +199,9 @@ public class RPCInvoker<T extends RPCIf, E extends Endpoint> implements RPCIf {
             this.method = method;
             this.args = args;
         }
+        public String toString() {
+            return "[method call:" + method + " " + (args == null ? "N/A" : args.length) + " args]"; 
+        }
     }
 
     protected final TransportId transId;
@@ -251,7 +254,7 @@ public class RPCInvoker<T extends RPCIf, E extends Endpoint> implements RPCIf {
 
     // TODO think!
     // objIdの作成方法
-    private ObjectId createObjId(ChannelTransport<? super E> trans,
+    public static ObjectId createObjId(ChannelTransport<?> trans,
             ObjectId rpcId) {
         return new ObjectId(trans.getTransportIdPath().toString()
                 + ":" + rpcId.toString());
@@ -833,7 +836,7 @@ public class RPCInvoker<T extends RPCIf, E extends Endpoint> implements RPCIf {
                     throw new RPCException("RPC return message is null");
                 }
                 if (!(r instanceof ReturnValue<?>)) {
-                    throw new RPCException("RPC return message is not ReturnValue");
+                    throw new RPCException("RPC return message is not ReturnValue:" + r);
                 }
                 return (ReturnValue<?>)r;
             }
@@ -871,7 +874,9 @@ public class RPCInvoker<T extends RPCIf, E extends Endpoint> implements RPCIf {
                 }
             }
             else {
-                ch.close();
+                if (ch != null) {
+                    ch.close();
+                }
             }
         }
     }
@@ -947,12 +952,12 @@ public class RPCInvoker<T extends RPCIf, E extends Endpoint> implements RPCIf {
         }
         Object obj = ch.receive();
         if (obj == null) {
-            logger.info("null message received");
-        		return;
+            logger.debug("null message received (which means the channel is closed by other side)");
+            return;
         }
-        	if (!(obj instanceof MethodCall)) {
-        		logger.info("Maybe the reply is received after the caller-channel is closed");
-        		return;
+        if (!(obj instanceof MethodCall)) {
+            logger.info("Maybe the reply is received after the caller-channel is closed");
+            return;
         }
         MethodCall mc = (MethodCall) obj;
         srcPeerId.set(mc.srcPeerId);
@@ -963,12 +968,15 @@ public class RPCInvoker<T extends RPCIf, E extends Endpoint> implements RPCIf {
             // case of call sync
             try {
                 ReturnValue<?> ret = receiveSync(mc);
+                // try sending return value though the channel is closed.
+                ch.send(ret);
+                /*
                 if (ch.isClosed()) {
                     logger.info("channel already closed on the return of \"{}\" method",
                             mc.method);
                 } else {
                     ch.send(ret);
-                }
+                }*/
             } catch (ClosedChannelException e) {
                 logger.warn("", e);
                 logger.info("closed channel exception occured to reply to \"{}\", args={}", mc.method, mc.args);

@@ -185,7 +185,7 @@ public class RQManager<E extends Endpoint> extends RingManager<E> implements
                     throws IdConflictException, IOException {
         super(transId, trans);
         this.execQueryCallback = execQueryCallback;
-        FIXLEFT = new Link(myLocator, new DdllKey(0, FIXPEERID));
+        FIXLEFT = new Link(myLocator, new DdllKey(0, FIXPEERID, 0));
 
         schedule(new PurgeTask(),
                 (long) (Math.random() * QID_EXPIRATION_TASK_PERIOD),
@@ -374,10 +374,10 @@ public class RQManager<E extends Endpoint> extends RingManager<E> implements
         SubRange keyRange =
                 new SubRange(
                         new DdllKey(range.from, range.fromInclusive
-                                ? UniqId.MINUS_INFINITY : UniqId.PLUS_INFINITY),
+                                ? UniqId.MINUS_INFINITY : UniqId.PLUS_INFINITY, 0),
                         true,
                         new DdllKey(range.to, range.toInclusive
-                                ? UniqId.PLUS_INFINITY : UniqId.MINUS_INFINITY),
+                                ? UniqId.PLUS_INFINITY : UniqId.MINUS_INFINITY, 0),
                         false);
         return keyRange;
     }
@@ -754,13 +754,13 @@ public class RQManager<E extends Endpoint> extends RingManager<E> implements
         Comparable rawFromKey = range.to;
         DdllKey fromKey =
                 range.toInclusive ? new DdllKey(rawFromKey,
-                        UniqId.PLUS_INFINITY) : new DdllKey(rawFromKey,
-                        UniqId.MINUS_INFINITY);
+                        UniqId.PLUS_INFINITY, 0) : new DdllKey(rawFromKey,
+                        UniqId.MINUS_INFINITY, 0);
         Comparable rawToKey = range.from;
         DdllKey toKey =
                 range.fromInclusive ? new DdllKey(rawToKey,
-                        UniqId.MINUS_INFINITY) : new DdllKey(rawToKey,
-                        UniqId.PLUS_INFINITY);
+                        UniqId.MINUS_INFINITY, 0) : new DdllKey(rawToKey,
+                        UniqId.PLUS_INFINITY, 0);
 
         List<RemoteValue<?>> rset = new ArrayList<RemoteValue<?>>();
         QueryId qid = new QueryId(peerId, rand.nextLong());
@@ -805,7 +805,7 @@ public class RQManager<E extends Endpoint> extends RingManager<E> implements
             // 例えば key 0 しか存在しないときに，find() で -1 を検索すると，一周して
             // key 0 が帰ってくる．この場合はクエリ対象が存在しないので終了する．
             if (!wrapAround
-                    && keyComp.compare(rawFromKey, n.key.getPrimaryKey()) < 0) {
+                    && keyComp.compare(rawFromKey, n.key.getRawKey()) < 0) {
                 logger.debug("forwardQueryLeft: finish (no node is smaller than rawFromKey)");
                 break;
             }
@@ -817,7 +817,7 @@ public class RQManager<E extends Endpoint> extends RingManager<E> implements
             // 実行するかどうかを決定する．
             boolean doAction = true;
             try {
-                eqr = stub.invokeExecQuery(n.key.getPrimaryKey(), nRight,
+                eqr = stub.invokeExecQuery(n.key.getRawKey(), nRight,
                 		  qid, doAction, query, opts);
             } catch (RightNodeMismatch e) {
                 // XXX: not tested
@@ -852,7 +852,7 @@ public class RQManager<E extends Endpoint> extends RingManager<E> implements
                     // execQuery() の外で起こる invokeExecQuery() における例外のケース
                     // バグとして扱う．
                     logger.error("forwardQueryLeft: got {}"
-                            + " when calling invokeExecQuery() on ", cause, n);
+                            + " when calling invokeExecQuery() on {}", cause, n);
                     break;
                 }
                 logger.debug("", cause);
@@ -943,6 +943,7 @@ public class RQManager<E extends Endpoint> extends RingManager<E> implements
         try {
             snode = getVNode(rawkey);
             if (snode == null) {
+                logger.warn("vnode for rawkey not exists on {}", this.trans.getEndpoint());
                 throw new NoSuchKeyException(rawkey + ", " + keyHash);
             }
             Node node = snode.getDdllNode();

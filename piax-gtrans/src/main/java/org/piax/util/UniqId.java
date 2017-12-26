@@ -39,50 +39,57 @@ public class UniqId extends Id implements Endpoint, ComparableKey<Id> {
     private static final long serialVersionUID = 1L;
     public static final int DEFAULT_BYTE_LENGTH = 16;
 
-    public static final UniqId MINUS_INFINITY = new SpecialId(0);
-    public static final UniqId PLUS_INFINITY = new SpecialId(1);
+    int type = 2; // 0 .. minus infinity, 1 plus infinity, 2 normal;
+
+    public static final UniqId MINUS_INFINITY = SpecialId.newSpecialId(0);
+    public static final UniqId PLUS_INFINITY = SpecialId.newSpecialId(1);
     private static final String MINUS_INFINITY_STRING = "-infinity";
     private static final String PLUS_INFINITY_STRING = "+infinity";
 
-    private static final class SpecialId extends UniqId {
-        private static final long serialVersionUID = 1L;
-
-        private SpecialId(int b) {
-            super(new byte[]{(byte) b});
-        }
-
-        // to make sure that PLUS_INFINITY and MINUS_INFINITY are singletons 
-        private Object readResolve() throws ObjectStreamException {
-            if (this instanceof SpecialId) {
-                if (this.bytes[0] == 0) return MINUS_INFINITY;
-                if (this.bytes[0] == 1) return PLUS_INFINITY;
-            }
-            return this;
-        }
+    boolean isPlusInfinity() {
+        return type == 1;
+    }
+    boolean isMinusInfinity() {
+        return type == 0;
     }
     
+    public static final class SpecialId extends UniqId {
+        private static final long serialVersionUID = 1L;
+        private SpecialId(int b) {
+           super(new byte[]{(byte) b});
+        }
+        public static SpecialId newSpecialId(int type) {
+           SpecialId id = new SpecialId(0);
+           id.type = type;
+           return id;
+        }
+    }
+
     public static UniqId newId() {
         return new UniqId(newRandomBytes(DEFAULT_BYTE_LENGTH));
     }
 
     public UniqId(Id id) {
         super(id.getBytes());
+        type = 2;
     }
 
     public UniqId(byte[] bytes) {
         super(bytes);
+        type = 2;
     }
 
     public UniqId(String str) {
         super(str);
+        type = 2;
     }
 
     @Override
     public boolean equals(Object id) {
-        if (this == PLUS_INFINITY && id != PLUS_INFINITY) {
+        if (isPlusInfinity() && !((id instanceof UniqId) && ((UniqId)id).isPlusInfinity())) {
             return false;
         }
-        if (this == MINUS_INFINITY && id != MINUS_INFINITY) {
+        if (isMinusInfinity() && !((id instanceof UniqId) && ((UniqId)id).isMinusInfinity())) {
             return false;
         }
         return super.equals(id);
@@ -90,13 +97,13 @@ public class UniqId extends Id implements Endpoint, ComparableKey<Id> {
     
     @Override
     public int compareTo(Id id) {
-        if (this == id) {
+        if (this.equals(id)) {
             return 0;
         }
-        if (this == PLUS_INFINITY || id == MINUS_INFINITY) {
+        if (isPlusInfinity() || (id instanceof UniqId) && ((UniqId)id).isMinusInfinity()) {
             return +1;
         }
-        if (id == PLUS_INFINITY || this == MINUS_INFINITY) {
+        if ((id instanceof UniqId) && ((UniqId)id).isPlusInfinity() || isMinusInfinity()) {
             return -1;
         }
         return super.compareTo(id);
@@ -104,10 +111,10 @@ public class UniqId extends Id implements Endpoint, ComparableKey<Id> {
     
     @Override
     public String toString() {
-        if (this == MINUS_INFINITY) {
+        if (isMinusInfinity()) {
             return MINUS_INFINITY_STRING;
         }
-        if (this == PLUS_INFINITY) {
+        if (isPlusInfinity()) {
             return PLUS_INFINITY_STRING;
         }
         return super.toString();

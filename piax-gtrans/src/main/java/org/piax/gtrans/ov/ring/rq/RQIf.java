@@ -22,9 +22,9 @@ import org.piax.gtrans.ov.ddll.Link;
 import org.piax.gtrans.ov.ddll.Node.InsertPoint;
 import org.piax.gtrans.ov.ring.NoSuchKeyException;
 import org.piax.gtrans.ov.ring.RingIf;
-import org.piax.gtrans.ov.ring.UnavailableException;
 import org.piax.gtrans.ov.ring.RingManager.ExecQueryReturn;
 import org.piax.gtrans.ov.ring.RingManager.RightNodeMismatch;
+import org.piax.gtrans.ov.ring.UnavailableException;
 
 /**
  * a virtual node of RangeQuerable P2P network.

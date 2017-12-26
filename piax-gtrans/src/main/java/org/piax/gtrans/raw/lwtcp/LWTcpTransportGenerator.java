@@ -28,7 +28,7 @@ package org.piax.gtrans.raw.lwtcp;
 
 import java.io.IOException;
 
-import org.piax.common.PeerLocator;
+import org.piax.common.Endpoint;
 import org.piax.common.TransportId;
 import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.IdConflictException;
@@ -51,7 +51,7 @@ public class LWTcpTransportGenerator extends BaseTransportGenerator {
 
     @SuppressWarnings("unchecked")
     @Override
-    public <E extends PeerLocator> ChannelTransport<E> _newBaseChannelTransport(
+    public <E extends Endpoint> ChannelTransport<E> _newBaseChannelTransport(
             String desc, TransportId transId, E loc)
             throws IdConflictException, IOException {
         if (!(loc instanceof TcpLocator))
@@ -62,15 +62,15 @@ public class LWTcpTransportGenerator extends BaseTransportGenerator {
         if (desc != null && desc.equals("LINGER0")) {
             linger0Option = true;
         }
-        ChannelTransport<E> trans = new BaseChannelTransportImpl<E>(peer,
-                transId, (RawTransport<E>) new LWTcpTransport(peer.getPeerId(),
+        ChannelTransport<E> trans = new BaseChannelTransportImpl(peer,
+                transId, (RawTransport) new LWTcpTransport(peer.getPeerId(),
                         (TcpLocator) loc, linger0Option));
         ((TransportImpl<?>) trans).setBaseTransport();
         return trans;
     }
 
     @Override
-    public <E extends PeerLocator> Transport<E> _newBaseTransport(String desc,
+    public <E extends Endpoint> Transport<E> _newBaseTransport(String desc,
             TransportId transId, E loc) throws IdConflictException, IOException {
         return null;
     }

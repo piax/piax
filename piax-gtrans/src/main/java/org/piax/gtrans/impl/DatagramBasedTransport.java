@@ -50,6 +50,7 @@ import org.piax.gtrans.NetworkTimeoutException;
 import org.piax.gtrans.Peer;
 import org.piax.gtrans.ProtocolUnsupportedException;
 import org.piax.gtrans.ReceivedMessage;
+import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.Transport;
 import org.piax.gtrans.TransportListener;
 import org.piax.util.UniqNumberGenerator;
@@ -101,8 +102,9 @@ public abstract class DatagramBasedTransport<U extends Endpoint, L extends Endpo
         @SuppressWarnings("unchecked")
         public void send(Object msg) throws IOException {
             int chNo = isCreatorSide() ? getChannelNo() : -getChannelNo();
+            // XXX ignore trans options
             ((DatagramBasedTransport<E, ?>) mother)._send(localObjectId,
-                    remoteObjectId, chNo, remote, msg);
+                    remoteObjectId, chNo, remote, msg, null);
         }
     }
 
@@ -239,7 +241,7 @@ public abstract class DatagramBasedTransport<U extends Endpoint, L extends Endpo
      * channel, transportからのsendに対し、共通化した処理を行う。
      */
     protected void _send(ObjectId sender, ObjectId receiver, int channelNo,
-            U dst, Object msg) throws ProtocolUnsupportedException,
+            U dst, Object msg, TransOptions opts) throws ProtocolUnsupportedException,
             IOException {
         logger.trace("ENTRY:");
         NestedMessage nmsg = new NestedMessage(sender, receiver, getPeerId(),
@@ -248,9 +250,9 @@ public abstract class DatagramBasedTransport<U extends Endpoint, L extends Endpo
     }
 
     @Override
-    public void send(ObjectId sender, ObjectId receiver, U dst, Object msg)
+    public void send(ObjectId sender, ObjectId receiver, U dst, Object msg, TransOptions opts)
             throws ProtocolUnsupportedException, IOException {
-        _send(sender, receiver, 0, dst, msg);
+        _send(sender, receiver, 0, dst, msg, opts);
     }
 
     //*** about message receiving ***

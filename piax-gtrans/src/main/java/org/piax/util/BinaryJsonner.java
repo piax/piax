@@ -39,6 +39,7 @@ import org.piax.common.ObjectId;
 import org.piax.common.PeerId;
 import org.piax.common.PeerLocator;
 import org.piax.common.TransportId;
+import org.piax.gtrans.GTransConfigValues;
 import org.piax.gtrans.raw.InetLocator;
 import org.piax.gtrans.raw.emu.EmuLocator;
 import org.piax.gtrans.raw.tcp.TcpLocator;
@@ -196,7 +197,7 @@ public class BinaryJsonner {
                 len = bbuf.getInt();
                 v = new byte[len];
                 bbuf.get(v);
-                return SerializingUtil.deserialize(v);
+                return SerializingUtil.deserialize(v, GTransConfigValues.classLoaderForDeserialize);
             default:
                 // plug-in locator type.
                 PeerLocator pl = PeerLocator.deserialize(bbuf);
