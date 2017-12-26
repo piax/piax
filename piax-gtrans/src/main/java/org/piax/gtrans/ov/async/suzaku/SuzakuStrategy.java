@@ -579,14 +579,17 @@ public class SuzakuStrategy extends NodeStrategy {
         }
         if (USE_BFT) {
             int p = y + B.value() * x;
-            int delta = 1 << ((p - 1) / B.value() * B.value());
+            int distance;
             if (p == 0) {
-                delta = 1;
+                distance = 1;
+            } else {
+                int delta = 1 << ((p - 1) / B.value() * B.value());
+                distance = (1 << (p - 1)) + delta; 
             }
             FingerTable opTable = isBackward ? table.forward: table.backward;
-            if (p > 0 && passive1.ents.length > 0) {
+            if (passive1.ents.length > 0) {
                 // Passive Update 1
-                int index2 = FingerTable.getFTIndex((1 << (p - 1)) + delta);
+                int index2 = FingerTable.getFTIndex(distance);
                 for (int i = 0; i < passive1.ents.length; i++) {
                     logger.trace("pasv1 index={}: {}", index2 + i, passive1.ents[i]);
                     boolean rc = opTable.change(index2 + i, passive1.ents[i], true);
@@ -599,7 +602,7 @@ public class SuzakuStrategy extends NodeStrategy {
                 assert PASSIVE_UPDATE_2.value();
                 // Passive Update 2
                 if (USE_P2U_BUG) {
-                    int index2 = p == 0 ? 1 : FingerTable.getFTIndex((1 << (p - 1)) + delta);
+                    int index2 = p == 0 ? 1 : FingerTable.getFTIndex(distance);
                     assert index2 != FingerTable.LOCALINDEX;
                     for (int i = 0; i < passive2.ents.length + (isBackward ? 0 : -1); i++) {
                         if (passive2.ents[i] != null) {

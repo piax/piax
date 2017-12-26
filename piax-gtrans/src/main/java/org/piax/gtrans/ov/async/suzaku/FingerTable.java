@@ -81,7 +81,15 @@ public class FingerTable {
         assert index != LOCALINDEX;
         FTEntry old = getFTEntry(index);
         //System.out.println(vnode + ": change: index=" + index + ", " + old + " to " + ent);
-        set(index, ent, addtorev);
+        if (index == 0) {
+            // replace to `ent' to update `range' portion if index == 0.
+            // note that level 0 pointers are managed by DDLL.
+            if (old.getNode() == ent.getNode()) {
+                set(0, ent, false);
+            }
+        } else {
+            set(index, ent, addtorev);
+        }
         if (old != null && ent != null) {
             if (old.getNode() != null && old.getNode() != ent.getNode()) {
                 //System.out.println(vnode + ": ptr changed, index=" + index + " from " + old + " to " + ent);
