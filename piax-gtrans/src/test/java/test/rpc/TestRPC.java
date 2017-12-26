@@ -1,21 +1,18 @@
 package test.rpc;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.io.IOException;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.piax.common.CalleeId;
 import org.piax.common.ObjectId;
 import org.piax.common.PeerId;
 import org.piax.common.PeerLocator;
-import org.piax.common.CalleeId;
 import org.piax.common.TransportId;
 import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.IdConflictException;
@@ -72,6 +69,8 @@ public class TestRPC extends Util {
         @RemoteCallable
         Object returnNull() throws RPCException;;;
         
+        @RemoteCallable
+        int callback(PeerLocator caller);
     }
 
     public static class InvokerApp<E extends PeerLocator> extends RPCInvoker<InvokerAppIf, E>
@@ -177,6 +176,18 @@ public class TestRPC extends Util {
             }
             return r;
         }
+        
+        @Override
+        public int callback(PeerLocator caller) {
+            InvokerAppIf stub = getStub((E)caller);
+            int sum = 0;
+            try {
+                sum = stub.sum(10);
+            } catch (RPCException e) {
+                e.printStackTrace();
+            }
+            return sum + 1; 
+        }
     }
     
     public static class App implements SAppIf {
@@ -263,7 +274,6 @@ public class TestRPC extends Util {
         public int localMethod(int n) {
             return sum(n);
         }
-
     }
     
     static InvokerApp<PeerLocator> invokerApp1;
@@ -277,9 +287,9 @@ public class TestRPC extends Util {
      * 前準備
      * ピアやトランスポート、RPC対象のオブジェクトの作成など
      */
-    @BeforeClass
+    @BeforeAll
     public static void setup() {
-        Net ntype = Net.TCP;
+        Net ntype = Net.NETTY;//TCP
         logger.debug("- start -%n");
         logger.debug("- locator type: %s%n", ntype);
 
@@ -626,11 +636,13 @@ public class TestRPC extends Util {
      * クラス指定
      * IllegalArgumentExceprtionが発生するはず
      */
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void calAppNormalWithClass() throws RPCException {
+        assertThrows(IllegalArgumentException.class, () -> {
         int sum = invokerApp1.getStub(App.class,
                 new ObjectId("app"),transport2.getEndpoint()).sum(10);
         assertEquals(56,sum);
+        });
     }
     
     /**
@@ -760,12 +772,14 @@ public class TestRPC extends Util {
      * local methodへのoneway Dynamic RPC
      * IllegalRPCAccessExceptionが発生するはず
      */
-    @Test(expected = IllegalRPCAccessException.class)
+    @Test
     public void callAppLocalOnewayDynamic() throws Throwable {
+        assertThrows(IllegalRPCAccessException.class, () -> {
         invokerApp1.rcall(new ObjectId("app"),
                 transport2.getEndpoint(),"localOneway");
         String r = resultQueue.poll(11000,TimeUnit.MILLISECONDS);
         assertNull(r);
+        });
     }
     
     /**
@@ -879,14 +893,16 @@ public class TestRPC extends Util {
      * クラス指定。
      * IllegalArgumentExceptionが発生するはず。
      */
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void callAppVoidOneway1WithClass() throws RPCException, InterruptedException {
+        assertThrows(IllegalArgumentException.class, () -> {
         invokerApp1.getStub(App.class,new ObjectId("app"),
                 transport2.getEndpoint(),RPCMode.ONEWAY).syncRPC();
         String r = resultQueue.poll();
         assertNull(r);
         r = resultQueue.take();
         assertEquals("syncRPC",r);
+        });
     }
     
     /**
@@ -904,12 +920,20 @@ public class TestRPC extends Util {
         assertEquals("syncRPC",r);
     }
     
+    @Test
+    public void callbackTest() {
+        Peer.RECEIVE_ASYNC.set(true);
+        int sum = invokerApp1.getStub(transport2.getEndpoint()).callback((PeerLocator)transport1.getEndpoint());
+        assertEquals(56, sum);
+        Peer.RECEIVE_ASYNC.set(false);
+    }
+    
     /**
      * 後始末
      * RPCInvokerのサブクラスの終了処理
      * ピアの終了処理
      */
-    @AfterClass
+    @AfterAll
     public static void fin() {
         invokerApp1.fin();
         invokerApp2.fin();

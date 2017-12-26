@@ -213,7 +213,7 @@ public class CombinedOverlay extends OverlayImpl<Destination, Key> implements
     }
 
     @SuppressWarnings({ "unchecked", "rawtypes" })
-    public FutureQueue<?> onReceiveRequest(Overlay<Destination, Key> trans,
+    public Object onReceiveRequest(Overlay<Destination, Key> trans,
             OverlayReceivedMessage<Key> rmsg) {
         logger.trace("ENTRY:");
         Collection<Key> matchedKeys = rmsg.getMatchedKeys();
@@ -267,12 +267,18 @@ public class CombinedOverlay extends OverlayImpl<Destination, Key> implements
         } else {
             OverlayReceivedMessage<Key> rcvMsg = new OverlayReceivedMessage<Key>(
                     nmsg.sender, nmsg.src, _rows, nmsg.getInner());
-            FutureQueue<?> fq = ovl.onReceiveRequest(this, rcvMsg);
-            /*
-             * TODO 本当なら非同期的に処理したい
-             */
-            for (RemoteValue<?> rv : fq) {
-                retFq.add(rv);
+            Object response = ovl.onReceiveRequest(this, rcvMsg);
+            if (response instanceof FutureQueue<?>) {
+                FutureQueue<?> fq = (FutureQueue<?>) response;
+                /*
+                 * TODO 本当なら非同期的に処理したい
+                 */ 
+                for (RemoteValue<?> rv : fq) {
+                    retFq.add(rv);
+                }
+            }
+            else {
+                logger.warn("unexpected response " + response);
             }
         }
         retFq.setEOFuture();

@@ -21,11 +21,9 @@ import org.piax.common.subspace.CircularRange;
 import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.gtrans.ov.ddll.Link;
 import org.piax.gtrans.ov.ddll.Node;
-import org.piax.gtrans.ov.ddll.NodeObserver;
 import org.piax.gtrans.ov.ddll.Node.InsertPoint;
 import org.piax.gtrans.ov.ddll.Node.InsertionResult;
-import org.piax.gtrans.ov.ring.TemporaryIOException;
-import org.piax.gtrans.ov.ring.UnavailableException;
+import org.piax.gtrans.ov.ddll.NodeObserver;
 import org.piax.gtrans.ov.ring.rq.RQMessage;
 import org.piax.util.UniqId;
 import org.slf4j.Logger;
@@ -88,7 +86,7 @@ public class RingVNode<E extends Endpoint> implements NodeObserver {
     public RingVNode(RingManager<E> rman, Comparable<?> rawkey) {
         this.manager = rman;
         this.rawkey = rawkey;
-        this.key = new DdllKey(rawkey, new UniqId(rman.peerId));
+        this.key = new DdllKey(rawkey, new UniqId(rman.peerId), 0);
         this.ddllNode = rman.manager.createNode(this.key, this);
 
         /* register instance for debug */

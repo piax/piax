@@ -20,52 +20,20 @@ import java.io.Serializable;
  */
 public class LinkNum implements Serializable, Comparable<LinkNum> {
     private static final long serialVersionUID = 1L;
-    final int repair;
-    final int seq;
+    private final int repair;
+    private final int seq;
 
-    LinkNum(int repair, int seq) {
+    public LinkNum(int repair, int seq) {
         this.repair = repair;
         this.seq = seq;
     }
     
     public LinkNum gnext() {
-        return new LinkNum(nextRepair(), 0);
+        return new LinkNum(repair + 1, 0);
     }
     
     public LinkNum next() {
-        return new LinkNum(repair, nextSeq());
-    }
-
-//        public int seq() {
-//            return seq;
-//        }
-
-    int nextSeq() {
-        // TODO think!
-        return seq + 1;
-    }
-
-    public boolean seqIsNew(LinkNum old) {
-        // TODO think!
-        return seq > old.seq;
-    }
-
-//        public int repair() {
-//            return repair;
-//        }
-    
-    int nextRepair() {
-        // TODO think!
-        return repair + 1;
-    }
-
-    public boolean repairIsNew(LinkNum old) {
-        // TODO think!
-        return repair > old.repair;
-    }
-
-    public boolean repairIsMatch(LinkNum old) {
-        return repair == old.repair;
+        return new LinkNum(repair, seq + 1);
     }
 
     public int compareTo(LinkNum o) {

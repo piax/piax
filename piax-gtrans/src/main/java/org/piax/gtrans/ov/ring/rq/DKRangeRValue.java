@@ -36,4 +36,11 @@ public class DKRangeRValue<V> extends DdllKeyRange {
     public RemoteValue<V> getRemoteValue() {
         return value;
     }
+    
+    @Override
+    public String toString() {
+        return "[DKRangeRValue " + super.toString() + " " 
+                 + (value == null ? "null" : value.toString()) 
+                + "]";
+    }
 }

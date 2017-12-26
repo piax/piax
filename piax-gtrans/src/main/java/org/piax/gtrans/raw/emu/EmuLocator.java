@@ -32,6 +32,11 @@ public class EmuLocator extends PeerLocator {
         this.vport = vport;
     }
     
+    public EmuLocator(String spec) {
+        String specs[] = spec.split(":");
+        this.vport = Integer.parseInt(specs[1]);
+    }
+    
     public int getVPort() {
         return vport;
     }

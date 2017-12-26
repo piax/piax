@@ -24,9 +24,9 @@ import org.piax.gtrans.RPCException;
 import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.gtrans.ov.ddll.Link;
 import org.piax.gtrans.ov.ddll.Node;
-import org.piax.gtrans.ov.ddll.NodeObserver;
 import org.piax.gtrans.ov.ddll.Node.InsertPoint;
 import org.piax.gtrans.ov.ddll.Node.InsertionResult;
+import org.piax.gtrans.ov.ddll.NodeObserver;
 import org.piax.gtrans.ov.sg.SkipGraph.BestLink;
 import org.piax.gtrans.ov.sg.SkipGraph.LvState;
 import org.piax.gtrans.ov.sg.SkipGraph.QueryId;
@@ -98,7 +98,7 @@ public class SGNode<E extends Endpoint> implements NodeObserver {
         this.sg = sg;
         this.mv = mv;
         this.rawkey = rawkey;
-        this.key = new DdllKey(rawkey, new UniqId(sg.peerId));
+        this.key = new DdllKey(rawkey, new UniqId(sg.peerId), 0);
         
         /* register instance for debug */
 //        synchronized (SGNode.class) {
@@ -364,7 +364,7 @@ public class SGNode<E extends Endpoint> implements NodeObserver {
             try {
                 // accurate = false because an inaccurate result can be 
                 // detected later. 
-                p = sg.find(seed, new DdllKey(rawkey, new UniqId(sg.peerId)), false);
+                p = sg.find(seed, new DdllKey(rawkey, new UniqId(sg.peerId), 0), false);
                 logger.debug("getContact: {} is between {} at level0", rawkey, p);
                 return p;
             } catch (UnavailableException e) {
@@ -556,7 +556,7 @@ public class SGNode<E extends Endpoint> implements NodeObserver {
             SGNodeInfo inf;
             try {
                 logger.debug("findMatchingNode: calling getSGNodeInfo on {}", n);
-                inf = stub.getSGNodeInfo(n.key.getPrimaryKey(), level - 1, mv,
+                inf = stub.getSGNodeInfo(n.key.getRawKey(), level - 1, mv,
                         traversed);
                 if (inf == null) {
                     // nが削除中で対応するレベルが消えている場合．
@@ -1030,7 +1030,7 @@ public class SGNode<E extends Endpoint> implements NodeObserver {
             try {
                 SkipGraphIf<E> stub = sg.getStub((E) right.addr);
                 logger.debug("{}: forward right {} at L{}", h, right, level);
-                stub.fixAndPropagateSingle(right.key.getPrimaryKey(), failedLink,
+                stub.fixAndPropagateSingle(right.key.getRawKey(), failedLink,
                         failedLinks, rLimit);
             } catch (RPCException e) {
                 logger.info("", e);

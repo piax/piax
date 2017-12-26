@@ -191,6 +191,7 @@ public class AgentPeer {
             throw new SetupTransportException(e);
         }
     }
+    
 
     /**
      * トランスポートの設定以外のことを行うコンストラクタ。 内部処理専用で外部からは呼べない。

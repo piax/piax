@@ -16,6 +16,7 @@ package org.piax.gtrans.ov;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Set;
+import java.util.function.BiConsumer;
 
 import org.piax.common.Destination;
 import org.piax.common.Endpoint;
@@ -26,6 +27,7 @@ import org.piax.gtrans.FutureQueue;
 import org.piax.gtrans.ProtocolUnsupportedException;
 import org.piax.gtrans.RequestTransport;
 import org.piax.gtrans.TransOptions;
+import org.piax.gtrans.async.Option.StringOption;
 
 /**
  * The common overlay interface. 
@@ -35,17 +37,22 @@ import org.piax.gtrans.TransOptions;
  */
 public interface Overlay<D extends Destination, K extends Destination> extends
         RequestTransport<D> {
-    
+    public static StringOption DEFAULT_ENDPOINT
+    = new StringOption(null, "-endpoint");
+    public static StringOption DEFAULT_SEED
+    = new StringOption(null, "-seed");
+
     void setListener(ObjectId upper, OverlayListener<D, K> listener);
     OverlayListener<D, K> getListener(ObjectId upper);
 
     Class<?> getAvailableKeyType();
 
-    
+    /*
     // Utility functions
     <E> FutureQueue<E> singletonFutureQueue(E value);
     
     <E> FutureQueue<E> singletonFutureQueue(E value, Throwable t);
+    */
     /*
      * TODO
      * 以前の実装では、Overlay が動的に生成されるオブジェクトであることを考慮して、
@@ -99,6 +106,49 @@ public interface Overlay<D extends Destination, K extends Destination> extends
             int timeout) throws ParseException, ProtocolUnsupportedException,
             IOException;
 
+    // async request interface
+    public void requestAsync(ObjectId sender, ObjectId receiver,
+            String dstExp, Object msg,
+            BiConsumer<Object, Exception> resultsReceiver,
+            TransOptions opts) throws ParseException, ProtocolUnsupportedException, IOException;
+
+    /* Reduced argument versions of requestAsync */
+    default public void requestAsync(ObjectId appId, 
+            String dstExp, Object msg,
+            BiConsumer<Object, Exception> responseReceiver,
+            TransOptions opts
+            ) throws ParseException, ProtocolUnsupportedException, IOException {
+        requestAsync(appId, appId, dstExp, msg, responseReceiver, opts);
+    }
+    
+    /* Reduced argument versions of requestAsync */
+    default public void requestAsync(ObjectId appId, 
+            String dstExp, Object msg,
+            BiConsumer<Object, Exception> responseReceiver
+            ) throws ParseException, ProtocolUnsupportedException, IOException {
+        requestAsync(appId, appId, dstExp, msg, responseReceiver, null);
+    }
+
+    /* Reduced argument versions of requestAsync */
+    default public void requestAsync(String dstExp, Object msg,
+            BiConsumer<Object, Exception> responseReceiver,
+            TransOptions opts
+            ) throws ParseException, ProtocolUnsupportedException, IOException {
+        requestAsync(null, null, dstExp, msg, responseReceiver, opts);
+    }
+
+    /* Reduced argument versions of requestAsync */
+    default public void requestAsync(String dstExp, Object msg,
+            BiConsumer<Object, Exception> responseReceiver
+            ) throws ParseException, ProtocolUnsupportedException, IOException {
+        requestAsync(null, null, dstExp, msg, responseReceiver, null);
+    }
+
+    default public void requestAsync(String appIdStr, D dst, String msg,
+            BiConsumer<Object, Exception> responseReceiver) {
+        requestAsync(new ObjectId(appIdStr), new ObjectId(appIdStr), dst, msg, responseReceiver, null);
+    }
+    
     /**
      * 指定されたkeyをオーバレイに登録する。
      * <p>
@@ -159,7 +209,8 @@ public interface Overlay<D extends Destination, K extends Destination> extends
     Set<K> getKeys();
 
     boolean join(Endpoint seed) throws IOException;
-    
+    boolean join() throws IOException;
+    boolean join(String seedSpec) throws IOException;
     /**
      * 引数で指定されたseedのリストをseedピアとして、Overlayをjoinする。
      * <p>

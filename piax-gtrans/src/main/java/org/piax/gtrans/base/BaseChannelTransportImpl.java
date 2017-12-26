@@ -29,6 +29,7 @@ import org.piax.gtrans.GTransConfigValues;
 import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.Peer;
 import org.piax.gtrans.ProtocolUnsupportedException;
+import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.impl.ExceededSizeException;
 import org.piax.gtrans.impl.InvalidMessageException;
 import org.piax.gtrans.impl.NestedMessage;
@@ -54,7 +55,7 @@ public class BaseChannelTransportImpl<E extends PeerLocator> extends
     @SuppressWarnings("unchecked")
     public BaseChannelTransportImpl(Peer peer, TransportId transId,
             E locator) throws IdConflictException, IOException {
-        super(transId, (RawTransport<E>) locator.newRawTransport(peer.getPeerId()));
+        super(transId, (RawTransport<E>) ((PeerLocator)locator).newRawTransport(peer.getPeerId()));
     }
 
     @SuppressWarnings("unchecked")
@@ -89,8 +90,9 @@ public class BaseChannelTransportImpl<E extends PeerLocator> extends
 
     @Override
     protected void lowerSend(ObjectId sender, ObjectId receiver,
-            E dst, NestedMessage nmsg)
+            E dst, NestedMessage nmsg, TransOptions opts)
             throws ProtocolUnsupportedException, IOException {
+        // XXX opts is ignored.
         Channel<E> ch = null;
         Object bb;
         if (GTransConfigValues.ALLOW_REF_SEND_IN_BASE_TRANSPORT

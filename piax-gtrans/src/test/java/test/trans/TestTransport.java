@@ -1,22 +1,24 @@
 package test.trans;
 
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.Arrays;
 import java.util.List;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.piax.common.ComparableKey;
 import org.piax.common.Destination;
+import org.piax.common.Endpoint;
 import org.piax.common.ObjectId;
 import org.piax.common.PeerId;
 import org.piax.common.PeerLocator;
 import org.piax.common.TransportId;
 import org.piax.common.dcl.DCLTranslator;
 import org.piax.common.subspace.KeyRange;
+import org.piax.common.subspace.Lower;
+import org.piax.common.subspace.LowerUpper;
 import org.piax.common.wrapper.DoubleKey;
 import org.piax.gtrans.Channel;
 import org.piax.gtrans.ChannelListener;
@@ -28,11 +30,13 @@ import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.TransOptions.RetransMode;
 import org.piax.gtrans.Transport;
 import org.piax.gtrans.TransportListener;
+import org.piax.gtrans.netty.NettyLocator;
+import org.piax.gtrans.netty.idtrans.PrimaryKey;
 import org.piax.gtrans.ov.Overlay;
 import org.piax.gtrans.ov.OverlayListener;
 import org.piax.gtrans.ov.OverlayReceivedMessage;
+import org.piax.gtrans.ov.async.suzaku.Suzaku;
 import org.piax.gtrans.ov.sg.MSkipGraph;
-import org.piax.gtrans.ov.szk.Suzaku;
 import org.piax.gtrans.raw.emu.EmuLocator;
 import org.piax.gtrans.raw.tcp.TcpLocator;
 import org.piax.gtrans.raw.udp.UdpLocator;
@@ -40,6 +44,9 @@ import org.piax.gtrans.util.FailureSimulationChannelTransport;
 import org.piax.gtrans.util.ThroughTransport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import test.Util;
+import test.Util.Net;
 
 public class TestTransport {
 	
@@ -88,9 +95,56 @@ public class TestTransport {
 
         p1.fin();
         p2.fin();
-        assertTrue("UDP1 receive failed", udp_received1);
-        assertTrue("UDP2 receive failed", udp_received2);
+        assertTrue(udp_received1, "UDP1 receive failed");
+        assertTrue(udp_received2, "UDP2 receive failed");
         // assertTrue(ByteUtil.equals(b.getMessage(), "abcdefg".getBytes()));
+    }
+    
+    @Test
+    public void IdChannelTest() throws Exception {
+        // get peers
+        Peer p1 = Peer.getInstance(new PeerId("p1"));
+        Peer p2 = Peer.getInstance(new PeerId("p2"));
+        
+        // top level
+        ChannelTransport<PrimaryKey> tr1 = p1.newBaseChannelTransport(
+                Util.genEndpoint(Net.ID, p1.getPeerId(),
+                                "localhost", 12367));
+        ChannelTransport<PrimaryKey> tr2 = p2.newBaseChannelTransport(
+                Util.genEndpoint(Net.ID, p2.getPeerId(),
+                                "localhost", 12368));
+
+        tr1.setChannelListener(new ChannelListener<PrimaryKey>() {
+            public boolean onAccepting(Channel<PrimaryKey> channel) {
+                return true;
+            }
+
+            public void onClosed(Channel<PrimaryKey> channel) {
+            }
+
+            public void onFailure(Channel<PrimaryKey> channel, Exception cause) {
+            }
+
+            public void onReceive(Channel<PrimaryKey> ch) {
+                if (ch.isCreatorSide())
+                    return;
+                Object msg = ch.receive();
+                try {
+                    ch.send(msg);
+                } catch (IOException e) {
+                    fail("IOException occured");
+                }
+            }
+        });
+        
+        Channel<PrimaryKey> c = tr2.newChannel(tr1.getEndpoint());
+        c.send("654321");
+        String mes = (String) c.receive(1000);
+        assertTrue(mes.equals("654321"));
+        c.close();
+
+        p1.fin();
+        p2.fin();
     }
 
     @Test
@@ -201,10 +255,10 @@ public class TestTransport {
         boolean succ3 = tr1.addKey(new DoubleKey(1.0));
         boolean succ4 = tr2.addKey(new DoubleKey(2.0));
 
-        assertTrue("SG1 join failed", succ1);
-        assertTrue("SG2 join failed", succ2);
-        assertTrue("SG1 addKey failed", succ3);
-        assertTrue("SG2 addKey failed", succ4);
+        assertTrue(succ1, "SG1 join failed");
+        assertTrue(succ2, "SG2 join failed");
+        assertTrue(succ3, "SG1 addKey failed");
+        assertTrue(succ4, "SG2 addKey failed");
         Thread.sleep(500);
 
         DoubleKey key = null;
@@ -223,14 +277,14 @@ public class TestTransport {
 //                "654321".getBytes());
         
         Thread.sleep(100);
-        assertTrue("SG2 receive failed", sg_received2);
-        assertTrue("SG1 receive failed", sg_received1);
+        assertTrue(sg_received2, "SG2 receive failed");
+        assertTrue(sg_received1, "SG1 receive failed");
         sg_received1 = false;
         sg_received2 = false;
         tr1.send("[2.0..2.0]", "1.0");
         Thread.sleep(1000);
-        assertTrue("SG2 receive failed", sg_received2);
-        assertTrue("SG1 receive failed", sg_received1);
+        assertTrue(sg_received2, "SG2 receive failed");
+        assertTrue(sg_received1, "SG1 receive failed");
         sg_received1 = false;
         sg_received2 = false;
 
@@ -288,10 +342,10 @@ public class TestTransport {
         boolean succ3 = tr1.addKey(new DoubleKey(1.0));
         boolean succ4 = tr2.addKey(new DoubleKey(2.0));
 
-        assertTrue("SG1 join failed", succ1);
-        assertTrue("SG2 join failed", succ2);
-        assertTrue("SG1 addKey failed", succ3);
-        assertTrue("SG2 addKey failed", succ4);
+        assertTrue(succ1, "SG1 join failed");
+        assertTrue(succ2, "SG2 join failed");
+        assertTrue(succ3, "SG1 addKey failed");
+        assertTrue(succ4, "SG2 addKey failed");
         Thread.sleep(500);
 
         DoubleKey key = null;
@@ -303,8 +357,8 @@ public class TestTransport {
         tr1.send(new DoubleKey(2.0), key.getKey().toString());
 
         Thread.sleep(1000);
-        assertTrue("SG2 receive failed", sg_received2);
-        assertTrue("SG1 receive failed", sg_received1);
+        assertTrue(sg_received2, "SG2 receive failed");
+        assertTrue(sg_received1, "SG1 receive failed");
 
         p1.fin();
         p2.fin();
@@ -359,10 +413,10 @@ public class TestTransport {
         boolean succ3 = tr1.addKey(new DoubleKey(1.0));
         boolean succ4 = tr2.addKey(new DoubleKey(2.0));
 
-        assertTrue("SG1 join failed", succ1);
-        assertTrue("SG2 join failed", succ2);
-        assertTrue("SG1 addKey failed", succ3);
-        assertTrue("SG2 addKey failed", succ4);
+        assertTrue(succ1, "SG1 join failed");
+        assertTrue(succ2, "SG2 join failed");
+        assertTrue(succ3, "SG1 addKey failed");
+        assertTrue(succ4, "SG2 addKey failed");
         Thread.sleep(500);
 
         DoubleKey key = null;
@@ -374,8 +428,8 @@ public class TestTransport {
         tr1.send(new DoubleKey(2.0), key.getKey().toString());
 
         Thread.sleep(1000);
-        assertTrue("SG2 receive failed", sg_received2);
-        assertTrue("SG1 receive failed", sg_received1);
+        assertTrue(sg_received2, "SG2 receive failed");
+        assertTrue(sg_received1, "SG1 receive failed");
 
         p1.fin();
         p2.fin();
@@ -432,17 +486,17 @@ public class TestTransport {
         boolean succ3 = ov1.addKey(new DoubleKey(1.0));
         boolean succ4 = ov2.addKey(new DoubleKey(2.0));
 
-        assertTrue("SG1 join failed", succ1);
-        assertTrue("SG2 join failed", succ2);
-        assertTrue("SG1 addKey failed", succ3);
-        assertTrue("SG2 addKey failed", succ4);
+        assertTrue(succ1, "SG1 join failed");
+        assertTrue(succ2, "SG2 join failed");
+        assertTrue(succ3, "SG1 addKey failed");
+        assertTrue(succ4, "SG2 addKey failed");
         Thread.sleep(500);
 
         ov1.send(new DoubleKey(2.0), "12345");
 
         Thread.sleep(1000);
-        assertTrue("SG2 receive failed", sg_received2);
-        assertTrue("SG1 receive failed", sg_received1);
+        assertTrue(sg_received2, "SG2 receive failed");
+        assertTrue(sg_received1, "SG1 receive failed");
 
         p1.fin();
         p2.fin();
@@ -559,9 +613,9 @@ public class TestTransport {
                 key.getKey().toString());
 
         Thread.sleep(2000);
-        assertTrue("SG2 receive failed", sg_received2);
-        assertTrue("SG3 receive failed", sg_received3);
-        assertTrue("SG1 receive failed", sg_received1);
+        assertTrue(sg_received2, "SG2 receive failed");
+        assertTrue(sg_received3, "SG3 receive failed");
+        assertTrue(sg_received1, "SG1 receive failed");
 
         p1.fin();
         p2.fin();
@@ -650,8 +704,8 @@ public class TestTransport {
         sg_received2 = l.contains("recv2");
         sg_received3 = l.contains("recv3");
         
-        assertTrue("SG2 receive failed", sg_received2);
-        assertTrue("SG3 receive failed", sg_received3);
+        assertTrue(sg_received2, "SG2 receive failed");
+        assertTrue(sg_received3, "SG3 receive failed");
 
         p1.fin();
         p2.fin();
@@ -710,10 +764,10 @@ public class TestTransport {
         boolean succ3 = tr1.addKey(new DoubleKey(1.0));
         boolean succ4 = tr2.addKey(new DoubleKey(2.0));
 
-        assertTrue("SG1 join failed", succ1);
-        assertTrue("SG2 join failed", succ2);
-        assertTrue("SG1 addKey failed", succ3);
-        assertTrue("SG2 addKey failed", succ4);
+        assertTrue(succ1, "SG1 join failed");
+        assertTrue(succ2, "SG2 join failed");
+        assertTrue(succ3, "SG1 addKey failed");
+        assertTrue(succ4, "SG2 addKey failed");
         Thread.sleep(500);
 
         DoubleKey key = null;
@@ -726,21 +780,21 @@ public class TestTransport {
         tr1.send(new DoubleKey(2.0), key.getKey().toString());
         logger.debug("send took:" + (System.currentTimeMillis() - start) + "(ms)");
         Thread.sleep(1000);
-        assertTrue("SG2 receive failed", sg_received2);
-        assertTrue("SG1 receive failed", sg_received1);
+        assertTrue(sg_received2, "SG2 receive failed");
+        assertTrue(sg_received1, "SG1 receive failed");
         start = System.currentTimeMillis();
         tr1.send(new DoubleKey(2.0), key.getKey().toString(), new TransOptions(RetransMode.NONE));
         logger.debug("send/no-retrans took:" + (System.currentTimeMillis() - start) + "(ms)");
         Thread.sleep(1000);
-        assertTrue("SG2 receive failed", sg_received2);
-        assertTrue("SG1 receive failed", sg_received1);
+        assertTrue(sg_received2, "SG2 receive failed");
+        assertTrue(sg_received1, "SG1 receive failed");
         
         start = System.currentTimeMillis();
         tr1.send(new DoubleKey(2.0), key.getKey().toString(), new TransOptions(RetransMode.FAST));
         logger.debug("send/fast-retrans took:" + (System.currentTimeMillis() - start) + "(ms)");
         Thread.sleep(1000);
-        assertTrue("SG2 receive failed", sg_received2);
-        assertTrue("SG1 receive failed", sg_received1);
+        assertTrue(sg_received2, "SG2 receive failed");
+        assertTrue(sg_received1, "SG1 receive failed");
         
         start = System.currentTimeMillis();
         tr1.request(new DoubleKey(2.0), key.getKey().toString());
@@ -750,8 +804,8 @@ public class TestTransport {
 //        tr2.send(new Ranges<Integer>(new Range<Integer>(1)),
 //                "654321".getBytes());
         Thread.sleep(1000);
-        assertTrue("SG2 receive failed", sg_received2);
-        assertTrue("SG1 receive failed", sg_received1);
+        assertTrue(sg_received2, "SG2 receive failed");
+        assertTrue(sg_received1, "SG1 receive failed");
         
         p1.fin();
         p2.fin();
@@ -807,10 +861,10 @@ public class TestTransport {
         boolean succ3 = tr1.addKey(new DoubleKey(1.0));
         boolean succ4 = tr2.addKey(new DoubleKey(2.0));
 
-        assertTrue("SG1 join failed", succ1);
-        assertTrue("SG2 join failed", succ2);
-        assertTrue("SG1 addKey failed", succ3);
-        assertTrue("SG2 addKey failed", succ4);
+        assertTrue(succ1, "SG1 join failed");
+        assertTrue(succ2, "SG2 join failed");
+        assertTrue(succ3, "SG1 addKey failed");
+        assertTrue(succ4, "SG2 addKey failed");
         Thread.sleep(500);
 
         DoubleKey key = null;
@@ -822,8 +876,8 @@ public class TestTransport {
         tr1.send(new DoubleKey(2.0), key.getKey().toString());
 
         Thread.sleep(1000);
-        assertTrue("SG2 receive failed", sg_received2);
-        assertTrue("SG1 receive failed", sg_received1);
+        assertTrue(sg_received2, "SG2 receive failed");
+        assertTrue(sg_received1, "SG1 receive failed");
 
         p1.fin();
         p2.fin();
@@ -880,10 +934,10 @@ public class TestTransport {
         boolean succ3 = tr1.addKey(oid2, new DoubleKey(1.0));
         boolean succ4 = tr2.addKey(oid2, new DoubleKey(2.0));
 
-        assertTrue("ov1 join failed", succ1);
-        assertTrue("ov2 join failed", succ2);
-        assertTrue("ov1 addKey failed", succ3);
-        assertTrue("ov2 addKey failed", succ4);
+        assertTrue(succ1, "ov1 join failed");
+        assertTrue(succ2, "ov2 join failed");
+        assertTrue(succ3, "ov1 addKey failed");
+        assertTrue(succ4, "ov2 addKey failed");
         Thread.sleep(500);
 
         DoubleKey key = null;
@@ -895,21 +949,21 @@ public class TestTransport {
         tr1.send(oid2, new DoubleKey(2.0), key.getKey().toString());
 
         Thread.sleep(1000);
-        assertTrue("ov2 falsely received", !sg_received2);
-        assertTrue("ov1 falsely received", !sg_received1);
+        assertTrue(!sg_received2, "ov2 falsely received");
+        assertTrue(!sg_received1, "ov1 falsely received");
 
         succ3 = tr1.addKey(oid, new DoubleKey(1.0));
         succ4 = tr2.addKey(oid, new DoubleKey(2.0));
         
-        assertTrue("ov1 addKey failed", succ3);
-        assertTrue("ov2 addKey failed", succ4);
+        assertTrue(succ3, "ov1 addKey failed");
+        assertTrue(succ4, "ov2 addKey failed");
         Thread.sleep(500);
         
         tr1.send(oid, new DoubleKey(2.0), key.getKey().toString());
 
         Thread.sleep(1000);
-        assertTrue("ov2 receive failed", sg_received2);
-        assertTrue("ov1 receive failed", sg_received1);
+        assertTrue(sg_received2, "ov2 receive failed");
+        assertTrue(sg_received1, "ov1 receive failed");
         
         p1.fin();
         p2.fin();
@@ -966,10 +1020,10 @@ public class TestTransport {
         boolean succ3 = ov1.addKey(new DoubleKey(1.0));
         boolean succ4 = ov2.addKey(new DoubleKey(2.0));
 
-        assertTrue("SG1 join failed", succ1);
-        assertTrue("SG2 join failed", succ2);
-        assertTrue("SG1 addKey failed", succ3);
-        assertTrue("SG2 addKey failed", succ4);
+        assertTrue(succ1, "SG1 join failed");
+        assertTrue(succ2, "SG2 join failed");
+        assertTrue(succ3, "SG1 addKey failed");
+        assertTrue(succ4, "SG2 addKey failed");
         Thread.sleep(500);
 
         DoubleKey key = null;
@@ -981,13 +1035,129 @@ public class TestTransport {
         ov1.send(new DoubleKey(2.0), key.getKey().toString());
 
         Thread.sleep(1000);
-        assertTrue("SG2 receive failed", sg_received2);
-        assertTrue("SG1 receive failed", sg_received1);
+        assertTrue(sg_received2, "SG2 receive failed");
+        assertTrue(sg_received1, "SG1 receive failed");
 
         p1.fin();
         p2.fin();
     }
     
+    @Test
+    public void IdTransTest() throws Exception {
+        // get peers
+        Peer p1 = Peer.getInstance(new PeerId("p1"));
+        Peer p2 = Peer.getInstance(new PeerId("p2"));
+        
+        // base transport (Emu)
+        Endpoint ep;
+        ChannelTransport<?> bt1 = p1.newBaseChannelTransport(
+                ep = new PrimaryKey(new DoubleKey(0.0), new NettyLocator("localhost", 12367)));
+        ChannelTransport<?> bt2 = p2.newBaseChannelTransport(
+                new PrimaryKey(new DoubleKey(1.0), new NettyLocator("localhost", 12368)));
+
+        // top level
+        Overlay<DoubleKey, DoubleKey> ov1, ov2;
+        ov1 = new Suzaku<DoubleKey, DoubleKey>(
+                        new TransportId("mskip"), bt1);
+        ov2 = new Suzaku<DoubleKey, DoubleKey>(
+                        new TransportId("mskip"), bt2);
+
+        sg_received1 = false;
+        sg_received2 = false;
+
+        ov1.setListener((trans, rmsg)-> {
+                logger.debug("emu recv1:" + rmsg.getMessage());
+                sg_received1 = rmsg.getMessage().equals("recv");
+        });
+
+        ov2.setListener((trans, rmsg)-> {
+                try {
+                    logger.debug("emu recv2:" + rmsg.getMessage());
+                    sg_received2 = true;
+                    trans.send(new DoubleKey(Double.parseDouble(
+                            (String) rmsg.getMessage())), "recv");
+                } catch (IOException e) {
+                    fail("IOException occured");
+                }
+        });
+
+        boolean succ1 = ov1.join(ep);
+        boolean succ2 = ov2.join(ep);
+
+        assertTrue(succ1, "SG1 join failed");
+        assertTrue(succ2, "SG2 join failed");
+
+        DoubleKey key = null;
+        for (ComparableKey<?> obj : ov1.getKeys()) {
+            if (obj instanceof DoubleKey) {
+                key = (DoubleKey) obj;
+            }
+        }
+        ov1.send(new DoubleKey(1.0), key.getKey().toString());
+
+        Thread.sleep(1000);
+        assertTrue(sg_received2, "SG2 receive failed");
+        assertTrue(sg_received1, "SG1 receive failed");
+
+        p1.fin();
+        p2.fin();
+    }
+
+    @Test
+    public void LowerIdTest() throws Exception {
+        // get peers
+        Peer p1 = Peer.getInstance(new PeerId("p1"));
+        Peer p2 = Peer.getInstance(new PeerId("p2"));
+        
+        Endpoint ep;
+        ChannelTransport<?> bt1 = p1.newBaseChannelTransport(
+                ep = new PrimaryKey(new DoubleKey(0.0), new NettyLocator("localhost", 12367)));
+        ChannelTransport<?> bt2 = p2.newBaseChannelTransport(
+                new PrimaryKey(new DoubleKey(0.5), new NettyLocator("localhost", 12368)));
+
+        // top level
+        Overlay<LowerUpper, DoubleKey> ov1, ov2;
+        ov1 = new Suzaku<LowerUpper, DoubleKey>(
+                        new TransportId("mskip"), bt1);
+        ov2 = new Suzaku<LowerUpper, DoubleKey>(
+                        new TransportId("mskip"), bt2);
+
+        sg_received1 = false;
+        sg_received2 = false;
+
+        ov1.setListener((trans, rmsg) -> {
+                logger.debug("emu recv1:" + rmsg.getMessage());
+                sg_received1 = rmsg.getMessage().equals("recv");
+        });
+
+        ov2.setListener((trans, rmsg) -> {
+                try {
+                    logger.debug("emu recv2:" + rmsg.getMessage());
+                    sg_received2 = true;
+                    trans.send(new Lower<DoubleKey>(false, new DoubleKey(0.1), 1), "recv");
+                } catch (IOException e) {
+                    fail("IOException occured");
+                }
+        });
+    try {
+
+        boolean succ1 = ov1.join(ep);
+        boolean succ2 = ov2.join(ep);
+
+        assertTrue(succ1, "SG1 join failed");
+        assertTrue(succ2, "SG2 join failed");
+        Thread.sleep(500);
+        ov1.send(new Lower<DoubleKey>(false, new DoubleKey(0.6), 1), "data");
+        Thread.sleep(1000);
+        assertTrue(sg_received2, "SG2 receive failed");
+        assertTrue(sg_received1, "SG1 receive failed");
+    }
+    finally {
+        p1.fin();
+        p2.fin();
+    }
+    }    
+
     @Test
     public void CSTransportTestDirectReply() throws Exception {
         // get peers
@@ -1037,17 +1207,17 @@ public class TestTransport {
         boolean succ3 = tr1.addKey(new DoubleKey(1.0));
         boolean succ4 = tr2.addKey(new DoubleKey(2.0));
 
-        assertTrue("SG1 join failed", succ1);
-        assertTrue("SG2 join failed", succ2);
-        assertTrue("SG1 addKey failed", succ3);
-        assertTrue("SG2 addKey failed", succ4);
+        assertTrue(succ1, "SG1 join failed");
+        assertTrue(succ2, "SG2 join failed");
+        assertTrue(succ3, "SG1 addKey failed");
+        assertTrue(succ4, "SG2 addKey failed");
         Thread.sleep(500);
 
         tr1.send(new DoubleKey(2.0), "12345");
 
         Thread.sleep(1000);
-        assertTrue("SG2 receive failed", sg_received2);
-        assertTrue("SG1 receive failed", sg_received1);
+        assertTrue(sg_received2, "SG2 receive failed");
+        assertTrue(sg_received1, "SG1 receive failed");
 
         p1.fin();
         p2.fin();
@@ -1176,9 +1346,9 @@ public class TestTransport {
         //                key.getKey().toString());
 
         Thread.sleep(2000);
-        assertTrue("SG2 receive failed", sg_received2);
-        assertTrue("SG3 receive failed", sg_received3);
-        assertTrue("SG1 receive failed", sg_received1);
+        assertTrue(sg_received1, "SG2 receive failed");
+        assertTrue(sg_received3, "SG3 receive failed");
+        assertTrue(sg_received1, "SG1 receive failed");
 
         p1.fin();
         p2.fin();
@@ -1271,8 +1441,8 @@ public class TestTransport {
         sg_received2 = l.contains("recv2");
         sg_received3 = l.contains("recv3");
         
-        assertTrue("SG2 receive failed", sg_received2);
-        assertTrue("SG3 receive failed", sg_received3);
+        assertTrue(sg_received2, "SG2 receive failed");
+        assertTrue(sg_received3, "SG3 receive failed");
 
         p1.fin();
         p2.fin();
@@ -1348,7 +1518,7 @@ public class TestTransport {
         p2.fin();
     }
 	
-	@Test
+//	@Test
     public void CSOnFailureSimulationChannelTest() throws Exception {
     	// get peers
         Peer p1 = Peer.getInstance(new PeerId("p1"));
@@ -1436,8 +1606,8 @@ public class TestTransport {
                 key.getKey().toString(), 2000).getAllValues());
         sg_received2 = l.contains("recv2");
         sg_received3 = l.contains("recv3");
-        assertTrue("SG2 received falsely", !sg_received2);
-        assertTrue("SG3 received falsely", !sg_received3);
+        assertTrue(!sg_received2, "SG2 received falsely");
+        assertTrue(!sg_received3, "SG3 received falsely");
         
         ft.setErrorRate(100);
         l = Arrays.asList(tr1.request(
@@ -1445,15 +1615,15 @@ public class TestTransport {
                 key.getKey().toString(), 2000).getAllValues());
         sg_received2 = l.contains("recv2");
         sg_received3 = l.contains("recv3");
-        assertTrue("SG2 received falsely", !sg_received2);
-        assertTrue("SG3 received falsely", !sg_received3);
+        assertTrue(!sg_received2, "SG2 received falsely");
+        assertTrue(!sg_received3, "SG3 received falsely");
         
         p1.fin();
         p2.fin();
         p3.fin();    	
 	}
 	
-	@Test
+//	@Test
     public void CSRunsOnFailureSimulationChannelTest() throws Exception {
     	// get peers
         Peer p1 = Peer.getInstance(new PeerId("p1"));
@@ -1544,8 +1714,8 @@ public class TestTransport {
         sg_received2 = l.contains("recv2");
         sg_received3 = l.contains("recv3");
         
-        assertTrue("SG2 receive failed", sg_received2);
-        assertTrue("SG3 receive failed", sg_received3);
+        assertTrue(sg_received2, "SG2 receive failed");
+        assertTrue(sg_received3, "SG3 receive failed");
         
         ft.setErrorRate(100);
         l = Arrays.asList(tr1.request(
@@ -1553,8 +1723,8 @@ public class TestTransport {
                 key.getKey().toString(), 2000).getAllValues());
         sg_received2 = l.contains("recv2");
         sg_received3 = l.contains("recv3");
-        assertTrue("SG2 received falsely", !sg_received2);
-        assertTrue("SG3 received falsely", !sg_received3);
+        assertTrue(!sg_received2, "SG2 received falsely");
+        assertTrue(!sg_received3, "SG3 received falsely");
         
         Thread.sleep(20000);
         //ft.setErrorRate(0);
@@ -1564,8 +1734,8 @@ public class TestTransport {
                 key.getKey().toString(), 2000).getAllValues());
         sg_received2 = l.contains("recv2");
         sg_received3 = l.contains("recv3");
-        assertTrue("SG2 received", sg_received2);
-        assertTrue("SG3 received", sg_received3);
+        assertTrue(sg_received2, "SG2 received");
+        assertTrue(sg_received3, "SG3 received");
         
         p1.fin();
         p2.fin();
@@ -1616,8 +1786,8 @@ public class TestTransport {
 
         p1.fin();
         p2.fin();
-        assertTrue("UDP1 receive failed", udp_received1);
-        assertTrue("UDP2 receive failed", udp_received2);
+        assertTrue(udp_received1, "UDP1 receive failed");
+        assertTrue(udp_received2, "UDP2 receive failed");
         // assertTrue(ByteUtil.equals(b.getMessage(), "abcdefg".getBytes()));
     }
     

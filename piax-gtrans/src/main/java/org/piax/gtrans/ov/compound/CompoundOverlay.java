@@ -293,9 +293,14 @@ public class CompoundOverlay<D extends Destination, K extends Key> extends
         } else {
             OverlayReceivedMessage<K> rcvMsg = new OverlayReceivedMessage<K>(
                     nmsg.sender, nmsg.src, matchedKeys, nmsg.getInner());
-            FutureQueue<?> response = ovl.onReceiveRequest(this, rcvMsg);
-            for (RemoteValue<?> rv : response) {
-                fq.add(rv);
+            Object response = ovl.onReceiveRequest(this, rcvMsg);
+            if (response instanceof FutureQueue<?>) {
+                for (RemoteValue<?> rv : (FutureQueue<?>)response) {
+                    fq.add(rv);
+                }
+            }
+            else {
+                logger.warn("unexpected status");
             }
         }
         fq.setEOFuture();
