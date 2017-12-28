@@ -54,12 +54,12 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
     private static final long serialVersionUID = 1L;
     public static int RQ_RETRY_SUCCESSOR_FAILURE_DELAY = 1000;
 
-    final long qid;
+    public final long qid;
     Node root;       // DIRECT only
     int rootEventId; // DIRECT only
     // XXX: note that wrap-around query ranges such as [10, 5) do not work
     // for now (k-abe)
-    protected final Collection<RQRange> targetRanges;
+    public final Collection<RQRange> targetRanges;
     public final RQAdapter<T> adapter;
     final TransOptions opts;
     final boolean isRoot;
@@ -70,17 +70,12 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
      */
     final Set<Node> obstacles;
 
-    transient RQCatcher catcher; // receiver half only
+    public transient RQCatcher catcher; // receiver half only
 
     enum SPECIAL {
         PADDING;
     }
 
-    /**
-     * RQHook for Collective Store and Forwarding
-     */
-    RQHookIf<T> hook;
-    
     /**
      * create a root RQRequest.
      * 
@@ -112,7 +107,6 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         this.rootEventId = 0; // overridden by DirectResponder at root node
         this.targetRanges = Collections.unmodifiableCollection(ranges);
         this.adapter = adapter;
-        this.hook = adapter.getHook();
         this.opts = opts;
         this.obstacles = new HashSet<>();
     }
@@ -139,7 +133,6 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         this.rootEventId = parent.rootEventId;
         this.targetRanges = newRanges;
         this.adapter = parent.adapter;
-        this.hook = parent.adapter.getHook();
         this.opts = parent.opts;
         this.obstacles = parent.obstacles;
         this.catcher = parent.catcher;
@@ -236,10 +229,14 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                 || mode == RetransMode.RELIABLE;
     }
 
+    public boolean isReceiverHalf() {
+		return this.isReceiverHalf;
+    }
+
     /**
      * A class for storing results of a range query used by parent nodes.
      */
-    class RQCatcher {
+    public class RQCatcher {
         
         /*
          * range [--------------------) 
@@ -302,12 +299,16 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
 
         private void rqDisseminate(List<RQRange> ranges) {
         		boolean sendChild = true;
-        		if (hook != null) {
-        			sendChild = hook.hook(RQRequest.this);
+        		if (adapter.getHook() != null) {
+        			sendChild = adapter.getHook().hook(RQRequest.this);
         		}
         		rqDisseminate0(ranges, sendChild);
         }
 
+        public void rqDisseminateWithoutHook(List<RQRange> ranges) {
+        		rqDisseminate0(ranges, true);
+        }
+        		         
         private void rqDisseminate0(List<RQRange> ranges, boolean sendChild) {
             if (logger.isTraceEnabled()) {
                 logger.trace("rqDisseminate start: {}", this);
@@ -387,8 +388,8 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             }
             // obtain values for local ranges
             CompletableFuture<List<DKRangeRValue<T>>> future = null;
-            if (hook != null) {
-            		future = hook.executeLocal(RQRequest.this);
+            if (adapter.getHook() != null) {
+            		future = adapter.getHook().executeLocal(RQRequest.this, map.get(peerId));
             } else {
             		future = rqExecuteLocal(map.get(peerId));
             }
@@ -400,8 +401,8 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                 exc.getCause().printStackTrace();
                 return null; // or System.exit(1);
             });
-            if (hook != null) {
-            		hook.addHistory(RQRequest.this);
+            if (adapter.getHook() != null) {
+            		adapter.getHook().addHistory(RQRequest.this);
             }
             logger.trace("rqDisseminate finished");
         }

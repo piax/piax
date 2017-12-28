@@ -86,7 +86,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
     RQNodeFactory factory;
     SuzakuEventSender sender;
     Map<K,LocalNode> nodes;
-    ExecQueryAdapterFactory adapterFactory = new ExecQueryAdapterFactory();
+    public ExecQueryAdapterFactory adapterFactory = new ExecQueryAdapterFactory();
 
     static class SuzakuEventSender<E extends Endpoint> implements EventSender, TransportListener<E> {
         TransportId transId;

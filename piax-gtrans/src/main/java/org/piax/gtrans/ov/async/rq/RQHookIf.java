@@ -14,6 +14,6 @@ public interface RQHookIf<T> {
     
     abstract void addHistory(RQRequest<T> req);
     
-    abstract CompletableFuture<List<DKRangeRValue<T>>> executeLocal(RQRequest<T> req);
+    abstract CompletableFuture<List<DKRangeRValue<T>>> executeLocal(RQRequest<T> req, List<RQRange> ranges);
     
 }
