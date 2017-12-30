@@ -28,6 +28,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import org.piax.ayame.ov.ddll.DdllKey;
+import org.piax.ayame.ov.ddll.LinkNum;
 import org.piax.common.Endpoint;
 import org.piax.gtrans.RPCException;
 import org.piax.util.KeyComparator;
@@ -340,11 +342,13 @@ public class Node {
         throw new OfflineSendException();
     }
 
+    @Deprecated
     public static boolean isOrdered(Comparable<?> a, Comparable<?> b,
             Comparable<?> c) {
         return keyComp.isOrdered(a, b, c);
     }
 
+    @Deprecated
     public static boolean isOrdered(Comparable<?> from, boolean fromInclusive,
             Comparable<?> val, Comparable<?> to, boolean toInclusive) {
         boolean rc = keyComp.isOrdered(from, val, to);

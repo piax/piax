@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 
+import org.piax.common.EndpointParser;
 import org.piax.common.PeerId;
 import org.piax.common.PeerLocator;
 import org.piax.gtrans.raw.RawTransport;
@@ -17,8 +18,14 @@ public class NettyLocator extends PeerLocator implements NettyEndpoint {
     String host;
     int port;
     
-    static public String DEFAULT_TYPE="tcp"; 
-    
+    static public String DEFAULT_TYPE="tcp";
+
+    static {
+        EndpointParser.registerParser("tcp", (in)->NettyEndpoint.parseLocator(in));
+        EndpointParser.registerParser("udt", (in)->NettyEndpoint.parseLocator(in));
+        EndpointParser.registerParser("ssl", (in)->NettyEndpoint.parseLocator(in));
+    }
+
     public NettyLocator() {
         // XXX should define default value;
     }

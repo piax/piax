@@ -32,13 +32,13 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentSkipListMap;
 
+import org.piax.ayame.ov.ddll.DdllKey;
 import org.piax.common.Endpoint;
 import org.piax.common.PeerId;
 import org.piax.common.subspace.Range;
 import org.piax.gtrans.FutureQueue;
 import org.piax.gtrans.RemoteValue;
 import org.piax.gtrans.ReturnValue;
-import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.gtrans.ov.ddll.Link;
 import org.piax.gtrans.ov.sg.MSkipGraph.MVal;
 import org.piax.gtrans.ov.sg.RQMessage.RQReplyMessage;

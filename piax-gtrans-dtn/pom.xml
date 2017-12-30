@@ -5,11 +5,11 @@
   <parent>
     <groupId>org.piax</groupId>
     <artifactId>piax-parent</artifactId>
-    <version>3.2-SNAPSHOT</version>
+    <version>4.0-SNAPSHOT</version>
   </parent>
   <groupId>org.piax</groupId>
   <artifactId>piax-gtrans-dtn</artifactId>
-  <version>3.2-SNAPSHOT</version>
+  <version>4.0-SNAPSHOT</version>
   <name>PIAX GTrans DTN extension</name>
   <url>http://www.piax.org</url>
   <properties>
@@ -32,7 +32,7 @@
     <dependency>
       <groupId>org.piax</groupId>
       <artifactId>piax-gtrans</artifactId>
-      <version>3.2-SNAPSHOT</version>
+      <version>4.0-SNAPSHOT</version>
     </dependency>
   </dependencies>
   <build>

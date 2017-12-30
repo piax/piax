@@ -21,6 +21,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Timer;
 
+import org.piax.ayame.ov.ddll.DdllKey;
+import org.piax.ayame.ov.ddll.LinkNum;
 import org.piax.common.Endpoint;
 import org.piax.common.PeerId;
 import org.piax.common.TransportId;

@@ -13,8 +13,8 @@ package org.piax.gtrans.ov.szk;
 
 import java.util.Collection;
 
+import org.piax.ayame.ov.rq.DKRangeRValue;
 import org.piax.gtrans.ov.ring.RingManager;
-import org.piax.gtrans.ov.ring.rq.DKRangeRValue;
 import org.piax.gtrans.ov.ring.rq.MessagePath;
 import org.piax.gtrans.ov.ring.rq.RQReplyMessage;
 

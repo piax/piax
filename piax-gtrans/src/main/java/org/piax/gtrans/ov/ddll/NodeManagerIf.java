@@ -13,6 +13,8 @@ package org.piax.gtrans.ov.ddll;
 
 import java.util.Set;
 
+import org.piax.ayame.ov.ddll.DdllKey;
+import org.piax.ayame.ov.ddll.LinkNum;
 import org.piax.common.Endpoint;
 import org.piax.gtrans.RPCException;
 import org.piax.gtrans.RPCIf;

@@ -14,12 +14,12 @@ package org.piax.gtrans.ov.sg;
 
 import java.util.Collection;
 
+import org.piax.ayame.ov.ddll.DdllKey;
 import org.piax.common.Endpoint;
 import org.piax.gtrans.RPCException;
 import org.piax.gtrans.RPCIf;
 import org.piax.gtrans.RemoteCallable;
 import org.piax.gtrans.RemoteCallable.Type;
-import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.gtrans.ov.ddll.Link;
 import org.piax.gtrans.ov.sg.SGMessagingFramework.SGReplyMessage;
 import org.piax.gtrans.ov.sg.SGMessagingFramework.SGRequestMessage;

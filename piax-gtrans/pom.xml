@@ -6,11 +6,11 @@
   <parent>
     <groupId>org.piax</groupId>
     <artifactId>piax-parent</artifactId>
-    <version>3.2-SNAPSHOT</version>
+    <version>4.0-SNAPSHOT</version>
   </parent>
   <groupId>org.piax</groupId>
   <artifactId>piax-gtrans</artifactId>
-  <version>3.2-SNAPSHOT</version>
+  <version>4.0-SNAPSHOT</version>
   <name>PIAX GTrans</name>
   <description>The generic network transport library of PIAX</description>
   <url>http://www.piax.org/</url>
@@ -67,6 +67,16 @@
   </properties>
   <dependencies>
     <dependency>
+      <groupId>org.piax</groupId>
+      <artifactId>piax-common</artifactId>
+      <version>4.0-SNAPSHOT</version>
+    </dependency>
+    <dependency>
+      <groupId>org.piax</groupId>
+      <artifactId>piax-ayame</artifactId>
+      <version>4.0-SNAPSHOT</version>
+    </dependency>
+    <dependency>
         <groupId>org.junit.jupiter</groupId>
         <artifactId>junit-jupiter-api</artifactId>
         <version>5.0.2</version>
@@ -89,9 +99,13 @@
       <artifactId>slf4j-api</artifactId>
       <version>1.7.21</version>
     </dependency>
-    <!-- https://mvnrepository.com/artifact/org.slf4j/slf4j-jdk14 <dependency> 
-      <groupId>org.slf4j</groupId> <artifactId>slf4j-jdk14</artifactId> <version>1.7.21</version> 
-      </dependency> -->
+    <!-- https://mvnrepository.com/artifact/org.slf4j/slf4j-jdk14 -->
+    <dependency> 
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-jdk14</artifactId>
+      <version>1.7.21</version> 
+      <scope>test</scope>
+    </dependency>
     <!-- https://mvnrepository.com/artifact/io.netty/netty-all -->
     <dependency>
       <groupId>io.netty</groupId>

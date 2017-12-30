@@ -16,16 +16,16 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
+import org.piax.ayame.ov.ddll.DdllKey;
+import org.piax.ayame.ov.rq.DKRangeRValue;
 import org.piax.common.Endpoint;
 import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.TransOptions.ResponseType;
 import org.piax.gtrans.TransOptions.RetransMode;
-import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.gtrans.ov.ring.AckMessage;
 import org.piax.gtrans.ov.ring.MessagingFramework;
 import org.piax.gtrans.ov.ring.ResponseMessage;
 import org.piax.gtrans.ov.ring.RingManager;
-import org.piax.gtrans.ov.ring.rq.DKRangeRValue;
 import org.piax.gtrans.ov.ring.rq.MessagePath;
 import org.piax.gtrans.ov.ring.rq.QueryId;
 import org.piax.gtrans.ov.ring.rq.RQAlgorithm;

@@ -30,6 +30,7 @@ import java.util.TimerTask;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import org.piax.ayame.ov.ddll.DdllKey;
 import org.piax.common.Endpoint;
 import org.piax.common.PeerId;
 import org.piax.common.TransportId;
@@ -42,7 +43,6 @@ import org.piax.gtrans.RPCInvoker;
 import org.piax.gtrans.RemoteValue;
 import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.TransOptions.ResponseType;
-import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.gtrans.ov.ddll.Link;
 import org.piax.gtrans.ov.ddll.Node;
 import org.piax.gtrans.ov.ddll.Node.InsertPoint;

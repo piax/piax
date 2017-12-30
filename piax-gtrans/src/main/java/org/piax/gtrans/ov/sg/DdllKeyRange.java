@@ -18,8 +18,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
 
+import org.piax.ayame.ov.ddll.DdllKey;
 import org.piax.common.subspace.Range;
-import org.piax.gtrans.ov.ddll.DdllKey;
 
 /**
  * A range of DdllKey with a supplementary data (aux). 

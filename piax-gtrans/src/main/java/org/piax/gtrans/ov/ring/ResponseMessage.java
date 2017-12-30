@@ -14,7 +14,7 @@ package org.piax.gtrans.ov.ring;
 import java.io.Serializable;
 import java.util.List;
 
-import org.piax.gtrans.ov.ddll.DdllKey;
+import org.piax.ayame.ov.ddll.DdllKey;
 
 public abstract class ResponseMessage implements Serializable {
     private static final long serialVersionUID = 1L;

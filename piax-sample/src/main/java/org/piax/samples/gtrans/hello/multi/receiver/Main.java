@@ -21,7 +21,7 @@ import org.piax.gtrans.Transport;
 import org.piax.gtrans.TransportListener;
 import org.piax.gtrans.netty.NettyLocator;
 import org.piax.gtrans.ov.Overlay;
-import org.piax.gtrans.ov.async.suzaku.Suzaku;
+import org.piax.gtrans.ov.suzaku.Suzaku;
 
 /* 
  * To run on the localhost, type as follows on the shell:

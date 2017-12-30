@@ -13,11 +13,11 @@ package org.piax.gtrans.ov.ring.rq;
 
 import java.io.IOException;
 
+import org.piax.ayame.ov.ddll.DdllKey;
 import org.piax.common.Endpoint;
 import org.piax.gtrans.RPCException;
 import org.piax.gtrans.RemoteCallable;
 import org.piax.gtrans.TransOptions;
-import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.gtrans.ov.ddll.Link;
 import org.piax.gtrans.ov.ddll.Node.InsertPoint;
 import org.piax.gtrans.ov.ring.NoSuchKeyException;

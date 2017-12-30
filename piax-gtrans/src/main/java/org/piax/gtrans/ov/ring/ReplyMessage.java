@@ -13,11 +13,11 @@ package org.piax.gtrans.ov.ring;
 
 import java.util.List;
 
+import org.piax.ayame.ov.ddll.DdllKey;
 import org.piax.common.Endpoint;
 import org.piax.gtrans.RPCException;
 import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.TransOptions.ResponseType;
-import org.piax.gtrans.ov.ddll.DdllKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

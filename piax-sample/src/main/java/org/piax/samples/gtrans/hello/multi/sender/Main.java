@@ -18,7 +18,7 @@ import org.piax.common.PeerLocator;
 import org.piax.common.wrapper.StringKey;
 import org.piax.gtrans.Peer;
 import org.piax.gtrans.netty.NettyLocator;
-import org.piax.gtrans.ov.async.suzaku.Suzaku;
+import org.piax.gtrans.ov.suzaku.Suzaku;
 
 /* To run on the localhost, type as follows on the shell:
  *  $ java -jar Receiver.jar localhost 10000 &

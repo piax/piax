@@ -13,6 +13,7 @@ package org.piax.gtrans.ov.ring.rq;
 
 import java.util.Collection;
 
+import org.piax.ayame.ov.rq.DKRangeRValue;
 import org.piax.common.Endpoint;
 import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.TransOptions.ResponseType;

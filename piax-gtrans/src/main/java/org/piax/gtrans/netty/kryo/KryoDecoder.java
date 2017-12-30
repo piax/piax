@@ -7,8 +7,8 @@ import io.netty.handler.codec.ByteToMessageDecoder;
 import java.util.List;
 
 import org.objenesis.strategy.StdInstantiatorStrategy;
-import org.piax.gtrans.async.LocalNode;
-import org.piax.gtrans.async.Node;
+import org.piax.ayame.LocalNode;
+import org.piax.ayame.Node;
 
 import com.esotericsoftware.kryo.Kryo;
 

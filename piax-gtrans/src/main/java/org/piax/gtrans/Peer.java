@@ -32,7 +32,7 @@ import org.piax.common.PeerId;
 import org.piax.common.StatusRepo;
 import org.piax.common.TransportId;
 import org.piax.common.TransportIdPath;
-import org.piax.gtrans.async.Option.BooleanOption;
+import org.piax.common.Option.BooleanOption;
 import org.piax.gtrans.impl.BaseTransportGenerator;
 import org.piax.gtrans.impl.BaseTransportMgr;
 import org.piax.gtrans.impl.IdResolver;

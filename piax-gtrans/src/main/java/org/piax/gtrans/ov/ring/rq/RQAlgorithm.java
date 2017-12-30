@@ -15,10 +15,11 @@ import java.util.Collection;
 import java.util.List;
 import java.util.NavigableMap;
 
+import org.piax.ayame.ov.ddll.DdllKey;
+import org.piax.ayame.ov.rq.DKRangeRValue;
 import org.piax.common.Endpoint;
 import org.piax.common.Id;
 import org.piax.gtrans.TransOptions;
-import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.gtrans.ov.ddll.Link;
 import org.piax.gtrans.ov.ring.MessagingFramework;
 import org.piax.util.StrictMap;

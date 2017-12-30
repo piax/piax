@@ -17,6 +17,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.piax.ayame.ov.rq.DKRangeRValue;
 import org.piax.common.Endpoint;
 import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.TransOptions.ResponseType;

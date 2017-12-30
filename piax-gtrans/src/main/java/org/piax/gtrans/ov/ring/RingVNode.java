@@ -16,9 +16,9 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
 
+import org.piax.ayame.ov.ddll.DdllKey;
 import org.piax.common.Endpoint;
 import org.piax.common.subspace.CircularRange;
-import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.gtrans.ov.ddll.Link;
 import org.piax.gtrans.ov.ddll.Node;
 import org.piax.gtrans.ov.ddll.Node.InsertPoint;

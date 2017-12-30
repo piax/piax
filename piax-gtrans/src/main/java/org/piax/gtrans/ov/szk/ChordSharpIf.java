@@ -11,9 +11,9 @@
  */
 package org.piax.gtrans.ov.szk;
 
+import org.piax.ayame.ov.ddll.DdllKey;
 import org.piax.gtrans.RPCException;
 import org.piax.gtrans.RemoteCallable;
-import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.gtrans.ov.ring.NoSuchKeyException;
 import org.piax.gtrans.ov.ring.RingIf;
 import org.piax.gtrans.ov.szk.ChordSharpVNode.FTEntrySet;

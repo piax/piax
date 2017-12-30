@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 
 import org.piax.common.ComparableKey;
 import org.piax.common.Endpoint;
+import org.piax.common.EndpointParser;
 import org.piax.common.PeerLocator;
 import org.piax.common.wrapper.BooleanKey;
 import org.piax.common.wrapper.DoubleKey;
@@ -19,6 +20,10 @@ import org.piax.util.KeyComparator;
 public class PrimaryKey implements ComparableKey<PrimaryKey>, NettyEndpoint {
     private static final long serialVersionUID = -8338701357931025730L;
     static public int MAX_NEIGHBORS = 30;
+    
+    static {
+        EndpointParser.registerParser("id", (in)->NettyEndpoint.parsePrimaryKey(in));
+    }
     
     public class NeighborEntry implements Serializable {
         private static final long serialVersionUID = 8001237385879970460L;

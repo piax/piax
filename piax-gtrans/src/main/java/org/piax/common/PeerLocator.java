@@ -31,6 +31,12 @@ public abstract class PeerLocator implements Endpoint {
 
     protected static HashMap<Byte, Class<? extends PeerLocator>> magicMap = new HashMap<Byte, Class<? extends PeerLocator>>();
     
+    static {
+        EndpointParser.registerParser("-tcp", in->PeerLocator.newLocator(in));
+        EndpointParser.registerParser("-udp", in->PeerLocator.newLocator(in));
+        EndpointParser.registerParser("-emu", in->PeerLocator.newLocator(in));
+    }
+    
     /*
      * Returns null if the type is unknown.
      */
@@ -75,13 +81,13 @@ public abstract class PeerLocator implements Endpoint {
     static public PeerLocator newLocator(String spec) {
         PeerLocator locator = null;
         String specs[] = spec.split(":");
-        if (specs[0].equals("tcp")) {
+        if (specs[0].equals("-tcp")) {
             locator = new TcpLocator(spec);
         }
-        else if (specs[0].equals("udp")) {
+        else if (specs[0].equals("-udp")) {
             locator = new UdpLocator(spec);
         }
-        else if (specs[0].equals("emu")) {
+        else if (specs[0].equals("-emu")) {
             locator = new EmuLocator(spec);
         }
         return locator;

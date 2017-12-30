@@ -17,8 +17,8 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
+import org.piax.ayame.ov.ddll.DdllKey;
 import org.piax.common.subspace.Range;
-import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.gtrans.ov.ddll.Node;
 import org.piax.util.KeyComparator;
 

@@ -26,6 +26,8 @@ import java.util.Map;
 import java.util.NavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 
+import org.piax.ayame.ov.ddll.DdllKey;
+import org.piax.ayame.ov.rq.DKRangeRValue;
 import org.piax.common.Endpoint;
 import org.piax.common.Id;
 import org.piax.common.ObjectId;
@@ -40,7 +42,6 @@ import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.TransOptions.DeliveryMode;
 import org.piax.gtrans.TransOptions.ResponseType;
 import org.piax.gtrans.impl.NestedMessage;
-import org.piax.gtrans.ov.ddll.DdllKey;
 import org.piax.gtrans.ov.ddll.Link;
 import org.piax.gtrans.ov.ddll.Node;
 import org.piax.gtrans.ov.ddll.Node.InsertPoint;

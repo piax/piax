@@ -1,11 +1,9 @@
 package org.piax.gtrans.netty.kryo;
 
 import java.io.ByteArrayOutputStream;
-import java.util.ArrayList;
 
 import org.objenesis.strategy.StdInstantiatorStrategy;
 import org.piax.gtrans.GTransConfigValues;
-import org.piax.gtrans.netty.bootstrap.NettyBootstrap;
 
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
@@ -44,7 +42,7 @@ public class KryoUtil {
             kryo.register(org.piax.gtrans.impl.RequestTransportImpl.IsEasySend.class);
             kryo.register(org.piax.gtrans.impl.NestedMessage.class);
             kryo.register(org.piax.gtrans.TransOptions.class);
-            kryo.register(org.piax.gtrans.async.Event.class);
+            kryo.register(org.piax.ayame.Event.class);
             kryo.register(org.piax.gtrans.netty.ControlMessage.class);
             kryo.register(org.piax.gtrans.netty.NettyMessage.class);
             kryo.register(org.piax.gtrans.netty.NettyEndpoint.class);
@@ -53,33 +51,34 @@ public class KryoUtil {
             kryo.register(org.piax.gtrans.netty.ControlMessage.ControlType.class);
             kryo.register(org.piax.gtrans.netty.idtrans.PrimaryKey.class);
 
-            kryo.register(org.piax.gtrans.ov.ddll.DdllKey.class);
-            kryo.register(org.piax.gtrans.ov.ring.rq.DdllKeyRange.class);
-            kryo.register(org.piax.gtrans.ov.ring.rq.DKRangeRValue.class);
-            kryo.register(org.piax.gtrans.ov.ddll.LinkNum.class);
+            kryo.register(org.piax.ayame.ov.ddll.DdllKey.class);
+            kryo.register(org.piax.ayame.ov.ddll.DdllKeyRange.class);
+            kryo.register(org.piax.ayame.ov.rq.DKRangeRValue.class);
+            kryo.register(org.piax.ayame.ov.ddll.LinkNum.class);
 
             // ayame related classes
-            kryo.register(org.piax.gtrans.async.Node.class, new NodeSerializer());
-            kryo.register(org.piax.gtrans.async.LocalNode.class, new NodeSerializer());
-            kryo.register(org.piax.gtrans.async.FTEntry.class);
-            kryo.register(org.piax.gtrans.async.FTEntry[].class);
-            kryo.register(org.piax.gtrans.async.Event.Lookup.class);
-            kryo.register(org.piax.gtrans.async.Event.AckEvent.class);
-            kryo.register(org.piax.gtrans.async.Event.LookupDone.class);
-            kryo.register(org.piax.gtrans.ov.async.ddll.DdllEvent.SetRAck.class);
-            kryo.register(org.piax.gtrans.ov.async.ddll.DdllEvent.SetR.class);
-            kryo.register(org.piax.gtrans.ov.async.rq.RQAdapter.InsertionPointAdapter.class);
-            kryo.register(org.piax.gtrans.ov.async.rq.RQAdapter.KeyAdapter.class);
-            kryo.register(org.piax.gtrans.ov.async.rq.RQRange.class);
-            kryo.register(org.piax.gtrans.ov.async.rq.RQReply.class);
-            kryo.register(org.piax.gtrans.ov.async.rq.RQRequest.class); 
-            kryo.register(org.piax.gtrans.ov.async.suzaku.SuzakuEvent.GetEntReply.class);
-            kryo.register(org.piax.gtrans.ov.async.suzaku.SuzakuStrategy.FTEntrySet.class);
-            kryo.register(org.piax.gtrans.ov.async.suzaku.Suzaku.ExecQueryAdapter.class);
-            kryo.register(org.piax.gtrans.ov.async.suzaku.SuzakuEvent.GetEntRequest.class);
-            kryo.register(org.piax.gtrans.ov.async.ddll.DdllEvent.GetCandidates.class);
-            kryo.register(org.piax.gtrans.ov.async.ddll.DdllEvent.GetCandidatesResponse.class);
-            kryo.register(org.piax.gtrans.ov.async.ddll.DdllEvent.SetL.class);
+            kryo.register(org.piax.ayame.Node.class, new NodeSerializer());
+            kryo.register(org.piax.ayame.LocalNode.class, new NodeSerializer());
+            kryo.register(org.piax.ayame.FTEntry.class);
+            kryo.register(org.piax.ayame.FTEntry[].class);
+            kryo.register(org.piax.ayame.Event.Lookup.class);
+            kryo.register(org.piax.ayame.Event.AckEvent.class);
+            kryo.register(org.piax.ayame.Event.LookupDone.class);
+            kryo.register(org.piax.ayame.ov.ddll.DdllEvent.SetRAck.class);
+            kryo.register(org.piax.ayame.ov.ddll.DdllEvent.SetR.class);
+            kryo.register(org.piax.ayame.ov.rq.RQAdapter.InsertionPointAdapter.class);
+            kryo.register(org.piax.ayame.ov.rq.RQAdapter.KeyAdapter.class);
+            kryo.register(org.piax.ayame.ov.rq.RQRange.class);
+            kryo.register(org.piax.ayame.ov.rq.RQReply.class);
+            kryo.register(org.piax.ayame.ov.rq.RQRequest.class); 
+            kryo.register(org.piax.ayame.ov.suzaku.SuzakuEvent.GetEntReply.class);
+            kryo.register(org.piax.ayame.ov.suzaku.SuzakuStrategy.FTEntrySet.class);
+            // XXX not registering class leads a performance issue 
+            //kryo.register(org.piax.gtrans.ov.suzaku.Suzaku.ExecQueryAdapter.class);
+            kryo.register(org.piax.ayame.ov.suzaku.SuzakuEvent.GetEntRequest.class);
+            kryo.register(org.piax.ayame.ov.ddll.DdllEvent.GetCandidates.class);
+            kryo.register(org.piax.ayame.ov.ddll.DdllEvent.GetCandidatesResponse.class);
+            kryo.register(org.piax.ayame.ov.ddll.DdllEvent.SetL.class);
 
             return kryo;
         };
