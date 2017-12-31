@@ -27,7 +27,7 @@ import org.piax.common.TransportId;
 import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.Peer;
 import org.piax.gtrans.impl.ReceiverThreadPool;
-import org.piax.gtrans.ov.suzaku.NetLocalNode;
+import org.piax.gtrans.ov.suzaku.NetEventSender;
 import org.piax.gtrans.raw.emu.EmuLocator;
 import org.piax.gtrans.raw.tcp.TcpLocator;
 import org.piax.gtrans.raw.udp.UdpLocator;
@@ -226,7 +226,7 @@ public class TestDdll1 {
             ChannelTransport<?> trans = peers[i].newBaseChannelTransport(loc);
             SuzakuNodeFactory factory = new SuzakuNodeFactory(3);
             DdllKey ddllkey = new DdllKey(i, new UniqId(trans.getPeerId()));
-            nodes[i] = new NetLocalNode(transId, trans, ddllkey);
+            nodes[i] = new LocalNode(new NetEventSender<>(transId, trans), ddllkey); 
             factory.setupNode(nodes[i]);
         }
 
