@@ -37,9 +37,9 @@ public class Log extends StreamHandler {
 
     @Override
     public boolean isLoggable(LogRecord record) {
-        // print only async related logs
-        return (record.getLoggerName().startsWith("org.piax.gtrans.ov.async") ||
-                record.getLoggerName().startsWith("org.piax.gtrans.async")) &&
+        // print only ayame related logs
+        return (record.getLoggerName().startsWith("org.piax.ayame.ov") ||
+                record.getLoggerName().startsWith("org.piax.ayame")) &&
                 (record.getLevel() == Level.FINE ||
                 (verbose && (record.getLevel() == Level.FINEST)));
     }
