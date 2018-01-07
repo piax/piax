@@ -22,7 +22,7 @@ public class Log extends StreamHandler {
     }
     
     static public void init() {
-        String conf = "handlers=test.async.sim.Log\n.level=ALL";
+        String conf = "handlers=org.piax.ayame.sim.Log\n.level=ALL";
         try {
             LogManager.getLogManager().readConfiguration(new ByteArrayInputStream(conf.getBytes("utf-8")));
         } catch (Exception e) {
@@ -57,7 +57,7 @@ public class Log extends StreamHandler {
     
     public static void main(String args[]) {
         Log.init();
-        Logger logger = LoggerFactory.getLogger("org.piax.gtrans.async.LogTest");
+        Logger logger = LoggerFactory.getLogger("org.piax.ayame.sim.Log");
         Log.verbose=true;
         logger.debug("debug");
         logger.trace("trace");
