@@ -34,6 +34,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 import org.piax.common.ComparableKey;
+import org.piax.common.ComparableKey.SpecialKey;
 import org.piax.common.Destination;
 import org.piax.common.Endpoint;
 import org.piax.common.Key;
@@ -50,7 +51,6 @@ import org.piax.gtrans.RPCInvoker;
 import org.piax.gtrans.dtn.DTNMessageMgr.MessageCtrl;
 import org.piax.gtrans.dtn.DTNMessageMgr.MessageEntry;
 import org.piax.gtrans.impl.NestedMessage;
-import org.piax.gtrans.ov.compound.CompoundOverlay.SpecialKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

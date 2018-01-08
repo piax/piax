@@ -4,7 +4,6 @@ import java.util.Set;
 
 import org.piax.common.Key;
 import org.piax.gtrans.ProtocolUnsupportedException;
-import org.piax.gtrans.ov.ddll.Link;
 
 public interface RoutingTableAccessor {
 

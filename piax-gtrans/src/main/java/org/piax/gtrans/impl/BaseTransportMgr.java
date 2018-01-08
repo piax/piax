@@ -14,6 +14,7 @@
 package org.piax.gtrans.impl;
 
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -21,10 +22,12 @@ import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 
 import org.piax.common.Endpoint;
+import org.piax.common.Option.StringOption;
 import org.piax.common.PeerLocator;
 import org.piax.common.TransportId;
 import org.piax.common.TransportIdPath;
 import org.piax.gtrans.ChannelTransport;
+import org.piax.gtrans.ConfigurationError;
 import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.Peer;
 import org.piax.gtrans.Transport;
@@ -38,6 +41,9 @@ public class BaseTransportMgr implements LocatorStatusObserver {
 //    private static final Logger logger = 
 //        LoggerFactory.getLogger(BaseTransportMgr.class);
 
+    public static StringOption BASE_TRANSPORT_MANAGER_CLASS = new 
+            StringOption("org.piax.gtrans.netty.NettyBaseTransportGenerator", "-base-trans-mgr-class"); 
+    
     public static LinkStatAndScoreIf statAndScore = null;
 
     private final List<Transport<?>> baseTransList = 
@@ -52,7 +58,14 @@ public class BaseTransportMgr implements LocatorStatusObserver {
     
     public BaseTransportMgr(Peer peer) {
         this.peer = peer;
-        baseTransGen = new DefaultBaseTransportGenerator(peer);
+        try {
+            Class clazz = Class.forName(BASE_TRANSPORT_MANAGER_CLASS.value());
+            baseTransGen = (BaseTransportGenerator) clazz.getConstructor(Peer.class).newInstance(peer);
+        } catch (ClassNotFoundException | InstantiationException | IllegalAccessException | 
+                IllegalArgumentException | InvocationTargetException | 
+                NoSuchMethodException | SecurityException e) {
+            throw new ConfigurationError(e);
+        }
     }
 
     public void fin() {

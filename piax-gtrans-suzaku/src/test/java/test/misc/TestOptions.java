@@ -17,7 +17,7 @@ class TestOptions {
         p.setProperty("org.piax.gtrans.ov.Overlay.DEFAULT_ENDPOINT", "id:2.0:tcp:localhost:12367");
         p.setProperty("org.piax.gtrans.ov.Overlay.DEFAULT_SEED", "tcp:localhost:12367");
         p.setProperty("org.piax.gtrans.TransOptions.DEFAULT_RESPONSE_TYPE", "AGGREGATE"); 
-        p.setProperty("org.piax.gtrans.ov.async.suzaku.Suzaku.EXEC_ASYNC", "true"); 
+        p.setProperty("org.piax.gtrans.ov.suzaku.Suzaku.EXEC_ASYNC", "true"); 
         Config.load(p);
         try (Suzaku<?,?> s = new Suzaku<>()) {
             s.join();

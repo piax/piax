@@ -68,11 +68,6 @@
   <dependencies>
     <dependency>
       <groupId>org.piax</groupId>
-      <artifactId>piax-common</artifactId>
-      <version>4.0-SNAPSHOT</version>
-    </dependency>
-    <dependency>
-      <groupId>org.piax</groupId>
       <artifactId>piax-ayame</artifactId>
       <version>4.0-SNAPSHOT</version>
     </dependency>
@@ -91,6 +86,7 @@
         <groupId>org.junit.jupiter</groupId>
         <artifactId>junit-jupiter-engine</artifactId>
         <version>5.0.2</version>
+        <scope>test</scope>
     </dependency>
      <dependency>
         <groupId>org.junit.platform</groupId>
@@ -98,36 +94,12 @@
         <version>1.0.2</version>
         <scope>test</scope>
     </dependency>
-    <!-- https://mvnrepository.com/artifact/org.slf4j/slf4j-api -->
-    <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-api</artifactId>
-      <version>1.7.21</version>
-    </dependency>
     <dependency> 
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-jdk14</artifactId>
       <version>1.7.21</version> 
       <scope>test</scope>
     </dependency> 
-    <!-- https://mvnrepository.com/artifact/io.netty/netty-all -->
-    <dependency>
-      <groupId>io.netty</groupId>
-      <artifactId>netty-all</artifactId>
-      <version>4.1.6.Final</version>
-    </dependency>
-    <!-- https://mvnrepository.com/artifact/com.barchart.udt/barchart-udt-bundle -->
-    <dependency>
-      <groupId>com.barchart.udt</groupId>
-      <artifactId>barchart-udt-bundle</artifactId>
-      <version>2.3.0</version>
-    </dependency>
-    <!-- https://mvnrepository.com/artifact/com.esotericsoftware/kryo -->
-    <dependency>
-      <groupId>com.esotericsoftware</groupId>
-      <artifactId>kryo-shaded</artifactId>
-      <version>4.0.1</version>
-    </dependency>
   </dependencies>
   <build>
     <plugins>
@@ -172,9 +144,9 @@
               <value>src/test/resources/logging.properties</value>
             </property>
           </systemProperties>
-          <includes>
+<!--      <includes>
             <include>**/TestAsync.java</include>
-          </includes>
+          </includes> -->
         </configuration>
       </plugin>
       <plugin>

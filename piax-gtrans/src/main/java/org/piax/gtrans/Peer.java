@@ -28,11 +28,11 @@ import java.util.concurrent.RejectedExecutionException;
 
 import org.piax.common.Endpoint;
 import org.piax.common.ObjectId;
+import org.piax.common.Option.BooleanOption;
 import org.piax.common.PeerId;
 import org.piax.common.StatusRepo;
 import org.piax.common.TransportId;
 import org.piax.common.TransportIdPath;
-import org.piax.common.Option.BooleanOption;
 import org.piax.gtrans.impl.BaseTransportGenerator;
 import org.piax.gtrans.impl.BaseTransportMgr;
 import org.piax.gtrans.impl.IdResolver;
@@ -100,8 +100,8 @@ public class Peer implements Closeable {
      * RPCの対象となるオブジェクトを管理するためのmap。
      * ObjectIdをkeyとして、対応するオブジェクトを保持する。
      */
-    final ConcurrentMap<ObjectId, RPCIf> rpcObjects = 
-            new ConcurrentHashMap<ObjectId, RPCIf>();
+    final ConcurrentMap<ObjectId, Object> rpcObjects = 
+            new ConcurrentHashMap<>();
     
     final IdResolver idResolver;
     final BaseTransportMgr baseTransMgr;
@@ -448,7 +448,7 @@ public class Peer implements Closeable {
 
     //-- RPC objects
 
-    public void registerRPCObject(ObjectId objId, RPCIf obj)
+    public void registerRPCObject(ObjectId objId, Object obj)
             throws IdConflictException {
         if (rpcObjects.putIfAbsent(objId, obj) != null) {
             throw new IdConflictException(
@@ -457,12 +457,12 @@ public class Peer implements Closeable {
         logger.trace("EXIT:");
     }
     
-    public boolean unregisterRPCObject(ObjectId objId, RPCIf obj) {
+    public boolean unregisterRPCObject(ObjectId objId, Object obj) {
         logger.trace("EXIT:");
         return rpcObjects.remove(objId, obj);
     }
 
-    public RPCIf getRPCObject(ObjectId objId) {
+    public Object getRPCObject(ObjectId objId) {
         return rpcObjects.get(objId);
     }
 

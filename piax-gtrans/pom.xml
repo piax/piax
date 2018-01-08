@@ -168,12 +168,12 @@
               <value>src/test/resources/logging.properties</value>
             </property>
           </systemProperties>
-          <includes>
+         <!-- <includes>
             <include>**/TestRPC.java</include>
             <include>**/TestTransport.java</include>
             <include>**/TestOverlay.java</include>
             <include>**/TestNettyChannelTransport.java</include>
-          </includes>
+          </includes> -->
         </configuration>
       </plugin>
       <plugin>

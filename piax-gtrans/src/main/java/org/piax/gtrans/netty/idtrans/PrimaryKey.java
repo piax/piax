@@ -7,12 +7,11 @@ import java.util.stream.Collectors;
 
 import org.piax.common.ComparableKey;
 import org.piax.common.Endpoint;
-import org.piax.common.EndpointParser;
 import org.piax.common.PeerLocator;
 import org.piax.common.wrapper.BooleanKey;
 import org.piax.common.wrapper.DoubleKey;
 import org.piax.common.wrapper.StringKey;
-import org.piax.gtrans.ProtocolUnsupportedException;
+import org.piax.gtrans.UnavailableEndpointError;
 import org.piax.gtrans.netty.NettyEndpoint;
 import org.piax.gtrans.netty.NettyLocator;
 import org.piax.util.KeyComparator;
@@ -21,8 +20,8 @@ public class PrimaryKey implements ComparableKey<PrimaryKey>, NettyEndpoint {
     private static final long serialVersionUID = -8338701357931025730L;
     static public int MAX_NEIGHBORS = 30;
     
-    static {
-        EndpointParser.registerParser("id", (in)->NettyEndpoint.parsePrimaryKey(in));
+    static public PrimaryKey parse(String spec) {
+        return (PrimaryKey)NettyEndpoint.parsePrimaryKey(spec);
     }
     
     public class NeighborEntry implements Serializable {
@@ -152,13 +151,13 @@ public class PrimaryKey implements ComparableKey<PrimaryKey>, NettyEndpoint {
     }
     
     @Override
-    public PrimaryKey newSameTypeEndpoint(String spec) throws ProtocolUnsupportedException {
+    public PrimaryKey newSameTypeEndpoint(String spec) {
         Endpoint ep = Endpoint.newEndpoint(spec);
         if (ep instanceof PeerLocator) {
             ep = new PrimaryKey(ep);
         }
         if (!(ep instanceof PrimaryKey)) {
-            throw new ProtocolUnsupportedException("primary key or locator expected.");
+            throw new UnavailableEndpointError("primary key or locator expected.");
         }
         return (PrimaryKey)ep;
     }

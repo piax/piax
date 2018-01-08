@@ -1270,8 +1270,8 @@ public class Sim {
                 FTEntry ent = sz.getFingerTableEntry(1);
                 if (ent != null) {
                     Node remote = ent.getNode();
-                    int distance = ((int)(remote.key.getRawKey())
-                            - (int)node.key.getRawKey()) / 10;
+                    int distance = ((Integer)(remote.key.getRawKey())
+                            - (Integer)node.key.getRawKey()) / 10;
                     if (distance < 0) {
                         distance += num;
                     }

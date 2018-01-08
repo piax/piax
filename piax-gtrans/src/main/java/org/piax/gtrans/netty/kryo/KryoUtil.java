@@ -39,8 +39,8 @@ public class KryoUtil {
             kryo.register(org.piax.common.wrapper.LongKey.class);
             kryo.register(org.piax.util.UniqId.SpecialId.class);
             kryo.register(org.piax.gtrans.RemoteValue.class);
-            kryo.register(org.piax.gtrans.impl.RequestTransportImpl.IsEasySend.class);
-            kryo.register(org.piax.gtrans.impl.NestedMessage.class);
+//            kryo.register(org.piax.gtrans.impl.RequestTransportImpl.IsEasySend.class);
+//            kryo.register(org.piax.gtrans.impl.NestedMessage.class);
             kryo.register(org.piax.gtrans.TransOptions.class);
             kryo.register(org.piax.ayame.Event.class);
             kryo.register(org.piax.gtrans.netty.ControlMessage.class);

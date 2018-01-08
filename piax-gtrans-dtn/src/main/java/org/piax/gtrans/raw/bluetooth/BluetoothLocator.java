@@ -21,8 +21,8 @@ import javax.bluetooth.LocalDevice;
 
 import org.piax.common.PeerId;
 import org.piax.common.PeerLocator;
+import org.piax.gtrans.impl.BinaryJsonner;
 import org.piax.gtrans.raw.RawTransport;
-import org.piax.util.BinaryJsonner;
 
 
 /**

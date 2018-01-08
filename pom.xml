@@ -74,6 +74,7 @@
     <module>piax-ayame-sim</module>
     <module>piax-agent</module>
     <module>piax-gtrans</module>
+    <module>piax-compat</module>
     <module>piax-gtrans-suzaku</module>
     <module>piax-gtrans-dtn</module>
     <module>piax-sample</module>

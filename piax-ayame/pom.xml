@@ -11,7 +11,7 @@
   <groupId>org.piax</groupId>
   <artifactId>piax-ayame</artifactId>
   <version>4.0-SNAPSHOT</version>
-  <name>Ayame framework</name>
+  <name>Ayame Framework</name>
   <description>Ayame - A framework for event-driven distributed computing</description>
   <url>http://www.piax.org/</url>
   <licenses>

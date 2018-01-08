@@ -17,4 +17,7 @@ package org.piax.common;
  * ComparableKey.java - A class of a comparable key.
  */
 public interface ComparableKey<K> extends Key, Comparable<K> {
+    public enum SpecialKey implements ComparableKey<SpecialKey> {
+        WILDCARD
+    }
 }

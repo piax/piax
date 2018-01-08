@@ -19,9 +19,6 @@ import java.nio.ByteBuffer;
 import java.util.HashMap;
 
 import org.piax.gtrans.raw.RawTransport;
-import org.piax.gtrans.raw.emu.EmuLocator;
-import org.piax.gtrans.raw.tcp.TcpLocator;
-import org.piax.gtrans.raw.udp.UdpLocator;
 
 /**
  * ピアのlocatorを示す抽象クラスを定義する。
@@ -30,13 +27,6 @@ public abstract class PeerLocator implements Endpoint {
     private static final long serialVersionUID = 1L;
 
     protected static HashMap<Byte, Class<? extends PeerLocator>> magicMap = new HashMap<Byte, Class<? extends PeerLocator>>();
-    
-    static {
-        EndpointParser.registerParser("-tcp", in->PeerLocator.newLocator(in));
-        EndpointParser.registerParser("-udp", in->PeerLocator.newLocator(in));
-        EndpointParser.registerParser("-emu", in->PeerLocator.newLocator(in));
-    }
-    
     /*
      * Returns null if the type is unknown.
      */
@@ -78,7 +68,7 @@ public abstract class PeerLocator implements Endpoint {
     public abstract RawTransport<? extends PeerLocator> newRawTransport(PeerId peerId)
             throws IOException;
 
-    static public PeerLocator newLocator(String spec) {
+   /* static public PeerLocator newLocator(String spec) {
         PeerLocator locator = null;
         String specs[] = spec.split(":");
         if (specs[0].equals("-tcp")) {
@@ -91,7 +81,7 @@ public abstract class PeerLocator implements Endpoint {
             locator = new EmuLocator(spec);
         }
         return locator;
-    }
+    } */
     
     /**
      * targetに指定されたPeerLocatorオブジェクトと同一のクラスであるときに
