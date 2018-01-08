@@ -18,7 +18,7 @@ import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 
-import org.piax.common.PeerLocator;
+import org.piax.gtrans.PeerLocator;
 
 /**
  * IPv4アドレスを示すPeerLocatorの抽象クラス。

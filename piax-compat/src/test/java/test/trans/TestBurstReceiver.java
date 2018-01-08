@@ -5,12 +5,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.piax.common.ObjectId;
 import org.piax.common.PeerId;
-import org.piax.common.PeerLocator;
 import org.piax.gtrans.Channel;
 import org.piax.gtrans.ChannelListener;
 import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.Peer;
+import org.piax.gtrans.PeerLocator;
 import org.piax.gtrans.ReceivedMessage;
 import org.piax.gtrans.Transport;
 import org.piax.gtrans.TransportListener;

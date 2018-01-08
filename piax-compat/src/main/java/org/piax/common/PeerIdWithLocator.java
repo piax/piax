@@ -13,6 +13,8 @@
 
 package org.piax.common;
 
+import org.piax.gtrans.PeerLocator;
+
 /**
  * A class to hold a pair of Peer Identifier and Locator.
  */

@@ -42,10 +42,10 @@ import java.util.concurrent.TimeUnit;
 
 import org.piax.agent.impl.AgentHomeImpl;
 import org.piax.common.PeerId;
-import org.piax.common.PeerLocator;
 import org.piax.common.attribs.IncompatibleTypeException;
 import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.Peer;
+import org.piax.gtrans.PeerLocator;
 import org.piax.gtrans.ov.NoSuchOverlayException;
 import org.piax.gtrans.ov.Overlay;
 

@@ -7,10 +7,10 @@ import java.util.stream.Collectors;
 
 import org.piax.common.ComparableKey;
 import org.piax.common.Endpoint;
-import org.piax.common.PeerLocator;
 import org.piax.common.wrapper.BooleanKey;
 import org.piax.common.wrapper.DoubleKey;
 import org.piax.common.wrapper.StringKey;
+import org.piax.gtrans.PeerLocator;
 import org.piax.gtrans.UnavailableEndpointError;
 import org.piax.gtrans.netty.NettyEndpoint;
 import org.piax.gtrans.netty.NettyLocator;

@@ -16,8 +16,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import org.piax.common.PeerId;
-import org.piax.common.PeerLocator;
 import org.piax.gtrans.Peer;
+import org.piax.gtrans.PeerLocator;
 import org.piax.gtrans.Transport;
 import org.piax.gtrans.impl.ReceiverThreadPool;
 import org.piax.gtrans.ov.Link;

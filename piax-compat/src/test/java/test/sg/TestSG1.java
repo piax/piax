@@ -19,10 +19,10 @@ import java.util.Random;
 import java.util.concurrent.ExecutorService;
 
 import org.piax.common.PeerId;
-import org.piax.common.PeerLocator;
 import org.piax.common.subspace.Range;
 import org.piax.gtrans.FutureQueue;
 import org.piax.gtrans.Peer;
+import org.piax.gtrans.PeerLocator;
 import org.piax.gtrans.RemoteValue;
 import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.ov.sg.SkipGraph;

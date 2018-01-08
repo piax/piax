@@ -20,10 +20,10 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 import org.piax.common.ObjectId;
-import org.piax.common.PeerLocator;
 import org.piax.common.TransportId;
 import org.piax.gtrans.Channel;
 import org.piax.gtrans.NetworkTimeoutException;
+import org.piax.gtrans.PeerLocator;
 
 /**
  * 

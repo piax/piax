@@ -20,9 +20,8 @@ import java.nio.ByteBuffer;
 import javax.bluetooth.LocalDevice;
 
 import org.piax.common.PeerId;
-import org.piax.common.PeerLocator;
-import org.piax.gtrans.impl.BinaryJsonner;
-import org.piax.gtrans.raw.RawTransport;
+import org.piax.gtrans.PeerLocator;
+import org.piax.gtrans.Transport;
 
 
 /**
@@ -70,7 +69,7 @@ public class BluetoothLocator extends PeerLocator {
     }
 
     @Override
-    public RawTransport<BluetoothLocator> newRawTransport(PeerId peerId)
+    public Transport<BluetoothLocator> newRawTransport(PeerId peerId)
             throws IOException {
         if (this != local) {
             throw new IOException("locator should be local address");

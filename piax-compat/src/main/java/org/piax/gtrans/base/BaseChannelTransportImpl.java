@@ -22,12 +22,12 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.piax.common.ObjectId;
-import org.piax.common.PeerLocator;
 import org.piax.common.TransportId;
 import org.piax.gtrans.Channel;
 import org.piax.gtrans.GTransConfigValues;
 import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.Peer;
+import org.piax.gtrans.PeerLocator;
 import org.piax.gtrans.ProtocolUnsupportedException;
 import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.impl.BinaryJsonabilityException;

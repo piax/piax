@@ -11,14 +11,15 @@
  * $Id: PeerLocator.java 718 2013-07-07 23:49:08Z yos $
  */
 
-package org.piax.common;
+package org.piax.gtrans;
 
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 
-import org.piax.gtrans.raw.RawTransport;
+import org.piax.common.Endpoint;
+import org.piax.common.PeerId;
 
 /**
  * ピアのlocatorを示す抽象クラスを定義する。
@@ -65,7 +66,7 @@ public abstract class PeerLocator implements Endpoint {
      * @return このピアlocatorを使った通信をサポートするRawTransport
      * @throws IOException an exception that occurs when there is I/O error. 
      */
-    public abstract RawTransport<? extends PeerLocator> newRawTransport(PeerId peerId)
+    public abstract Transport<? extends PeerLocator> newRawTransport(PeerId peerId)
             throws IOException;
 
    /* static public PeerLocator newLocator(String spec) {

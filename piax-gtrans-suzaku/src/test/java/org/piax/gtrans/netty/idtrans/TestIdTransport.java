@@ -7,9 +7,9 @@ import java.net.InetSocketAddress;
 
 import org.junit.jupiter.api.Test;
 import org.piax.common.PeerId;
-import org.piax.common.PeerLocator;
 import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.Peer;
+import org.piax.gtrans.PeerLocator;
 import org.piax.gtrans.ReceivedMessage;
 import org.piax.gtrans.Transport;
 import org.piax.gtrans.TransportListener;

@@ -11,10 +11,10 @@
  * $Id: LocatorStatusObserver.java 1176 2015-05-23 05:56:40Z teranisi $
  */
 
-package org.piax.gtrans.raw;
+package org.piax.gtrans.impl;
 
 import org.piax.common.Endpoint;
-import org.piax.common.PeerLocator;
+import org.piax.gtrans.PeerLocator;
 
 /**
  * PeerLocatorの状態通知を受理するために定義されるインタフェース。

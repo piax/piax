@@ -10,10 +10,10 @@ package test.chordsharp;
 
 import java.io.IOException;
 
-import org.piax.common.PeerLocator;
 import org.piax.common.TransportId;
 import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.IdConflictException;
+import org.piax.gtrans.PeerLocator;
 import org.piax.gtrans.ov.ddll.NeighborSet;
 import org.piax.gtrans.ov.szk.ChordSharp;
 import org.slf4j.Logger;

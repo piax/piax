@@ -23,15 +23,14 @@ import java.util.concurrent.CopyOnWriteArraySet;
 
 import org.piax.common.Endpoint;
 import org.piax.common.Option.StringOption;
-import org.piax.common.PeerLocator;
 import org.piax.common.TransportId;
 import org.piax.common.TransportIdPath;
 import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.ConfigurationError;
 import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.Peer;
+import org.piax.gtrans.PeerLocator;
 import org.piax.gtrans.Transport;
-import org.piax.gtrans.raw.LocatorStatusObserver;
 
 /**
  * 

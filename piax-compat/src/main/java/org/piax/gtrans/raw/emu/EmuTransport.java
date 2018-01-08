@@ -18,7 +18,7 @@ package org.piax.gtrans.raw.emu;
 import java.io.IOException;
 
 import org.piax.common.PeerId;
-import org.piax.common.PeerLocator;
+import org.piax.gtrans.PeerLocator;
 import org.piax.gtrans.ReceivedMessage;
 import org.piax.gtrans.raw.RawChannel;
 import org.piax.gtrans.raw.RawTransport;

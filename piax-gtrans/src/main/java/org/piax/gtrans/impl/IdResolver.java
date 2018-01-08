@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.piax.common.PeerId;
-import org.piax.common.PeerLocator;
+import org.piax.gtrans.PeerLocator;
 import org.piax.util.Register;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

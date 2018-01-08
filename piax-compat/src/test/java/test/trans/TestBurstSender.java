@@ -7,11 +7,11 @@ import java.util.concurrent.TimeUnit;
 
 import org.piax.common.ObjectId;
 import org.piax.common.PeerId;
-import org.piax.common.PeerLocator;
 import org.piax.gtrans.Channel;
 import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.Peer;
+import org.piax.gtrans.PeerLocator;
 import org.piax.gtrans.ProtocolUnsupportedException;
 
 import test.Util;

@@ -8,7 +8,7 @@
 
 package test.chordsharp;
 
-import org.piax.common.PeerLocator;
+import org.piax.gtrans.PeerLocator;
 import org.piax.gtrans.ov.ring.RingManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

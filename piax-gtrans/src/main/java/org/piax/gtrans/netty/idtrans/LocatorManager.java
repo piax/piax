@@ -2,7 +2,7 @@ package org.piax.gtrans.netty.idtrans;
 
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.piax.common.PeerLocator;
+import org.piax.gtrans.PeerLocator;
 import org.piax.gtrans.netty.NettyLocator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

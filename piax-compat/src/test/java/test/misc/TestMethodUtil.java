@@ -6,11 +6,11 @@ import java.util.Arrays;
 
 import org.piax.common.ObjectId;
 import org.piax.common.PeerId;
-import org.piax.common.PeerLocator;
 import org.piax.common.TransportId;
 import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.Peer;
+import org.piax.gtrans.PeerLocator;
 import org.piax.gtrans.RPCIf;
 import org.piax.gtrans.RPCInvoker;
 import org.piax.gtrans.RemoteCallable;

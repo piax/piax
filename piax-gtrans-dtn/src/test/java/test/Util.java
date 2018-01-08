@@ -8,11 +8,11 @@ import java.util.Random;
 
 import org.piax.common.Endpoint;
 import org.piax.common.PeerId;
-import org.piax.common.PeerLocator;
 import org.piax.common.TransportId;
 import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.FutureQueue;
 import org.piax.gtrans.IdConflictException;
+import org.piax.gtrans.PeerLocator;
 import org.piax.gtrans.RemoteValue;
 import org.piax.gtrans.netty.NettyLocator;
 import org.piax.gtrans.netty.idtrans.PrimaryKey;

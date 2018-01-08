@@ -18,8 +18,8 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 
 import org.piax.common.PeerId;
+import org.piax.gtrans.Transport;
 import org.piax.gtrans.raw.InetLocator;
-import org.piax.gtrans.raw.RawTransport;
 
 /**
  * TCPのためのPeerLocatorを表現するクラス。
@@ -40,7 +40,7 @@ public class TcpLocator extends InetLocator {
     }
 
     @Override
-    public RawTransport<TcpLocator> newRawTransport(PeerId peerId)
+    public Transport<TcpLocator> newRawTransport(PeerId peerId)
             throws IOException {
         return new TcpTransport(peerId, this);
     }

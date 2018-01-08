@@ -37,9 +37,9 @@ import java.nio.ByteBuffer;
 
 import org.piax.common.ObjectId;
 import org.piax.common.PeerId;
-import org.piax.common.PeerLocator;
 import org.piax.common.TransportId;
 import org.piax.gtrans.GTransConfigValues;
+import org.piax.gtrans.PeerLocator;
 import org.piax.gtrans.raw.InetLocator;
 import org.piax.gtrans.raw.emu.EmuLocator;
 import org.piax.gtrans.raw.tcp.TcpLocator;

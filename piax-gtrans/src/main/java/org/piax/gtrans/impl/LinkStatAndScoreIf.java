@@ -15,7 +15,7 @@
 
 package org.piax.gtrans.impl;
 
-import org.piax.common.PeerLocator;
+import org.piax.gtrans.PeerLocator;
 
 /**
  * linkの状態監視とスコアリングのためのinterface。

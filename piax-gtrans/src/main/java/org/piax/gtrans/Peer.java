@@ -38,7 +38,6 @@ import org.piax.gtrans.impl.BaseTransportMgr;
 import org.piax.gtrans.impl.IdResolver;
 import org.piax.gtrans.impl.ReceiverThreadPool;
 import org.piax.gtrans.impl.TransportImpl;
-import org.piax.gtrans.raw.RawTransport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -407,8 +406,8 @@ public class Peer implements Closeable {
     public List<TransportTreeNode> genTransportTree() {
         List<TransportTreeNode> list = new ArrayList<TransportTreeNode>();
         for (Transport<?> tr : getAllTransports()) {
-            if (tr.getLowerTransport() == null
-                    || tr.getLowerTransport() instanceof RawTransport) {
+            if (tr.getLowerTransport() == null) {
+                    //|| tr.getLowerTransport() instanceof RawTransport) {
                 logger.debug("base tr:{}", tr);
                 if (!(tr instanceof TransportImpl)) {
                     logger.info("{} should be instance of TransportImpl", tr);

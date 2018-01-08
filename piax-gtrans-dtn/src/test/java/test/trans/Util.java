@@ -6,8 +6,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-import org.piax.common.PeerLocator;
 import org.piax.gtrans.FutureQueue;
+import org.piax.gtrans.PeerLocator;
 import org.piax.gtrans.RemoteValue;
 import org.piax.gtrans.raw.emu.EmuLocator;
 import org.piax.gtrans.raw.tcp.TcpLocator;

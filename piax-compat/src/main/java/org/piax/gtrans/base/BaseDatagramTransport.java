@@ -16,11 +16,11 @@ package org.piax.gtrans.base;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-import org.piax.common.PeerLocator;
 import org.piax.common.TransportId;
 import org.piax.gtrans.GTransConfigValues;
 import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.Peer;
+import org.piax.gtrans.PeerLocator;
 import org.piax.gtrans.ReceivedMessage;
 import org.piax.gtrans.impl.BinaryJsonabilityException;
 import org.piax.gtrans.impl.DatagramBasedTransport;

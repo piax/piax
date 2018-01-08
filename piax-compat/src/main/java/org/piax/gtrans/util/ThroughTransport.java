@@ -16,10 +16,10 @@ package org.piax.gtrans.util;
 import java.io.IOException;
 
 import org.piax.common.ObjectId;
-import org.piax.common.PeerLocator;
 import org.piax.common.TransportId;
 import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.IdConflictException;
+import org.piax.gtrans.PeerLocator;
 import org.piax.gtrans.impl.OneToOneMappingTransport;
 
 /**
