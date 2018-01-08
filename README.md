@@ -20,7 +20,7 @@ The structure of PIAX is as follows:
 * 'piax-samples' - Some simple samples of GTrans and PIAX Agents.
 * 'piax-shell' - A command-line application to demonstrate PIAX Agents.
 
-![dependency](images/dependency.png)
+<img src="images/dependency.png" width="640"/>
 
 # Build from sources
 
