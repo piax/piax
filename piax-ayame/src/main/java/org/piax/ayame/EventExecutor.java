@@ -25,7 +25,6 @@ public class EventExecutor {
     private static final Logger logger = LoggerFactory.getLogger(EventExecutor.class);
     // run in real-time
     public static BooleanOption realtime = new BooleanOption(false, "-realtime");
-    public static boolean REALWORLD = false;
     public static boolean SHOW_PROGRESS = false;
 
     private static long startTime; // init by reset();

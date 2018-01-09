@@ -119,7 +119,6 @@ public class Sim {
             }
         });
 
-    public static LocalNode[] nodes;
     public static BooleanOption verbOpt = new BooleanOption(false, "-verbose",
             val -> {Log.verbose = val;});
     public static EnumOption<Algorithm> algorithm
@@ -128,7 +127,7 @@ public class Sim {
     // if you turn this option on, also you must turn on "-realtime" option. 
     public static BooleanOption netOpt = new BooleanOption(false, "-net");
     public static EnumOption<ExpType> exptype
-        = new EnumOption<>(ExpType.class, ExpType.CONCURRENTJOIN, "-type");
+        = new EnumOption<>(ExpType.class, null, "-type");
     @SuppressWarnings("unused")
     private static IntegerOption seedOption = new IntegerOption(-1, "-seed", val -> {
         if (val == -1) {
@@ -151,7 +150,9 @@ public class Sim {
         = new DoubleOption(convertSecondsToVTime(15*60), "-avelife");
     public static DoubleOption failRate
         = new DoubleOption(0.0, "-failRate");
-    StarLatencyProvider latencyProvider = new StarLatencyProvider();
+
+    private StarLatencyProvider latencyProvider = new StarLatencyProvider();
+    public static LocalNode[] nodes;
 
     public static void main(String[] args) {
         Log.init();
@@ -167,6 +168,11 @@ public class Sim {
 
         if (!argList.isEmpty()) {
             System.err.println("Unknown argument: " + argList);
+            System.exit(1);
+        }
+
+        if (exptype.value() == null) {
+            System.err.println("Specify the experiment type with -type option"); 
             System.exit(1);
         }
 
@@ -214,14 +220,14 @@ public class Sim {
      * @param delay
      * @param callback
      */
-    public static void joinLater(LocalNode n, LocalNode introducer, long delay,
+    private static void joinLater(LocalNode n, LocalNode introducer, long delay,
             Runnable callback) {
         joinLater(n, introducer, delay, callback, (exc) -> {
             throw new Error("joinLater got exception", exc);
         });
     }
 
-    public static void joinLater(LocalNode n, LocalNode introducer, long delay,
+    private static void joinLater(LocalNode n, LocalNode introducer, long delay,
             Runnable callback, FailureCallback failure) {
         if (delay == 0) {
             joinAsync(n, introducer, callback, failure);
@@ -232,13 +238,14 @@ public class Sim {
         }
     }
     
-    public static void joinAsync(LocalNode n, LocalNode introducer,
+    private static void joinAsync(LocalNode n, LocalNode introducer,
             Runnable callback) {
         joinAsync(n, introducer, callback, (exc) -> {
             System.out.println(n + ": joinAsync: finished with " + exc);
         });
     }
-    public static void joinAsync(LocalNode n, LocalNode introducer,
+
+    private static void joinAsync(LocalNode n, LocalNode introducer,
             Runnable callback, FailureCallback failure) {
         CompletableFuture<Boolean> future = n.joinAsync(introducer);
         future.handle((rc, exc) -> {
@@ -252,7 +259,7 @@ public class Sim {
             return false;
         });
     }
-    
+
     public static void dump(LocalNode start) {
         System.out.println("node dump:");
         LocalNode x = start;

@@ -94,22 +94,24 @@ public class SuzakuStrategy extends NodeStrategy {
     public static BooleanOption UPDATE_ONCE
         = new BooleanOption(false, "-updateonce");
     public static IntegerOption UPDATE_FINGER_PERIOD
-        = new IntegerOption(1000 * 1000, "-ftperiod");
+        = new IntegerOption(60 * 1000, "-ftperiod");
     public static BooleanOption NOTIFY_WITH_REVERSE_POINTER 
-        = new BooleanOption(false, "-notify-rev", (val) -> {
+        = new BooleanOption(true, "-notify-rev", (val) -> {
             sanityCheck();
         });
     final static boolean P2U_EXPERIMENTAL = false; // currently buggy
 
     // parameter to compute the base of log
+    public static final int BASE_DEFAULT = 1;
     /** the base of log. K = 2<sup>B</sup> */
-    public static int K = 1 << 1;
-    public static IntegerOption B = new IntegerOption(1, "-base", val -> {
-        K = 1 << val;
-    });
-    
-    // FTEntry内のバックアップノードの数
-    public static int SUCCESSOR_LIST_SIZE = 0;
+    public static int K = 1 << BASE_DEFAULT;
+    public static IntegerOption B = new IntegerOption(BASE_DEFAULT,
+            "-base", val -> { K = 1 << val; });
+
+    // Each FTEntry has backup nodes.  In default, Suzaku uses DDLL's left
+    // neighbor set as the backup nodes.  Alternatively, you may use
+    // FFT[0]..FFT[SUCCESSOR_LIST_SIZE-1] as the backup nodes.
+    public static int SUCCESSOR_LIST_SIZE = 4;
     public static BooleanOption USE_SUCCESSOR_LIST
         = new BooleanOption(false, "-use-succlist", val -> {
             assert !val || SUCCESSOR_LIST_SIZE <= K;

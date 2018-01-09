@@ -76,7 +76,6 @@ public class DdllStrategy extends NodeStrategy {
     public static EnumOption<RetryMode> retryMode
         = new EnumOption<>(RetryMode.class, RetryMode.IMMED, "-retrymode");
 
-    // pinging is off by default
     public static IntegerOption pingPeriod =
             new IntegerOption(10000, "-pingperiod");
 
