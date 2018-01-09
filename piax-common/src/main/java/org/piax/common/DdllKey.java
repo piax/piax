@@ -13,10 +13,8 @@
 package org.piax.common;
 
 import java.io.Serializable;
-import java.util.Random;
 
 import org.piax.util.KeyComparator;
-import org.piax.util.MersenneTwister;
 import org.piax.util.RandomUtil;
 import org.piax.util.UniqId;
 import org.slf4j.Logger;
@@ -46,7 +44,6 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
     
     private static KeyComparator keyComp = KeyComparator.getInstance();
 
-    private static Random rand = new MersenneTwister();;
     // 主キー
     public final Comparable<?> rawKey;
     final UniqId uniqId;

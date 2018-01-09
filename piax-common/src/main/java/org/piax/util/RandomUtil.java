@@ -46,7 +46,7 @@ public class RandomUtil {
     }
     public static Random getSharedRandom() {
         if (shared == null) {
-            shared = new MersenneTwister();
+            shared = newCollisionlessRandom();
         }
         return shared;
     }
