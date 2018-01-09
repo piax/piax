@@ -14,7 +14,7 @@ package org.piax.gtrans.ov.sg;
 
 import java.util.Collection;
 
-import org.piax.ayame.ov.ddll.DdllKey;
+import org.piax.common.DdllKey;
 import org.piax.common.Endpoint;
 import org.piax.gtrans.RPCException;
 import org.piax.gtrans.RPCIf;

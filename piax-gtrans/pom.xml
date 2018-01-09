@@ -71,11 +71,11 @@
       <artifactId>piax-common</artifactId>
       <version>4.0-SNAPSHOT</version>
     </dependency>
-    <dependency>
+    <!--  <dependency>
       <groupId>org.piax</groupId>
       <artifactId>piax-ayame</artifactId>
       <version>4.0-SNAPSHOT</version>
-    </dependency>
+    </dependency>-->
     <dependency>
         <groupId>org.junit.jupiter</groupId>
         <artifactId>junit-jupiter-api</artifactId>

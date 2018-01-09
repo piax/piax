@@ -26,8 +26,8 @@ import java.util.Map;
 import java.util.NavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 
-import org.piax.ayame.ov.ddll.DdllKey;
 import org.piax.ayame.ov.rq.DKRangeRValue;
+import org.piax.common.DdllKey;
 import org.piax.common.Endpoint;
 import org.piax.common.Id;
 import org.piax.common.ObjectId;

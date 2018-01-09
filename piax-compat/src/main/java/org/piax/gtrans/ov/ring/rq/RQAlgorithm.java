@@ -15,8 +15,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.NavigableMap;
 
-import org.piax.ayame.ov.ddll.DdllKey;
 import org.piax.ayame.ov.rq.DKRangeRValue;
+import org.piax.common.DdllKey;
 import org.piax.common.Endpoint;
 import org.piax.common.Id;
 import org.piax.gtrans.TransOptions;

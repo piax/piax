@@ -10,6 +10,7 @@ import org.piax.ayame.Event.RequestEvent;
 import org.piax.ayame.LocalNode;
 import org.piax.ayame.Node;
 import org.piax.ayame.ov.ddll.DdllStrategy.SetRType;
+import org.piax.common.DdllKey;
 
 public abstract class DdllEvent {
     @FunctionalInterface

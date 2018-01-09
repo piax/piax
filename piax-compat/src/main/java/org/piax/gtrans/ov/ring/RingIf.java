@@ -12,7 +12,7 @@
 
 package org.piax.gtrans.ov.ring;
 
-import org.piax.ayame.ov.ddll.DdllKey;
+import org.piax.common.DdllKey;
 import org.piax.gtrans.RPCException;
 import org.piax.gtrans.RPCIf;
 import org.piax.gtrans.RemoteCallable;

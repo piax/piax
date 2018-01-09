@@ -14,8 +14,8 @@ package org.piax.gtrans.ov.ring.rq;
 import java.util.Collection;
 import java.util.List;
 
-import org.piax.ayame.ov.ddll.DdllKey;
 import org.piax.ayame.ov.rq.DKRangeRValue;
+import org.piax.common.DdllKey;
 import org.piax.common.PeerId;
 import org.piax.gtrans.ov.ring.ReplyMessage;
 import org.piax.gtrans.ov.ring.RingManager;

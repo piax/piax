@@ -13,8 +13,8 @@ package org.piax.gtrans.ov.ddll;
 
 import java.io.Serializable;
 
-import org.piax.ayame.ov.ddll.DdllKey;
 import org.piax.ayame.ov.ddll.LinkNum;
+import org.piax.common.DdllKey;
 import org.piax.common.Endpoint;
 import org.piax.gtrans.ov.Link;
 import org.piax.gtrans.ov.ddll.Node.Mode;

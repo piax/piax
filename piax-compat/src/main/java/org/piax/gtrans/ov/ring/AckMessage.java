@@ -13,7 +13,7 @@ package org.piax.gtrans.ov.ring;
 
 import java.util.List;
 
-import org.piax.ayame.ov.ddll.DdllKey;
+import org.piax.common.DdllKey;
 
 public class AckMessage extends ResponseMessage {
     private static final long serialVersionUID = 1L;

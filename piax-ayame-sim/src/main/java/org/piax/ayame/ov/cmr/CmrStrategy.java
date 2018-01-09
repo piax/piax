@@ -4,7 +4,6 @@ import java.util.concurrent.CompletableFuture;
 
 import org.piax.ayame.Event.Lookup;
 import org.piax.ayame.Event.LookupDone;
-import org.piax.ayame.EventExecutor;
 import org.piax.ayame.LocalNode;
 import org.piax.ayame.NetworkParams;
 import org.piax.ayame.Node;
@@ -17,6 +16,7 @@ import org.piax.ayame.ov.cmr.CmrEvent.CmrJoin;
 import org.piax.ayame.ov.cmr.CmrEvent.CmrJoinLater;
 import org.piax.ayame.ov.cmr.CmrEvent.CmrRetry;
 import org.piax.ayame.ov.ddll.DdllStrategy;
+import org.piax.util.RandomUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -136,7 +136,7 @@ public class CmrStrategy extends NodeStrategy {
                 delay = 0;
                 break;
             case RANDOM:
-                delay = EventExecutor.random().nextInt(JOIN_RETRY_DELAY)
+                delay = RandomUtil.getSharedRandom().nextInt(JOIN_RETRY_DELAY)
                     * NetworkParams.HALFWAY_DELAY;
                 break;
             case CONST:

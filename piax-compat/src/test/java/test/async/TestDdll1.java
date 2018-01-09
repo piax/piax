@@ -16,9 +16,9 @@ import java.util.concurrent.TimeUnit;
 
 import org.piax.ayame.EventExecutor;
 import org.piax.ayame.LocalNode;
-import org.piax.ayame.ov.ddll.DdllKey;
 import org.piax.ayame.ov.suzaku.SuzakuStrategy;
 import org.piax.ayame.ov.suzaku.SuzakuStrategy.SuzakuNodeFactory;
+import org.piax.common.DdllKey;
 import org.piax.common.Endpoint;
 import org.piax.common.PeerId;
 import org.piax.common.TransportId;

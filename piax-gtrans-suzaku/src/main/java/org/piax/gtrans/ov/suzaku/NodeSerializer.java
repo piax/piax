@@ -1,8 +1,9 @@
-package org.piax.gtrans.netty.kryo;
+package org.piax.gtrans.ov.suzaku;
 
 import org.piax.ayame.Node;
-import org.piax.ayame.ov.ddll.DdllKey;
+import org.piax.common.DdllKey;
 import org.piax.common.Endpoint;
+import org.piax.gtrans.netty.kryo.KryoUtil;
 
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.Serializer;

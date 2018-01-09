@@ -8,8 +8,8 @@ import java.util.Map;
 import java.util.NavigableMap;
 
 import org.piax.ayame.Node;
-import org.piax.ayame.ov.ddll.DdllKey;
 import org.piax.ayame.ov.ddll.DdllKeyRange;
+import org.piax.common.DdllKey;
 import org.piax.common.subspace.CircularRange;
 import org.piax.common.subspace.Range;
 

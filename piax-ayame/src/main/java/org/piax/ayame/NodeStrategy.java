@@ -6,8 +6,8 @@ import java.util.concurrent.CompletableFuture;
 
 import org.piax.ayame.Event.Lookup;
 import org.piax.ayame.Event.LookupDone;
-import org.piax.ayame.ov.ddll.DdllKey;
 import org.piax.ayame.ov.rq.RQAdapter;
+import org.piax.common.DdllKey;
 import org.piax.common.subspace.Range;
 import org.piax.gtrans.TransOptions;
 

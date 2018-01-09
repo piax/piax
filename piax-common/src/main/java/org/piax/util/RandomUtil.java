@@ -40,6 +40,16 @@ import java.util.Random;
  */
 public class RandomUtil {
 
+    public static Random shared = null;
+    public static void setSharedRandom(Random rand) {
+        shared = rand;
+    }
+    public static Random getSharedRandom() {
+        if (shared == null) {
+            shared = new MersenneTwister();
+        }
+        return shared;
+    }
     /**
      * seedの初期生成を工夫し、その際に起こりうるコリジョンを抑制したRandomオブジェクトを生成する。
      * <p>

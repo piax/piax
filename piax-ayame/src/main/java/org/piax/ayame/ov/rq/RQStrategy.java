@@ -23,18 +23,19 @@ import org.piax.ayame.LocalNode;
 import org.piax.ayame.Node;
 import org.piax.ayame.NodeFactory;
 import org.piax.ayame.NodeStrategy;
-import org.piax.ayame.ov.ddll.DdllKey;
 import org.piax.ayame.ov.ddll.DdllKeyRange;
 import org.piax.ayame.ov.rq.RQAdapter.InsertionPointAdapter;
 import org.piax.ayame.ov.rq.RQAdapter.KeyAdapter;
 import org.piax.ayame.ov.rq.RQEvent.GetLocalValueRequest;
 import org.piax.ayame.ov.suzaku.FingerTable;
+import org.piax.common.DdllKey;
 import org.piax.common.PeerId;
 import org.piax.common.subspace.Range;
 import org.piax.gtrans.RemoteValue;
 import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.TransOptions.ResponseType;
 import org.piax.gtrans.TransOptions.RetransMode;
+import org.piax.util.RandomUtil;
 import org.piax.util.UniqId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -250,7 +251,7 @@ public class RQStrategy extends NodeStrategy {
         }
         FQLParams<T> p = new FQLParams<>();
         {
-            p.qid = EventExecutor.random().nextLong();
+            p.qid = RandomUtil.getSharedRandom().nextLong();
             p.num = num;
             p.rq = convertToRQRange(range);
             p.adapter = adapter;
