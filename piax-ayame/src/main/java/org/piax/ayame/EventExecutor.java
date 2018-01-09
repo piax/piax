@@ -17,7 +17,7 @@ import org.piax.ayame.Event.TimerEvent;
 import org.piax.ayame.EventException.GraceStateException;
 import org.piax.ayame.Node.NodeMode;
 import org.piax.common.Option.BooleanOption;
-import org.piax.util.MersenneTwister;
+import org.piax.util.RandomUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,9 +38,6 @@ public class EventExecutor {
     private static LatencyProvider latencyProvider;
     private static Map<String, Count> counter = new HashMap<String, Count>();
     private static boolean terminateExecutor = false;
-
-    // consistent random generator
-    private static Random rand = new MersenneTwister();
 
     public static class Count {
         int count;
@@ -166,18 +163,14 @@ public class EventExecutor {
         lock.unlock();
         return s;
     }
-    
+
     /*
      * Consistent Random
      */
     public static Random random() {
-        return rand;
+        return RandomUtil.getSharedRandom();
     }
 
-    public static void setRandom(Random rand) {
-        EventExecutor.rand = rand;
-    }
-    
     /*
      * Message Counters
      */

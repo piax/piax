@@ -14,7 +14,7 @@ package org.piax.gtrans.ov;
 
 import java.io.Serializable;
 
-import org.piax.ayame.ov.ddll.DdllKey;
+import org.piax.common.DdllKey;
 import org.piax.common.Endpoint;
 
 /**

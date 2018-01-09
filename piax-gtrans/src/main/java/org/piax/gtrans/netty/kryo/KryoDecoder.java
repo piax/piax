@@ -1,16 +1,10 @@
 package org.piax.gtrans.netty.kryo;
 
+import java.util.List;
+
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
-
-import java.util.List;
-
-import org.objenesis.strategy.StdInstantiatorStrategy;
-import org.piax.ayame.LocalNode;
-import org.piax.ayame.Node;
-
-import com.esotericsoftware.kryo.Kryo;
 
 public class KryoDecoder extends ByteToMessageDecoder {
     public KryoDecoder() {

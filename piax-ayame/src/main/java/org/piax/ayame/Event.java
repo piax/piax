@@ -12,7 +12,7 @@ import java.util.function.Consumer;
 import org.piax.ayame.EventException.AckTimeoutException;
 import org.piax.ayame.EventException.TimeoutException;
 import org.piax.ayame.Node.NodeMode;
-import org.piax.ayame.ov.ddll.DdllKey;
+import org.piax.common.DdllKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

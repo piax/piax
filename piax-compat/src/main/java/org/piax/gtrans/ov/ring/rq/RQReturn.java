@@ -28,8 +28,8 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 
-import org.piax.ayame.ov.ddll.DdllKey;
 import org.piax.ayame.ov.rq.DKRangeRValue;
+import org.piax.common.DdllKey;
 import org.piax.common.Endpoint;
 import org.piax.common.PeerId;
 import org.piax.common.subspace.CircularRange;

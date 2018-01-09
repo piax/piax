@@ -18,7 +18,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import org.piax.ayame.ov.ddll.DdllKey;
+import org.piax.common.DdllKey;
 import org.piax.common.Endpoint;
 import org.piax.common.subspace.Range;
 import org.piax.gtrans.RPCException;

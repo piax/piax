@@ -4,8 +4,6 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToByteEncoder;
 
-import com.esotericsoftware.kryo.Kryo;
-
 public class KryoEncoder extends MessageToByteEncoder<Object> {
 
     static int KRYO_BUFSIZE = 1024;

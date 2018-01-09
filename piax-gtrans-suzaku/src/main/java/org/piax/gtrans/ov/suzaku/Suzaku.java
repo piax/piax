@@ -30,7 +30,6 @@ import java.util.stream.Stream;
 import org.piax.ayame.FTEntry;
 import org.piax.ayame.LocalNode;
 import org.piax.ayame.Node;
-import org.piax.ayame.ov.ddll.DdllKey;
 import org.piax.ayame.ov.ddll.DdllKeyRange;
 import org.piax.ayame.ov.rq.RQAdapter;
 import org.piax.ayame.ov.rq.RQStrategy;
@@ -39,6 +38,7 @@ import org.piax.ayame.ov.suzaku.SuzakuStrategy;
 import org.piax.ayame.ov.suzaku.SuzakuStrategy.SuzakuNodeFactory;
 import org.piax.common.ComparableKey;
 import org.piax.common.ComparableKey.SpecialKey;
+import org.piax.common.DdllKey;
 import org.piax.common.Destination;
 import org.piax.common.Endpoint;
 import org.piax.common.ObjectId;
@@ -59,6 +59,7 @@ import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.TransportListener;
 import org.piax.gtrans.impl.NestedMessage;
 import org.piax.gtrans.netty.idtrans.PrimaryKey;
+import org.piax.gtrans.netty.kryo.KryoUtil;
 import org.piax.gtrans.ov.Link;
 import org.piax.gtrans.ov.Overlay;
 import org.piax.gtrans.ov.OverlayListener;
@@ -81,6 +82,37 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
     RQNodeFactory factory;
     NetEventSender sender;
     Map<K,LocalNode> nodes;
+    
+    static {
+        // ayame related classes
+        // XXX need to think where these registration should be located
+        KryoUtil.register(org.piax.ayame.Event.class);
+        KryoUtil.register(org.piax.ayame.ov.ddll.DdllKeyRange.class);
+        KryoUtil.register(org.piax.ayame.ov.rq.DKRangeRValue.class);
+        KryoUtil.register(org.piax.ayame.ov.ddll.LinkNum.class);
+        KryoUtil.register(org.piax.ayame.Node.class, new NodeSerializer());
+        KryoUtil.register(org.piax.ayame.LocalNode.class, new NodeSerializer());
+        KryoUtil.register(org.piax.ayame.FTEntry.class);
+        KryoUtil.register(org.piax.ayame.FTEntry[].class);
+        KryoUtil.register(org.piax.ayame.Event.Lookup.class);
+        KryoUtil.register(org.piax.ayame.Event.AckEvent.class);
+        KryoUtil.register(org.piax.ayame.Event.LookupDone.class);
+        KryoUtil.register(org.piax.ayame.ov.ddll.DdllEvent.SetRAck.class);
+        KryoUtil.register(org.piax.ayame.ov.ddll.DdllEvent.SetR.class);
+        KryoUtil.register(org.piax.ayame.ov.rq.RQAdapter.InsertionPointAdapter.class);
+        KryoUtil.register(org.piax.ayame.ov.rq.RQAdapter.KeyAdapter.class);
+        KryoUtil.register(org.piax.ayame.ov.rq.RQRange.class);
+        KryoUtil.register(org.piax.ayame.ov.rq.RQReply.class);
+        KryoUtil.register(org.piax.ayame.ov.rq.RQRequest.class); 
+        KryoUtil.register(org.piax.ayame.ov.suzaku.SuzakuEvent.GetEntReply.class);
+        KryoUtil.register(org.piax.ayame.ov.suzaku.SuzakuStrategy.FTEntrySet.class);
+        KryoUtil.register(org.piax.gtrans.ov.suzaku.Suzaku.ExecQueryAdapter.class);
+        KryoUtil.register(org.piax.ayame.ov.suzaku.SuzakuEvent.GetEntRequest.class);
+        KryoUtil.register(org.piax.ayame.ov.ddll.DdllEvent.GetCandidates.class);
+        KryoUtil.register(org.piax.ayame.ov.ddll.DdllEvent.GetCandidatesResponse.class);
+        KryoUtil.register(org.piax.ayame.ov.ddll.DdllEvent.SetL.class);
+    }
+    
 /*
     static public class SuzakuEventSender<E extends Endpoint> implements EventSender, TransportListener<E> {
         TransportId transId;

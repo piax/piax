@@ -13,7 +13,7 @@ package org.piax.gtrans.ov.ring;
 
 import java.util.List;
 
-import org.piax.ayame.ov.ddll.DdllKey;
+import org.piax.common.DdllKey;
 import org.piax.common.Endpoint;
 import org.piax.gtrans.RPCException;
 import org.piax.gtrans.TransOptions;

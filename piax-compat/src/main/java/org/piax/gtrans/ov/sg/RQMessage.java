@@ -18,7 +18,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.NavigableMap;
 
-import org.piax.ayame.ov.ddll.DdllKey;
+import org.piax.common.DdllKey;
 import org.piax.common.Endpoint;
 import org.piax.common.PeerId;
 import org.piax.common.subspace.Range;

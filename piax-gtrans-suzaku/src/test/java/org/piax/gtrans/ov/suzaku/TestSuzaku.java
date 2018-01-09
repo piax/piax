@@ -159,6 +159,31 @@ class TestSuzaku {
     }
 
     @Test
+    public void peerIdRequestTest() throws Exception {
+        try (
+                // * means use the peerId as a primary key.
+                Suzaku<Destination, ComparableKey<?>> s1 = new Suzaku<>("id:*:tcp:localhost:12367");
+                Suzaku<Destination, ComparableKey<?>> s2 = new Suzaku<>("id:*:tcp:localhost:12368");
+        ) {
+            s1.join("tcp:localhost:12367");
+            s2.join("tcp:localhost:12367");
+            s2.setRequestListener((szk, msg) -> { // make a response
+                return msg.getMessage() + "2";
+            });
+            AtomicBoolean received = new AtomicBoolean(false);
+            s1.requestAsync(s2.getPeerId(), "world",
+                    (ret, e)-> { // receive response
+                        if (ret != Response.EOR) {
+                            received.set(true);
+                            assertTrue(ret.equals("world2"));
+                        }
+                    });
+            Thread.sleep(1000); // unless this line, finishes immediately.
+            assertTrue(received.get());
+        }
+    }
+
+    @Test
     public void tryWithResourcesTest() {
         try (
             Suzaku<StringKey, StringKey> s1 = new Suzaku<>("id:p1:tcp:localhost:12367");

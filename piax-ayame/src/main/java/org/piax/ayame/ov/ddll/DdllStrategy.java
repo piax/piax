@@ -29,6 +29,7 @@ import org.piax.ayame.ov.ddll.DdllEvent.SetRJob;
 import org.piax.ayame.ov.ddll.DdllEvent.SetRNak;
 import org.piax.common.Option.EnumOption;
 import org.piax.common.Option.IntegerOption;
+import org.piax.util.RandomUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -189,7 +190,7 @@ public class DdllStrategy extends NodeStrategy {
                         break;
                     case RANDOM:
                         // I don't remember why HALFWAY_DELAY is used (k-abe)
-                        delay = EventExecutor.random().nextInt(JOIN_RETRY_DELAY)
+                        delay = RandomUtil.getSharedRandom().nextInt(JOIN_RETRY_DELAY)
                                 * NetworkParams.HALFWAY_DELAY;
                         break;
                     case CONST:
@@ -264,7 +265,7 @@ public class DdllStrategy extends NodeStrategy {
                 logger.debug("{}: retry deletion:", n, this.toStringDetail());
                 logger.debug("pred: {}", getPredecessor().toStringDetail());
                 long delay =
-                        (long) (NetworkParams.ONEWAY_DELAY * EventExecutor.random().nextDouble());
+                        (long) (NetworkParams.ONEWAY_DELAY * RandomUtil.getSharedRandom().nextDouble());
                 EventExecutor.sched(delay, () -> {
                     leave(leaveComplete, setRjob);
                 });

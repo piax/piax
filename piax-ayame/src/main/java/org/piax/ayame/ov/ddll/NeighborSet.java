@@ -26,6 +26,7 @@ import java.util.concurrent.ConcurrentSkipListSet;
 import org.piax.ayame.LocalNode;
 import org.piax.ayame.Node;
 import org.piax.ayame.ov.ddll.DdllEvent.PropagateNeighbors;
+import org.piax.common.DdllKey;
 import org.piax.common.Option.IntegerOption;
 
 /**

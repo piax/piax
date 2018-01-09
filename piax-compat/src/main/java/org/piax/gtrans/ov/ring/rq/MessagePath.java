@@ -14,7 +14,7 @@ package org.piax.gtrans.ov.ring.rq;
 import java.io.Serializable;
 import java.util.Collection;
 
-import org.piax.ayame.ov.ddll.DdllKey;
+import org.piax.common.DdllKey;
 
 public class MessagePath implements Serializable {
     private static final long serialVersionUID = 1L;

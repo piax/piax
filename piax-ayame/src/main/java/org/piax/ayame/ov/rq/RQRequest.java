@@ -22,7 +22,7 @@ import org.piax.ayame.FTEntry;
 import org.piax.ayame.LocalNode;
 import org.piax.ayame.NetworkParams;
 import org.piax.ayame.Node;
-import org.piax.ayame.ov.ddll.DdllKey;
+import org.piax.common.DdllKey;
 import org.piax.common.Id;
 import org.piax.common.PeerId;
 import org.piax.common.subspace.Range;
@@ -31,6 +31,7 @@ import org.piax.gtrans.ReturnValue;
 import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.TransOptions.ResponseType;
 import org.piax.gtrans.TransOptions.RetransMode;
+import org.piax.util.RandomUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -107,7 +108,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             assert false;
         });
 
-        this.qid = EventExecutor.random().nextLong();
+        this.qid = RandomUtil.getSharedRandom().nextLong();
         this.root = null;  // overridden by DirectResponder at root node
         this.rootEventId = 0; // overridden by DirectResponder at root node
         this.targetRanges = Collections.unmodifiableCollection(ranges);

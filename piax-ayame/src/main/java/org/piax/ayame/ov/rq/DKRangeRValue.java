@@ -11,8 +11,8 @@
  */
 package org.piax.ayame.ov.rq;
 
-import org.piax.ayame.ov.ddll.DdllKey;
 import org.piax.ayame.ov.ddll.DdllKeyRange;
+import org.piax.common.DdllKey;
 import org.piax.common.subspace.Range;
 import org.piax.gtrans.RemoteValue;
 

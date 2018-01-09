@@ -21,7 +21,7 @@ import java.util.NavigableSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
 
-import org.piax.ayame.ov.ddll.DdllKey;
+import org.piax.common.DdllKey;
 import org.piax.gtrans.RPCException;
 import org.piax.gtrans.ov.Link;
 import org.piax.util.KeyComparator;

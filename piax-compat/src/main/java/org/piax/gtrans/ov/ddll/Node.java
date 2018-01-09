@@ -28,8 +28,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import org.piax.ayame.ov.ddll.DdllKey;
 import org.piax.ayame.ov.ddll.LinkNum;
+import org.piax.common.DdllKey;
 import org.piax.common.Endpoint;
 import org.piax.gtrans.RPCException;
 import org.piax.gtrans.ov.Link;

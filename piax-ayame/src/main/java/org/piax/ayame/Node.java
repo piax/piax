@@ -5,7 +5,7 @@ import java.io.Serializable;
 import java.util.Map;
 import java.util.Optional;
 
-import org.piax.ayame.ov.ddll.DdllKey;
+import org.piax.common.DdllKey;
 import org.piax.common.Endpoint;
 import org.piax.common.PeerId;
 import org.piax.util.ConcurrentReferenceHashMap;

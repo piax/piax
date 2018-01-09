@@ -12,6 +12,7 @@
 
 package org.piax.ayame.ov.ddll;
 
+import org.piax.common.DdllKey;
 import org.piax.common.subspace.CircularRange;
 import org.piax.common.subspace.Range;
 

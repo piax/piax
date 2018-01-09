@@ -8,8 +8,8 @@ import java.util.stream.Collectors;
 
 import org.piax.ayame.FTEntry;
 import org.piax.ayame.LocalNode;
-import org.piax.ayame.ov.ddll.DdllKey;
 import org.piax.ayame.ov.ddll.DdllKeyRange;
+import org.piax.common.DdllKey;
 import org.piax.common.subspace.Range;
 import org.piax.gtrans.RemoteValue;
 import org.slf4j.Logger;

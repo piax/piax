@@ -1,7 +1,5 @@
 package org.piax.ayame.sim;
 
-import static org.piax.ayame.EventExecutor.random;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -31,7 +29,6 @@ import org.piax.ayame.ov.atomic.AtomicRingStrategy.AtomicRingNodeFactory;
 import org.piax.ayame.ov.chord.ChordStrategy.ChordNodeFactory;
 import org.piax.ayame.ov.cmr.CmrStrategy;
 import org.piax.ayame.ov.cmr.CmrStrategy.CmrNodeFactory;
-import org.piax.ayame.ov.ddll.DdllKey;
 import org.piax.ayame.ov.ddll.DdllStrategy;
 import org.piax.ayame.ov.ddll.DdllStrategy.DdllNodeFactory;
 import org.piax.ayame.ov.ddll.DdllStrategy.RetryMode;
@@ -41,12 +38,14 @@ import org.piax.ayame.ov.suzaku.SuzakuStrategy.SuzakuNodeFactory;
 import org.piax.ayame.sim.stats.MultiStatSet;
 import org.piax.ayame.sim.stats.Stat;
 import org.piax.ayame.sim.stats.StatSet;
+import org.piax.common.DdllKey;
 import org.piax.common.Option;
 import org.piax.common.Option.BooleanOption;
 import org.piax.common.Option.DoubleOption;
 import org.piax.common.Option.EnumOption;
 import org.piax.common.Option.IntegerOption;
 import org.piax.util.MersenneTwister;
+import org.piax.util.RandomUtil;
 import org.piax.util.UniqId;
 
 public class Sim {
@@ -131,14 +130,13 @@ public class Sim {
     public static EnumOption<ExpType> exptype
         = new EnumOption<>(ExpType.class, ExpType.CONCURRENTJOIN, "-type");
     @SuppressWarnings("unused")
-    private static IntegerOption seedOption = new IntegerOption(-1, "-seed",
-            val -> {
-                if (val == -1) {
-                    EventExecutor.setRandom(new MersenneTwister());
-                } else {
-                    EventExecutor.setRandom(new MersenneTwister(val));
-                }
-            });
+    private static IntegerOption seedOption = new IntegerOption(-1, "-seed", val -> {
+        if (val == -1) {
+            RandomUtil.setSharedRandom(new MersenneTwister());
+        } else {
+            RandomUtil.setSharedRandom(new MersenneTwister(val));
+        }
+    });
     // used by expNodesVsHops
     private static IntegerOption numNodesOption = new IntegerOption(0, "-nodes");
     // used by expFtDistance
@@ -455,7 +453,7 @@ public class Sim {
             Consumer<LocalNode> insertCallback) {
         List<Integer> order = new ArrayList<>();
         IntStream.range(from, to).forEach(order::add);
-        Collections.shuffle(order, EventExecutor.random());
+        Collections.shuffle(order, RandomUtil.getSharedRandom());
         insertSeq(nodes, order, 0, delay1, delay2, after, insertCallback);
         return order;
     }
@@ -558,7 +556,7 @@ public class Sim {
     private void distLookupTest(LocalNode[] nodes, LookupStat s, long tFrom,
             int tWidth, boolean[] ignFrom, boolean[] ignTo, int nquery) {
         for (int i = 0; i < nquery; i++) {
-            long t = tFrom + (tWidth > 0 ? random().nextInt(tWidth) : 0);
+            long t = tFrom + (tWidth > 0 ? RandomUtil.getSharedRandom().nextInt(tWidth) : 0);
             EventExecutor.sched(t, () -> {
                 lookup1(nodes, s, ignFrom, ignTo);
             });
@@ -569,11 +567,11 @@ public class Sim {
             boolean[] ignFrom, boolean[] ignTo) {
         int from, dest;
         do {
-            from = random().nextInt(nodes.length);
+            from = RandomUtil.getSharedRandom().nextInt(nodes.length);
         } while (nodes[from].mode != NodeMode.INSERTED
                 || (ignFrom != null && ignFrom[from]));
         do {
-            dest = random().nextInt(nodes.length);
+            dest = RandomUtil.getSharedRandom().nextInt(nodes.length);
         } while (nodes[dest].mode != NodeMode.INSERTED
                 || (ignTo != null && ignTo[dest]));
         lookup(nodes[from], nodes[dest].key, s);
@@ -666,7 +664,7 @@ public class Sim {
                         for (int i = 0; i < nFail; i++) {
                             int r;
                             do {
-                                r = random().nextInt(num);
+                                r = RandomUtil.getSharedRandom().nextInt(num);
                             } while (failed[r]);
                             failed[r] = true; 
                             //nodes[r].fail();
@@ -749,7 +747,7 @@ public class Sim {
                 for (int i = 0; i < ndel; i++) {
                     int r;
                     do {
-                        r = random().nextInt(ndel);
+                        r = RandomUtil.getSharedRandom().nextInt(ndel);
                     } while (failed[r]);
                     failed[r] = true; 
                     CompletableFuture<Boolean> future = nodes[delStart + r].leaveAsync();
@@ -860,7 +858,7 @@ public class Sim {
         for (int i = 1; i < num; i++) {
             rest.add(i);
         }
-        Collections.shuffle(rest, random());
+        Collections.shuffle(rest, RandomUtil.getSharedRandom());
         ArrayList<Integer> inserted = new ArrayList<>();
         int base = 1;
         for (int i = base; i < initial; i++) {
@@ -873,7 +871,7 @@ public class Sim {
         for (int j = 1; j < 10; j += 2) {
             for (int i = 0; i < diff; i++) {
                 if (inserted.size() > 0) {
-                    int r = random().nextInt(inserted.size());
+                    int r = RandomUtil.getSharedRandom().nextInt(inserted.size());
                     int index = inserted.get(r);
                     inserted.remove(r);
                     long t = j * 10 * T;
@@ -934,7 +932,7 @@ public class Sim {
         nodes[0].joinInitialNode();
         List<Integer> order = new ArrayList<>();
         IntStream.range(1, NEND).forEach(order::add);
-        Collections.shuffle(order, random());
+        Collections.shuffle(order, RandomUtil.getSharedRandom());
         for (int i = 0; i < order.size(); i++) {
             joinLater(nodes[order.get(i)], nodes[0], i * DELTA, null);
         }
@@ -1013,13 +1011,13 @@ public class Sim {
         boolean[] graceful = new boolean[num];
         for (int i = 0; i < nodes.length; i++) {
             nodes[i] = createNode(factory, i * 10, NetworkParams.HALFWAY_DELAY);
-            graceful[i]= random().nextDouble() > failRate.value();
+            graceful[i]= RandomUtil.getSharedRandom().nextDouble() > failRate.value();
         }
         nodes[0].joinInitialNode();
         long T = convertSecondsToVTime(60); // 1分
         for (int i = 1; i < nodes.length; i++) {
             long s, e;
-            s = (long)(random().nextDouble() * 100 * T);
+            s = (long)(RandomUtil.getSharedRandom().nextDouble() * 100 * T);
             double dur = exponentialDist(1.0/(aveLifeTime.value()));
             e = s + (long)dur;
             LocalNode x = nodes[i];
@@ -1275,7 +1273,7 @@ public class Sim {
      * 指数分布に従う乱数を返す
      */
     private static double exponentialDist(double lambda) {
-        return -Math.log(1.0 - random().nextDouble()) / lambda;
+        return -Math.log(1.0 - RandomUtil.getSharedRandom().nextDouble()) / lambda;
     }
 
     /**
@@ -1395,6 +1393,7 @@ public class Sim {
         tstats.printBasicStat("time:" + name);
     }
 
+
     /**
      * retrans timeを変化させ，適切な再送時間を求める．
      *  
@@ -1506,7 +1505,7 @@ public class Sim {
         for (int i = 0; i < n; i++) {
             int r;
             do {
-                r = random().nextInt(MAXID);
+                r = RandomUtil.getSharedRandom().nextInt(MAXID);
             } while (iset.contains(r));
             iset.add(r);
             if (i < nSlowNodes) {

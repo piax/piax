@@ -1,12 +1,12 @@
 package org.piax.ayame.ov.atomic;
 
 import org.piax.ayame.Event;
-import org.piax.ayame.EventExecutor;
 import org.piax.ayame.LocalNode;
 import org.piax.ayame.NetworkParams;
 import org.piax.ayame.Node;
 import org.piax.ayame.ov.atomic.AtomicRingStrategy.Status;
 import org.piax.ayame.ov.ddll.DdllStrategy;
+import org.piax.util.RandomUtil;
 
 public abstract class AtomicRingEvent {
     public static class JoinReq extends Event {
@@ -103,7 +103,7 @@ public abstract class AtomicRingEvent {
                 delay = 0;
                 break;
             case RANDOM:
-                delay = EventExecutor.random()
+                delay = RandomUtil.getSharedRandom()
                     .nextInt(AtomicRingStrategy.JOIN_RETRY_DELAY)
                     * NetworkParams.HALFWAY_DELAY;
                 break;

@@ -10,12 +10,12 @@
  * $Id: DdllKey.java 1172 2015-05-18 14:31:59Z teranisi $
  */
 
-package org.piax.ayame.ov.ddll;
+package org.piax.common;
 
 import java.io.Serializable;
 
-import org.piax.ayame.EventExecutor;
 import org.piax.util.KeyComparator;
+import org.piax.util.RandomUtil;
 import org.piax.util.UniqId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -79,7 +79,7 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
         if (uniqId != null) {
             h ^= uniqId.hashCode();
         }
-        this.nonce = EventExecutor.random().nextInt();
+        this.nonce = RandomUtil.getSharedRandom().nextInt();
         this.hash = h ^ nonce;
         this.appData = appData;
     }
