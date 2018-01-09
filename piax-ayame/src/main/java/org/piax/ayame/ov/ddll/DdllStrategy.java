@@ -188,6 +188,7 @@ public class DdllStrategy extends NodeStrategy {
                         delay = 0;
                         break;
                     case RANDOM:
+                        // I don't remember why HALFWAY_DELAY is used (k-abe)
                         delay = EventExecutor.random().nextInt(JOIN_RETRY_DELAY)
                                 * NetworkParams.HALFWAY_DELAY;
                         break;
