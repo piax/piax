@@ -46,7 +46,6 @@ public class KryoUtil {
         }
     }
     
-    public long thLastRegistered = System.nanoTime();
     public synchronized static void reRegisterIfModified() {
         if (lasts.get() < lastRegistered) {
             logger.debug("re-register because the registration is modified on thread {}", Thread.currentThread());
