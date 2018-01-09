@@ -85,17 +85,20 @@ public abstract class DdllEvent {
             DdllStrategy s = DdllStrategy.getDdllStrategy(getLocalNode());
             s.setl(this);
         }
+
+        @Override
+        public String toStringMessage() {
+            return "SetL[lNew=" + lNew + ", seq=" + seq + ", nbrs=" + nbrs + "]";
+        }
     }
 
     public static class PropagateNeighbors extends Event {
-        DdllKey src;
         Set<Node> propset;
         DdllKey limit;
 
-        public PropagateNeighbors(Node receiver, DdllKey src, Set<Node> propset,
+        public PropagateNeighbors(Node receiver, Set<Node> propset,
                 DdllKey limit) {
             super("PropagateNeighbors", receiver);
-            this.src = src;
             this.propset = propset;
             this.limit = limit;
         }

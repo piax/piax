@@ -385,44 +385,28 @@ public class Sim {
         LocalNode a = createNode(factory, 0, NetworkParams.HALFWAY_DELAY);
         a.joinInitialNode();
         LocalNode b = createNode(factory, 10, NetworkParams.HALFWAY_DELAY);
+        LocalNode c = createNode(factory, 20, NetworkParams.HALFWAY_DELAY);
         LocalNode z = createNode(factory, 100, NetworkParams.HALFWAY_DELAY);
         joinAsync(b, a, () -> System.out.println(b + " joined!"),
                 exc -> {
-                    System.out.println("Node b join failed!");
+                    System.out.println(b + " join failed!");
                 });
-        /*z.joinAsync(a, () -> System.out.println(z + " joined"),
+        joinLater(c, a, 1000, () -> System.out.println(c + " joined!"),
                 exc -> {
-                    System.out.println("Node z join failed");
-                });*/
-        
-        /*Node c = createNode(cons, 20);
-        c.join0(a);
-        Node d = createNode(cons, 30);
-        d.join0(a);*/
-        //NodeImpl[] nodes = new NodeImpl[]{a, z, b, c, d};
-        LocalNode[] nodes = new LocalNode[] { a, z, b };
+                    System.out.println(c + " join failed!");
+                });
+        LocalNode[] nodes = {a, b, c, z};
         Arrays.sort(nodes);
         EventExecutor.sched(2000, () -> {
-            b.fail();
+            //c.fail();
             joinAsync(z, a, () -> System.out.println(z + " joined"),
                     exc -> {
-                        System.out.println("Node z join failed: " + exc);
+                        System.out.println(z + " join failed: " + exc);
                     });
-            
         });
-        
-        startSim(nodes, 100000);
-        System.out.println(a.toStringDetail());
-        System.out.println(b.toStringDetail());
-        System.out.println(z.toStringDetail()); 
-        //EventDispatcher.nmsgs = 0;
-        //System.out.println("*****************************");
-        //LookupStat s = new LookupStat();
-        //a.lookup(z.key, s); 
-        //a.lookup(b.key, s); 
-        //startSim(nodes);
-        //s.hops.printBasicStat("hops", 0);
-        //dump(nodes);
+        startSim(nodes, 100*1000);
+        Arrays.asList(nodes).stream()
+            .forEach(node -> System.out.println(node.toStringDetail()));
     }
 
     /**

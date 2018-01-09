@@ -311,21 +311,21 @@ public class DdllStrategy extends NodeStrategy {
         } else {
             boolean forInsertion = msg.origin == msg.rNew;
             if (msg.type != SetRType.NORMAL) {
-                leftNbrs.removeNode(msg.rCur);
+                leftNbrs.remove(msg.rCur);
                 leftNbrs.add(msg.rNew);
             } else {
                 if (forInsertion) {
                     leftNbrs.add(msg.rNew);
                 } else {
-                    leftNbrs.removeNode(msg.rCur);
+                    leftNbrs.remove(msg.rCur);
                 }
             }
             // compute a neighbor node set to send to the new right node 
-            Set<Node> nset = leftNbrs.computeNSForRight(msg.rNew);
+            Set<Node> nset = leftNbrs.computeNeighborSetForRightNode(msg.rNew);
             if (forInsertion) {
                 if (msg.type != SetRType.LEFTONLY) {
                     Set<Node> nset2 =
-                            leftNbrs.computeNSForRight(getSuccessor());
+                            leftNbrs.computeNeighborSetForRightNode(getSuccessor());
                     n.post(new SetL(n.succ, msg.rNew, rseq.next(), nset2));
                 }
             } else {
@@ -354,17 +354,16 @@ public class DdllStrategy extends NodeStrategy {
             // [3]を削除する場合，4がSetL受信．この場合のlimitも2 (lPrev=3, lNew=2)
             if (Node.isOrdered(prevL.key, msg.lNew.key, n.key)) {
                 // this SetL is sent for inserting a node (lNew)
-                leftNbrs.sendRight(n.key, getSuccessor(), prevL.key);
+                leftNbrs.sendRight(getSuccessor(), prevL.key);
             } else {
                 // this SetL is sent for deleting a node (prevL)
-                leftNbrs.sendRight(n.key, getSuccessor(), getPredecessor().key);
+                leftNbrs.sendRight(getSuccessor(), getPredecessor().key);
             }
         }
     }
 
     public void propagateNeighbors(PropagateNeighbors msg) {
-        leftNbrs.receiveNeighbors(msg.src, msg.propset, getSuccessor(),
-                msg.limit);
+        leftNbrs.receiveNeighbors(msg.propset, getSuccessor(), msg.limit);
     }
 
     /*
