@@ -109,7 +109,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         KryoUtil.register(org.piax.gtrans.ov.suzaku.Suzaku.ExecQueryAdapter.class);
         KryoUtil.register(org.piax.ayame.ov.suzaku.SuzakuEvent.GetEntRequest.class);
         KryoUtil.register(org.piax.ayame.ov.ddll.DdllEvent.GetCandidates.class);
-        KryoUtil.register(org.piax.ayame.ov.ddll.DdllEvent.GetCandidatesResponse.class);
+        KryoUtil.register(org.piax.ayame.ov.ddll.DdllEvent.GetCandidatesReply.class);
         KryoUtil.register(org.piax.ayame.ov.ddll.DdllEvent.SetL.class);
     }
     

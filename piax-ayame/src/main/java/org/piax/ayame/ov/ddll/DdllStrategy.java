@@ -477,7 +477,7 @@ public class DdllStrategy extends NodeStrategy {
                 if (lseq.equals(lseq0)) {
                     getLiveLeft(resp.origin, resp.succ, resp.candidates, future);
                 } else {
-                    // lseq has been changed while waiting GetCandidateResponse.
+                    // lseq has been changed while waiting GetCandidateReply.
                     // we have to retry the discovery.
                     logger.debug("{}: getLiveLeft: lseq changed!", n);
                     List<Node> cands = n.getNodesForFix(n.key);
