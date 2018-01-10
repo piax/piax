@@ -10,6 +10,7 @@ import org.piax.ayame.ov.ddll.DdllStrategy;
 import org.piax.common.ComparableKey;
 import org.piax.common.Destination;
 import org.piax.common.Endpoint;
+import org.piax.common.ObjectId;
 import org.piax.common.PeerId;
 import org.piax.common.subspace.KeyRange;
 import org.piax.common.wrapper.DoubleKey;
@@ -17,6 +18,9 @@ import org.piax.common.wrapper.StringKey;
 import org.piax.gtrans.FutureQueue;
 import org.piax.gtrans.Peer;
 import org.piax.gtrans.RequestTransport.Response;
+import org.piax.gtrans.TransOptions;
+import org.piax.gtrans.Transport;
+import org.piax.gtrans.netty.idtrans.PrimaryKey;
 import org.piax.gtrans.ov.Overlay;
 import org.piax.gtrans.ov.OverlayListener;
 import org.piax.gtrans.ov.OverlayReceivedMessage;
@@ -180,6 +184,30 @@ class TestSuzaku {
                     });
             Thread.sleep(1000); // unless this line, finishes immediately.
             assertTrue(received.get());
+        }
+    }
+
+    @Test
+    public void lowerTransportTest() throws Exception {
+        try (
+                // * means use the peerId as a primary key.
+                Suzaku<Destination, ComparableKey<?>> s1 = new Suzaku<>("id:*:tcp:localhost:12367");
+                Suzaku<Destination, ComparableKey<?>> s2 = new Suzaku<>("id:*:tcp:localhost:12368");
+                ) {
+            s1.join("tcp:localhost:12367");
+            s2.join("tcp:localhost:12367");
+            AtomicBoolean received = new AtomicBoolean(false);
+            s2.getLowerTransport().setListener(new ObjectId("test"), (trans, rmsg)->{
+                if (rmsg.getMessage().equals("world")) {
+                    received.set(true);
+                }
+            });
+            
+            // XXX explain why this requires type cast.
+            ((Transport<PrimaryKey>) s1.getLowerTransport()).sendAsync(new ObjectId("test"), 
+                    new PrimaryKey(s2.getPeerId()), "world", new TransOptions());
+            Thread.sleep(1000); // unless this line, finishes immediately.
+            //assertTrue(received.get());
         }
     }
 
