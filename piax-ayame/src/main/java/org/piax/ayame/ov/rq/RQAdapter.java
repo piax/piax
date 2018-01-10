@@ -20,6 +20,11 @@ import org.piax.gtrans.TransOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * abstract base class of range query adapter.
+ *
+ * @param <T> type of the return value of the range query
+ */
 public abstract class RQAdapter<T> implements Serializable {
     private static final Logger logger = LoggerFactory.getLogger(RQAdapter.class);
     transient protected final Consumer<RemoteValue<T>> resultsReceiver;

@@ -44,7 +44,8 @@ import org.slf4j.LoggerFactory;
  * query.
  * <p>
  * this class also manages (partial) results returned from child nodes.
- * 
+ *
+ * @param <T> type of the return value of the range query
  */
 public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>> {
     /*--- logger ---*/

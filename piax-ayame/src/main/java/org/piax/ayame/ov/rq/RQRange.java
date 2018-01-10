@@ -86,7 +86,7 @@ public class RQRange extends DdllKeyRange {
      * - そうでなければ，nullとする．
      * 
      * @param ents
-     * @return
+     * @return List of RQRange
      */
     public List<RQRange> split(NavigableMap<DdllKey, Node> ents) {
         List<RQRange> ranges = new ArrayList<RQRange>();
@@ -109,6 +109,10 @@ public class RQRange extends DdllKeyRange {
 
     /**
      * this rangeから [a, b) を削除した残りの範囲を返す．
+     *
+     * @param a
+     * @param b
+     * @return List of RQRange
      */
     public List<RQRange> retainRanges(DdllKey a, DdllKey b) {
         if (keyComp.compare(a, b) != 0 && keyComp.isOrdered(from, b, a)
@@ -143,7 +147,7 @@ public class RQRange extends DdllKeyRange {
      * 
      * @param another
      * @param auxRight
-     * @return
+     * @return RQRange
      */
     public RQRange concatenate(RQRange another, boolean auxRight) {
         if (this.to.compareTo(another.from) != 0) {

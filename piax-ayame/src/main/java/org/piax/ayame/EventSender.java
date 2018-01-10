@@ -1,6 +1,5 @@
 package org.piax.ayame;
 
-import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
 
 import org.piax.common.Endpoint;
@@ -41,16 +40,15 @@ public interface EventSender {
                     logger.trace("{} |send/forward event {}", ev.sender, ev);
                 }
             }
-            if (false && ((LocalNode)ev.receiver).isFailed()) {
+            /*if (((LocalNode)ev.receiver).isFailed()) {
                 CompletableFuture<Void> f = new CompletableFuture<>();
                 f.completeExceptionally(new IOException("remote node failure: "
                         + ev.receiver));
                 return f;
-            }
+            }*/
             // because sender Events and receiver Events are distinguished,
             // we have to clone the event even if sender == receiver.
             Event copy = ev.clone();
-            //copy.vtime = EventExecutor.getVTime() + ev.delay;
             EventExecutor.enqueue(copy);
             return CompletableFuture.completedFuture(null);
         }

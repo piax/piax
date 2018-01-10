@@ -310,6 +310,7 @@ public class LocalNode extends Node {
      * @param introducer a node that has been inserted to the ring.
      * @return true on success
      * @throws IOException thrown in communication errors
+     * @throws InterruptedException thrown if interrupted
      */
     public boolean addKey(Endpoint introducer) throws IOException,
         InterruptedException {
@@ -348,7 +349,11 @@ public class LocalNode extends Node {
 
     /**
      * locate the node position and insert
+     *
      * @param introducer
+     * @return CompletableFuture<Boolean> that completes on insertion
+     *         success or failure.  The result can be obtained with the
+     *         boolean value.
      */
     public CompletableFuture<Boolean> joinAsync(Node introducer) { 
         CompletableFuture<Boolean> joinFuture = new CompletableFuture<>();
@@ -519,7 +524,7 @@ public class LocalNode extends Node {
      * <p>myKey = k = 100 の場合 [100, 200, 300, 0]．
      * 
      * @param k
-     * @return
+     * @return List of Node
      */
     public List<Node> getNodesForFix(DdllKey k) {
         Comparator<Node> comp = getComparator(k);
