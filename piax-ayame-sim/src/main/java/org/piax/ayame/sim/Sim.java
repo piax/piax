@@ -7,7 +7,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.stream.IntStream;
 import java.util.stream.LongStream;
 
@@ -42,16 +44,11 @@ import org.piax.common.Option.BooleanOption;
 import org.piax.common.Option.DoubleOption;
 import org.piax.common.Option.EnumOption;
 import org.piax.common.Option.IntegerOption;
-import org.piax.common.TransportId;
 import org.piax.util.MersenneTwister;
 import org.piax.util.RandomUtil;
 import org.piax.util.UniqId;
 
 public class Sim {
-    @FunctionalInterface
-    public interface GetFactory {
-        NodeFactory getFactory();
-    }
     public enum Algorithm {
         AtomicRing(() -> new AtomicRingNodeFactory()), 
         DDLL(() -> new DdllNodeFactory()),
@@ -62,40 +59,33 @@ public class Sim {
         CHORD(() -> new ChordNodeFactory()),
         CMR(() -> new CmrNodeFactory()),
         SKIPGRAPH(() -> new SkipGraphNodeFactory());
-        public GetFactory method;
-        private Algorithm(GetFactory method) {
+        public Supplier<NodeFactory> method;
+        private Algorithm(Supplier<NodeFactory> method) {
             this.method = method;
         }
     }
 
-    @FunctionalInterface
-    public interface ExpMethod {
-        void run(Sim sim, NodeFactory factory);
-    }
     public enum ExpType {
-        CONCURRENTJOIN((sim, factory)-> sim.concurrentJoin(factory)), 
-        RETRANSTIME((sim, factory) -> sim.retransTest(factory)),
-        MIXLATENCY((sim, factory) -> sim.mixedLatencyTest(factory)),
-        SIMPLE((sim, factory) -> sim.simpleTest(factory)),
-        INSERTSEQ((sim, factory) -> sim.insertSeqTest(factory)),
-        INSERTLOOKUP((sim, factory) -> sim.expInsertLookupTest(factory,
-                insOrder.value(), false)),
-        INSERTFAILLOOKUP((sim, factory) -> sim.expInsertLookupTest(factory,
-                insOrder.value(), true)),
-        DELETELOOKUP((sim, factory) -> sim.deleteLookupTest(factory)),
-        INSERTFAILREPEAT((sim, factory) -> sim.insertFailRepeat(factory,
-                insOrder.value(), true)),
-        LOOKUPVARYN((sim, factory) -> sim.lookupVaryingN(factory)),
-        PERMUTATIONS((sim, factory) -> sim.permutation(factory)),
-        SPECIFICORDER((sim, factory) -> sim.specificOrder(factory)),
-        INSERTDELETE((sim, factory) -> sim.insertDelete(factory)),
+        CONCURRENTJOIN((sim, factory)-> sim.expConcurrentJoin(factory)),
+        RETRANSTIME((sim, factory) -> sim.expRetransTest(factory)),
+        MIXLATENCY((sim, factory) -> sim.expMixedLatencyTest(factory)),
+        SIMPLE((sim, factory) -> sim.expSimpleTest(factory)),
+        INSERTSEQ((sim, factory) -> sim.expInsertSeqTest(factory)),
+        INSERTLOOKUP((sim, factory) -> sim.expInsertLookupTest(factory, false)),
+        INSERTFAILLOOKUP((sim, factory) -> sim.expInsertLookupTest(factory, true)),
+        DELETELOOKUP((sim, factory) -> sim.expDeleteLookupTest(factory)),
+        INSERTFAILREPEAT((sim, factory) -> sim.expInsertFailRepeat(factory, true)),
+        LOOKUPVARYN((sim, factory) -> sim.expLookupVaryingN(factory)),
+        PERMUTATIONS((sim, factory) -> sim.expPermutation(factory)),
+        SPECIFICORDER((sim, factory) -> sim.expSpecificOrder(factory)),
+        INSERTDELETE((sim, factory) -> sim.expInsertDelete(factory)),
         HOPSBYDIST((sim, factory) -> sim.expHopsByDistance(factory)),
-        JOINMSGS((sim, factory) -> sim.msgs4Join(factory)),
+        JOINMSGS((sim, factory) -> sim.expMsgs4Join(factory)),
         FTDISTANCE((sim, factory) -> sim.expFtDistance(factory)),
         NODESVSHOPS((sim, factory) -> sim.expNodesVsHops(factory));
 
-        public ExpMethod method;
-        private ExpType(ExpMethod exp) {
+        public BiConsumer<Sim, NodeFactory> method;
+        private ExpType(BiConsumer<Sim, NodeFactory> exp) {
             this.method = exp;
         }
     }
@@ -129,7 +119,6 @@ public class Sim {
             }
         });
 
-    public static LocalNode[] nodes;
     public static BooleanOption verbOpt = new BooleanOption(false, "-verbose",
             val -> {Log.verbose = val;});
     public static EnumOption<Algorithm> algorithm
@@ -138,7 +127,8 @@ public class Sim {
     // if you turn this option on, also you must turn on "-realtime" option. 
     public static BooleanOption netOpt = new BooleanOption(false, "-net");
     public static EnumOption<ExpType> exptype
-        = new EnumOption<>(ExpType.class, ExpType.CONCURRENTJOIN, "-type");
+        = new EnumOption<>(ExpType.class, null, "-type");
+    @SuppressWarnings("unused")
     private static IntegerOption seedOption = new IntegerOption(-1, "-seed", val -> {
         if (val == -1) {
             RandomUtil.setSharedRandom(new MersenneTwister());
@@ -160,7 +150,9 @@ public class Sim {
         = new DoubleOption(convertSecondsToVTime(15*60), "-avelife");
     public static DoubleOption failRate
         = new DoubleOption(0.0, "-failRate");
-    StarLatencyProvider latencyProvider = new StarLatencyProvider();
+
+    private StarLatencyProvider latencyProvider = new StarLatencyProvider();
+    public static LocalNode[] nodes;
 
     public static void main(String[] args) {
         Log.init();
@@ -170,28 +162,29 @@ public class Sim {
         DdllStrategy.load();
         AtomicRingStrategy.load();
         CmrStrategy.load();
-        //NetworkParams.load();
 
         List<String> argList = new ArrayList<>(Arrays.asList(args));
         Option.parseParams(argList);
-        args = argList.toArray(new String[0]);
-        //System.out.println("args remained: " + Arrays.toString(args));
 
-        for (int i = 0; i < args.length; i++) {
-            switch (args[i]) {
-            default:
-                System.err.println("Unknown argument: " + args[i]);
-                System.exit(1);
-            }
+        if (!argList.isEmpty()) {
+            System.err.println("Unknown argument: " + argList);
+            System.exit(1);
         }
+
+        if (exptype.value() == null) {
+            System.err.println("Specify the experiment type with -type option"); 
+            System.exit(1);
+        }
+
         System.out.println("Simulation Configurations:");
         for (Option<?> opt: Option.allOptions()) {
             System.out.println(" " + opt.getArgName() + ": " + opt.value());
         }
         System.out.println();
+
         // start simulation
         long startTime = System.currentTimeMillis();
-        new Sim().sim(algorithm.value(), exptype.value());
+        new Sim().sim();
         long endTime = System.currentTimeMillis();
         long elapsed = endTime - startTime;
         System.out.println("\n");
@@ -199,10 +192,12 @@ public class Sim {
         System.exit(0);
     }
 
-    private void sim(Algorithm algorithm, ExpType exptype) {
+    private void sim() {
         EventExecutor.setLatencyProvider(latencyProvider);
-        NodeFactory factory = algorithm.method.getFactory();
-        exptype.method.run(this, factory);
+        Algorithm algorithm = Sim.algorithm.value();
+        ExpType exptype = Sim.exptype.value();
+        NodeFactory factory = algorithm.method.get();
+        exptype.method.accept(this, factory);
     }
 
     private static void startSim(LocalNode[] nodes) {
@@ -225,16 +220,15 @@ public class Sim {
      * @param delay
      * @param callback
      */
-    public static void joinLater(LocalNode n, LocalNode introducer, long delay,
+    private static void joinLater(LocalNode n, LocalNode introducer, long delay,
             Runnable callback) {
         joinLater(n, introducer, delay, callback, (exc) -> {
             throw new Error("joinLater got exception", exc);
         });
     }
 
-    public static void joinLater(LocalNode n, LocalNode introducer, long delay,
+    private static void joinLater(LocalNode n, LocalNode introducer, long delay,
             Runnable callback, FailureCallback failure) {
-        //n.mode = NodeMode.TO_BE_INSERTED;
         if (delay == 0) {
             joinAsync(n, introducer, callback, failure);
         } else {
@@ -244,13 +238,14 @@ public class Sim {
         }
     }
     
-    public static void joinAsync(LocalNode n, LocalNode introducer,
+    private static void joinAsync(LocalNode n, LocalNode introducer,
             Runnable callback) {
         joinAsync(n, introducer, callback, (exc) -> {
             System.out.println(n + ": joinAsync: finished with " + exc);
         });
     }
-    public static void joinAsync(LocalNode n, LocalNode introducer,
+
+    private static void joinAsync(LocalNode n, LocalNode introducer,
             Runnable callback, FailureCallback failure) {
         CompletableFuture<Boolean> future = n.joinAsync(introducer);
         future.handle((rc, exc) -> {
@@ -264,7 +259,7 @@ public class Sim {
             return false;
         });
     }
-    
+
     public static void dump(LocalNode start) {
         System.out.println("node dump:");
         LocalNode x = start;
@@ -293,18 +288,14 @@ public class Sim {
         if (EventExecutor.realtime.value()) {
             return (long)(sec * 1000);
         } else {
-            return (long)(sec * 1000 / NetworkParams.LATENCY_FACTOR);
+            return (long)(sec * 1000 / NetworkParams.TIME_FACTOR);
         }
     }
 
-    private LocalNode createNode(NodeFactory factory, int key) {
-        return createNode(factory, key, NetworkParams.HALFWAY_DELAY);
-    }
-
     private LocalNode createNode(NodeFactory factory, int key, long latency) {
-        TransportId transId = new TransportId("SimTrans");
         if (netOpt.value()) {
-/*            Peer peer = Peer.getInstance(new PeerId("P" + key));
+/*            TransportId transId = new TransportId("SimTrans");
+            Peer peer = Peer.getInstance(new PeerId("P" + key));
             DdllKey k = new DdllKey(key, new UniqId(peer.getPeerId()), "", null);
             PeerLocator loc = newLocator("emu", key);
             ChannelTransport<?> trans;
@@ -390,48 +381,32 @@ public class Sim {
         from.post(ev);
     }
 
-    private void simpleTest(NodeFactory factory) {
+    private void expSimpleTest(NodeFactory factory) {
         LocalNode a = createNode(factory, 0, NetworkParams.HALFWAY_DELAY);
         a.joinInitialNode();
         LocalNode b = createNode(factory, 10, NetworkParams.HALFWAY_DELAY);
+        LocalNode c = createNode(factory, 20, NetworkParams.HALFWAY_DELAY);
         LocalNode z = createNode(factory, 100, NetworkParams.HALFWAY_DELAY);
         joinAsync(b, a, () -> System.out.println(b + " joined!"),
                 exc -> {
-                    System.out.println("Node b join failed!");
+                    System.out.println(b + " join failed!");
                 });
-        /*z.joinAsync(a, () -> System.out.println(z + " joined"),
+        joinLater(c, a, 1000, () -> System.out.println(c + " joined!"),
                 exc -> {
-                    System.out.println("Node z join failed");
-                });*/
-        
-        /*Node c = createNode(cons, 20);
-        c.join0(a);
-        Node d = createNode(cons, 30);
-        d.join0(a);*/
-        //NodeImpl[] nodes = new NodeImpl[]{a, z, b, c, d};
-        LocalNode[] nodes = new LocalNode[] { a, z, b };
+                    System.out.println(c + " join failed!");
+                });
+        LocalNode[] nodes = {a, b, c, z};
         Arrays.sort(nodes);
         EventExecutor.sched(2000, () -> {
-            b.fail();
+            //c.fail();
             joinAsync(z, a, () -> System.out.println(z + " joined"),
                     exc -> {
-                        System.out.println("Node z join failed: " + exc);
+                        System.out.println(z + " join failed: " + exc);
                     });
-            
         });
-        
-        startSim(nodes, 100000);
-        System.out.println(a.toStringDetail());
-        System.out.println(b.toStringDetail());
-        System.out.println(z.toStringDetail()); 
-        //EventDispatcher.nmsgs = 0;
-        //System.out.println("*****************************");
-        //LookupStat s = new LookupStat();
-        //a.lookup(z.key, s); 
-        //a.lookup(b.key, s); 
-        //startSim(nodes);
-        //s.hops.printBasicStat("hops", 0);
-        //dump(nodes);
+        startSim(nodes, 100*1000);
+        Arrays.asList(nodes).stream()
+            .forEach(node -> System.out.println(node.toStringDetail()));
     }
 
     /**
@@ -520,7 +495,7 @@ public class Sim {
         });
     }
 
-    private void insertSeqTest(NodeFactory factory) {
+    private void expInsertSeqTest(NodeFactory factory) {
         int N = 16;
         LocalNode[] nodes = new LocalNode[N];
         for (int i = 0; i < nodes.length; i++) {
@@ -606,14 +581,9 @@ public class Sim {
         };
     }
 
-    private void expInsertLookupTest(NodeFactory factory,
-            InsertOrder insOrder, boolean doFail) {
+    private void expInsertLookupTest(NodeFactory factory, boolean doFail) {
         DdllStrategy.pingPeriod.set(0);
-//        boolean pu2 = SuzakuStrategy.PASSIVE_UPDATE_2.value();
-//        boolean pu2bid = SuzakuStrategy.PASSIVE_UPDATE_2_BIDIRECTIONAL.value();
-//        String postfix = (pu2 ? ("pu2"
-//                + (pu2bid ? "-bid" : "")) : "nopu2");
-//        postfix += "-" + insOrder.toString().toLowerCase();
+        InsertOrder insOrder = Sim.insOrder.value();
         int num = numNodesOption.value();   // 全ノード数
         int initial = num;  // 最初に挿入するノード数
         // 後で挿入するノード数
@@ -694,10 +664,6 @@ public class Sim {
                     });//);
         }
 
-//        double logNum = Math.log(num) / Math.log(2);
-//        long duration = (int)(logNum * logNum * 
-//                SuzakuStrategy.UPDATE_FINGER_PERIOD.value());
-        // 2*60 だと Chord# で不足
         long duration = T * LOOKUP_TIMES + convertSecondsToVTime(4*60);
         System.err.println("duration=" + duration);
         startSim(nodes, duration);
@@ -708,7 +674,7 @@ public class Sim {
         all.timeSet.printBasicStat("time");
         all.failSet.printBasicStat("lookupFails");
         all.failedNodeSet.printBasicStat("encounterFailedNodes");
-        
+
         all.hopSet.printCSV("hopsdata");
 
         all.hopSet.getStat(1).outputFreqDist("dist-1", 1);
@@ -720,7 +686,7 @@ public class Sim {
         EventExecutor.dumpMessageCounters();
     }
 
-    private void deleteLookupTest(NodeFactory factory) {
+    private void expDeleteLookupTest(NodeFactory factory) {
         int num = 256;   // 全ノード数
         int delStart = 32; // 削除開始ノード (inclusive)
         int delEnd = 96; // 削除終了ノード (exclusive)
@@ -804,9 +770,7 @@ public class Sim {
             all.timeSet.getStat(i).outputFreqDist("time-dist-" + i, 10000);
             //all.failedNodeSet.getStat(i).outputFreqDist("failed-dist-" + i, 1, false);
         }
-        //msgset.printBasicStat("ftmsgs");
         numStatSet.printBasicStat("numNodes");
-        //EventDispatcher.dumpMessageCounters();
     }
 
     /**
@@ -814,7 +778,7 @@ public class Sim {
      * 
      * @param factory
      */
-    private void msgs4Join(NodeFactory factory) {
+    private void expMsgs4Join(NodeFactory factory) {
         MultiStatSet msgset = new MultiStatSet();
         // !!! Chord#では大きすぎる
         int ITER = 10;
@@ -867,8 +831,7 @@ public class Sim {
      * @param insOrder
      * @param doFail
      */
-    private void insertFailRepeat(NodeFactory factory,
-            InsertOrder insOrder, boolean doFail) {
+    private void expInsertFailRepeat(NodeFactory factory, boolean doFail) {
         // 全ノード数
         int num = 1000;        // 最初に挿入するノード数
         int initial = 200;
@@ -923,7 +886,6 @@ public class Sim {
         System.out.println("*****************************");
 
         AllLookupStats all = new AllLookupStats();
-        StatSet symset = new StatSet();
         // T 毎に lookupTest を実行
         int LOOKUP_TIMES = 80;
         if (true) for (int i = 1; i < LOOKUP_TIMES; i++) {
@@ -931,8 +893,6 @@ public class Sim {
             System.out.println("!!! " + i + "th loop start (" + t + ")");
             LookupStat s = all.getLookupStat(i);
             EventExecutor.sched(t, lookupTest(nodes, s));
-            Stat as = symset.getStat(i);
-            EventExecutor.sched(t, () -> symmetricDegree(nodes, as));
         }
 
         startSim(nodes, T * LOOKUP_TIMES);
@@ -942,11 +902,6 @@ public class Sim {
         all.hopSet.printBasicStat("hops");
         all.failSet.printBasicStat("lookupFails");
         all.failedNodeSet.printBasicStat("encounterFailedNodes");
-
-        //all.hopSet.getStat(1).outputFreqDist("dist-1", 1, false);
-        //all.hopSet.getStat(LOOKUP_TIMES - 1).outputFreqDist("dist-last", 1, false);
-
-        symset.printBasicStat("symmetric");
     }
 
     
@@ -956,7 +911,7 @@ public class Sim {
      * @param name
      * @param factory
      */
-    private void lookupVaryingN(NodeFactory factory) {
+    private void expLookupVaryingN(NodeFactory factory) {
         //final int NSTART = 0; // 最小ノード数
         final int NEND = 5000; // 最大ノード数 +1 
         final long DELTA = 10*1000L;
@@ -1040,7 +995,7 @@ public class Sim {
     int cNode = 0;
     int iNode = 0;
     int dNode = 0;
-    private void insertDelete(NodeFactory factory) {
+    private void expInsertDelete(NodeFactory factory) {
         // 全ノード数
         int num = 256;
         LocalNode[] nodes = new LocalNode[num];
@@ -1079,8 +1034,6 @@ public class Sim {
 
         int LOOKUP_TIMES = 200;
         AllLookupStats all = new AllLookupStats();
-        StatSet msgset = new StatSet();
-        StatSet symset = new StatSet();
         StatSet numStatSet = new StatSet();
         StatSet istatset = new StatSet();
         StatSet dstatset = new StatSet();
@@ -1093,13 +1046,11 @@ public class Sim {
             Stat stat = numStatSet.getStat(i);
             Stat istat = istatset.getStat(i);
             Stat dstat = dstatset.getStat(i);
-            Stat as = symset.getStat(i);
             EventExecutor.sched(t, () -> {
                 System.out.println("!!! lookup + " + t);
                 stat.addSample(cNode);
                 istat.addSample(iNode);
                 dstat.addSample(dNode);
-                symmetricDegree(nodes, as);
                 dump(nodes);
             });
         }
@@ -1117,8 +1068,6 @@ public class Sim {
         all.timeSet.printBasicStat("time");
         all.failSet.printBasicStat("lookupFails");
         all.failedNodeSet.printBasicStat("encounterFailedNodes");
-        symset.printBasicStat("symmetric");
-        
         all.timeSet.outputFreqDist("timefreq", 100);
         unified.time.outputFreqDist("unifiedTimeFreq", 100);
 
@@ -1299,6 +1248,7 @@ public class Sim {
      * 
      * http://www.ishikawa-lab.com/montecarlo/4shou.html
      */
+    @SuppressWarnings("unused")
     private static int poisson(double lambda)  {
         double xp;
         int k = 0;
@@ -1322,7 +1272,7 @@ public class Sim {
      * @param insOrder
      * @param doFail
      */
-    private void permutation(NodeFactory factory) {
+    private void expPermutation(NodeFactory factory) {
         // 全ノード数
         int num = 9;//100;
         // 順列を生成するノード数
@@ -1381,7 +1331,7 @@ public class Sim {
         startSim(nodes, 2000*T);
     }
 
-    private void specificOrder(NodeFactory factory) {
+    private void expSpecificOrder(NodeFactory factory) {
         // 全ノード数
         int num = 100;
         // 順列を生成するノード数
@@ -1399,7 +1349,7 @@ public class Sim {
         s.hops.outputFreqDist("hopdist", 1);
     }
 
-    private void concurrentJoin(NodeFactory factory) {
+    private void expConcurrentJoin(NodeFactory factory) {
         final int NSTART = 0; // 最小ノード数
         final int NEND = 100; // 最大ノード数
         final int STEP = 5; // ノード数のステップ
@@ -1430,6 +1380,97 @@ public class Sim {
         }
         String name = factory.toString();
         istats.printBasicStat("insert:" + name);
+        mstats.printBasicStat("msg:" + name);
+        tstats.printBasicStat("time:" + name);
+    }
+
+
+    /**
+     * retrans timeを変化させ，適切な再送時間を求める．
+     *  
+     * @param name
+     * @param cons
+     */
+    private void expRetransTest(NodeFactory factory) {
+        if (DdllStrategy.retryMode.value() != RetryMode.RANDOM) {
+            System.err.println("specify -retrymode RANDOM");
+            System.exit(1);
+        }
+        final int MAX = 25;
+        final int ITER = 300;
+        StatSet mstats = new StatSet();
+        StatSet tstats = new StatSet();
+        StatSet istats = new StatSet();
+        int n = 50;
+        int delay = 1;
+        for (int j = 0; j < MAX; j++, delay += 1) {
+            System.err.println("[" + j + "]");
+            DdllStrategy.JOIN_RETRY_DELAY = delay;
+            //AtomicRingStrategy.JOIN_RETRY_DELAY = delay;
+            //CmrStrategy.JOIN_RETRY_DELAY = delay;
+            Stat mstat = mstats.getStat(delay);
+            Stat tstat = tstats.getStat(delay);
+            Stat istat = istats.getStat(delay);
+            EventExecutor.resetMessageCounters();
+            for (int i = 0; i < ITER; i++) {
+                System.out.println("** Simulation Start: " + n
+                        + " nodes ***************************");
+                mixedLatencyExp(factory, n, mstat, tstat, istat);
+            }
+            /*msg.printBasicStat(n);
+            msg.outputFreqDist("msg", 10, false);
+            time.printBasicStat(n); 
+            time.outputFreqDist("time", 100, false);*/
+            EventExecutor.dumpMessageCounters();
+        }
+        String name = factory.toString();
+        mstats.printBasicStat("msg:" + name);
+        tstats.printBasicStat("time:" + name);
+    }
+
+    /**
+     * Latencyが混在する場合のテスト
+     *  
+     * @param name
+     * @param cons
+     */
+    private void expMixedLatencyTest(NodeFactory factory) {
+        final int STEP = 5;
+        final int MAX = (100 / STEP) + 1;
+        final int ITER = 100;
+        StatSet mstats = new StatSet();
+        StatSet tstats = new StatSet();
+        StatSet istats = new StatSet();
+        int n = 50;         // # of nodes
+        int r = 0;  // percentage of slow nodes
+        for (int j = 0; j < MAX; j++, r += STEP) {
+            System.err.println("[" + j + "]");
+            slowNodeRatio.set(r / 100.0); 
+            Stat mstat = mstats.getStat(r);
+            Stat tstat = tstats.getStat(r);
+            Stat istat = istats.getStat(r);
+            EventExecutor.resetMessageCounters();
+            for (int i = 0; i < ITER; i++) {
+                System.out.println("** Simulation Start: " + n
+                        + " nodes ***************************");
+                mixedLatencyExp(factory, n, mstat, tstat, istat);
+            }
+            /*msg.printBasicStat(n);
+            msg.outputFreqDist("msg", 10, false);
+            time.printBasicStat(n); 
+            time.outputFreqDist("time", 100, false);*/
+            EventExecutor.dumpMessageCounters();
+        }
+        String name = factory.toString();
+        istats.printBasicStat("ratio:" + name);
+        
+        istats.getStat(0).outputFreqDist("dist#0", 0.05);
+        istats.getStat(STEP).outputFreqDist("dist#1", 0.05);
+        istats.getStat(2*STEP).outputFreqDist("dist#2", 0.05);
+        istats.getStat(3*STEP).outputFreqDist("dist#3", 0.05);
+        istats.getStat(4*STEP).outputFreqDist("dist#4", 0.05);
+        istats.getStat(5*STEP).outputFreqDist("dist#5", 0.05);
+
         mstats.printBasicStat("msg:" + name);
         tstats.printBasicStat("time:" + name);
     }
@@ -1502,97 +1543,7 @@ public class Sim {
         //EventDispatcher.dumpCounter();
     }
 
-    /**
-     * retrans timeを変化させ，適切な再送時間を求める．
-     *  
-     * @param name
-     * @param cons
-     */
-    private void retransTest(NodeFactory factory) {
-        if (DdllStrategy.retryMode.value() != RetryMode.RANDOM) {
-            System.err.println("specify -retrymode RANDOM");
-            System.exit(1);
-        }
-        final int MAX = 25;
-        final int ITER = 300;
-        StatSet mstats = new StatSet();
-        StatSet tstats = new StatSet();
-        StatSet istats = new StatSet();
-        int n = 50;
-        int delay = 1;
-        for (int j = 0; j < MAX; j++, delay += 1) {
-            System.err.println("[" + j + "]");
-            DdllStrategy.JOIN_RETRY_DELAY = delay;
-            //AtomicRingStrategy.JOIN_RETRY_DELAY = delay;
-            //CmrStrategy.JOIN_RETRY_DELAY = delay;
-            Stat mstat = mstats.getStat(delay);
-            Stat tstat = tstats.getStat(delay);
-            Stat istat = istats.getStat(delay);
-            EventExecutor.resetMessageCounters();
-            for (int i = 0; i < ITER; i++) {
-                System.out.println("** Simulation Start: " + n
-                        + " nodes ***************************");
-                mixedLatencyExp(factory, n, mstat, tstat, istat);
-            }
-            /*msg.printBasicStat(n);
-            msg.outputFreqDist("msg", 10, false);
-            time.printBasicStat(n); 
-            time.outputFreqDist("time", 100, false);*/
-            EventExecutor.dumpMessageCounters();
-        }
-        String name = factory.toString();
-        mstats.printBasicStat("msg:" + name);
-        tstats.printBasicStat("time:" + name);
-    }
-
-    /**
-     * Latencyが混在する場合のテスト
-     *  
-     * @param name
-     * @param cons
-     */
-    private void mixedLatencyTest(NodeFactory factory) {
-        final int STEP = 5;
-        final int MAX = (100 / STEP) + 1;
-        final int ITER = 100;
-        StatSet mstats = new StatSet();
-        StatSet tstats = new StatSet();
-        StatSet istats = new StatSet();
-        int n = 50;         // # of nodes
-        int r = 0;  // percentage of slow nodes
-        for (int j = 0; j < MAX; j++, r += STEP) {
-            System.err.println("[" + j + "]");
-            slowNodeRatio.set(r / 100.0); 
-            Stat mstat = mstats.getStat(r);
-            Stat tstat = tstats.getStat(r);
-            Stat istat = istats.getStat(r);
-            EventExecutor.resetMessageCounters();
-            for (int i = 0; i < ITER; i++) {
-                System.out.println("** Simulation Start: " + n
-                        + " nodes ***************************");
-                mixedLatencyExp(factory, n, mstat, tstat, istat);
-            }
-            /*msg.printBasicStat(n);
-            msg.outputFreqDist("msg", 10, false);
-            time.printBasicStat(n); 
-            time.outputFreqDist("time", 100, false);*/
-            EventExecutor.dumpMessageCounters();
-        }
-        String name = factory.toString();
-        istats.printBasicStat("ratio:" + name);
-        
-        istats.getStat(0).outputFreqDist("dist#0", 0.05);
-        istats.getStat(STEP).outputFreqDist("dist#1", 0.05);
-        istats.getStat(2*STEP).outputFreqDist("dist#2", 0.05);
-        istats.getStat(3*STEP).outputFreqDist("dist#3", 0.05);
-        istats.getStat(4*STEP).outputFreqDist("dist#4", 0.05);
-        istats.getStat(5*STEP).outputFreqDist("dist#5", 0.05);
-
-        mstats.printBasicStat("msg:" + name);
-        tstats.printBasicStat("time:" + name);
-    }
-
-    public static boolean isFinished() {
+    private static boolean isFinished() {
         LocalNode[] sortedNodes = getNodes();
         LocalNode x = null;
         boolean rc = true;
@@ -1624,34 +1575,12 @@ public class Sim {
     }
 
     /**
-     * 経路表の対称性を調べる
-     * @param nodes
-     * @param s
-     */
-    public void symmetricDegree(LocalNode[] nodes, Stat s) {
-//        for (int i = 0; i < nodes.length; i++) {
-//            NodeImpl n = nodes[i];
-//            if (n.mode == NodeMode.INSERTED
-//                    && n.topStrategy instanceof SuzakuStrategy) {
-//                SuzakuStrategy szk = (SuzakuStrategy)n.topStrategy;
-//                //double degree = szk.symmetricDegree2(nodes);
-//                double degree = szk.livenessDegree(nodes);
-//                if (!Double.isNaN(degree)) {
-//                    s.addSample(degree);
-//                }
-//            }
-//        }
-        //System.out.println("#symmetric-degree");
-        //s.printBasicStat(nodes.length);
-    }
-
-    /**
      * メッセージ数 (FingerTable更新)
      * @param nodes
      * @param s
      */
-    public void collectMessageCounts(LocalNode[] nodes, Stat s) {
-        int c = EventExecutor.getCounter("GetFTEntEvent");
+    private void collectMessageCounts(LocalNode[] nodes, Stat s) {
+        int c = EventExecutor.getCounter("GetEntRequest");
         s.addSample(c);
     }
 

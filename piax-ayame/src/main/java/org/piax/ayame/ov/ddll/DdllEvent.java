@@ -19,12 +19,12 @@ public abstract class DdllEvent {
     }
     public static class SetR extends RequestEvent<SetR, SetRAckNak> {
         final Node rNew, rCur;
-        final LinkNum rnewseq;
+        final LinkSeq rnewseq;
         final SetRType type;
         final SetRJob setRJob;
 
         public SetR(Node receiver, SetRType type, Node rNew, Node rCur,
-                LinkNum newrseq, SetRJob job) {
+                LinkSeq newrseq, SetRJob job) {
             super(receiver);
             this.type = type;
             this.rNew = rNew;
@@ -47,10 +47,10 @@ public abstract class DdllEvent {
     }
 
     public static class SetRAck extends SetRAckNak {
-        final LinkNum rnewnum;
+        final LinkSeq rnewnum;
         final Set<Node> nbrs;
 
-        public SetRAck(SetR request, LinkNum rnewnum, Set<Node> nbrs) {
+        public SetRAck(SetR request, LinkSeq rnewnum, Set<Node> nbrs) {
             super(request);
             this.rnewnum = rnewnum;
             this.nbrs = nbrs;
@@ -70,10 +70,10 @@ public abstract class DdllEvent {
 
     public static class SetL extends Event {
         Node lNew;
-        LinkNum seq;
+        LinkSeq seq;
         Set<Node> nbrs;
 
-        public SetL(Node receiver, Node lNew, LinkNum seq, Set<Node> nbrs) {
+        public SetL(Node receiver, Node lNew, LinkSeq seq, Set<Node> nbrs) {
             super(receiver);
             this.lNew = lNew;
             this.seq = seq;
@@ -85,17 +85,20 @@ public abstract class DdllEvent {
             DdllStrategy s = DdllStrategy.getDdllStrategy(getLocalNode());
             s.setl(this);
         }
+
+        @Override
+        public String toStringMessage() {
+            return "SetL[lNew=" + lNew + ", seq=" + seq + ", nbrs=" + nbrs + "]";
+        }
     }
 
     public static class PropagateNeighbors extends Event {
-        DdllKey src;
         Set<Node> propset;
         DdllKey limit;
 
-        public PropagateNeighbors(Node receiver, DdllKey src, Set<Node> propset,
+        public PropagateNeighbors(Node receiver, Set<Node> propset,
                 DdllKey limit) {
             super("PropagateNeighbors", receiver);
-            this.src = src;
             this.propset = propset;
             this.limit = limit;
         }

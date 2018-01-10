@@ -89,7 +89,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         KryoUtil.register(org.piax.ayame.Event.class);
         KryoUtil.register(org.piax.ayame.ov.ddll.DdllKeyRange.class);
         KryoUtil.register(org.piax.ayame.ov.rq.DKRangeRValue.class);
-        KryoUtil.register(org.piax.ayame.ov.ddll.LinkNum.class);
+        KryoUtil.register(org.piax.ayame.ov.ddll.LinkSeq.class);
         KryoUtil.register(org.piax.ayame.Node.class, new NodeSerializer());
         KryoUtil.register(org.piax.ayame.LocalNode.class, new NodeSerializer());
         KryoUtil.register(org.piax.ayame.FTEntry.class);

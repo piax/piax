@@ -36,6 +36,20 @@ import org.piax.util.FlexibleArray;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Implementation of Suzaku, a churn resilient and lookup-efficient
+ * key-order preserving structured overlay network. 
+ * This implementation also supports Chord#.
+ * 
+ * <p>The details of the algorithm is described in the following paper.
+ * (English paper is in preparation)
+ * 
+ * <blockquote>
+ * 安倍広多，寺西裕一: "高いChurn耐性と検索性能を持つキー順序保存型構造化オーバレイ
+ * ネットワークSuzakuの提案と評価"，信学技報 Vol. 116, No. 362 (IA2016-65)，
+ * pp. 11--16，(2016-12)．(in Japanese)
+ * </blockquote>
+ */
 public class SuzakuStrategy extends NodeStrategy {
     static final Logger logger = LoggerFactory.getLogger(SuzakuStrategy.class);
     public static class SuzakuNodeFactory extends NodeFactory {
@@ -94,22 +108,24 @@ public class SuzakuStrategy extends NodeStrategy {
     public static BooleanOption UPDATE_ONCE
         = new BooleanOption(false, "-updateonce");
     public static IntegerOption UPDATE_FINGER_PERIOD
-        = new IntegerOption(1000 * 1000, "-ftperiod");
+        = new IntegerOption(60 * 1000, "-ftperiod");
     public static BooleanOption NOTIFY_WITH_REVERSE_POINTER 
-        = new BooleanOption(false, "-notify-rev", (val) -> {
+        = new BooleanOption(true, "-notify-rev", (val) -> {
             sanityCheck();
         });
     final static boolean P2U_EXPERIMENTAL = false; // currently buggy
 
     // parameter to compute the base of log
+    public static final int BASE_DEFAULT = 1;
     /** the base of log. K = 2<sup>B</sup> */
-    public static int K = 1 << 1;
-    public static IntegerOption B = new IntegerOption(1, "-base", val -> {
-        K = 1 << val;
-    });
-    
-    // FTEntry内のバックアップノードの数
-    public static int SUCCESSOR_LIST_SIZE = 0;
+    public static int K = 1 << BASE_DEFAULT;
+    public static IntegerOption B = new IntegerOption(BASE_DEFAULT,
+            "-base", val -> { K = 1 << val; });
+
+    // Each FTEntry has backup nodes.  In default, Suzaku uses DDLL's left
+    // neighbor set as the backup nodes.  Alternatively, you may use
+    // FFT[0]..FFT[SUCCESSOR_LIST_SIZE-1] as the backup nodes.
+    public static int SUCCESSOR_LIST_SIZE = 4;
     public static BooleanOption USE_SUCCESSOR_LIST
         = new BooleanOption(false, "-use-succlist", val -> {
             assert !val || SUCCESSOR_LIST_SIZE <= K;

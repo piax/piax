@@ -13,7 +13,7 @@ package org.piax.gtrans.ov.ddll;
 
 import java.io.Serializable;
 
-import org.piax.ayame.ov.ddll.LinkNum;
+import org.piax.ayame.ov.ddll.LinkSeq;
 import org.piax.common.DdllKey;
 import org.piax.common.Endpoint;
 import org.piax.gtrans.ov.Link;
@@ -32,7 +32,7 @@ public class Stat implements Serializable {
     final Link me;
     final Link left;
     final Link right;
-    final LinkNum rNum;
+    final LinkSeq rNum;
 
     /**
      * constructor
@@ -43,7 +43,7 @@ public class Stat implements Serializable {
      * @param right the right link.
      * @param rNum the link number.
      */
-    Stat(Mode mode, Link me, Link left, Link right, LinkNum rNum) {
+    Stat(Mode mode, Link me, Link left, Link right, LinkSeq rNum) {
         this.key = me.key;
         this.mode = mode;
         this.me = me;

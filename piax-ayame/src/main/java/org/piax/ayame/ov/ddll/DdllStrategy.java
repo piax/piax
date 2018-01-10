@@ -33,6 +33,19 @@ import org.piax.util.RandomUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Implementation of DDLL, an algorithm for constructing distributed
+ * doubly linked lists.  The implementation is based on the following paper.
+ * 
+ * <blockquote>
+ * Kota Abe, Mikio Yoshida: "Constructing Distributed Doubly Linked Lists 
+ * without Distributed Locking," in Proceeding of 2015 IEEE International 
+ * Conference on Peer-to-Peer Computing (P2P 2015), pp.1-10. 2015.
+ * </blockquote>
+ * 
+ * @see <a href="http://ieeexplore.ieee.org/document/7328521/">
+ * http://ieeexplore.ieee.org/document/7328521/</a>
+ */
 public class DdllStrategy extends NodeStrategy {
     private static final Logger logger = LoggerFactory.getLogger(DdllStrategy.class);
     public static class DdllNodeFactory extends NodeFactory {
@@ -76,11 +89,10 @@ public class DdllStrategy extends NodeStrategy {
     public static EnumOption<RetryMode> retryMode
         = new EnumOption<>(RetryMode.class, RetryMode.IMMED, "-retrymode");
 
-    // pinging is off by default
     public static IntegerOption pingPeriod =
             new IntegerOption(10000, "-pingperiod");
 
-    LinkNum lseq = new LinkNum(0, 0), rseq = new LinkNum(0, 0);
+    LinkSeq lseq = new LinkSeq(0, 0), rseq = new LinkSeq(0, 0);
     DdllStatus status = DdllStatus.OUT;
 
     /** neighbor node set */
@@ -144,7 +156,7 @@ public class DdllStrategy extends NodeStrategy {
         n.succ = succ;
         setStatus(DdllStatus.INS);
         SetR ev = new SetR(n.pred, SetRType.NORMAL, n, n.succ,
-                new LinkNum(0, 0), setRjob);
+                new LinkSeq(0, 0), setRjob);
         Consumer<EventException> joinfail = (exc) -> {
             logger.debug("{}: join failed: {}", n, exc.toString());
             setStatus(DdllStatus.OUT);
@@ -189,6 +201,7 @@ public class DdllStrategy extends NodeStrategy {
                         delay = 0;
                         break;
                     case RANDOM:
+                        // I don't remember why HALFWAY_DELAY is used (k-abe)
                         delay = RandomUtil.getSharedRandom().nextInt(JOIN_RETRY_DELAY)
                                 * NetworkParams.HALFWAY_DELAY;
                         break;
@@ -311,21 +324,21 @@ public class DdllStrategy extends NodeStrategy {
         } else {
             boolean forInsertion = msg.origin == msg.rNew;
             if (msg.type != SetRType.NORMAL) {
-                leftNbrs.removeNode(msg.rCur);
+                leftNbrs.remove(msg.rCur);
                 leftNbrs.add(msg.rNew);
             } else {
                 if (forInsertion) {
                     leftNbrs.add(msg.rNew);
                 } else {
-                    leftNbrs.removeNode(msg.rCur);
+                    leftNbrs.remove(msg.rCur);
                 }
             }
             // compute a neighbor node set to send to the new right node 
-            Set<Node> nset = leftNbrs.computeNSForRight(msg.rNew);
+            Set<Node> nset = leftNbrs.computeNeighborSetForRightNode(msg.rNew);
             if (forInsertion) {
                 if (msg.type != SetRType.LEFTONLY) {
                     Set<Node> nset2 =
-                            leftNbrs.computeNSForRight(getSuccessor());
+                            leftNbrs.computeNeighborSetForRightNode(getSuccessor());
                     n.post(new SetL(n.succ, msg.rNew, rseq.next(), nset2));
                 }
             } else {
@@ -354,17 +367,16 @@ public class DdllStrategy extends NodeStrategy {
             // [3]を削除する場合，4がSetL受信．この場合のlimitも2 (lPrev=3, lNew=2)
             if (Node.isOrdered(prevL.key, msg.lNew.key, n.key)) {
                 // this SetL is sent for inserting a node (lNew)
-                leftNbrs.sendRight(n.key, getSuccessor(), prevL.key);
+                leftNbrs.sendRight(getSuccessor(), prevL.key);
             } else {
                 // this SetL is sent for deleting a node (prevL)
-                leftNbrs.sendRight(n.key, getSuccessor(), getPredecessor().key);
+                leftNbrs.sendRight(getSuccessor(), getPredecessor().key);
             }
         }
     }
 
     public void propagateNeighbors(PropagateNeighbors msg) {
-        leftNbrs.receiveNeighbors(msg.src, msg.propset, getSuccessor(),
-                msg.limit);
+        leftNbrs.receiveNeighbors(msg.propset, getSuccessor(), msg.limit);
     }
 
     /*
@@ -454,7 +466,7 @@ public class DdllStrategy extends NodeStrategy {
         if (last == null) {
             last = n;
         }
-        LinkNum lseq0 = lseq;
+        LinkSeq lseq0 = lseq;
         GetCandidates ev = new GetCandidates(last, n);
         ev.onReply((resp, exc) -> {
             if (exc != null) {

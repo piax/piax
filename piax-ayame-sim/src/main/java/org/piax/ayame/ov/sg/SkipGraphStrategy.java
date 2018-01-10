@@ -17,9 +17,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * fake skip graph.
- * note that this implementation does not work in real network.
+ * Implementation of (fake) Skip Graph.  This implementation uses DDLL for 
+ * managing the level 0 ring.  Levels above 1 and higher are not implemented
+ * in distributed fashion. This implementation is far from complete and can 
+ * be used only for simple simulations.
  * 
+ * <blockquote>
+ * J. Aspnes and G. Shah, "Skip graphs," ACM Trans. on Algorithms, vol. 3,
+ * no. 4, pp. 1–25, 2007.
+ * </blockquote>
  */
 public class SkipGraphStrategy extends NodeStrategy {
     public static class SkipGraphNodeFactory extends NodeFactory {

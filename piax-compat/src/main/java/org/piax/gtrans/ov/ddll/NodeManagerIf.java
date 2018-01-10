@@ -13,7 +13,7 @@ package org.piax.gtrans.ov.ddll;
 
 import java.util.Set;
 
-import org.piax.ayame.ov.ddll.LinkNum;
+import org.piax.ayame.ov.ddll.LinkSeq;
 import org.piax.common.DdllKey;
 import org.piax.common.Endpoint;
 import org.piax.gtrans.RPCException;
@@ -31,11 +31,11 @@ public interface NodeManagerIf extends RPCIf {
     public static final int SETR_TYPE_FIX_BOTH = 2;
     @RemoteCallable(Type.ONEWAY)
     void setR(DdllKey target, Link sender, int reqNo, Link rNew, Link rCur,
-            LinkNum rNewNum, int type, Object payload)
+            LinkSeq rNewNum, int type, Object payload)
                     throws RPCException;
 
     @RemoteCallable(Type.ONEWAY)
-    void setRAck(DdllKey target, Link sender, int reqNo, LinkNum val,
+    void setRAck(DdllKey target, Link sender, int reqNo, LinkSeq val,
             Set<Link> nbrs) throws RPCException;
 
     @RemoteCallable(Type.ONEWAY)
@@ -43,7 +43,7 @@ public interface NodeManagerIf extends RPCIf {
             throws RPCException;
 
     @RemoteCallable(Type.ONEWAY)
-    void setL(DdllKey target, Link lNew, LinkNum lNewNum, Link d,
+    void setL(DdllKey target, Link lNew, LinkSeq lNewNum, Link d,
             Set<Link> nbrs) throws RPCException;
 
     @RemoteCallable(Type.ONEWAY)
