@@ -10,6 +10,17 @@ import org.piax.ayame.NodeFactory;
 import org.piax.ayame.NodeStrategy;
 import org.piax.ayame.ov.chord.ChordEvent.Stabilize;
 
+/**
+ * Implementation of Chord stabilization algorithm, based on the following
+ * paper.  Note that this implementation lacks finger tables. 
+ * 
+ * <blockquote>
+ * Stoica, R. Morris, D. Liben-Nowell, D. R. Karger, M. F. Kaashoek, F. Dabek,
+ * and H. Balakrishnan, "Chord: A scalable peer-to-peer lookup protocol for
+ * internet applications," IEEE/ACM Trans. on Net., vol. 11, no. 1, pp. 17–32,
+ * 2003.
+ * </blockquote>
+ */
 public class ChordStrategy extends NodeStrategy {
     public static class ChordNodeFactory extends NodeFactory {
         @Override

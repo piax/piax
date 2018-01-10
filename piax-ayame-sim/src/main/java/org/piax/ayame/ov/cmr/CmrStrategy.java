@@ -21,7 +21,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * A Node of "Concurrent Maintenance Of Rings"
+ * Implementation of "Concurrent Maintenance of Rings", based on the following
+ * paper.
+ * 
+ * <blockquote>
+ * X. Li, J. Misra, and C. G. Plaxton, "Concurrent maintenance of rings."
+ * Distributed Comp., vol. 19, no. 2, pp. 126–148, 2006.
+ * </blockquote>
  */
 public class CmrStrategy extends NodeStrategy {
     public static class CmrNodeFactory extends NodeFactory {

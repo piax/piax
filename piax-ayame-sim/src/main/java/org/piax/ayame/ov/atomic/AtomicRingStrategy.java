@@ -22,7 +22,15 @@ import org.piax.common.Option.BooleanOption;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
+/**
+ * Implementation of Atomic Ring Maintenance algorithm, based on the following
+ * paper.
+ * 
+ * <blockquote>
+ * A. Ghodsi, "Distributed k-ary System: Algorithms for distributed hash tables,"
+ * PhD Dissertation, KTH-Royal Institute of Technology, 2006.
+ * </blockquote>
+ */
 public class AtomicRingStrategy extends NodeStrategy {
     public static class AtomicRingNodeFactory extends NodeFactory {
         @Override

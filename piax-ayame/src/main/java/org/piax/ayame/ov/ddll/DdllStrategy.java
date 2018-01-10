@@ -33,6 +33,19 @@ import org.piax.util.RandomUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Implementation of DDLL, an algorithm for constructing distributed
+ * doubly linked lists.  The implementation is based on the following paper.
+ * 
+ * <blockquote>
+ * Kota Abe, Mikio Yoshida: "Constructing Distributed Doubly Linked Lists 
+ * without Distributed Locking," in Proceeding of 2015 IEEE International 
+ * Conference on Peer-to-Peer Computing (P2P 2015), pp.1-10. 2015.
+ * </blockquote>
+ * 
+ * @see <a href="http://ieeexplore.ieee.org/document/7328521/">
+ * http://ieeexplore.ieee.org/document/7328521/</a>
+ */
 public class DdllStrategy extends NodeStrategy {
     private static final Logger logger = LoggerFactory.getLogger(DdllStrategy.class);
     public static class DdllNodeFactory extends NodeFactory {

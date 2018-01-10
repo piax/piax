@@ -36,6 +36,20 @@ import org.piax.util.FlexibleArray;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Implementation of Suzaku, a churn resilient and lookup-efficient
+ * key-order preserving structured overlay network. 
+ * This implementation also supports Chord#.
+ * 
+ * <p>The details of the algorithm is described in the following paper.
+ * (English paper is in preparation)
+ * 
+ * <blockquote>
+ * 安倍広多，寺西裕一: "高いChurn耐性と検索性能を持つキー順序保存型構造化オーバレイ
+ * ネットワークSuzakuの提案と評価"，信学技報 Vol. 116, No. 362 (IA2016-65)，
+ * pp. 11--16，(2016-12)．(in Japanese)
+ * </blockquote>
+ */
 public class SuzakuStrategy extends NodeStrategy {
     static final Logger logger = LoggerFactory.getLogger(SuzakuStrategy.class);
     public static class SuzakuNodeFactory extends NodeFactory {
