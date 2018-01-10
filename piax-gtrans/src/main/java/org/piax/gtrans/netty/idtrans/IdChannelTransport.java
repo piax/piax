@@ -222,7 +222,9 @@ public class IdChannelTransport extends ChannelTransportImpl<PrimaryKey> impleme
                                         ControlType.ACK, ep, null, null));
                                 if (ent.channel.getStat() == Stat.WAIT || ent.channel.getStat() == Stat.DENIED) {
                                     logger.debug("set as RUN by accepting channel on loser: {}", ep);
-                                    ent.channel.getChannel().close();
+                                    if (ent.channel.getChannel() != null) { // null: already denied.
+                                        ent.channel.getChannel().close();
+                                    }
                                     ent.channel.setChannel(ctx.channel());
                                     ent.channel.touch();
                                     ent.channel.setStat(Stat.RUN);
@@ -273,8 +275,8 @@ public class IdChannelTransport extends ChannelTransportImpl<PrimaryKey> impleme
             }
         } else if (msg instanceof NettyMessage<?>) {
             NettyMessage<PrimaryKey> nmsg = (NettyMessage<PrimaryKey>) msg;
-            PrimaryKey curSrc = mgr.updateAndGet(nmsg.getSource());
             logger.debug("inbound received msg{}: on {}", nmsg, ep);
+            PrimaryKey curSrc = mgr.updateAndGet(nmsg.getSource());
             /*if (filterMessage(nmsg)) {
                 return;
             }*/
