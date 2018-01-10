@@ -43,7 +43,7 @@
     <dependency>
       <groupId>org.piax</groupId>
       <artifactId>piax-compat</artifactId>
-      <version>4.0-SNAPSHOT</version>
+      <version>${project.version}</version>
     </dependency>
   </dependencies>
   <build>

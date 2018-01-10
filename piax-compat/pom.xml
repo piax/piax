@@ -69,22 +69,22 @@
     <dependency>
       <groupId>org.piax</groupId>
       <artifactId>piax-common</artifactId>
-      <version>4.0-SNAPSHOT</version>
+      <version>${project.version}</version>
     </dependency>
     <dependency>
       <groupId>org.piax</groupId>
       <artifactId>piax-ayame</artifactId>
-      <version>4.0-SNAPSHOT</version>
+      <version>${project.version}</version>
     </dependency>
     <dependency>
       <groupId>org.piax</groupId>
       <artifactId>piax-gtrans</artifactId>
-      <version>4.0-SNAPSHOT</version>
+      <version>${project.version}</version>
     </dependency>
     <dependency>
       <groupId>org.piax</groupId>
       <artifactId>piax-gtrans-suzaku</artifactId>
-      <version>4.0-SNAPSHOT</version>
+      <version>${project.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>

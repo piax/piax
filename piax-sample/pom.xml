@@ -37,12 +37,12 @@
     <dependency>
       <groupId>org.piax</groupId>
       <artifactId>piax-agent</artifactId>
-      <version>4.0-SNAPSHOT</version>
+      <version>${project.version}</version>
     </dependency>
     <dependency>
       <groupId>org.piax</groupId>
       <artifactId>piax-gtrans-suzaku</artifactId>
-      <version>4.0-SNAPSHOT</version>
+      <version>${project.version}</version>
     </dependency>
   </dependencies>
   <build>

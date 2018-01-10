@@ -69,12 +69,12 @@
     <dependency>
       <groupId>org.piax</groupId>
       <artifactId>piax-ayame</artifactId>
-      <version>4.0-SNAPSHOT</version>
+      <version>${project.version}</version>
     </dependency>
     <dependency>
       <groupId>org.piax</groupId>
       <artifactId>piax-gtrans</artifactId>
-      <version>4.0-SNAPSHOT</version>
+      <version>${project.version}</version>
     </dependency>
     <dependency>
         <groupId>org.junit.jupiter</groupId>

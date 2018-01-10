@@ -80,6 +80,7 @@
     <module>piax-sample</module>
     <module>piax-dht</module>
     <module>piax-shell</module>
+    <module>piax-all</module>
   </modules>
   <build>
     <plugins>
