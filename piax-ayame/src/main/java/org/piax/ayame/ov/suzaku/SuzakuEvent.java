@@ -18,7 +18,7 @@ public abstract class SuzakuEvent {
         }
         @Override
         public void run() {
-            LocalNode r = (LocalNode)receiver;
+            LocalNode r = getLocalNode();
             FTEntry[][] ents = SuzakuStrategy.getSuzakuStrategy(r).getFingerTable();
             r.post(new GetFTAllReply(this, ents));
         }
@@ -53,7 +53,7 @@ public abstract class SuzakuEvent {
         }
         @Override
         public void run() {
-            LocalNode r = (LocalNode)receiver;
+            LocalNode r = getLocalNode();
             SuzakuStrategy s = SuzakuStrategy.getSuzakuStrategy(r);
             GetEntReply ev = s.getEnts(this);
             r.post(ev);
@@ -94,7 +94,7 @@ public abstract class SuzakuEvent {
         }
         @Override
         public void run() {
-            LocalNode r = (LocalNode)receiver;
+            LocalNode r = getLocalNode();
             SuzakuStrategy.getSuzakuStrategy(r).updateFTEntry(this);
         }
         @Override
@@ -116,7 +116,7 @@ public abstract class SuzakuEvent {
         }
         @Override
         public void run() {
-            LocalNode r = (LocalNode)receiver;
+            LocalNode r = getLocalNode();
             SuzakuStrategy.getSuzakuStrategy(r).removeFromFingerTable(node,
                     neighbors);
         }
@@ -135,7 +135,7 @@ public abstract class SuzakuEvent {
         }
         @Override
         public void run() {
-            LocalNode r = (LocalNode)receiver;
+            LocalNode r = getLocalNode();
             SuzakuStrategy.getSuzakuStrategy(r)
                 .table.removeReversePointer(this.origin);
         }
