@@ -14,7 +14,6 @@ import org.piax.gtrans.ReceivedMessage;
 import org.piax.gtrans.Transport;
 import org.piax.gtrans.TransportListener;
 import org.piax.gtrans.netty.NettyLocator;
-import org.piax.gtrans.ov.Overlay;
 import org.piax.gtrans.ov.suzaku.Suzaku;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,8 +38,8 @@ public class TestIdTransport {
                 new NettyLocator(new InetSocketAddress("localhost", 12368)));
 
         // top level
-        Overlay<PrimaryKey, PrimaryKey> tr1 = new Suzaku<>(bt1);
-        Overlay<PrimaryKey, PrimaryKey> tr2 = new Suzaku<>(bt2);
+        Suzaku<PrimaryKey, PrimaryKey> tr1 = new Suzaku<>(bt1);
+        Suzaku<PrimaryKey, PrimaryKey> tr2 = new Suzaku<>(bt2);
 
         sg_received1 = false;
         sg_received2 = false;
