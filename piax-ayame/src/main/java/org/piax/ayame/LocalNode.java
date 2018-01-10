@@ -47,7 +47,7 @@ public class LocalNode extends Node {
     private boolean isFailed = false;   // for simulation
 
     // for statistics
-    public Counter counter = new Counter();
+    public Counters counters = new Counters();
 
     // to support multi-keys
     protected static Map<PeerId, SortedSet<LocalNode>> localNodeMap

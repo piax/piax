@@ -405,8 +405,8 @@ public class Sim {
                     });
         });
         startSim(nodes, 100*1000);
-        Arrays.asList(nodes).stream()
-            .forEach(node -> System.out.println(node.toStringDetail()));
+        dump(nodes);
+        EventExecutor.dumpMessageCounters();
     }
 
     /**
@@ -818,7 +818,7 @@ public class Sim {
         startSim(allNodes, convertSecondsToVTime(10*60));
         for (int j = 0; j < insOrder.size(); j++) {
             LocalNode node = allNodes[insOrder.get(j)];
-            cset.addCounter(j + 1, node.counter);
+            cset.addCounters(j + 1, node.counters);
         }
     }
 
@@ -950,9 +950,9 @@ public class Sim {
         StatSet msgs = new StatSet();
         for (int i = 0; i < order.size(); i++) {
             LocalNode node = nodes[order.get(i)];
-            int joinmsgs = node.counter.get("join.lookup")
-                    + node.counter.get("join.ddll")
-                    + node.counter.get("join.ftupdate");
+            int joinmsgs = node.counters.get("join.lookup")
+                    + node.counters.get("join.ddll")
+                    + node.counters.get("join.ftupdate");
             Stat s = msgs.getStat(((i / STEP) + 1) * STEP);
             s.addSample(joinmsgs);
             System.out.println(nodes[order.get(i)] + ": " + joinmsgs + " msgs");

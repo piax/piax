@@ -167,7 +167,7 @@ public class DdllStrategy extends NodeStrategy {
                 joinfail.accept((EventException)exc);
             } else if (msg0 instanceof SetRAck) {
                 SetRAck msg = (SetRAck)msg0;
-                n.counter.add("join.ddll", 3); // SetR, SetRAck and SetL
+                n.counters.add("join.ddll", 3); // SetR, SetRAck and SetL
                 setStatus(DdllStatus.IN);
                 schedNextPing();
                 rseq = msg.rnewnum;
@@ -178,7 +178,7 @@ public class DdllStrategy extends NodeStrategy {
                 joinComplete.complete(true);
             } else if (msg0 instanceof SetRNak){
                 SetRNak msg = (SetRNak)msg0;
-                n.counter.add("join.ddll", 2); // SetR and SetRNak
+                n.counters.add("join.ddll", 2); // SetR and SetRNak
                 setStatus(DdllStatus.OUT);
                 // retry!
                 logger.trace("receive SetRNak: join retry, pred={}, succ={}", msg.pred

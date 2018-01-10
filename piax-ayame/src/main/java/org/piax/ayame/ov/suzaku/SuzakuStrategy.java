@@ -195,7 +195,7 @@ public class SuzakuStrategy extends NodeStrategy {
         logger.trace("Suzaku#join: {} joins between {} and {}", n.key
                 , lookupDone.pred, lookupDone.succ);
         assert Node.isOrdered(lookupDone.pred.key, n.key, lookupDone.succ.key);
-        n.counter.add("join.lookup", lookupDone.hops());
+        n.counters.add("join.lookup", lookupDone.hops());
         CompletableFuture<Boolean> future = new CompletableFuture<>();
         ddll.join(lookupDone, future);
         future.whenComplete((rc, exc) -> {
@@ -423,7 +423,7 @@ public class SuzakuStrategy extends NodeStrategy {
                 if (exc != null) {
                     logger.debug("getFTAll failed: {}", exc);
                 } else {
-                    n.counter.add("join.ftupdate", 2); // GetFTAllEvent/Reply
+                    n.counters.add("join.ftupdate", 2); // GetFTAllEvent/Reply
                     FTEntry[][] fts = rep.ents;
                     for (int i = 1; i < fts[0].length; i++) {
                         table.forward.set(i, fts[0][i]);
@@ -999,7 +999,7 @@ public class SuzakuStrategy extends NodeStrategy {
                 }
             } else {
                 if (ACTIVE_UPDATE_ON_JOIN && isFirst) {
-                    n.counter.add("join.ftupdate", 2 + repl.msgCount);
+                    n.counters.add("join.ftupdate", 2 + repl.msgCount);
                     // getFTEntEvent/Reply + RemoveReversePointerEvent
                 }
                 FTEntry[] replEnts = repl.ent.ents;
