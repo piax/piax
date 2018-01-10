@@ -174,7 +174,7 @@ public class DdllStrategy extends NodeStrategy {
                 leftNbrs.set(msg.nbrs);
                 // nbrs does not contain the immediate left node
                 leftNbrs.add(getPredecessor());
-                logger.trace("{}: INSERTED, vtime = ", n, msg.vtime);
+                logger.trace("{}: INSERTED, vtime = {}", n, msg.vtime);
                 joinComplete.complete(true);
             } else if (msg0 instanceof SetRNak){
                 SetRNak msg = (SetRNak)msg0;
@@ -212,7 +212,7 @@ public class DdllStrategy extends NodeStrategy {
                     if (delay == 0) {
                         joinfail.accept(new RetriableException("SetRNak2"));
                     } else {
-                        EventExecutor.sched(delay, () -> {
+                        EventExecutor.sched("ddll.joinretry", delay, () -> {
                             assert status == DdllStatus.OUT;
                             joinfail.accept(new RetriableException("SetRNak3"));
                         });
@@ -278,7 +278,7 @@ public class DdllStrategy extends NodeStrategy {
                 logger.debug("pred: {}", getPredecessor().toStringDetail());
                 long delay =
                         (long) (NetworkParams.ONEWAY_DELAY * RandomUtil.getSharedRandom().nextDouble());
-                EventExecutor.sched(delay, () -> {
+                EventExecutor.sched("ddll.leaveretry", delay, () -> {
                     leave(leaveComplete, setRjob);
                 });
             } else {

@@ -112,14 +112,17 @@ public class EventExecutor {
         }
     }
 
+    @Deprecated
     public static TimerEvent sched(long delay, Runnable run) {
         return sched(delay, 0, ev -> run.run());
     }
 
+    @Deprecated
     public static TimerEvent sched(long delay, long period, Runnable run) {
         return sched(delay, period, ev -> run.run());
     }
 
+    @Deprecated
     public static TimerEvent sched(long delay, long period, Consumer<TimerEvent> job) {
         return sched(null, delay, period, job);
     }

@@ -277,11 +277,12 @@ public class SuzakuStrategy extends NodeStrategy {
                 EventExecutor.cancelEvent(updateSchedEvent);
                 updateSchedEvent = null;
             }
-            EventExecutor.sched(NetworkParams.ONEWAY_DELAY, () -> {
-                n.mode = NodeMode.DELETED;
-                logger.debug("{}: mode=deleted", n);
-                leaveComplete.complete(true);
-            });
+            EventExecutor.sched("suzaku.leave.grace",
+                    NetworkParams.ONEWAY_DELAY, () -> {
+                    n.mode = NodeMode.DELETED;
+                    logger.debug("{}: mode=deleted", n);
+                    leaveComplete.complete(true);
+                });
         });
     }
 
@@ -758,7 +759,7 @@ public class SuzakuStrategy extends NodeStrategy {
             return;
         }
         long delay = UPDATE_FINGER_PERIOD.value();
-        updateSchedEvent = EventExecutor.sched(delay, () -> {
+        updateSchedEvent = EventExecutor.sched("suzaku.fft1update", delay, () -> {
             updateFingerTable(false);
         });
         logger.trace("{}: add schedEvent: {}", n, updateSchedEvent.getEventId());
@@ -1088,7 +1089,8 @@ public class SuzakuStrategy extends NodeStrategy {
                 // XXX: UPDATE_ONCE is ignored
                 nextLevel = p + 1;
                 logger.trace("nextLevel={}, nextEntX={}", nextLevel, nextEntX);
-                EventExecutor.sched(UPDATE_FINGER_PERIOD.value(),
+                EventExecutor.sched("suzaku.schedNextLevel.zigzag",
+                        UPDATE_FINGER_PERIOD.value(),
                         () -> updateFingerTable0(p + 1, isBackward, nextEntX, null));
             }
         } else {
@@ -1096,7 +1098,8 @@ public class SuzakuStrategy extends NodeStrategy {
             if (UPDATE_ONCE.value()) {
                 updateFingerTable0(p + 1, isBackward, nextEntX, null);
             } else {
-                EventExecutor.sched(UPDATE_FINGER_PERIOD.value(),
+                EventExecutor.sched("suzaku.schedNextLevel.nonzigzag",
+                        UPDATE_FINGER_PERIOD.value(),
                         () -> updateFingerTable0(p + 1, isBackward, nextEntX, null));
             }
         }

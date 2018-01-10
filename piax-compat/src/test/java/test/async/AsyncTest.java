@@ -40,11 +40,11 @@ public class AsyncTest extends AsyncTestBase {
     public void testTerminate1() {
         EventExecutor.reset();
         Indirect<Boolean> chk1 = new Indirect<>(false), chk2 = new Indirect<>(false);
-        EventExecutor.sched(50, () -> {
+        EventExecutor.sched("test.testTerminate1-1", 50, () -> {
             System.out.println("chk1: " + EventExecutor.getVTime());
             chk1.val = true;
         });
-        EventExecutor.sched(150, () -> {
+        EventExecutor.sched("test.testTerminate1-2", 150, () -> {
             System.out.println("chk2: "+ EventExecutor.getVTime());
             chk2.val = true;
         });
@@ -68,11 +68,11 @@ public class AsyncTest extends AsyncTestBase {
     public void testTerminate2() {
         EventExecutor.reset();
         Indirect<Boolean> chk1 = new Indirect<>(false), chk2 = new Indirect<>(false);
-        EventExecutor.sched(50, () -> {
+        EventExecutor.sched("test.testTerminate2-1", 50, () -> {
             System.out.println("chk1: " + EventExecutor.getVTime());
             chk1.val = true;
         });
-        EventExecutor.sched(1000, () -> {
+        EventExecutor.sched("test.testTerminate2-2", 1000, () -> {
             System.out.println("chk2: "+ EventExecutor.getVTime());
             chk2.val = true;
         });
@@ -184,7 +184,7 @@ public class AsyncTest extends AsyncTestBase {
             CompletableFuture<Boolean> f1 = nodes[1].joinAsync(nodes[0]);
             CompletableFuture<Boolean> f2 = nodes[2].joinAsync(nodes[0]);
             CompletableFuture<Boolean> f3 = nodes[3].joinAsync(nodes[0]);
-            EventExecutor.sched(10000, () -> {
+            EventExecutor.sched("test.testFix1", 10000, () -> {
                 nodes[1].fail();
                 nodes[2].fail();  
             });
@@ -215,7 +215,7 @@ public class AsyncTest extends AsyncTestBase {
             CompletableFuture<Boolean> f1 = nodes[1].joinAsync(nodes[0]);
             CompletableFuture<Boolean> f2 = nodes[2].joinAsync(nodes[0]);
             Indirect<CompletableFuture<Boolean>> f3 = new Indirect<>();
-            EventExecutor.sched(10000, () -> {
+            EventExecutor.sched("test.testFix2", 10000, () -> {
                 nodes[1].fail();
                 f3.val = nodes[2].leaveAsync();
             });
@@ -247,7 +247,7 @@ public class AsyncTest extends AsyncTestBase {
         {
             CompletableFuture<Boolean> f1 = nodes[1].joinAsync(nodes[0]);
             Indirect<CompletableFuture<Boolean>> f2 = new Indirect<>();
-            EventExecutor.sched(10000, () -> {
+            EventExecutor.sched("test.testFix3", 10000, () -> {
                 nodes[0].fail();
                 f2.val = nodes[1].leaveAsync();
             });
