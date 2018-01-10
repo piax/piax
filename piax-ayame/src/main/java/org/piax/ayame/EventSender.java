@@ -14,6 +14,7 @@ public interface EventSender {
 
     public static class EventSenderSim implements EventSender {
         private static EventSenderSim instance = new EventSenderSim();
+        private static LatencyProvider latencyProvider;
 
         private EventSenderSim() {
         }
@@ -27,10 +28,14 @@ public interface EventSender {
             return null;
         }
 
+        public static void setLatencyProvider(LatencyProvider p) {
+            latencyProvider = p;
+        }
+
         @Override
         public CompletableFuture<Void> send(Event ev) {
             if (ev.delay == Node.NETWORK_LATENCY) {
-                ev.delay = EventExecutor.latency(ev.sender, ev.receiver);
+                ev.delay = latency(ev.sender, ev.receiver);
             }
             ev.vtime = EventExecutor.getVTime() + ev.delay;
             if (logger.isTraceEnabled()) {
@@ -51,6 +56,19 @@ public interface EventSender {
             Event copy = ev.clone();
             EventExecutor.enqueue(copy);
             return CompletableFuture.completedFuture(null);
+        }
+
+        private static long latency(Node a, Node b) {
+            if (EventExecutor.realtime.value()) {
+                return 0;
+            }
+            if (a == b) {
+                return 0;
+            }
+            if (latencyProvider == null) {
+                return 100;
+            }
+            return latencyProvider.latency(a, b);
         }
     }
 /*

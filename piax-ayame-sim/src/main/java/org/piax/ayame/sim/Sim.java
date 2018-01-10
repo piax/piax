@@ -16,6 +16,7 @@ import java.util.stream.LongStream;
 import org.piax.ayame.Event.Lookup;
 import org.piax.ayame.EventException;
 import org.piax.ayame.EventExecutor;
+import org.piax.ayame.EventSender.EventSenderSim;
 import org.piax.ayame.FTEntry;
 import org.piax.ayame.FailureCallback;
 import org.piax.ayame.LatencyProvider.StarLatencyProvider;
@@ -193,7 +194,7 @@ public class Sim {
     }
 
     private void sim() {
-        EventExecutor.setLatencyProvider(latencyProvider);
+        EventSenderSim.setLatencyProvider(latencyProvider);
         Algorithm algorithm = Sim.algorithm.value();
         ExpType exptype = Sim.exptype.value();
         NodeFactory factory = algorithm.method.get();
@@ -336,7 +337,8 @@ public class Sim {
 */    
     /**
      * keyを検索し，統計情報を stat に追加する．
-     * 
+     *
+     * @param from
      * @param key
      * @param stat
      */
