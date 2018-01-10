@@ -61,7 +61,7 @@ public class PrimaryKey implements ComparableKey<PrimaryKey>, NettyEndpoint {
 
     // a widlcard constructor.
     // at least one PeerLocator is required
-    public PrimaryKey(Endpoint seed) {
+    public PrimaryKey(PeerLocator seed) {
         rawKey = null;
         if (seed instanceof NettyLocator) {
             this.locator = (NettyLocator)seed;
@@ -158,7 +158,7 @@ public class PrimaryKey implements ComparableKey<PrimaryKey>, NettyEndpoint {
     public PrimaryKey newSameTypeEndpoint(String spec) {
         Endpoint ep = Endpoint.newEndpoint(spec);
         if (ep instanceof PeerLocator) {
-            ep = new PrimaryKey(ep);
+            ep = new PrimaryKey((PeerLocator)ep);
         }
         if (!(ep instanceof PrimaryKey)) {
             throw new UnavailableEndpointError("primary key or locator expected.");
@@ -187,7 +187,7 @@ public class PrimaryKey implements ComparableKey<PrimaryKey>, NettyEndpoint {
     public String toString() {
         if (rawKey == null) // wildcard
             return "WILDCARD";
-        return rawKey.toString();
+        return rawKey.toString() + "," + locator;
     }
 
     @Override
