@@ -171,7 +171,7 @@ public class Node {
         // setLeft(me);
         setLeftNum(new LinkSeq(0, 0));
         // setRight(me);
-        // setRightNum(new LinkNum(0, 0));
+        // setRightNum(new LinkSeq(0, 0));
         leftNbrs = new NeighborSet(me, manager);
         stabilizeTimer = timer;
         online();
@@ -377,7 +377,7 @@ public class Node {
     public void insertAsInitialNode() {
         logger.trace("ENTRY:");
         setLeft(me);
-        //setLeftNum(new LinkNum(0, 0));
+        //setLeftNum(new LinkSeq(0, 0));
         setRight(me);
         setRightNum(new LinkSeq(0, 0));
         setMode(Mode.IN);
@@ -395,7 +395,7 @@ public class Node {
             p.setRight(q.me);
             p.setRightNum(new LinkSeq(0, 0));
             q.setLeft(p.me);
-            //q.setLeftNum(new LinkNum(0, 0));
+            //q.setLeftNum(new LinkSeq(0, 0));
             p.setMode(Mode.IN);
             p.setRef(1);
             p.manager.registerNode(p);
@@ -514,7 +514,7 @@ public class Node {
                 setLeft(p.left);
                 // because the repair-count in the left link number may be
                 // incremented after (previous) unsuccessful insertion,
-                // we do not call setLeftNum(new LinkNum(0, 0)) here.
+                // we do not call setLeftNum(new LinkSeq(0, 0)) here.
                 setRight(p.right);
                 setRightNum(null);
                 setMode(Mode.INS);
