@@ -80,10 +80,9 @@ public class RQStrategy extends NodeStrategy {
     Map<PeerId, Map<Long, CompletableFuture<?>>> resultCache = new HashMap<>();
     
     /**
-     * query history for request gathering
+     * hook for collective store and forward
      */
-    Map<Object, Map<Long, RQRequest<?>>> requestStorage = new HashMap<>();
-    Set<Long> requestHistory;
+    RQHookIf<?> hook = null;
 
     @Override
     public void handleLookup(Lookup l) {
@@ -396,5 +395,13 @@ public class RQStrategy extends NodeStrategy {
             });
         });
         return ret;
+    }
+    
+    public void setHook(RQHookIf<?> hooks) {
+    		this.hook = hooks;
+    }
+
+    public RQHookIf<?> getHook() {
+        return hook;
     }
 }

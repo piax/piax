@@ -233,6 +233,13 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
 		return this.isReceiverHalf;
     }
 
+    public Class<? extends RQRequest<T>> getClazz() {
+        @SuppressWarnings("unchecked")
+        Class<? extends RQRequest<T>> clazz
+                = (Class<? extends RQRequest<T>>)getClass();
+        return clazz;
+    }
+    
     /**
      * A class for storing results of a range query used by parent nodes.
      */
@@ -299,8 +306,9 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
 
         private void rqDisseminate(List<RQRange> ranges) {
         		boolean sendChild = true;
-        		if (adapter.getHook() != null) {
-        			sendChild = adapter.getHook().hook(RQRequest.this);
+            RQStrategy strategy = RQStrategy.getRQStrategy(getLocalNode());
+        		if (strategy.getHook() != null) {
+        			sendChild = strategy.getHook().hook((RQRequest)RQRequest.this);
         		}
         		rqDisseminate0(ranges, sendChild);
         }
@@ -388,8 +396,9 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             }
             // obtain values for local ranges
             CompletableFuture<List<DKRangeRValue<T>>> future = null;
-            if (adapter.getHook() != null) {
-            		future = adapter.getHook().executeLocal(RQRequest.this, map.get(peerId));
+            RQStrategy strategy = RQStrategy.getRQStrategy(getLocalNode());
+            if (strategy.getHook() != null) {
+            		future = strategy.getHook().executeLocal((RQRequest)RQRequest.this, map.get(peerId));
             } else {
             		future = rqExecuteLocal(map.get(peerId));
             }
@@ -401,8 +410,8 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                 exc.getCause().printStackTrace();
                 return null; // or System.exit(1);
             });
-            if (adapter.getHook() != null) {
-            		adapter.getHook().addHistory(RQRequest.this);
+            if (strategy.getHook() != null) {
+            		strategy.getHook().addHistory((RQRequest)RQRequest.this);
             }
             logger.trace("rqDisseminate finished");
         }
