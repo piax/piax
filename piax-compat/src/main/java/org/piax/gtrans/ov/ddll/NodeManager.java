@@ -21,7 +21,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Timer;
 
-import org.piax.ayame.ov.ddll.LinkNum;
+import org.piax.ayame.ov.ddll.LinkSeq;
 import org.piax.common.DdllKey;
 import org.piax.common.Endpoint;
 import org.piax.common.PeerId;
@@ -154,7 +154,7 @@ public class NodeManager extends RPCInvoker<NodeManagerIf, Endpoint> implements
     }
 
     public void setR(DdllKey target, Link sender, int reqNo, Link rNew,
-            Link rCur, LinkNum rNewNum, int type,
+            Link rCur, LinkSeq rNewNum, int type,
             Object payload) {
         Node n = map.get(target);
         if (n != null) {
@@ -242,7 +242,7 @@ public class NodeManager extends RPCInvoker<NodeManagerIf, Endpoint> implements
         }
     }
 
-    public void setL(DdllKey target, Link lNew, LinkNum lNewNum, Link lPrev,
+    public void setL(DdllKey target, Link lNew, LinkSeq lNewNum, Link lPrev,
             Set<Link> nbrs) {
         Node n = map.get(target);
         if (n != null) {
@@ -252,7 +252,7 @@ public class NodeManager extends RPCInvoker<NodeManagerIf, Endpoint> implements
         }
     }
 
-    public void setRAck(DdllKey target, Link sender, int reqNo, LinkNum val,
+    public void setRAck(DdllKey target, Link sender, int reqNo, LinkSeq val,
             Set<Link> nbrs) {
         Node n = map.get(target);
         if (n != null) {

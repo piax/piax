@@ -28,7 +28,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import org.piax.ayame.ov.ddll.LinkNum;
+import org.piax.ayame.ov.ddll.LinkSeq;
 import org.piax.common.DdllKey;
 import org.piax.common.Endpoint;
 import org.piax.gtrans.RPCException;
@@ -107,9 +107,9 @@ public class Node {
     final DdllKey key;
     volatile Mode mode = Mode.OUT;
     volatile Link left;
-    volatile LinkNum lNum;
+    volatile LinkSeq lNum;
     volatile Link right;
-    volatile LinkNum rNum;
+    volatile LinkSeq rNum;
     volatile int ref = 0;
     volatile boolean sendLastUnrefL = true;
     // the latest request number of the SetR message
@@ -169,7 +169,7 @@ public class Node {
         this.key = ddllKey;
         me = new Link(manager.getLocator(), this.key);
         // setLeft(me);
-        setLeftNum(new LinkNum(0, 0));
+        setLeftNum(new LinkSeq(0, 0));
         // setRight(me);
         // setRightNum(new LinkNum(0, 0));
         leftNbrs = new NeighborSet(me, manager);
@@ -250,7 +250,7 @@ public class Node {
         }
     }
 
-    protected void setLeftNum(LinkNum lNum) {
+    protected void setLeftNum(LinkSeq lNum) {
         this.lNum = lNum;
     }
 
@@ -282,7 +282,7 @@ public class Node {
         this.right = right;
     }
 
-    protected void setRightNum(LinkNum rNum) {
+    protected void setRightNum(LinkSeq rNum) {
         this.rNum = rNum;
     }
 
@@ -379,7 +379,7 @@ public class Node {
         setLeft(me);
         //setLeftNum(new LinkNum(0, 0));
         setRight(me);
-        setRightNum(new LinkNum(0, 0));
+        setRightNum(new LinkSeq(0, 0));
         setMode(Mode.IN);
         setRef(1);
         manager.registerNode(this);
@@ -393,7 +393,7 @@ public class Node {
             Node p = list.get(i);
             Node q = list.get((i + 1) % list.size());
             p.setRight(q.me);
-            p.setRightNum(new LinkNum(0, 0));
+            p.setRightNum(new LinkSeq(0, 0));
             q.setLeft(p.me);
             //q.setLeftNum(new LinkNum(0, 0));
             p.setMode(Mode.IN);
@@ -863,7 +863,7 @@ public class Node {
      * message
      */
     public void setR(Link sender, int reqNo, Link rNew, Link rCur,
-            LinkNum rNewNum, int type, Object payload) {
+            LinkSeq rNewNum, int type, Object payload) {
         protoLock.writeLock().lock();
         logger.trace("ENTRY:");
         logger.debug("receive SetR(rNew={}, rCur={}, rNewNum={}, type={}, payload={})",
@@ -891,7 +891,7 @@ public class Node {
                 }
             } else {
                 Link prevRight = right;
-                LinkNum oldNum = rNum;
+                LinkSeq oldNum = rNum;
                 setRight(rNew);
                 setRightNum(rNewNum);
                 if (type != NodeManagerIf.SETR_TYPE_FIX_LEFTONLY) {
@@ -975,7 +975,7 @@ public class Node {
      * @param zNum the previous right link number of the sender node
      * @param nbrs neighbor node set
      */
-    public void setRAck(Link sender, int reqNo, LinkNum zNum, Set<Link> nbrs) {
+    public void setRAck(Link sender, int reqNo, LinkSeq zNum, Set<Link> nbrs) {
         protoLock.writeLock().lock();
         logger.trace("ENTRY:");
         logger.debug("receive SetRAck(sender={}, reqNo={}, zNum={}, nbrs={}) from {}",
@@ -1108,7 +1108,7 @@ public class Node {
         }
     }
 
-    public void setL(Link lNew, LinkNum lNewNum, Link prevL, Set<Link> nbrs) {
+    public void setL(Link lNew, LinkSeq lNewNum, Link prevL, Set<Link> nbrs) {
         /*
          * (A5) receive SetL(lnew , lnewnum , d) from q → if (lnewnum>lnum) then
          * l, lnum := lnew, lnewnum fi send UnrefL() to d
@@ -1394,7 +1394,7 @@ public class Node {
         }
     }
 
-    void sendSetL(Link dest, Link lNew, LinkNum lNewNum, Link lPrev,
+    void sendSetL(Link dest, Link lNew, LinkSeq lNewNum, Link lPrev,
             boolean isInserted) throws RPCException {
         // compute the neighbor node set at the dest node.
         Set<Link> nset = leftNbrs.computeNSForRight(dest);

@@ -79,7 +79,7 @@ public class DdllStrategy extends NodeStrategy {
     public static IntegerOption pingPeriod =
             new IntegerOption(10000, "-pingperiod");
 
-    LinkNum lseq = new LinkNum(0, 0), rseq = new LinkNum(0, 0);
+    LinkSeq lseq = new LinkSeq(0, 0), rseq = new LinkSeq(0, 0);
     DdllStatus status = DdllStatus.OUT;
 
     /** neighbor node set */
@@ -143,7 +143,7 @@ public class DdllStrategy extends NodeStrategy {
         n.succ = succ;
         setStatus(DdllStatus.INS);
         SetR ev = new SetR(n.pred, SetRType.NORMAL, n, n.succ,
-                new LinkNum(0, 0), setRjob);
+                new LinkSeq(0, 0), setRjob);
         Consumer<EventException> joinfail = (exc) -> {
             logger.debug("{}: join failed: {}", n, exc.toString());
             setStatus(DdllStatus.OUT);
@@ -453,7 +453,7 @@ public class DdllStrategy extends NodeStrategy {
         if (last == null) {
             last = n;
         }
-        LinkNum lseq0 = lseq;
+        LinkSeq lseq0 = lseq;
         GetCandidates ev = new GetCandidates(last, n);
         ev.onReply((resp, exc) -> {
             if (exc != null) {
