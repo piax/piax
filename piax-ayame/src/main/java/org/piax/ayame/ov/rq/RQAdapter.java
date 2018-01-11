@@ -16,7 +16,6 @@ import org.piax.ayame.ov.rq.RQRequest.SPECIAL;
 import org.piax.common.DdllKey;
 import org.piax.common.PeerId;
 import org.piax.gtrans.RemoteValue;
-import org.piax.gtrans.TransOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -119,9 +118,9 @@ public abstract class RQAdapter<T> implements Serializable {
      * a result value provider that caches the result. 
      * use this class as a base class of value provider that has side-effects.
      * 
-     * @see TransOptions.DeliveryMode
-     *  
      * @param <T> type of the value
+     * @see org.piax.gtrans.TransOptions.DeliveryMode
+     *  
      */
     public abstract static class CacheAdapter<T> extends RQAdapter<T> {
         final long cachePeriod;

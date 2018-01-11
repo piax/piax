@@ -93,6 +93,7 @@ public abstract class RQAggregateAdapter<T> extends RQAdapter<T> {
 
     @Override
     public Object reduceCollectedData(List<?> value) {
+        @SuppressWarnings("unchecked")
         List<T> vals = (List<T>)value;
         Object reduced = vals.stream()
                 .reduce((a, b) -> reduce(a, b))

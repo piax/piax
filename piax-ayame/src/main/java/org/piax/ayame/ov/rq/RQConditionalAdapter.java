@@ -150,6 +150,7 @@ public abstract class RQConditionalAdapter<T, U> extends RQAdapter<T> {
         Class<? extends RQAdapter<T>> clazz = this.getClazz();
         Map<Boolean, List<FTEntry>> map = ftelist.stream()
                 .collect(Collectors.groupingBy(fte -> {
+                    @SuppressWarnings("unchecked")
                     U val = (U) fte.getLocalCollectedData(clazz);
                     // まだ最初の集約が終わっていない場合(val==null)，matchとする．
                     return (val == null || match(fte.getRange(), val));
@@ -176,6 +177,7 @@ public abstract class RQConditionalAdapter<T, U> extends RQAdapter<T> {
      *        are allowed.
      * @return x \ y
      */
+    @SuppressWarnings("unchecked")
     private static <T extends Range<DdllKey>> List<T> diffRanges(
             List<T> x, List<? extends Range<DdllKey>> y, List<T> intersections,
             boolean isPartialAllowed) {
@@ -247,6 +249,7 @@ public abstract class RQConditionalAdapter<T, U> extends RQAdapter<T> {
 
     @Override
     public Object reduceCollectedData(List<?> value) {
+        @SuppressWarnings("unchecked")
         List<U> vals = (List<U>)value;
         Object reduced = vals.stream()
                 .reduce((a, b) -> reduce(a, b))
@@ -270,7 +273,7 @@ public abstract class RQConditionalAdapter<T, U> extends RQAdapter<T> {
      * 
      * @param range      あるFTEntryに対応する範囲
      * @param val        rangeに対応する集約値
-     * @return
+     * @return true if there is a potentially match according to val.
      */
     public abstract boolean match(DdllKeyRange range, U val);
 }

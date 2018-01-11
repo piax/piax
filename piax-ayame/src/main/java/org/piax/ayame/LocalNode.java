@@ -176,7 +176,8 @@ public class LocalNode extends Node {
 
     /**
      * post a event
-     * @param ev
+     *
+     * @param ev an event to post
      */
     public void post(Event ev) {
         post(ev, null);
@@ -320,8 +321,8 @@ public class LocalNode extends Node {
     /**
      * locate the node position and insert
      *
-     * @param introducer
-     * @return CompletableFuture<Boolean> that completes on insertion
+     * @param introducer any node that has been inserted in the network
+     * @return CompletableFuture that completes on insertion
      *         success or failure.  The result can be obtained with the
      *         boolean value.
      */
@@ -493,7 +494,7 @@ public class LocalNode extends Node {
      * <p>myKey = 100, k = 200 の場合，returnするリストは例えば [100, 150]． 
      * <p>myKey = k = 100 の場合 [100, 200, 300, 0]．
      * 
-     * @param k
+     * @param k key of upper limit 
      * @return List of Node
      */
     public List<Node> getNodesForFix(DdllKey k) {

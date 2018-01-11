@@ -36,14 +36,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * a class used for range queries.
+ * a request message for range queries.
  * <p>
  * this class contains various data that are required to be transmitted to the
- * target nodes. this class also contains {@link #obstacles} field, which
- * represents a set of failed nodes that are found while processing the range
- * query.
+ * target nodes.
  * <p>
- * this class also manages (partial) results returned from child nodes.
+ * results returned from child nodes are managed by RQRequest.Catcher class.
  *
  * @param <T> type of the return value of the range query
  */
@@ -72,7 +70,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
     final boolean isRoot;
 
     /**
-     * failed links. this field is used for avoiding and repairing dead links.
+     * failed nodes. this field is used for avoiding and repairing dead links.
      * XXX: NOT USED FOR NOW
      */
     final Set<Node> obstacles;
