@@ -70,38 +70,8 @@ public class LocalNode extends Node {
     // TODO: define accessors!
     public Set<Node> maybeFailedNodes = new HashSet<>();
 
-    /*
-    public LocalNode(TransportId transId, ChannelTransport<?> trans,
-            DdllKey ddllkey)
-            throws IdConflictException, IOException {
-        super(ddllkey, trans == null ? null : trans.getEndpoint());
-        assert getInstance(ddllkey) == this; 
-        assert trans == null || this.peerId.equals(trans.getPeerId());
-
-        // to support multi-keys
-        localNodeMap.computeIfAbsent(peerId, k -> new TreeSet<>())
-            .add(this);
-
-        if (trans == null) {
-            this.sender = EventSenderSim.getInstance();
-        } else {
-            try {
-                this.sender = new EventSenderNet(transId, trans);
-            } catch (IdConflictException | IOException e) {
-                throw e;
-            }
-        }
-    }*/
-    
     public LocalNode(DdllKey ddllkey, Endpoint e) {
-        super(ddllkey, e);
-        assert getInstance(ddllkey) == this; 
-
-        // to support multi-keys
-        localNodeMap.computeIfAbsent(peerId, k -> new TreeSet<>())
-            .add(this);
-
-        this.sender = EventSenderSim.getInstance();
+        this(EventSenderSim.getInstance(), ddllkey);
     }
 
     public LocalNode(EventSender sender, DdllKey ddllkey) {

@@ -141,7 +141,7 @@ public class AsyncTestBase {
         EventExecutor.reset();
         nodes = null;
         latencyProvider = new StarLatencyProvider();
-        EventExecutor.setLatencyProvider(latencyProvider);
+        EventSenderSim.setLatencyProvider(latencyProvider);
         System.gc(); // force gc for cleaning Node.instances
     }
 
