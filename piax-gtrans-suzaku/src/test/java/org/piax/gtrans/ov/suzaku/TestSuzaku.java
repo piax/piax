@@ -126,7 +126,7 @@ class TestSuzaku {
             AtomicInteger count = new AtomicInteger(0);
             s1.requestAsync(new StringKey("hello"), "world",
                     (ret, e)-> { // receive response
-                        System.out.println("got:" + ret);
+                        logger.info("got: {}", ret);
                         res.set(Response.EOR.equals(ret));
                         count.incrementAndGet();
                     },
