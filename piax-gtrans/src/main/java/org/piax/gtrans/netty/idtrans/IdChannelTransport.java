@@ -134,7 +134,7 @@ public class IdChannelTransport extends ChannelTransportImpl<PrimaryKey> impleme
 
         @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-            logger.info("Exception:" + cause);
+            logger.info("Exception:", cause);
             ctx.close();
         }
     }
