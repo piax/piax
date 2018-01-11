@@ -4,16 +4,20 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
-public class Counter {
+public class Counters {
     private Map<String, Integer> map = new HashMap<>();
     
     public void add(String name, int delta) {
         int v =  map.computeIfAbsent(name, s -> 0);
         map.put(name, v + delta);
     }
-    
+
     public Integer get(String name) {
-        return map.get(name);
+        Integer rc = map.get(name);
+        if (rc == null) {
+            return 0;
+        }
+        return rc;
     }
 
     public Set<String> keys() {
@@ -22,6 +26,10 @@ public class Counter {
 
     public Set<Map.Entry<String, Integer>> entrySet() {
         return map.entrySet();
+    }
+
+    public void clear() {
+        map.clear();
     }
 
     @Override

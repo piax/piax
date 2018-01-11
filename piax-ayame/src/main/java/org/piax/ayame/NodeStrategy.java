@@ -73,9 +73,9 @@ public abstract class NodeStrategy {
     /**
      * get a (cloned) FTEntry for sending to a remote node.
      * 
-     * @param fromDist
-     * @param toDist
-     * @return a FTEntry
+     * @param fromDist distance to the start node (inclusive)
+     * @param toDist   distance to the end index (exclusive)
+     * @return a FTEntry for sending to a remote node
      */
     public FTEntry getFTEntryToSend(int fromDist, int toDist) {
         return getLower().getFTEntryToSend(fromDist, toDist);

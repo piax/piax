@@ -195,7 +195,7 @@ public class SuzakuStrategy extends NodeStrategy {
         logger.trace("Suzaku#join: {} joins between {} and {}", n.key
                 , lookupDone.pred, lookupDone.succ);
         assert Node.isOrdered(lookupDone.pred.key, n.key, lookupDone.succ.key);
-        n.counter.add("join.lookup", lookupDone.hops());
+        n.counters.add("join.lookup", lookupDone.hops());
         CompletableFuture<Boolean> future = new CompletableFuture<>();
         ddll.join(lookupDone, future);
         future.whenComplete((rc, exc) -> {
@@ -277,11 +277,12 @@ public class SuzakuStrategy extends NodeStrategy {
                 EventExecutor.cancelEvent(updateSchedEvent);
                 updateSchedEvent = null;
             }
-            EventExecutor.sched(NetworkParams.ONEWAY_DELAY, () -> {
-                n.mode = NodeMode.DELETED;
-                logger.debug("{}: mode=deleted", n);
-                leaveComplete.complete(true);
-            });
+            EventExecutor.sched("suzaku.leave.grace",
+                    NetworkParams.ONEWAY_DELAY, () -> {
+                    n.mode = NodeMode.DELETED;
+                    logger.debug("{}: mode=deleted", n);
+                    leaveComplete.complete(true);
+                });
         });
     }
 
@@ -422,7 +423,7 @@ public class SuzakuStrategy extends NodeStrategy {
                 if (exc != null) {
                     logger.debug("getFTAll failed: {}", exc);
                 } else {
-                    n.counter.add("join.ftupdate", 2); // GetFTAllEvent/Reply
+                    n.counters.add("join.ftupdate", 2); // GetFTAllEvent/Reply
                     FTEntry[][] fts = rep.ents;
                     for (int i = 1; i < fts[0].length; i++) {
                         table.forward.set(i, fts[0][i]);
@@ -758,7 +759,7 @@ public class SuzakuStrategy extends NodeStrategy {
             return;
         }
         long delay = UPDATE_FINGER_PERIOD.value();
-        updateSchedEvent = EventExecutor.sched(delay, () -> {
+        updateSchedEvent = EventExecutor.sched("suzaku.fft1update", delay, () -> {
             updateFingerTable(false);
         });
         logger.trace("{}: add schedEvent: {}", n, updateSchedEvent.getEventId());
@@ -998,7 +999,7 @@ public class SuzakuStrategy extends NodeStrategy {
                 }
             } else {
                 if (ACTIVE_UPDATE_ON_JOIN && isFirst) {
-                    n.counter.add("join.ftupdate", 2 + repl.msgCount);
+                    n.counters.add("join.ftupdate", 2 + repl.msgCount);
                     // getFTEntEvent/Reply + RemoveReversePointerEvent
                 }
                 FTEntry[] replEnts = repl.ent.ents;
@@ -1088,7 +1089,8 @@ public class SuzakuStrategy extends NodeStrategy {
                 // XXX: UPDATE_ONCE is ignored
                 nextLevel = p + 1;
                 logger.trace("nextLevel={}, nextEntX={}", nextLevel, nextEntX);
-                EventExecutor.sched(UPDATE_FINGER_PERIOD.value(),
+                EventExecutor.sched("suzaku.schedNextLevel.zigzag",
+                        UPDATE_FINGER_PERIOD.value(),
                         () -> updateFingerTable0(p + 1, isBackward, nextEntX, null));
             }
         } else {
@@ -1096,7 +1098,8 @@ public class SuzakuStrategy extends NodeStrategy {
             if (UPDATE_ONCE.value()) {
                 updateFingerTable0(p + 1, isBackward, nextEntX, null);
             } else {
-                EventExecutor.sched(UPDATE_FINGER_PERIOD.value(),
+                EventExecutor.sched("suzaku.schedNextLevel.nonzigzag",
+                        UPDATE_FINGER_PERIOD.value(),
                         () -> updateFingerTable0(p + 1, isBackward, nextEntX, null));
             }
         }

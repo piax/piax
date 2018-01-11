@@ -85,8 +85,8 @@ public class RQRange extends DdllKeyRange {
      * - 左端と一致するkeyがあれば，そのエントリを使用する．
      * - そうでなければ，nullとする．
      * 
-     * @param ents
-     * @return
+     * @param ents set of DdllKey and Node to divide with
+     * @return List of RQRange
      */
     public List<RQRange> split(NavigableMap<DdllKey, Node> ents) {
         List<RQRange> ranges = new ArrayList<RQRange>();
@@ -109,6 +109,10 @@ public class RQRange extends DdllKeyRange {
 
     /**
      * this rangeから [a, b) を削除した残りの範囲を返す．
+     *
+     * @param a from key to remove, inclusive
+     * @param b to key to remove, exclusive
+     * @return List of RQRange
      */
     public List<RQRange> retainRanges(DdllKey a, DdllKey b) {
         if (keyComp.compare(a, b) != 0 && keyComp.isOrdered(from, b, a)
@@ -141,9 +145,10 @@ public class RQRange extends DdllKeyRange {
      * delegate node is taken from this range or another range according
      * to auxRight.
      * 
-     * @param another
-     * @param auxRight
-     * @return
+     * @param another another range to concatenate with
+     * @param auxRight true if you want to use another.delegate as the 
+     *                 delegate node of returned RQRange.
+     * @return RQRange
      */
     public RQRange concatenate(RQRange another, boolean auxRight) {
         if (this.to.compareTo(another.from) != 0) {

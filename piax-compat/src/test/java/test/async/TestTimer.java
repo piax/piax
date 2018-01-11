@@ -20,14 +20,14 @@ public class TestTimer {
     }
 
     public static void main(String[] args) {
-        EventExecutor.sched(200, () -> {
+        EventExecutor.sched("testTimer1", 200, () -> {
             System.out.println("one shot: " + EventExecutor.getVTime());
         });
-        EventExecutor.sched(500, 1000, new Foo());
-        EventExecutor.sched(1000, 1000, tev -> {
+        EventExecutor.sched("testTimer2", 500, 1000, new Foo());
+        EventExecutor.sched("testTimer3", 1000, 1000, tev -> {
             System.out.println("Bar! " + EventExecutor.getVTime());
         });
-        EventExecutor.sched(300, 1000, tev -> {
+        EventExecutor.sched("testTimer4", 300, 1000, tev -> {
             System.out.println("Baz! " + EventExecutor.getVTime());
             throw new NullPointerException();
         });

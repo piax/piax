@@ -3,7 +3,7 @@ package org.piax.ayame.sim.stats;
 import java.util.Map;
 import java.util.concurrent.ConcurrentSkipListMap;
 
-import org.piax.ayame.Counter;
+import org.piax.ayame.Counters;
 
 public class MultiStatSet {
     Map<String, StatSet> stats = new ConcurrentSkipListMap<>();
@@ -12,7 +12,7 @@ public class MultiStatSet {
         return stats.computeIfAbsent(key, k -> new StatSet());
     }
     
-    public void addCounter(int index, Counter c) {
+    public void addCounters(int index, Counters c) {
         for (Map.Entry<String, Integer> ent: c.entrySet()) {
             StatSet set = get(ent.getKey());
             set.getStat(index).addSample(ent.getValue());

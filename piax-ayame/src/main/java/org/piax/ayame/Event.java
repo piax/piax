@@ -225,8 +225,8 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
     /**
      * a request that allows multiple replies
      *
-     * @param <T>
-     * @param <U>
+     * @param <T> type of a request event
+     * @param <U> type of the corresponding reply event
      */
     public static abstract class StreamingRequestEvent<T extends StreamingRequestEvent<T, U>,
         U extends ReplyEvent<T, U>> extends RequestEvent<T, U> {
@@ -502,6 +502,7 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
             this.routeWithFailed.addAll(req.routeWithFailed);
         }
 
+        @SuppressWarnings("unchecked")
         @Override
         public boolean beforeRunHook(LocalNode n) {
             // restore transient "req" field
@@ -564,13 +565,16 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
         }
     }
     
+    @SuppressWarnings("rawtypes")
     public static class ErrorEvent extends ReplyEvent {
         final public EventException reason;
 
+        @SuppressWarnings("unchecked")
         public ErrorEvent(RequestEvent req, EventException reason) {
             super(req);
             this.reason = reason;
         }
+        @SuppressWarnings("unchecked")
         @Override
         public void run() {
             logger.debug("ErrorEvent");

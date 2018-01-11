@@ -87,7 +87,7 @@ public class SkipGraphStrategy extends NodeStrategy {
             CompletableFuture<Boolean> joinFuture) {
         logger.trace("{}: join route: {}", n, lookupDone.route); 
         logger.trace("lookup hops: {}", lookupDone.hops());
-        n.counter.add("join.lookup", lookupDone.hops());
+        n.counters.add("join.lookup", lookupDone.hops());
         CompletableFuture<Boolean> future = new CompletableFuture<>();
         base.join(lookupDone, future);
         future.whenComplete((rc, exc) -> {

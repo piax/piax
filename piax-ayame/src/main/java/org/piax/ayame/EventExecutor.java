@@ -1,6 +1,5 @@
 package org.piax.ayame;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
@@ -30,17 +29,12 @@ public class EventExecutor {
     private static long startTime; // init by reset();
     private static long vtime; // init by reset();
     public static int nmsgs; // init by reset();
-    private static int eventCount; // init by reset();
+    private static int nextEventSerial; // init by reset();
     private static ReentrantLock lock = new ReentrantLock();
     private static Condition cond = lock.newCondition();
     private static PriorityQueue<Event> timeq = new PriorityQueue<>();
-    private static LatencyProvider latencyProvider;
-    private static Map<String, Count> counter = new HashMap<String, Count>();
+    private static Counters counters = new Counters();
     private static boolean terminateExecutor = false;
-
-    public static class Count {
-        int count;
-    }
 
     static {
         reset();
@@ -54,7 +48,7 @@ public class EventExecutor {
         startTime = System.currentTimeMillis();
         vtime = 0;
         nmsgs = 0;
-        eventCount = 0;
+        nextEventSerial = 0;
         timeq.clear();
         LocalNode.resetLocalNodeMap();
         Node.resetInstances();
@@ -63,11 +57,11 @@ public class EventExecutor {
     public static void enqueue(Event ev) {
         if (!realtime.value()) {
             //assert ev.vtime != 0;
-            ev.serial = eventCount++;
+            ev.serial = nextEventSerial++;
             timeq.add(ev);
         } else {
             lock.lock();
-            ev.serial = eventCount++;
+            ev.serial = nextEventSerial++;
             timeq.add(ev);
             cond.signal();
             lock.unlock();
@@ -112,14 +106,17 @@ public class EventExecutor {
         }
     }
 
+    @Deprecated
     public static TimerEvent sched(long delay, Runnable run) {
         return sched(delay, 0, ev -> run.run());
     }
 
+    @Deprecated
     public static TimerEvent sched(long delay, long period, Runnable run) {
         return sched(delay, period, ev -> run.run());
     }
 
+    @Deprecated
     public static TimerEvent sched(long delay, long period, Consumer<TimerEvent> job) {
         return sched(null, delay, period, job);
     }
@@ -174,33 +171,24 @@ public class EventExecutor {
      * Message Counters
      */
     public static void resetMessageCounters() {
-        counter.clear();
+        counters.clear();
     }
 
     public static void dumpMessageCounters() {
         logger.debug("#message count");
-        for (Map.Entry<String, Count> ent : counter.entrySet()) {
+        for (Map.Entry<String, Integer> ent : counters.entrySet()) {
             String name = ent.getKey();
-            Count cnt = ent.getValue();
-            logger.debug("{}: {}", name, cnt.count);
+            Integer cnt = ent.getValue();
+            logger.debug("{}: {}", name, cnt);
         }
     }
 
     public static void addCounter(String name) {
-        Count cnt = counter.get(name);
-        if (cnt == null) {
-            cnt = new Count();
-            counter.put(name, cnt);
-        }
-        cnt.count++;
+        counters.add(name, 1);
     }
 
     public static int getCounter(String name) {
-        Count cnt = counter.get(name);
-        if (cnt == null) {
-            return 0;
-        }
-        return cnt.count;
+        return counters.get(name);
     }
 
     /*
@@ -347,25 +335,5 @@ public class EventExecutor {
         if (route.isEmpty() || route.get(route.size() - 1) != next) {
             route.add(next);
         }
-    }
-
-    /*
-     * Latency Management
-     */
-    public static void setLatencyProvider(LatencyProvider p) {
-        latencyProvider = p;
-    }
-
-    public static long latency(Node a, Node b) {
-        if (EventExecutor.realtime.value()) {
-            return 0;
-        }
-        if (a == b) {
-            return 0;
-        }
-        if (latencyProvider == null) {
-            return 100;
-        }
-        return latencyProvider.latency(a, b);
     }
 }

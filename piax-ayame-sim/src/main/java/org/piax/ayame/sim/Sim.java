@@ -16,6 +16,7 @@ import java.util.stream.LongStream;
 import org.piax.ayame.Event.Lookup;
 import org.piax.ayame.EventException;
 import org.piax.ayame.EventExecutor;
+import org.piax.ayame.EventSender.EventSenderSim;
 import org.piax.ayame.FTEntry;
 import org.piax.ayame.FailureCallback;
 import org.piax.ayame.LatencyProvider.StarLatencyProvider;
@@ -193,7 +194,7 @@ public class Sim {
     }
 
     private void sim() {
-        EventExecutor.setLatencyProvider(latencyProvider);
+        EventSenderSim.setLatencyProvider(latencyProvider);
         Algorithm algorithm = Sim.algorithm.value();
         ExpType exptype = Sim.exptype.value();
         NodeFactory factory = algorithm.method.get();
@@ -232,7 +233,7 @@ public class Sim {
         if (delay == 0) {
             joinAsync(n, introducer, callback, failure);
         } else {
-            EventExecutor.sched(delay, () -> {
+            EventExecutor.sched("sim.joinLater", delay, () -> {
                 joinAsync(n, introducer, callback, failure);
             });
         }
@@ -336,7 +337,8 @@ public class Sim {
 */    
     /**
      * keyを検索し，統計情報を stat に追加する．
-     * 
+     *
+     * @param from
      * @param key
      * @param stat
      */
@@ -397,7 +399,7 @@ public class Sim {
                 });
         LocalNode[] nodes = {a, b, c, z};
         Arrays.sort(nodes);
-        EventExecutor.sched(2000, () -> {
+        EventExecutor.sched("sim.simple.z", 2000, () -> {
             //c.fail();
             joinAsync(z, a, () -> System.out.println(z + " joined"),
                     exc -> {
@@ -405,8 +407,8 @@ public class Sim {
                     });
         });
         startSim(nodes, 100*1000);
-        Arrays.asList(nodes).stream()
-            .forEach(node -> System.out.println(node.toStringDetail()));
+        dump(nodes);
+        EventExecutor.dumpMessageCounters();
     }
 
     /**
@@ -548,7 +550,7 @@ public class Sim {
             int tWidth, boolean[] ignFrom, boolean[] ignTo, int nquery) {
         for (int i = 0; i < nquery; i++) {
             long t = tFrom + (tWidth > 0 ? RandomUtil.getSharedRandom().nextInt(tWidth) : 0);
-            EventExecutor.sched(t, () -> {
+            EventExecutor.sched("sim.distLookup.lookup", t, () -> {
                 lookup1(nodes, s, ignFrom, ignTo);
             });
         }
@@ -611,7 +613,7 @@ public class Sim {
                 Stat ms = msgset.getStat(i);
                 Stat ns = numStatSet.getStat(i);
                 final int i0 = i;
-                EventExecutor.sched(t, () -> {
+                EventExecutor.sched("sim.inslookup.collect", t, () -> {
                     System.err.println("!!! " + (i0+1) + "/" + LOOKUP_TIMES
                             + ", T=" + EventExecutor.getVTime());
                     collectMessageCounts(nodes, ms);
@@ -648,7 +650,7 @@ public class Sim {
 
         // nFail個のノードを時刻を後で故障させる
         if (doFail) {
-            EventExecutor.sched(T * 50, 
+            EventExecutor.sched("sim.inslookup.fail", T * 50, 
                     () -> {
                         System.out.println("FAIL!!! " + EventExecutor.getVTime());
                         boolean[] failed = new boolean[num];
@@ -721,17 +723,18 @@ public class Sim {
                 System.out.println("!!! sched lookup t=" + t);
                 distLookupTest(nodes, s, t, (int)T, ignFrom, ignTo, NQUERY);
                 Stat ms = msgset.getStat(i);
-                EventExecutor.sched(t, () -> collectMessageCounts(nodes, ms));
+                EventExecutor.sched("sim.deleteLookup.collect",
+                        t, () -> collectMessageCounts(nodes, ms));
                 Stat ns = numStatSet.getStat(i);
                 int i0 = i;
-                EventExecutor.sched(t, () -> {
+                EventExecutor.sched("sim.deleteLookup.dump", t, () -> {
                     ns.addSample(cNode);
                     System.out.println("=== DUMP === " + i0);
                     dump(nodes);
                 });
             }
             // ノード削除
-            EventExecutor.sched(DELTIME, () -> {
+            EventExecutor.sched("sim.deleteLookup.delete", DELTIME, () -> {
                 System.out.println("leave!!! " + EventExecutor.getVTime());
                 int ndel = delEnd - delStart;
                 boolean[] failed = new boolean[ndel];
@@ -817,7 +820,7 @@ public class Sim {
         startSim(allNodes, convertSecondsToVTime(10*60));
         for (int j = 0; j < insOrder.size(); j++) {
             LocalNode node = allNodes[insOrder.get(j)];
-            cset.addCounter(j + 1, node.counter);
+            cset.addCounters(j + 1, node.counters);
         }
     }
 
@@ -867,7 +870,7 @@ public class Sim {
                     inserted.remove(r);
                     long t = j * 10 * T;
                     System.out.println("@remove " + nodes[index] + " at " + t);
-                    EventExecutor.sched(t, () -> {
+                    EventExecutor.sched("sim.insfailrepeat.leave", t, () -> {
                         //nodes[index].fail();
                         nodes[index].leaveAsync();
                     });
@@ -892,7 +895,8 @@ public class Sim {
             long t = i * T + 2000;
             System.out.println("!!! " + i + "th loop start (" + t + ")");
             LookupStat s = all.getLookupStat(i);
-            EventExecutor.sched(t, lookupTest(nodes, s));
+            EventExecutor.sched("sim.insfailrepeat.lookup",
+                    t, lookupTest(nodes, s));
         }
 
         startSim(nodes, T * LOOKUP_TIMES);
@@ -938,7 +942,8 @@ public class Sim {
             long t = n * DELTA;
             System.out.println("!!! lookup + " + t);
             LookupStat s = all.getLookupStat(n);
-            EventExecutor.sched(t, lookupTest(nodes, s));
+            EventExecutor.sched("sim.lookupvaryn.lookup",
+                    t, lookupTest(nodes, s));
         }
         //startSim(nodes, (M + 1) * 10 * T);
         startSim(nodes, DELTA * (NEND + 1));
@@ -947,9 +952,9 @@ public class Sim {
         StatSet msgs = new StatSet();
         for (int i = 0; i < order.size(); i++) {
             LocalNode node = nodes[order.get(i)];
-            int joinmsgs = node.counter.get("join.lookup")
-                    + node.counter.get("join.ddll")
-                    + node.counter.get("join.ftupdate");
+            int joinmsgs = node.counters.get("join.lookup")
+                    + node.counters.get("join.ddll")
+                    + node.counters.get("join.ftupdate");
             Stat s = msgs.getStat(((i / STEP) + 1) * STEP);
             s.addSample(joinmsgs);
             System.out.println(nodes[order.get(i)] + ": " + joinmsgs + " msgs");
@@ -1015,11 +1020,11 @@ public class Sim {
             int j = i;
             System.out.println(x + ": " + s + " to " + e + (
                     graceful[i] ? " graceful" : " ungraceful"));
-            EventExecutor.sched(s, () -> {
+            EventExecutor.sched("sim.insdel.join", s, () -> {
                 joinAsync(x, nodes[0], () -> {
                     cNode++;
                     iNode++;
-                    EventExecutor.sched((long)dur, () -> {
+                    EventExecutor.sched("sim.insdel.leave", (long)dur, () -> {
                         cNode--;
                         dNode++;
                         if (graceful[j]){
@@ -1046,7 +1051,7 @@ public class Sim {
             Stat stat = numStatSet.getStat(i);
             Stat istat = istatset.getStat(i);
             Stat dstat = dstatset.getStat(i);
-            EventExecutor.sched(t, () -> {
+            EventExecutor.sched("sim.insdel.dump", t, () -> {
                 System.out.println("!!! lookup + " + t);
                 stat.addSample(cNode);
                 istat.addSample(iNode);
@@ -1104,7 +1109,7 @@ public class Sim {
                         alls[i] = new AllLookupStats();
                         long t = i * T;
                         int i0 = i;
-                        EventExecutor.sched(t, () -> {
+                        EventExecutor.sched("sim.hopsbydist.lookup", t, () -> {
                             for (int j = 0; j < num; j++) {
                                 LookupStat stat = alls[i0].getLookupStat(j);
                                 lookup(nodes[CENTER], nodes[j].key, stat);
@@ -1204,28 +1209,29 @@ public class Sim {
             int iter = numIteration.value();
             for (int i = 0; i < iter; i++) {
                 int i0 = i;
-                EventExecutor.sched((i+1)*60*1000, () -> {
-                    run.accept(i0);
-                    if (i0 == iter - 1) {
-                        EventExecutor.terminate();
-                    }
-                });
-                
+                EventExecutor.sched("sim.ftDist.terminate", (i+1)*60*1000, 
+                        () -> {
+                            run.accept(i0);
+                            if (i0 == iter - 1) {
+                                EventExecutor.terminate();
+                            }
+                        });
             }
         }, (node) -> {
-            EventExecutor.sched(NetworkParams.ONEWAY_DELAY * 7, () -> {
-                SuzakuStrategy sz = SuzakuStrategy.getSuzakuStrategy(node);
-                FTEntry ent = sz.getFingerTableEntry(1);
-                if (ent != null) {
-                    Node remote = ent.getNode();
-                    int distance = ((Integer)(remote.key.getRawKey())
-                            - (Integer)node.key.getRawKey()) / 10;
-                    if (distance < 0) {
-                        distance += num;
-                    }
-                    ins.addSample(distance);
-                }
-            });
+            EventExecutor.sched("sim.ftDist.collect",
+                    NetworkParams.ONEWAY_DELAY * 7, () -> {
+                        SuzakuStrategy sz = SuzakuStrategy.getSuzakuStrategy(node);
+                        FTEntry ent = sz.getFingerTableEntry(1);
+                        if (ent != null) {
+                            Node remote = ent.getNode();
+                            int distance = ((Integer)(remote.key.getRawKey())
+                                    - (Integer)node.key.getRawKey()) / 10;
+                            if (distance < 0) {
+                                distance += num;
+                            }
+                            ins.addSample(distance);
+                        }
+                    });
         });
         EventExecutor.startSimulation(0);
 
@@ -1323,7 +1329,8 @@ public class Sim {
         //insertSeqLR(nodes, r, num, T, T, null);
         insertSeq(nodes, p, 0, 0, convertSecondsToVTime(1),
                 () -> {
-                    EventExecutor.sched(convertSecondsToVTime(1),
+                    EventExecutor.sched("sim.specificOrder.lookup",
+                            convertSecondsToVTime(1),
                             lookupTestFull(nodes, 0, r, s));
                 });
         //EventDispatcher.sched(999*T, () -> dump(nodes));

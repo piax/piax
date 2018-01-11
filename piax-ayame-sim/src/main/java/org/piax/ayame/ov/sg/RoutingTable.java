@@ -52,7 +52,7 @@ public class RoutingTable {
             }
         }
         logger.trace("{}", getNode().toStringDetail());
-        logger.trace("msgs for join: {}, height={}", getNode().counter, height());
+        logger.trace("msgs for join: {}, height={}", getNode().counters, height());
     }
     
     /**
@@ -100,7 +100,7 @@ public class RoutingTable {
             msgs = count + 1;
             logger.trace("level={}, msgs={}", level, msgs);
         }
-        getNode().counter.add("join.ftupdate", msgs);
+        getNode().counters.add("join.ftupdate", msgs);
     }
 
     /**

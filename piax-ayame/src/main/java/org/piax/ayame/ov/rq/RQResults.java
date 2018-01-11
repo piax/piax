@@ -1,5 +1,6 @@
 /*
- * RQResults.java - An object to hold range query results.
+ * RQResults.java - A class for accessing the details of range query
+ * results.
  * 
  * Copyright (c) 2015 Kota Abe / PIAX development team
  *
@@ -11,29 +12,16 @@
  */
 package org.piax.ayame.ov.rq;
 
-import org.piax.ayame.ov.rq.RQRequest.RQCatcher;
-
 /**
- * a class for accessing the details of a range query result.
+ * a class for accessing the details of range query results.
+ * (not implemented in ayame version)
  * 
- * @param <V> a type for range query results.
+ * @param <T> a type for range query results.
  */
-public class RQResults<V> {
-    protected final RQCatcher catcher;
+public class RQResults<T> {
+    protected final RQRequest<T>.RQCatcher catcher;
 
-    public RQResults(RQCatcher catcher) {
+    public RQResults(RQRequest<T>.RQCatcher catcher) {
         this.catcher = catcher;
     }
-/*
-    public RQResults() {
-        this.catcher = null;
-    }
-
-    @SuppressWarnings("unchecked")
-    public FutureQueue<V> getFutureQueue() {
-        if (catcher == null) {
-            return FutureQueue.emptyQueue();
-        }
-        return (FutureQueue<V>) catcher.getFutureQueue();
-    }*/
 }

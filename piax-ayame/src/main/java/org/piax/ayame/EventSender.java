@@ -1,6 +1,5 @@
 package org.piax.ayame;
 
-import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
 
 import org.piax.common.Endpoint;
@@ -15,6 +14,7 @@ public interface EventSender {
 
     public static class EventSenderSim implements EventSender {
         private static EventSenderSim instance = new EventSenderSim();
+        private static LatencyProvider latencyProvider;
 
         private EventSenderSim() {
         }
@@ -28,10 +28,14 @@ public interface EventSender {
             return null;
         }
 
+        public static void setLatencyProvider(LatencyProvider p) {
+            latencyProvider = p;
+        }
+
         @Override
         public CompletableFuture<Void> send(Event ev) {
             if (ev.delay == Node.NETWORK_LATENCY) {
-                ev.delay = EventExecutor.latency(ev.sender, ev.receiver);
+                ev.delay = latency(ev.sender, ev.receiver);
             }
             ev.vtime = EventExecutor.getVTime() + ev.delay;
             if (logger.isTraceEnabled()) {
@@ -41,18 +45,30 @@ public interface EventSender {
                     logger.trace("{} |send/forward event {}", ev.sender, ev);
                 }
             }
-            if (false && ((LocalNode)ev.receiver).isFailed()) {
+            /*if (((LocalNode)ev.receiver).isFailed()) {
                 CompletableFuture<Void> f = new CompletableFuture<>();
                 f.completeExceptionally(new IOException("remote node failure: "
                         + ev.receiver));
                 return f;
-            }
+            }*/
             // because sender Events and receiver Events are distinguished,
             // we have to clone the event even if sender == receiver.
             Event copy = ev.clone();
-            //copy.vtime = EventExecutor.getVTime() + ev.delay;
             EventExecutor.enqueue(copy);
             return CompletableFuture.completedFuture(null);
+        }
+
+        private static long latency(Node a, Node b) {
+            if (EventExecutor.realtime.value()) {
+                return 0;
+            }
+            if (a == b) {
+                return 0;
+            }
+            if (latencyProvider == null) {
+                return 100;
+            }
+            return latencyProvider.latency(a, b);
         }
     }
 /*

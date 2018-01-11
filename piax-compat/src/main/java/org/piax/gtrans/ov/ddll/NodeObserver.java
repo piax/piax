@@ -14,6 +14,7 @@ package org.piax.gtrans.ov.ddll;
 import java.util.Collection;
 import java.util.List;
 
+import org.piax.ayame.ov.ddll.LinkSeq;
 import org.piax.gtrans.ov.Link;
 
 /**
@@ -27,13 +28,13 @@ public interface NodeObserver {
      * @param newRight      the new right link
      * @param payload       an Object passed with SetR message.
      * 
-     * @see Node#setR(Link, int, Link, Link, LinkNum, int, Object)
+     * @see Node#setR(Link, int, Link, Link, LinkSeq, int, Object)
      */
     void onRightNodeChange(Link prevRight, Link newRight, Object payload);
 
     /**
      * called when the payload given via
-     * {@link Node#setR(Link, int, Link, Link, LinkNum, int, Object)}
+     * {@link Node#setR(Link, int, Link, Link, LinkSeq, int, Object)}
      * is not passed to the specified remote node.
      * typically this happens when the SetR request fails. 
      * 

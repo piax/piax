@@ -127,7 +127,7 @@ public class KryoUtil {
             kryo.register(org.piax.ayame.Event.class);
             kryo.register(org.piax.ayame.ov.ddll.DdllKeyRange.class);
             kryo.register(org.piax.ayame.ov.rq.DKRangeRValue.class);
-            kryo.register(org.piax.ayame.ov.ddll.LinkNum.class);
+            kryo.register(org.piax.ayame.ov.ddll.LinkSeq.class);
             
             kryo.register(org.piax.ayame.Node.class, new NodeSerializer());
             kryo.register(org.piax.ayame.LocalNode.class, new NodeSerializer());

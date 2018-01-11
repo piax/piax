@@ -110,7 +110,8 @@ public abstract class DdllEvent {
         }
     }
     
-    public static class GetCandidates extends RequestEvent<GetCandidates, GetCandidatesResponse> {
+    public static class GetCandidates
+    extends RequestEvent<GetCandidates, GetCandidatesReply> {
         final Node node;
         public GetCandidates(Node receiver, Node node) {
             super(receiver);
@@ -121,14 +122,15 @@ public abstract class DdllEvent {
             LocalNode n = getLocalNode();
             List<Node> candidates = n.getNodesForFix(node.key);
             // System.out.println("GetFixCandidates: returns " + candidates);
-            n.post(new GetCandidatesResponse(this, candidates, n.succ));
+            n.post(new GetCandidatesReply(this, candidates, n.succ));
         }
     }
 
-    public static class GetCandidatesResponse extends ReplyEvent<GetCandidates, GetCandidatesResponse> {
+    public static class GetCandidatesReply
+    extends ReplyEvent<GetCandidates, GetCandidatesReply> {
         List<Node> candidates;
         Node succ;
-        public GetCandidatesResponse(GetCandidates req, List<Node> candidates,
+        public GetCandidatesReply(GetCandidates req, List<Node> candidates,
                 Node succ) {
             super(req);
             this.candidates = candidates;

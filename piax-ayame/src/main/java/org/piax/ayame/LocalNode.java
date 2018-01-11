@@ -47,7 +47,7 @@ public class LocalNode extends Node {
     private boolean isFailed = false;   // for simulation
 
     // for statistics
-    public Counter counter = new Counter();
+    public Counters counters = new Counters();
 
     // to support multi-keys
     protected static Map<PeerId, SortedSet<LocalNode>> localNodeMap
@@ -70,38 +70,8 @@ public class LocalNode extends Node {
     // TODO: define accessors!
     public Set<Node> maybeFailedNodes = new HashSet<>();
 
-    /*
-    public LocalNode(TransportId transId, ChannelTransport<?> trans,
-            DdllKey ddllkey)
-            throws IdConflictException, IOException {
-        super(ddllkey, trans == null ? null : trans.getEndpoint());
-        assert getInstance(ddllkey) == this; 
-        assert trans == null || this.peerId.equals(trans.getPeerId());
-
-        // to support multi-keys
-        localNodeMap.computeIfAbsent(peerId, k -> new TreeSet<>())
-            .add(this);
-
-        if (trans == null) {
-            this.sender = EventSenderSim.getInstance();
-        } else {
-            try {
-                this.sender = new EventSenderNet(transId, trans);
-            } catch (IdConflictException | IOException e) {
-                throw e;
-            }
-        }
-    }*/
-    
     public LocalNode(DdllKey ddllkey, Endpoint e) {
-        super(ddllkey, e);
-        assert getInstance(ddllkey) == this; 
-
-        // to support multi-keys
-        localNodeMap.computeIfAbsent(peerId, k -> new TreeSet<>())
-            .add(this);
-
-        this.sender = EventSenderSim.getInstance();
+        this(EventSenderSim.getInstance(), ddllkey);
     }
 
     public LocalNode(EventSender sender, DdllKey ddllkey) {
@@ -206,7 +176,8 @@ public class LocalNode extends Node {
 
     /**
      * post a event
-     * @param ev
+     *
+     * @param ev an event to post
      */
     public void post(Event ev) {
         post(ev, null);
@@ -310,6 +281,7 @@ public class LocalNode extends Node {
      * @param introducer a node that has been inserted to the ring.
      * @return true on success
      * @throws IOException thrown in communication errors
+     * @throws InterruptedException thrown if interrupted
      */
     public boolean addKey(Endpoint introducer) throws IOException,
         InterruptedException {
@@ -348,7 +320,11 @@ public class LocalNode extends Node {
 
     /**
      * locate the node position and insert
-     * @param introducer
+     *
+     * @param introducer any node that has been inserted in the network
+     * @return CompletableFuture that completes on insertion
+     *         success or failure.  The result can be obtained with the
+     *         boolean value.
      */
     public CompletableFuture<Boolean> joinAsync(Node introducer) { 
         CompletableFuture<Boolean> joinFuture = new CompletableFuture<>();
@@ -518,8 +494,8 @@ public class LocalNode extends Node {
      * <p>myKey = 100, k = 200 の場合，returnするリストは例えば [100, 150]． 
      * <p>myKey = k = 100 の場合 [100, 200, 300, 0]．
      * 
-     * @param k
-     * @return
+     * @param k key of upper limit 
+     * @return List of Node
      */
     public List<Node> getNodesForFix(DdllKey k) {
         Comparator<Node> comp = getComparator(k);

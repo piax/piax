@@ -317,20 +317,21 @@ public class RQStrategy extends NodeStrategy {
         ev.onReply((rep, exc) -> {
             if (exc != null) {
                 logger.trace("onReply: got {}, trace={}", exc, trace);
-                EventExecutor.sched(RETRANS_INTERVAL, () -> {
-                    if (trace.isEmpty()) {
-                        startForwardQueryLeft(p, visited);
-                    } else {
-                        // nodes = {N10, N20, N30, N40}
-                        // current = N10, trace = [N40, N30, N20]
-                        // if N10 does not respond:
-                        // current = N20 (backtrack), trace = [N40, N30]
-                        Node last = trace.removeLast();
-                        forwardQueryLeft0(p, last, 
-                                null // expectedRight=null means special case
-                                , trace, visited);
-                    }
-                });
+                EventExecutor.sched("rq.forwardQueryLeft0.retrans",
+                        RETRANS_INTERVAL, () -> {
+                        if (trace.isEmpty()) {
+                            startForwardQueryLeft(p, visited);
+                        } else {
+                            // nodes = {N10, N20, N30, N40}
+                            // current = N10, trace = [N40, N30, N20]
+                            // if N10 does not respond:
+                            // current = N20 (backtrack), trace = [N40, N30]
+                            Node last = trace.removeLast();
+                            forwardQueryLeft0(p, last, 
+                                    null // expectedRight=null means special case
+                                    , trace, visited);
+                        }
+                    });
             } else {
                 if (rep.success) {
                     trace.add(current);
