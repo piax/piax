@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.Test;
 import org.piax.ayame.ov.ddll.DdllStrategy;
@@ -13,12 +14,16 @@ import org.piax.common.Endpoint;
 import org.piax.common.ObjectId;
 import org.piax.common.PeerId;
 import org.piax.common.subspace.KeyRange;
+import org.piax.common.subspace.Lower;
+import org.piax.common.subspace.LowerUpper;
 import org.piax.common.wrapper.DoubleKey;
 import org.piax.common.wrapper.StringKey;
 import org.piax.gtrans.FutureQueue;
 import org.piax.gtrans.Peer;
 import org.piax.gtrans.RequestTransport.Response;
 import org.piax.gtrans.TransOptions;
+import org.piax.gtrans.TransOptions.ResponseType;
+import org.piax.gtrans.TransOptions.RetransMode;
 import org.piax.gtrans.Transport;
 import org.piax.gtrans.netty.idtrans.PrimaryKey;
 import org.piax.gtrans.ov.Overlay;
@@ -104,6 +109,31 @@ class TestSuzaku {
             s1.close();
             s2.close();
             s3.close();
+        }
+    }
+    
+    @Test
+    public void noResponseNoRetransRequestTest() throws Exception {
+        try(Suzaku<StringKey, StringKey> s1 = new Suzaku<>("tcp:localhost:12367");
+            Suzaku<StringKey, StringKey> s2 = new Suzaku<>("tcp:localhost:12368");){
+            s1.join("tcp:localhost:12367");
+            s2.join("tcp:localhost:12367");
+            s1.addKey(new StringKey("hello"));
+            s1.setRequestListener((szk, msg) -> {
+                return msg.getMessage() + "2";
+            });
+            AtomicBoolean res = new AtomicBoolean(false);
+            AtomicInteger count = new AtomicInteger(0);
+            s1.requestAsync(new StringKey("hello"), "world",
+                    (ret, e)-> { // receive response
+                        System.out.println("got:" + ret);
+                        res.set(Response.EOR.equals(ret));
+                        count.incrementAndGet();
+                    },
+                    new TransOptions(ResponseType.NO_RESPONSE, RetransMode.NONE));
+            Thread.sleep(1000); // unless this line, finishes immediately.
+            assertTrue(res.get());
+            assertTrue(count.get() == 1);
         }
     }
 
@@ -400,6 +430,38 @@ class TestSuzaku {
             }
         }
     }
+    
+    @Test
+    public void lowerIdTest() throws Exception {
+        AtomicBoolean received1 = new AtomicBoolean(false);
+        AtomicBoolean received2 = new AtomicBoolean(false);
+        try (
+                Overlay<LowerUpper, DoubleKey> ov1 = new Suzaku<>("id:0.0:tcp:localhost:12367");
+                Overlay<LowerUpper, DoubleKey> ov2 = new Suzaku<>("id:0.2:tcp:localhost:12368");
+             ) {
+            ov1.setListener((trans, rmsg) -> {
+                logger.debug("emu recv1:" + rmsg.getMessage());
+                received1.set(rmsg.getMessage().equals("recv"));
+            });
+            ov2.setListener((trans, rmsg) -> {
+                try {
+                    received2.set(rmsg.getMessage().equals("data"));
+                    trans.send(new Lower<DoubleKey>(false, new DoubleKey(0.1), 1), "recv");
+                } catch (IOException e) {
+                    fail("IOException occured");
+                }
+            });
+            assertTrue(ov1.join("tcp:localhost:12367"));
+            assertTrue(ov2.join("tcp:localhost:12367"));
+
+            Thread.sleep(500);
+
+            ov1.send(new Lower<DoubleKey>(false, new DoubleKey(0.6), 1), "data");
+            Thread.sleep(1000);
+            assertTrue(received2.get(), "SG2 receive failed");
+            assertTrue(received1.get(), "SG1 receive failed");
+        }
+    }    
 
 
 }
