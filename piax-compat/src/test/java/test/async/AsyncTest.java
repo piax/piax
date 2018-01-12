@@ -8,6 +8,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
@@ -192,6 +193,10 @@ public class AsyncTest extends AsyncTestBase {
             checkCompleted(f1, f2, f3);
             dump(nodes);
             checkConsistent(nodes[0], nodes[3]);
+            @SuppressWarnings("unchecked")
+            Set<Node> failed3 = (Set<Node>)getPrivateField(nodes[3],
+                    "possiblyFailedNodes");
+            assertTrue(!failed3.isEmpty());
         }
     }
 

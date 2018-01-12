@@ -968,11 +968,11 @@ public class SuzakuStrategy extends NodeStrategy {
             FingerTable opTab = isBackward ? table.forward : table.backward;
             if (exc != null) {
                 logger.debug("{}: getFingerTable0: got exception on {}", n, q);
-                n.addMaybeFailedNode(q);
+                n.addPossiblyFailedNode(q);
                 Runnable job = () -> {
                     List<Node> nodes = baseEnt.allNodes();
                     List<Node> altNodes = nodes.stream()
-                        .filter(e -> !n.maybeFailedNodes.contains(e))
+                        .filter(e -> !n.isPossiblyFailed(e))
                         .collect(Collectors.toList());
                     if (!altNodes.isEmpty()) {
                         // we have a backup node

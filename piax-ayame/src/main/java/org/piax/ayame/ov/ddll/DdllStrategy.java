@@ -454,11 +454,10 @@ public class DdllStrategy extends NodeStrategy {
     private void getLiveLeft(Node left, Node leftSucc, List<Node> candidates,
             CompletableFuture<Node[]> future) {
         Node last = candidates.stream()
-                .filter(q -> !n.maybeFailedNodes.contains(q))
+                .filter(q -> !n.isPossiblyFailed(q))
                 .reduce((a, b) -> b).orElse(null);
         Node last0 = last;
-        logger.trace("left={}, leftSucc={}, last={}, suspect={}", left,
-                leftSucc, last0, n.maybeFailedNodes);
+        logger.trace("left={}, leftSucc={}, last={}", left, leftSucc, last0);
         if (last == left) {
             future.complete(new Node[]{left, leftSucc});
             return;
@@ -471,7 +470,7 @@ public class DdllStrategy extends NodeStrategy {
         ev.onReply((resp, exc) -> {
             if (exc != null) {
                 logger.debug("{}: getLiveLeft: got {}", n, exc.toString());
-                n.addMaybeFailedNode(ev.receiver);
+                n.addPossiblyFailedNode(ev.receiver);
                 getLiveLeft(left, leftSucc, candidates, future);
             } else {
                 if (lseq.equals(lseq0)) {
@@ -514,9 +513,11 @@ public class DdllStrategy extends NodeStrategy {
         lseq = lseq.gnext();
         SetRType type;
         if (left != leftSucc && Node.isOrdered(left.key, true, leftSucc.key, n.key, false)) {
-            logger.debug("seems {} is dead", left);
+            // left--leftSucc(dead)--myself 
+            logger.debug("seems {} is dead", leftSucc);
             type = SetRType.LEFTONLY;
         } else {
+            // left--myself--leftSucc(dead or alive) 
             logger.debug("must join between " + left + " and " + leftSucc);
             type = SetRType.BOTH;
             n.setSucc(leftSucc);

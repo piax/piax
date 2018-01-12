@@ -57,6 +57,8 @@ public class LocalNode extends Node {
     ArrayList<NodeStrategy> strategies = new ArrayList<>();
     Map<Class<? extends NodeStrategy>, NodeStrategy> strategyMap = new HashMap<>();
 
+    protected transient List<Runnable> cleanup = new ArrayList<>();
+
     private LinkChangeEventCallback predChange;
     private LinkChangeEventCallback succChange;
 
@@ -64,11 +66,9 @@ public class LocalNode extends Node {
     Map<Integer, RequestEvent<?, ?>> ongoingRequests = new HashMap<>();
     // requests that are not ack'ed
     Map<Integer, RequestEvent<?, ?>> unAckedRequests = new HashMap<>();
-    
-    // maybe-failed nodes
-    // TODO: purge entries by timer!
-    // TODO: define accessors!
-    public Set<Node> maybeFailedNodes = new HashSet<>();
+
+    public final static int PURGE_FAILED_NODE_TIME = 2*60*1000; 
+    private Set<Node> possiblyFailedNodes = new HashSet<>();
 
     public LocalNode(DdllKey ddllkey, Endpoint e) {
         this(EventSenderSim.getInstance(), ddllkey);
@@ -80,6 +80,8 @@ public class LocalNode extends Node {
         // to support multi-keys
         localNodeMap.computeIfAbsent(peerId, k -> new TreeSet<>())
             .add(this);
+        cleanup.add(() -> localNodeMap.get(peerId).remove(this));
+        cleanup.add(() -> possiblyFailedNodes.clear());
         this.sender = sender;
     }
 
@@ -268,11 +270,28 @@ public class LocalNode extends Node {
         return insertionEndTime - insertionStartTime;
     }
 
-    public void addMaybeFailedNode(Node node) {
-        logger.trace("{}: addMaybeFailedNode: {}", this, node);
+    public void addPossiblyFailedNode(Node node) {
+        logger.trace("{}: addPossiblyFailedNode: {}", this, node);
         if (node != this) {
-            maybeFailedNodes.add(node);
+            if (!possiblyFailedNodes.contains(node)) {
+                possiblyFailedNodes.add(node);
+                // schedule a purge event.
+                // the purge event is cancelled on cleanup but this cleanup
+                // is also cancelled on purge.... 
+                Indirect<Runnable> cancel = new Indirect<>();
+                Event purge = EventExecutor.sched("purge-failed-node",
+                        PURGE_FAILED_NODE_TIME, () -> {
+                            possiblyFailedNodes.remove(node);
+                            cleanup.remove(cancel.val);
+                        });
+                cancel.val = () -> EventExecutor.cancelEvent(purge);
+                cleanup.add(cancel.val);
+            }
         }
+    }
+
+    public boolean isPossiblyFailed(Node node) {
+        return possiblyFailedNodes.contains(node);
     }
 
     /**
@@ -452,7 +471,7 @@ public class LocalNode extends Node {
                     Optional<Node> p = list.stream()
                             .filter(node -> 
                                 (successors.contains(node)
-                                || !maybeFailedNodes.contains(node))) 
+                                || !possiblyFailedNodes.contains(node))) 
                             .findFirst();
                     return streamopt(p);
                 })
@@ -515,7 +534,8 @@ public class LocalNode extends Node {
     }
 
     public void cleanup() {
-        localNodeMap.get(peerId).remove(this);
+        cleanup.stream().forEach(r -> r.run());
+        cleanup.clear();
     }
 
     // called from EventExecutor.reset()

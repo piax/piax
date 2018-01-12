@@ -398,9 +398,6 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
         private void prepareForAck(LocalNode n) {
             long acktimeout = getAckTimeoutValue();
             if (acktimeout != 0) {
-                // addMaybeFailedNode must be called in prior to failureCallback
-                // because addMaybeFailedNode is used for registering the failed 
-                // node and failureCallback relies on this.
                 registerNotAckedEvent(n, this);
                 cleanup.add(() -> removeNotAckedEvent(n, getEventId()));
                 assert this.failureCallback != null;
@@ -411,8 +408,11 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
                             if (n.mode == NodeMode.DELETED) {
                                 return;
                             }
+                            // addPossiblyFailedNode must be called *before*
+                            // calling failureCallback because failureCallback
+                            // probably uses isPossiblyFailedNode().
                             if (receiver != n) {
-                                n.addMaybeFailedNode(receiver);
+                                n.addPossiblyFailedNode(receiver);
                             }
                             this.failureCallback.run(new AckTimeoutException(receiver));
                         });
