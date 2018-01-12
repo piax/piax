@@ -262,7 +262,7 @@ public class RQReturn<E extends Endpoint> extends TimerTask {
     synchronized boolean confirmResponseFromChildNode(PeerId child) {
         boolean rc = false;
         for (Link l : childMsgs.keySet()) {
-            if (l.key.getUniqId().equals(child)) {
+            if (l.key.getPeerId().equals(child)) {
                 childMsgs.remove(l);
                 rc = true;
                 break;

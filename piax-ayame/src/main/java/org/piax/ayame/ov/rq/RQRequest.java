@@ -407,7 +407,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                     .flatMap(range -> assignDelegate(range, actives, succRanges)
                             .stream())
                     .collect(Collectors.groupingBy((RQRange range)
-                            -> range.getNode().key.getUniqId()
+                            -> range.getNode().key.getPeerId()
                             ));
         }
 

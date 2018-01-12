@@ -16,13 +16,12 @@ package org.piax.common;
 import java.io.Serializable;
 import java.io.UnsupportedEncodingException;
 import java.util.Arrays;
-import java.util.Random;
 
 import org.piax.util.ByteUtil;
 import org.piax.util.RandomUtil;
 
 /**
- * 任意長のbyte列、または ASCII文字列からなる Identifierを実現するクラス。
+ * 任意長のbyte列、または ASCII文字列からなる Identifierを実現するImmutableクラス。
  * <p>
  * Idオブジェクトの生成時には、byte列またはASCII文字列を指定する。
  * ASCII文字列を指定した場合でも、内部的にはbyte列に変換して管理する。
@@ -44,8 +43,22 @@ public class Id implements Serializable, Comparable<Id> {
      */
     
     private static final long serialVersionUID = 1L;
+    /**
+     * Idオブジェクトを表現するbyte列。immutableな使い方を前提にしている。
+     * 文字列を使ってIdオブジェクトを生成した場合も、このbyte列はUTF-8のエンコーディングを使って生成される。
+     * <p>
+     * 継承したクラス内でこのbyte列を変更するのは構わないが、その場合は、hashCodeをキャッシュしている
+     * hash変数を0クリアする必要がある。
+     */
+    protected final byte[] bytes;
     
-    private static Random rand = null;
+    /**
+     * Idオブジェクトを文字列を使って生成した場合に保持される値。
+     */
+    protected final String strVal;
+    
+    /** Cache the hash code */
+    //transient int hash; // default to 0
     
     /**
      * 指定された長さのランダムなbyte列を生成する。
@@ -55,14 +68,14 @@ public class Id implements Serializable, Comparable<Id> {
      * @return 長さlenのランダムなbyte列
      */
     protected static byte[] newRandomBytes(int len) {
-        if (rand == null) {
+        //if (rand == null) {
             /*
              * この命令はidempotentな扱いが可能であるため、同期化しなくても、
              * 本メソッドはスレッドセーフになる
              */
-            rand = RandomUtil.newCollisionlessRandom();
-        }
-        return RandomUtil.newBytes(len, rand);
+        //    rand = RandomUtil.newCollisionlessRandom();
+        //}
+        return RandomUtil.newBytes(len, RandomUtil.getSharedRandom());
     }
     
     /**
@@ -75,24 +88,6 @@ public class Id implements Serializable, Comparable<Id> {
         return new Id(newRandomBytes(len));
     }
     
-    /**
-     * Idオブジェクトを表現するbyte列。immutableな使い方を前提にしている。
-     * 文字列を使ってIdオブジェクトを生成した場合も、このbyte列はUTF-8のエンコーディングを使って生成される。
-     * <p>
-     * 継承したクラス内でこのbyte列を変更するのは構わないが、その場合は、hashCodeをキャッシュしている
-     * hash変数を0クリアする必要がある。
-     */
-    protected final byte[] bytes;
-    
-    /**
-     * Idオブジェクトを文字列を使って生成した場合に保持される値。
-     * 一時的に保持される。
-     */
-    protected transient String strVal;
-    
-    /** Cache the hash code */
-    transient int hash; // default to 0
-
     /**
      * 指定されたbyte列を値として持つIdオブジェクトを生成する。
      * 
@@ -152,7 +147,7 @@ public class Id implements Serializable, Comparable<Id> {
     public int getByteLen() {
         return bytes.length;
     }
-    
+    /*
     public void setBinaryString() {
         strVal = ByteUtil.bytes2Binary(bytes);
     }
@@ -160,7 +155,7 @@ public class Id implements Serializable, Comparable<Id> {
     public void setHexString() {
         strVal = ByteUtil.bytes2Hex(bytes);
     }
-
+    */
     /*
      * TODO
      * testBitとcommonPostfixLenの2つのメソッドは、membership vectorで必要になるもので、
@@ -199,10 +194,7 @@ public class Id implements Serializable, Comparable<Id> {
 
     @Override
     public int hashCode() {
-        if (hash == 0) {
-            hash = Arrays.hashCode(bytes);
-        }
-        return hash;
+        return Arrays.hashCode(bytes);
     }
 
     @Override
@@ -254,8 +246,7 @@ public class Id implements Serializable, Comparable<Id> {
     public String toString() {
         if (strVal != null) return strVal;
         if (ByteUtil.isASCII(bytes)) {
-            strVal = ByteUtil.dumpBytes(bytes);
-            return strVal;
+            return ByteUtil.dumpBytes(bytes);
         }
         return toHexString();
     }

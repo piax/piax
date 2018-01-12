@@ -44,7 +44,6 @@ import org.piax.gtrans.ov.suzaku.NetEventSender;
 import org.piax.gtrans.raw.emu.EmuLocator;
 import org.piax.gtrans.raw.tcp.TcpLocator;
 import org.piax.gtrans.raw.udp.UdpLocator;
-import org.piax.util.UniqId;
 
 public class AsyncTestBase {
     static LocalNode[] nodes;
@@ -88,7 +87,7 @@ public class AsyncTestBase {
         } else {
             sender = EventSenderSim.getInstance();
         }
-        DdllKey k = new DdllKey(key, new UniqId(peerId), "", null);
+        DdllKey k = new DdllKey(key, peerId, "", null);
         LocalNode n = new LocalNode(sender, k);
         factory.setupNode(n);
         latencyProvider.add(n, latency);

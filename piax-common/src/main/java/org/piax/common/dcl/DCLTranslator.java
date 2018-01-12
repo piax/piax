@@ -186,7 +186,7 @@ public class DCLTranslator implements DCLParserVisitor {
                     idBytes = ByteUtil.long2bytes(n);
                 }
                 Id id = new Id(idBytes);
-                id.setHexString();
+                //id.setHexString();
                 ((DCLFactory) data).add(id);
             } else if (post == 'l' || post == 'L') {
                 // Long

@@ -27,7 +27,6 @@ import org.piax.gtrans.Peer;
 import org.piax.gtrans.impl.ReceiverThreadPool;
 import org.piax.gtrans.ov.suzaku.NetEventSender;
 import org.piax.util.MersenneTwister;
-import org.piax.util.UniqId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -206,7 +205,7 @@ public class TestDdll1 {
             Endpoint loc = Endpoint.newEndpoint("id:P" + i + ":" + locatorType + ":localhost:" + i);
             ChannelTransport<?> trans = peers[i].newBaseChannelTransport(loc);
             SuzakuNodeFactory factory = new SuzakuNodeFactory(3);
-            DdllKey ddllkey = new DdllKey(i, new UniqId(trans.getPeerId()));
+            DdllKey ddllkey = new DdllKey(i, trans.getPeerId());
             nodes[i] = new LocalNode(new NetEventSender<>(transId, trans), ddllkey); 
             factory.setupNode(nodes[i]);
         }

@@ -36,7 +36,6 @@ import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.TransOptions.ResponseType;
 import org.piax.gtrans.TransOptions.RetransMode;
 import org.piax.util.RandomUtil;
-import org.piax.util.UniqId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -133,10 +132,10 @@ public class RQStrategy extends NodeStrategy {
     
     private static RQRange convertToRQRange(
             Range<? extends Comparable<?>> range) {
-        UniqId id0 = (range.fromInclusive
-                ? UniqId.MINUS_INFINITY : UniqId.PLUS_INFINITY);
-        UniqId id1 = (range.toInclusive
-                ? UniqId.PLUS_INFINITY : UniqId.MINUS_INFINITY);
+        PeerId id0 = (range.fromInclusive
+                ? PeerId.MINUS_INFINITY : PeerId.PLUS_INFINITY);
+        PeerId id1 = (range.toInclusive
+                ? PeerId.PLUS_INFINITY : PeerId.MINUS_INFINITY);
         return new RQRange(null,
                 new DdllKey(range.from, id0),
                 new DdllKey(range.to, id1));
