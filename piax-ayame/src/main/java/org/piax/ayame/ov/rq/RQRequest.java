@@ -545,7 +545,9 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                     retains, gaps);
             rvals.put(range.from, new DKRangeRValue<>(rval, range));
 
-            if (isRoot) {
+            // when response type is NO_RESPONSE, no value is returned to the 
+            // caller.
+            if (isRoot && opts.getResponseType() != ResponseType.NO_RESPONSE) {
                 Object v = rval.getValue();
                 if (v instanceof MVal) {
                     // MVal should be removed
