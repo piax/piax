@@ -34,7 +34,6 @@ import org.piax.common.Endpoint;
 import org.piax.gtrans.RPCException;
 import org.piax.gtrans.ov.Link;
 import org.piax.util.KeyComparator;
-import org.piax.util.UniqId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -149,7 +148,7 @@ public class Node {
      */
     Node(NodeManager manager, NodeObserver observer, String id,
             Comparable<?> key, Object appData, Timer timer) {
-        this(manager, observer, new DdllKey(key, new UniqId(manager.peerId),
+        this(manager, observer, new DdllKey(key, manager.peerId,
                 id, 0, appData), timer);
     }
 

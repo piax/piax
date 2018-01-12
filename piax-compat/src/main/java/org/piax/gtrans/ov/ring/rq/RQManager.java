@@ -31,6 +31,7 @@ import org.piax.common.DdllKey;
 import org.piax.common.Endpoint;
 import org.piax.common.Id;
 import org.piax.common.ObjectId;
+import org.piax.common.PeerId;
 import org.piax.common.TransportId;
 import org.piax.common.subspace.CircularRange;
 import org.piax.common.subspace.Range;
@@ -55,7 +56,6 @@ import org.piax.gtrans.ov.ring.TemporaryIOException;
 import org.piax.gtrans.ov.ring.UnavailableException;
 import org.piax.gtrans.ov.sg.SkipGraph;
 import org.piax.util.StrictMap;
-import org.piax.util.UniqId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -171,7 +171,7 @@ public class RQManager<E extends Endpoint> extends RingManager<E> implements
     public static int FIND_INSERT_POINT_TIMEOUT = 30 * 1000;
 
     /** pseudo PeerID used by {@link #rqDisseminate(RQMessage, NavigableMap)} */
-    protected final static UniqId FIXPEERID = UniqId.PLUS_INFINITY;
+    protected final static PeerId FIXPEERID = PeerId.PLUS_INFINITY;
     /** pseudo Link instance that represents the link should be fixed */
     public/*protected*/final Link FIXLEFT;
 
@@ -375,10 +375,10 @@ public class RQManager<E extends Endpoint> extends RingManager<E> implements
         SubRange keyRange =
                 new SubRange(
                         new DdllKey(range.from, range.fromInclusive
-                                ? UniqId.MINUS_INFINITY : UniqId.PLUS_INFINITY, 0),
+                                ? PeerId.MINUS_INFINITY : PeerId.PLUS_INFINITY, 0),
                         true,
                         new DdllKey(range.to, range.toInclusive
-                                ? UniqId.PLUS_INFINITY : UniqId.MINUS_INFINITY, 0),
+                                ? PeerId.PLUS_INFINITY : PeerId.MINUS_INFINITY, 0),
                         false);
         return keyRange;
     }
@@ -474,9 +474,9 @@ public class RQManager<E extends Endpoint> extends RingManager<E> implements
             logger.debug("subsubRanges = {}", subsubRanges);
 
             for (SubRange kr : subsubRanges) {
-                UniqId pid =
+                PeerId pid =
                         (kr.getLink() == FIXLEFT ? FIXPEERID
-                                : kr.getLink().key.getUniqId());
+                                : kr.getLink().key.getPeerId());
                 List<SubRange> list = map.get(pid);
                 if (list == null) {
                     list = new ArrayList<SubRange>();
@@ -755,13 +755,13 @@ public class RQManager<E extends Endpoint> extends RingManager<E> implements
         Comparable rawFromKey = range.to;
         DdllKey fromKey =
                 range.toInclusive ? new DdllKey(rawFromKey,
-                        UniqId.PLUS_INFINITY, 0) : new DdllKey(rawFromKey,
-                        UniqId.MINUS_INFINITY, 0);
+                        PeerId.PLUS_INFINITY, 0) : new DdllKey(rawFromKey,
+                        PeerId.MINUS_INFINITY, 0);
         Comparable rawToKey = range.from;
         DdllKey toKey =
                 range.fromInclusive ? new DdllKey(rawToKey,
-                        UniqId.MINUS_INFINITY, 0) : new DdllKey(rawToKey,
-                        UniqId.PLUS_INFINITY, 0);
+                        PeerId.MINUS_INFINITY, 0) : new DdllKey(rawToKey,
+                        PeerId.PLUS_INFINITY, 0);
 
         List<RemoteValue<?>> rset = new ArrayList<RemoteValue<?>>();
         QueryId qid = new QueryId(peerId, rand.nextLong());

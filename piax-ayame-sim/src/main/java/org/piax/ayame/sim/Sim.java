@@ -45,9 +45,9 @@ import org.piax.common.Option.BooleanOption;
 import org.piax.common.Option.DoubleOption;
 import org.piax.common.Option.EnumOption;
 import org.piax.common.Option.IntegerOption;
+import org.piax.common.PeerId;
 import org.piax.util.MersenneTwister;
 import org.piax.util.RandomUtil;
-import org.piax.util.UniqId;
 
 public class Sim {
     public enum Algorithm {
@@ -312,7 +312,7 @@ public class Sim {
             */
             throw new Error("run as net not supported now.");
         } else {
-            UniqId p = new UniqId("P" + key);
+            PeerId p = new PeerId("P" + key);
             DdllKey k = new DdllKey(key, p, "", null);
             LocalNode n = new LocalNode(k, null);
             factory.setupNode(n);

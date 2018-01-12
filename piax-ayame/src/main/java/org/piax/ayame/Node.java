@@ -66,7 +66,7 @@ public class Node implements Comparable<Node>, Serializable {
         this.key = ddllkey;
         this.addr = ep;
         if (key != null) {
-            this.peerId = new PeerId(ddllkey.getUniqId().getBytes());
+            this.peerId = ddllkey.getPeerId();
         } else {
             this.peerId = null;
         }

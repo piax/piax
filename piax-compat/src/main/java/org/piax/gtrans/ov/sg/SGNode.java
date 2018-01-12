@@ -31,7 +31,6 @@ import org.piax.gtrans.ov.sg.SkipGraph.BestLink;
 import org.piax.gtrans.ov.sg.SkipGraph.LvState;
 import org.piax.gtrans.ov.sg.SkipGraph.QueryId;
 import org.piax.gtrans.ov.sg.SkipGraph.SGNodeInfo;
-import org.piax.util.UniqId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -98,7 +97,7 @@ public class SGNode<E extends Endpoint> implements NodeObserver {
         this.sg = sg;
         this.mv = mv;
         this.rawkey = rawkey;
-        this.key = new DdllKey(rawkey, new UniqId(sg.peerId), 0);
+        this.key = new DdllKey(rawkey, sg.peerId, 0);
         
         /* register instance for debug */
 //        synchronized (SGNode.class) {
@@ -364,7 +363,7 @@ public class SGNode<E extends Endpoint> implements NodeObserver {
             try {
                 // accurate = false because an inaccurate result can be 
                 // detected later. 
-                p = sg.find(seed, new DdllKey(rawkey, new UniqId(sg.peerId), 0), false);
+                p = sg.find(seed, new DdllKey(rawkey, sg.peerId, 0), false);
                 logger.debug("getContact: {} is between {} at level0", rawkey, p);
                 return p;
             } catch (UnavailableException e) {

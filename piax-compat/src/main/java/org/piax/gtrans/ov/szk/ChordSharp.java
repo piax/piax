@@ -29,6 +29,7 @@ import org.piax.ayame.ov.rq.DKRangeRValue;
 import org.piax.common.DdllKey;
 import org.piax.common.Endpoint;
 import org.piax.common.Id;
+import org.piax.common.PeerId;
 import org.piax.common.TransportId;
 import org.piax.common.subspace.CircularRange;
 import org.piax.gtrans.ChannelTransport;
@@ -49,7 +50,6 @@ import org.piax.gtrans.ov.ring.rq.RQReturn;
 import org.piax.gtrans.ov.ring.rq.SubRange;
 import org.piax.gtrans.ov.szk.ChordSharpVNode.FTEntrySet;
 import org.piax.util.StrictMap;
-import org.piax.util.UniqId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -502,7 +502,7 @@ public class ChordSharp<E extends Endpoint> extends RQManager<E> implements
                 // assign a node for delegation
                 List<Link> ftent = ent.getValue();
                 Link dlink = pickupDelegate(ftent, queryRange, maybeFailed);
-                if (first && dlink.key.getUniqId().equals(getPeerId())) {
+                if (first && dlink.key.getPeerId().equals(getPeerId())) {
                     if (from.compareTo(dlink.key) != 0) {
                         // 自ノードが最初のエントリで，さらに左側にQRの領域(***)がある場合
                         // [***=====QR========]
@@ -599,7 +599,7 @@ public class ChordSharp<E extends Endpoint> extends RQManager<E> implements
             List<List<Link>> goodNodes, List<List<Link>> allNodes,
             Set<Endpoint> maybeFailed) {
         Link best = getClosestPredecessor0(key, goodNodes, maybeFailed);
-        if (best.key.getUniqId().equals(getPeerId())) {
+        if (best.key.getPeerId().equals(getPeerId())) {
             Link best2 = getClosestPredecessor0(key, allNodes, null);
             logger.debug("getClosestPredecessor: case1: key={}, return {}",
                     key, best2);
@@ -769,7 +769,7 @@ public class ChordSharp<E extends Endpoint> extends RQManager<E> implements
     public void aggregateDelegates(List<SubRange> dkrlist,
             StrictMap<Id, List<SubRange>> map) {
         for (SubRange dkr : dkrlist) {
-            UniqId id = dkr.getLink().key.getUniqId();
+            PeerId id = dkr.getLink().key.getPeerId();
             List<SubRange> list = map.get(id);
             if (list == null) {
                 list = new ArrayList<SubRange>();

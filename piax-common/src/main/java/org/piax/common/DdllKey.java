@@ -16,15 +16,14 @@ import java.io.Serializable;
 
 import org.piax.util.KeyComparator;
 import org.piax.util.RandomUtil;
-import org.piax.util.UniqId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * A class representing a key for DDLL.
  * <p>
- * An instance of DdllKey contains a primaryKey, uniqId and 
- * id. A UniqId is used for making the DdllKey unique.
+ * An instance of DdllKey contains a primaryKey, peerId and 
+ * id. A PeerId is used for making the DdllKey unique.
  * <p>
  * IDs are used for identifying linked-lists.  Different linked-lists 
  * should have different IDs. 
@@ -46,7 +45,7 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
 
     // 主キー
     public final Comparable<?> rawKey;
-    final UniqId uniqId;
+    final PeerId peerId;
     // 以下は大小比較の際考慮しない．
     // 同一物理ノードの間でキーを識別するための識別子
     public final String id;
@@ -55,41 +54,41 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
     private final int hash; 
 
     // a field for repetitive key usage.
-    // To distinguish key instances with same key, uniqId, and id.
+    // To distinguish key instances with same key, peerId, and id.
     private final int nonce;
 
-    public DdllKey(Comparable<?> key, UniqId uniqId, String id, int nonce, Object appData) {
+    public DdllKey(Comparable<?> key, PeerId peerId, String id, int nonce, Object appData) {
         this.rawKey = key;
-        this.uniqId = uniqId;
+        this.peerId = peerId;
         this.id = id;
         int h = rawKey.hashCode();
-        if (uniqId != null) {
-            h ^= uniqId.hashCode();
+        if (peerId != null) {
+            h ^= peerId.hashCode();
         }
         this.nonce = nonce;
         this.hash = h ^ nonce;
         this.appData = appData;
     }
 
-    public DdllKey(Comparable<?> key, UniqId uniqId, String id, Object appData) {
+    public DdllKey(Comparable<?> key, PeerId peerId, String id, Object appData) {
         this.rawKey = key;
-        this.uniqId = uniqId;
+        this.peerId = peerId;
         this.id = id;
         int h = rawKey.hashCode();
-        if (uniqId != null) {
-            h ^= uniqId.hashCode();
+        if (peerId != null) {
+            h ^= peerId.hashCode();
         }
         this.nonce = RandomUtil.getSharedRandom().nextInt();
         this.hash = h ^ nonce;
         this.appData = appData;
     }
 
-    public DdllKey(Comparable<?> key, UniqId uniqId) {
-        this(key, uniqId, "", null);
+    public DdllKey(Comparable<?> key, PeerId peerId) {
+        this(key, peerId, "", null);
     }
 
-    public DdllKey(Comparable<?> key, UniqId uniqId, int nonce) {
-        this(key, uniqId, "", nonce, null);
+    public DdllKey(Comparable<?> key, PeerId peerId, int nonce) {
+        this(key, peerId, "", nonce, null);
     }
 
     /**
@@ -106,8 +105,8 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
      * 
      * @return the PeerID
      **/
-    public UniqId getUniqId() {
-        return uniqId;
+    public PeerId getPeerId() {
+        return peerId;
     }
     
     public String getId() {
@@ -122,7 +121,7 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
 //            }
             return cmp;
         }
-        cmp = uniqId.compareTo(o.uniqId);
+        cmp = peerId.compareTo(o.peerId);
         if (cmp != 0) {
 //            if (logger.isDebugEnabled()) {
 //                logger.debug("compareTo: {}, {} = {}", this, o, cmp);
@@ -151,7 +150,7 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
         if (!rawKey.equals(o.rawKey)) {
             return false;
         }
-        if (!uniqId.equals(o.uniqId)) {
+        if (!peerId.equals(o.peerId)) {
             return false;
         }
         if (!id.equals(o.id)) {
@@ -173,7 +172,7 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
         if (!rawKey.equals(o.rawKey)) {
             return false;
         }
-        if (!uniqId.equals(o.uniqId)) {
+        if (!peerId.equals(o.peerId)) {
             return false;
         }
         if (nonce != o.nonce) {
@@ -200,8 +199,8 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
     @Override
     public String toString() {
         String s = "null";
-        if (uniqId != null) {
-            s = uniqId.toString();
+        if (peerId != null) {
+            s = peerId.toString();
             if (s.length() > 4) {
                 s = s.substring(0, 4);
             }
@@ -226,6 +225,6 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
      * @return  the DdllKey with the specified ID
      */
     public DdllKey getIdChangedKey(String id) {
-        return new DdllKey(rawKey, uniqId, id, nonce, appData);
+        return new DdllKey(rawKey, peerId, id, nonce, appData);
     }
 }

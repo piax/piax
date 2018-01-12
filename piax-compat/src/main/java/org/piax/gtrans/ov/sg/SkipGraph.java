@@ -56,7 +56,6 @@ import org.piax.gtrans.ov.sg.SGNode.Tile;
 import org.piax.util.KeyComparator;
 import org.piax.util.MersenneTwister;
 import org.piax.util.StrictMap;
-import org.piax.util.UniqId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -144,7 +143,7 @@ public class SkipGraph<E extends Endpoint> extends RPCInvoker<SkipGraphIf<E>, E>
     public static int FIND_INSERT_POINT_TIMEOUT = 30 * 1000;
 
     /** pseudo PeerID used by {@link #rqDisseminate(RQMessage, boolean)} */
-    private final static UniqId FIXPEERID = UniqId.PLUS_INFINITY;
+    private final static PeerId FIXPEERID = PeerId.PLUS_INFINITY;
     /** pseudo Link instance that represents the link should be fixed */
     private final Link FIXLEFT;
 
@@ -796,8 +795,8 @@ public class SkipGraph<E extends Endpoint> extends RPCInvoker<SkipGraphIf<E>, E>
     @SuppressWarnings("unchecked")
     private List<RemoteValue<?>> forwardQuery0(Range<?> range, Object query) {
         logger.trace("ENTRY:");
-        DdllKey fromKey = new DdllKey(range.from, UniqId.MINUS_INFINITY, 0); // inclusive
-        DdllKey toKey = new DdllKey(range.to, UniqId.PLUS_INFINITY, 0); // inclusive
+        DdllKey fromKey = new DdllKey(range.from, PeerId.MINUS_INFINITY, 0); // inclusive
+        DdllKey toKey = new DdllKey(range.to, PeerId.PLUS_INFINITY, 0); // inclusive
         List<RemoteValue<?>> rset = new ArrayList<RemoteValue<?>>();
         QueryId qid = new QueryId(peerId, rand.nextLong());
         // n1 -> n2 -> n3 と辿って，n3と通信できなかった場合，再度n2と通信して
@@ -923,11 +922,11 @@ public class SkipGraph<E extends Endpoint> extends RPCInvoker<SkipGraphIf<E>, E>
     private List<RemoteValue<?>> forwardQueryLeft(Range<?> range, int num, 
             Object query, boolean wrapAround) {
         Comparable rawFromKey = range.to;
-        DdllKey fromKey = range.toInclusive ? new DdllKey(rawFromKey, UniqId.PLUS_INFINITY, 0) :
-            new DdllKey(rawFromKey, UniqId.MINUS_INFINITY, 0);
+        DdllKey fromKey = range.toInclusive ? new DdllKey(rawFromKey, PeerId.PLUS_INFINITY, 0) :
+            new DdllKey(rawFromKey, PeerId.MINUS_INFINITY, 0);
         Comparable rawToKey = range.from;
-        DdllKey toKey = range.fromInclusive ? new DdllKey(rawToKey, UniqId.MINUS_INFINITY, 0) :
-            new DdllKey(rawToKey, UniqId.PLUS_INFINITY, 0);
+        DdllKey toKey = range.fromInclusive ? new DdllKey(rawToKey, PeerId.MINUS_INFINITY, 0) :
+            new DdllKey(rawToKey, PeerId.PLUS_INFINITY, 0);
         
         List<RemoteValue<?>> rset = new ArrayList<RemoteValue<?>>();
         QueryId qid = new QueryId(peerId, rand.nextLong());
@@ -1239,9 +1238,9 @@ public class SkipGraph<E extends Endpoint> extends RPCInvoker<SkipGraphIf<E>, E>
         for (Range<? extends Comparable<?>> range : ranges) {
             Range<DdllKey> keyRange =
                     new Range<DdllKey>(new DdllKey(range.from, range.fromInclusive
-                            ? UniqId.MINUS_INFINITY : UniqId.PLUS_INFINITY, 0), false,
+                            ? PeerId.MINUS_INFINITY : PeerId.PLUS_INFINITY, 0), false,
                             new DdllKey(range.to, range.toInclusive
-                                    ? UniqId.PLUS_INFINITY : UniqId.MINUS_INFINITY, 0),
+                                    ? PeerId.PLUS_INFINITY : PeerId.MINUS_INFINITY, 0),
                             false);
             subRanges.add(keyRange);
         }
@@ -1323,10 +1322,10 @@ public class SkipGraph<E extends Endpoint> extends RPCInvoker<SkipGraphIf<E>, E>
          * also aggregate each subranges by destination peerIds.
          */
         @SuppressWarnings("rawtypes")
-        StrictMap<UniqId, List<Range<DdllKey>>> map =
-                new StrictMap<UniqId, List<Range<DdllKey>>>(new HashMap());
-        StrictMap<UniqId, Link> idMap =
-                new StrictMap<UniqId, Link>(new HashMap<UniqId, Link>());
+        StrictMap<PeerId, List<Range<DdllKey>>> map =
+                new StrictMap<PeerId, List<Range<DdllKey>>>(new HashMap());
+        StrictMap<PeerId, Link> idMap =
+                new StrictMap<PeerId, Link>(new HashMap<PeerId, Link>());
         List<DdllKeyRange<RemoteValue<?>>> rvals =
                 new ArrayList<DdllKeyRange<RemoteValue<?>>>();
         for (Range<DdllKey> subRange : msg.subRanges) {
@@ -1337,8 +1336,8 @@ public class SkipGraph<E extends Endpoint> extends RPCInvoker<SkipGraphIf<E>, E>
             }
 
             for (DdllKeyRange<Link> kr : subsubRanges) {
-                UniqId pid =
-                        (kr.aux == FIXLEFT ? FIXPEERID : kr.aux.key.getUniqId());
+                PeerId pid =
+                        (kr.aux == FIXLEFT ? FIXPEERID : kr.aux.key.getPeerId());
                 List<Range<DdllKey>> list = map.get(pid);
                 if (list == null) {
                     list = new ArrayList<Range<DdllKey>>();
@@ -1371,8 +1370,8 @@ public class SkipGraph<E extends Endpoint> extends RPCInvoker<SkipGraphIf<E>, E>
          */
         List<Range<DdllKey>> failedRanges = new ArrayList<Range<DdllKey>>();
         synchronized (rqRet) {
-            for (Map.Entry<UniqId, List<Range<DdllKey>>> ent : map.entrySet()) {
-                UniqId p = ent.getKey();
+            for (Map.Entry<PeerId, List<Range<DdllKey>>> ent : map.entrySet()) {
+                PeerId p = ent.getKey();
                 if (p.equals(FIXPEERID)) {
                     failedRanges.addAll(ent.getValue());
                 } else if (!p.equals(peerId)) {
@@ -1530,7 +1529,7 @@ public class SkipGraph<E extends Endpoint> extends RPCInvoker<SkipGraphIf<E>, E>
         for (Iterator<Link> fi = failedLinks.iterator();fi.hasNext();) {
             Link f = fi.next();
             // 自身ならば削除する
-            if (f.key.getUniqId().equals(new UniqId(peerId))) {
+            if (f.key.getPeerId().equals(new PeerId(peerId))) {
                 failedLinks.remove(f);
             }
         }
@@ -1711,7 +1710,7 @@ public class SkipGraph<E extends Endpoint> extends RPCInvoker<SkipGraphIf<E>, E>
                         }
                     }
 
-                    if (r.aux.key.getUniqId().equals(new UniqId(peerId))) {
+                    if (r.aux.key.getPeerId().equals(peerId)) {
                         boolean knownNodeFailure = false;
                         for (DdllKeyRange<Link> kr : carryovers) {
                             if (kr.aux == null) {

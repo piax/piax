@@ -107,7 +107,7 @@ public class KryoUtil {
             kryo.register(org.piax.common.wrapper.IntegerKey.class);
             kryo.register(org.piax.common.wrapper.BooleanKey.class);
             kryo.register(org.piax.common.wrapper.LongKey.class);
-            kryo.register(org.piax.util.UniqId.SpecialId.class);
+            kryo.register(org.piax.common.PeerId.SpecialId.class);
             kryo.register(org.piax.gtrans.RemoteValue.class);
             kryo.register(org.piax.common.DdllKey.class);
 
