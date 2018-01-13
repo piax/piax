@@ -80,6 +80,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
     public static final BooleanOption EXEC_ASYNC = new BooleanOption(true, "-exec-async"); // exec get asynchronously 
 
     RQNodeFactory factory;
+    @SuppressWarnings("rawtypes")
     NetEventSender sender;
     Map<K,LocalNode> nodes;
     
@@ -276,7 +277,6 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
             return super.getRaw(received, localNode, range, qid);
         }
         
-        @SuppressWarnings("unchecked")
         @Override
         public CompletableFuture<Object> get(RQAdapter<Object> received, DdllKey key) {
             if (EXEC_ASYNC.value()) {
@@ -363,6 +363,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
                     "chord sharp only supports ranges");
         }
     }
+    @SuppressWarnings("unchecked")
     @Override
     public void requestAsync(ObjectId sender, ObjectId receiver, D d,
             Object msg, BiConsumer<Object, Exception> responseReceiver,
@@ -466,6 +467,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
     /*
      * for MaxLessEq key query
      */
+    @SuppressWarnings("unchecked")
     public FutureQueue<?> forwardQueryToMaxLessThan(ObjectId sender,
             ObjectId receiver, LowerUpper lu, Object msg, TransOptions opts)
             throws IllegalStateException {
