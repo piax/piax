@@ -21,9 +21,9 @@ import org.piax.agent.AgentTransportManager;
 import org.piax.agent.DefaultAgentTransportManager;
 import org.piax.common.ComparableKey;
 import org.piax.common.Destination;
-import org.piax.common.PeerLocator;
 import org.piax.common.TransportId;
 import org.piax.gtrans.ChannelTransport;
+import org.piax.gtrans.PeerLocator;
 import org.piax.gtrans.ov.sg.MSkipGraph;
 import org.piax.gtrans.raw.tcp.TcpLocator;
 

@@ -19,11 +19,6 @@ import java.nio.ByteBuffer;
 import org.piax.common.Endpoint;
 import org.piax.common.ObjectId;
 import org.piax.common.PeerId;
-import org.piax.gtrans.GTransConfigValues;
-import org.piax.util.BinaryJsonabilityException;
-import org.piax.util.BinaryJsonner;
-import org.piax.util.ByteBufferUtil;
-import org.piax.util.ByteUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,7 +35,7 @@ public class NestedMessage implements Serializable {
     public static final short PIAX_MAGIC = (short) 0xfeed;
     public static final byte isMsgBody = 0;
     public static final byte isNested = 1;
-    static int initialBufSize = 32000;
+    public static int initialBufSize = 32000;
 
     public static int checkAndGetMessageLen(ByteBuffer bbuf)
             throws NotEnoughMessageException, InvalidMessageException {
@@ -55,7 +50,7 @@ public class NestedMessage implements Serializable {
         }
         return bbuf.getInt(bbuf.position() + 2);
     }
-    
+/*    
     public static NestedMessage deserialize(ByteBuffer bb)
             throws BinaryJsonabilityException {
         logger.trace("ENTRY:");
@@ -110,7 +105,7 @@ public class NestedMessage implements Serializable {
         nmsg.setPassthrough(passthrough);
         return nmsg;
     }
-
+*/
     public final ObjectId sender;
     public final ObjectId receiver;
     public final PeerId srcPeerId;
@@ -166,7 +161,7 @@ public class NestedMessage implements Serializable {
         }
         return inner;
     }
-    
+/*    
     public ByteBuffer serialize() throws BinaryJsonabilityException,
             ExceededSizeException {
         logger.trace("ENTRY:");
@@ -206,7 +201,7 @@ public class NestedMessage implements Serializable {
         }
         return bb;
     }
-
+*/
     @Override
     public String toString() {
         return "NestedMessage [sender=" + sender + ", receiver=" + receiver

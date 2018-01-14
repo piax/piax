@@ -31,7 +31,6 @@ import org.piax.gtrans.ProtocolUnsupportedException;
 import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.Transport;
 import org.piax.gtrans.TransportListener;
-import org.piax.gtrans.raw.RawTransport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -184,7 +183,7 @@ public abstract class TransportImpl<D extends Destination> implements Transport<
 
     public List<Transport<?>> getLowerTransports() {
         List<Transport<?>> trans;
-        if (lowerTrans == null || lowerTrans instanceof RawTransport) {
+        if (lowerTrans == null) {// || lowerTrans instanceof RawTransport) {
             trans = new ArrayList<Transport<?>>();
         } else {
             trans = lowerTrans.getLowerTransports();
