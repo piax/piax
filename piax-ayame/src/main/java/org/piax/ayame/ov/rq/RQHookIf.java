@@ -1,10 +1,10 @@
-package org.piax.gtrans.ov.async.rq;
+package org.piax.ayame.ov.rq;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
-import org.piax.gtrans.ov.async.rq.RQRequest;
-import org.piax.gtrans.ov.ring.rq.DKRangeRValue;
+import org.piax.ayame.ov.rq.DKRangeRValue;
+import org.piax.ayame.ov.rq.RQRequest;
 
 public interface RQHookIf<T> {
     

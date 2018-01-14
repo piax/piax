@@ -32,6 +32,7 @@ import org.piax.ayame.LocalNode;
 import org.piax.ayame.Node;
 import org.piax.ayame.ov.ddll.DdllKeyRange;
 import org.piax.ayame.ov.rq.RQAdapter;
+import org.piax.ayame.ov.rq.RQHookIf;
 import org.piax.ayame.ov.rq.RQStrategy;
 import org.piax.ayame.ov.rq.RQStrategy.RQNodeFactory;
 import org.piax.ayame.ov.suzaku.SuzakuStrategy;
@@ -86,7 +87,6 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
     
     RQHookIf<Object> hook = null;
 
-    static class SuzakuEventSender<E extends Endpoint> implements EventSender, TransportListener<E> {
     static {
         // ayame related classes
         // XXX need to think where these registration should be located
