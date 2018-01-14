@@ -1,5 +1,8 @@
 package org.piax.gtrans.netty.bootstrap;
 
+import org.piax.gtrans.netty.NettyEndpoint;
+import org.piax.gtrans.netty.NettyLocator;
+
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelHandler;
@@ -12,25 +15,6 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.handler.codec.serialization.ClassResolvers;
-import io.netty.handler.codec.serialization.ObjectDecoder;
-import io.netty.handler.codec.serialization.ObjectEncoder;
-
-import org.objenesis.strategy.StdInstantiatorStrategy;
-import org.piax.gtrans.impl.NestedMessage;
-import org.piax.gtrans.netty.ControlMessage;
-import org.piax.gtrans.netty.NettyChannelTransport;
-import org.piax.gtrans.netty.NettyEndpoint;
-import org.piax.gtrans.netty.NettyInboundHandler;
-import org.piax.gtrans.netty.NettyLocator;
-import org.piax.gtrans.netty.NettyMessage;
-import org.piax.gtrans.netty.NettyOutboundHandler;
-import org.piax.gtrans.netty.NettyRawChannel;
-import org.piax.gtrans.netty.kryo.KryoDecoder;
-import org.piax.gtrans.netty.kryo.KryoEncoder;
-import org.piax.gtrans.netty.kryo.KryoUtil;
-
-import com.esotericsoftware.kryo.Kryo;
 
 public class TcpBootstrap<E extends NettyEndpoint> extends NettyBootstrap<E> {
     EventLoopGroup parentGroup;

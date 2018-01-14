@@ -5,7 +5,7 @@
   <groupId>org.piax</groupId>
   <artifactId>piax-parent</artifactId>
   <packaging>pom</packaging>
-  <version>3.2-SNAPSHOT</version>
+  <version>4.0-SNAPSHOT</version>
   <name>PIAX Parent</name>
   <description>PIAX - A distributed computing framework</description>
   <url>http://www.piax.org/</url>
@@ -69,12 +69,18 @@
     </dependency>
   </dependencies>
   <modules>
+    <module>piax-common</module>
+    <module>piax-ayame</module>
+    <module>piax-ayame-sim</module>
     <module>piax-agent</module>
     <module>piax-gtrans</module>
+    <module>piax-compat</module>
+    <module>piax-gtrans-suzaku</module>
     <module>piax-gtrans-dtn</module>
     <module>piax-sample</module>
     <module>piax-dht</module>
     <module>piax-shell</module>
+    <module>piax-all</module>
   </modules>
   <build>
     <plugins>

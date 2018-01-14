@@ -7,11 +7,11 @@ import java.util.stream.Collectors;
 
 import org.piax.common.ComparableKey;
 import org.piax.common.Endpoint;
-import org.piax.common.PeerLocator;
 import org.piax.common.wrapper.BooleanKey;
 import org.piax.common.wrapper.DoubleKey;
 import org.piax.common.wrapper.StringKey;
-import org.piax.gtrans.ProtocolUnsupportedException;
+import org.piax.gtrans.PeerLocator;
+import org.piax.gtrans.UnavailableEndpointError;
 import org.piax.gtrans.netty.NettyEndpoint;
 import org.piax.gtrans.netty.NettyLocator;
 import org.piax.util.KeyComparator;
@@ -19,6 +19,10 @@ import org.piax.util.KeyComparator;
 public class PrimaryKey implements ComparableKey<PrimaryKey>, NettyEndpoint {
     private static final long serialVersionUID = -8338701357931025730L;
     static public int MAX_NEIGHBORS = 30;
+    
+    static public PrimaryKey parse(String spec) {
+        return (PrimaryKey)NettyEndpoint.parsePrimaryKey(spec);
+    }
     
     public class NeighborEntry implements Serializable {
         private static final long serialVersionUID = 8001237385879970460L;
@@ -38,14 +42,14 @@ public class PrimaryKey implements ComparableKey<PrimaryKey>, NettyEndpoint {
 
     // neighbor's neighbors are transient. (to keep the endpoint size small)  
     PrimaryKey cloneForSend() {
-        PrimaryKey ret = new PrimaryKey(key, locator);
+        PrimaryKey ret = new PrimaryKey(rawKey, locator);
         ret.neighbors = neighbors.stream()
                 .map(e -> {e.key.setNeighbors(null); return e;})
                 .collect(Collectors.toList());
         return ret;
     }
 
-    ComparableKey<?> key;
+    ComparableKey<?> rawKey;
     private static final KeyComparator keyComp = KeyComparator.getInstance();
 
     // self locator;
@@ -57,8 +61,8 @@ public class PrimaryKey implements ComparableKey<PrimaryKey>, NettyEndpoint {
 
     // a widlcard constructor.
     // at least one PeerLocator is required
-    public PrimaryKey(Endpoint seed) {
-        key = null;
+    public PrimaryKey(PeerLocator seed) {
+        rawKey = null;
         if (seed instanceof NettyLocator) {
             this.locator = (NettyLocator)seed;
         }
@@ -92,7 +96,11 @@ public class PrimaryKey implements ComparableKey<PrimaryKey>, NettyEndpoint {
     }
 
     public ComparableKey<?> getRawKey() {
-        return key;
+        return rawKey;
+    }
+    
+    public void setRawKey(ComparableKey<?> rawKey) {
+        this.rawKey = rawKey;
     }
 
     private NeighborEntry getNeighborEndpointEntry(PrimaryKey key) {
@@ -110,14 +118,14 @@ public class PrimaryKey implements ComparableKey<PrimaryKey>, NettyEndpoint {
     }
 
     public PrimaryKey(ComparableKey<?> key) {
-        this.key = key;
+        this.rawKey = key;
         this.locator = null;
         this.neighbors = null;
         version = System.currentTimeMillis();
     }
 
     public PrimaryKey(ComparableKey<?> key, NettyLocator locator) {
-        this.key = key;
+        this.rawKey = key;
         this.locator = locator;
         this.neighbors = null;
         version = System.currentTimeMillis();
@@ -126,13 +134,13 @@ public class PrimaryKey implements ComparableKey<PrimaryKey>, NettyEndpoint {
     // A suger constructor.
     public PrimaryKey(Comparable<?> o) {
         if (o instanceof String) {
-            key = new StringKey((String)o);
+            rawKey = new StringKey((String)o);
         }
         else if (o instanceof Double) {
-            key = new DoubleKey((Double) o);
+            rawKey = new DoubleKey((Double) o);
         }
         else if (o instanceof Boolean) {
-            key = new BooleanKey((Boolean) o);
+            rawKey = new BooleanKey((Boolean) o);
         }
         version = System.currentTimeMillis();
         // ... any other key type.
@@ -140,20 +148,20 @@ public class PrimaryKey implements ComparableKey<PrimaryKey>, NettyEndpoint {
 
     @Override
     public int compareTo(PrimaryKey o) {
-        if (key == null || o.key == null) {
+        if (rawKey == null || o.rawKey == null) {
             return 0; // is this OK?
         }
-        return keyComp.compare(key, o.key);
+        return keyComp.compare(rawKey, o.rawKey);
     }
     
     @Override
-    public PrimaryKey newSameTypeEndpoint(String spec) throws ProtocolUnsupportedException {
+    public PrimaryKey newSameTypeEndpoint(String spec) {
         Endpoint ep = Endpoint.newEndpoint(spec);
         if (ep instanceof PeerLocator) {
-            ep = new PrimaryKey(ep);
+            ep = new PrimaryKey((PeerLocator)ep);
         }
         if (!(ep instanceof PrimaryKey)) {
-            throw new ProtocolUnsupportedException("primary key or locator expected.");
+            throw new UnavailableEndpointError("primary key or locator expected.");
         }
         return (PrimaryKey)ep;
     }
@@ -164,27 +172,27 @@ public class PrimaryKey implements ComparableKey<PrimaryKey>, NettyEndpoint {
             return true;
         if (o == null)
             return false;
-        if ((key == null) && o instanceof PeerLocator) { // WILDCARD
+        if ((rawKey == null) && o instanceof PeerLocator) { // WILDCARD
             return locator.equals(o);
         }
         if (getClass() != o.getClass())
             return false;
-        if ((key == null) || (((PrimaryKey)o).key == null)) { // WILDCARD
+        if ((rawKey == null) || (((PrimaryKey)o).rawKey == null)) { // WILDCARD
             return ((PrimaryKey)o).locator.equals(locator);
         }
-        return key.equals(((PrimaryKey) o).key);
+        return rawKey.equals(((PrimaryKey) o).rawKey);
     }
 
     @Override
     public String toString() {
-        if (key == null) // wildcard
+        if (rawKey == null) // wildcard
             return "WILDCARD";
-        return key.toString();
+        return rawKey.toString() + "," + locator;
     }
 
     @Override
     public int hashCode() {
-        return key.hashCode();
+        return rawKey.hashCode();
     }
 
     @Override
@@ -199,7 +207,7 @@ public class PrimaryKey implements ComparableKey<PrimaryKey>, NettyEndpoint {
 
     @Override
     public String getKeyString() {
-        return key.toString();
+        return rawKey.toString();
     }
     
     public long getLocatorVersion() {

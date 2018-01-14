@@ -27,21 +27,19 @@
 
 package org.piax.agent;
 
-import java.io.IOException;
-
 import org.piax.common.ComparableKey;
 import org.piax.common.Destination;
 import org.piax.common.Key;
 import org.piax.common.PeerId;
-import org.piax.common.PeerLocator;
 import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.Peer;
+import org.piax.gtrans.PeerLocator;
 import org.piax.gtrans.Transport;
 import org.piax.gtrans.ov.Overlay;
 import org.piax.gtrans.ov.dolr.DOLR;
 import org.piax.gtrans.ov.llnet.LLNet;
 import org.piax.gtrans.ov.sg.MSkipGraph;
-import org.piax.gtrans.ov.async.suzaku.Suzaku;
+import org.piax.gtrans.ov.szk.Suzaku;
 import org.piax.gtrans.util.ChannelAddOnTransport;
 
 /**

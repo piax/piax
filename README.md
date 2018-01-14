@@ -8,12 +8,19 @@ PIAX also provides a mobile agent-based programming framework. You can write dis
 
 The structure of PIAX is as follows:
 
-* 'piax-gtrans' - Core modules of GTrans.
+* 'piax-common' - The common modules of PIAX.
+* 'piax-ayame' - Ayame framework.
+* 'piax-ayame-sim' - Ayame simulator.
+* 'piax-gtrans' - GTrans framework.
+* 'piax-gtrans-suzaku' - Suzaku overlay.
 * 'piax-agent' - PIAX Agent modules.
-* 'piax-dht' - A DHT implementation on PIAX.
+* 'piax-compat' - PIAX modules for compatibilities.
 * 'piax-gtrans-dtn' - Modules related to DTN, AdHoc and Bluetooth (experimental).
+* 'piax-dht' - A DHT implementation on PIAX.
 * 'piax-samples' - Some simple samples of GTrans and PIAX Agents.
 * 'piax-shell' - A command-line application to demonstrate PIAX Agents.
+
+<img src="images/dependency.png" width="640"/>
 
 # Build from sources
 

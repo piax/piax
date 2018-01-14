@@ -43,11 +43,11 @@ public class HashId extends NamedKey<Id> {
     
     HashId(ObjectId name, Id id) {
         super(name, id);
-        key.setHexString();
+        //key.setHexString();
     }
 
     HashId(ObjectId name, byte[] bytes) {
         super(name, new Id(bytes));
-        key.setHexString();
+        //key.setHexString();
     }
 }
