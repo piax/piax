@@ -5,11 +5,11 @@
   <parent>
     <groupId>org.piax</groupId>
     <artifactId>piax-parent</artifactId>
-    <version>3.2-SNAPSHOT</version>
+    <version>4.0-SNAPSHOT</version>
   </parent>
   <groupId>org.piax</groupId>
   <artifactId>piax-sample</artifactId>
-  <version>3.2-SNAPSHOT</version>
+  <version>4.0-SNAPSHOT</version>
   <name>PIAX Sample Codes</name>
   <url>http://www.piax.org/</url>
   <properties>
@@ -18,15 +18,32 @@
   </properties>
   <dependencies>
     <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <version>3.8.1</version>
-      <scope>test</scope>
+        <groupId>org.junit.jupiter</groupId>
+        <artifactId>junit-jupiter-api</artifactId>
+        <version>5.0.2</version>
+        <scope>test</scope>
+    </dependency>
+    <dependency>
+        <groupId>org.junit.jupiter</groupId>
+        <artifactId>junit-jupiter-engine</artifactId>
+        <version>5.0.2</version>
+        <scope>test</scope>
+    </dependency>
+     <dependency>
+        <groupId>org.junit.platform</groupId>
+        <artifactId>junit-platform-launcher</artifactId>
+        <version>1.0.2</version>
+        <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.piax</groupId>
       <artifactId>piax-agent</artifactId>
-      <version>3.2-SNAPSHOT</version>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.piax</groupId>
+      <artifactId>piax-gtrans-suzaku</artifactId>
+      <version>${project.version}</version>
     </dependency>
   </dependencies>
   <build>

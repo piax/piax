@@ -5,7 +5,7 @@ import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.piax.common.ComparableKey;
 import org.piax.common.Destination;
 import org.piax.common.Endpoint;
@@ -16,14 +16,15 @@ import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.GTransConfigValues;
 import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.Peer;
+import org.piax.gtrans.impl.BaseTransportMgr;
 import org.piax.gtrans.netty.NettyLocator;
 import org.piax.gtrans.netty.bootstrap.NettyBootstrap;
 import org.piax.gtrans.netty.bootstrap.NettyBootstrap.SerializerType;
 import org.piax.gtrans.netty.idtrans.PrimaryKey;
 import org.piax.gtrans.ov.Overlay;
-import org.piax.gtrans.ov.async.suzaku.Suzaku;
 import org.piax.gtrans.ov.ddll.NodeMonitor;
 import org.piax.gtrans.ov.sg.MSkipGraph;
+import org.piax.gtrans.ov.suzaku.Suzaku;
 import org.piax.gtrans.raw.emu.EmuLocator;
 import org.piax.gtrans.raw.tcp.TcpLocator;
 import org.piax.gtrans.raw.udp.UdpLocator;
@@ -168,6 +169,8 @@ public class TestOnDHT {
     }
 
     public static long DHTRun(O ovt, L loc) throws Exception {
+        BaseTransportMgr.BASE_TRANSPORT_MANAGER_CLASS.set("org.piax.gtrans.impl.DefaultBaseTransportGenerator");
+
         DHT[] dhts = new DHT[numPeer];
         StatusRepo.ON_MEMORY = true;
         NodeMonitor.PING_TIMEOUT = 100 * 1000;

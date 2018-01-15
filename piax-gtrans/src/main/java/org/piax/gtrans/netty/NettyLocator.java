@@ -5,8 +5,8 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 
 import org.piax.common.PeerId;
-import org.piax.common.PeerLocator;
-import org.piax.gtrans.raw.RawTransport;
+import org.piax.gtrans.PeerLocator;
+import org.piax.gtrans.Transport;
 
 public class NettyLocator extends PeerLocator implements NettyEndpoint {
     
@@ -17,10 +17,14 @@ public class NettyLocator extends PeerLocator implements NettyEndpoint {
     String host;
     int port;
     
-    static public String DEFAULT_TYPE="tcp"; 
-    
+    static public String DEFAULT_TYPE="tcp";
+
     public NettyLocator() {
         // XXX should define default value;
+    }
+    
+    static public NettyLocator parse(String spec) {
+        return (NettyLocator)NettyEndpoint.parseLocator(spec);
     }
     
     public NettyLocator(InetSocketAddress addr) {
@@ -88,7 +92,7 @@ public class NettyLocator extends PeerLocator implements NettyEndpoint {
     }
 
     @Override
-    public RawTransport<NettyLocator> newRawTransport(PeerId peerId)
+    public Transport<NettyLocator> newRawTransport(PeerId peerId)
             throws IOException {
         return null;
     }

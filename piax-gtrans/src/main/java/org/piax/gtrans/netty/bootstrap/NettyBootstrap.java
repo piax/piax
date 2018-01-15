@@ -1,7 +1,7 @@
 package org.piax.gtrans.netty.bootstrap;
 
+import org.piax.common.Option.EnumOption;
 import org.piax.gtrans.GTransConfigValues;
-import org.piax.gtrans.async.Option.EnumOption;
 import org.piax.gtrans.netty.NettyEndpoint;
 import org.piax.gtrans.netty.NettyLocator;
 import org.piax.gtrans.netty.kryo.KryoDecoder;

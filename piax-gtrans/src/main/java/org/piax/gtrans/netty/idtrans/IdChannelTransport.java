@@ -134,7 +134,7 @@ public class IdChannelTransport extends ChannelTransportImpl<PrimaryKey> impleme
 
         @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-            logger.info("Exception:" + cause);
+            logger.info("Exception:", cause);
             ctx.close();
         }
     }
@@ -222,7 +222,9 @@ public class IdChannelTransport extends ChannelTransportImpl<PrimaryKey> impleme
                                         ControlType.ACK, ep, null, null));
                                 if (ent.channel.getStat() == Stat.WAIT || ent.channel.getStat() == Stat.DENIED) {
                                     logger.debug("set as RUN by accepting channel on loser: {}", ep);
-                                    ent.channel.getChannel().close();
+                                    if (ent.channel.getChannel() != null) { // null: already denied.
+                                        ent.channel.getChannel().close();
+                                    }
                                     ent.channel.setChannel(ctx.channel());
                                     ent.channel.touch();
                                     ent.channel.setStat(Stat.RUN);
@@ -273,8 +275,8 @@ public class IdChannelTransport extends ChannelTransportImpl<PrimaryKey> impleme
             }
         } else if (msg instanceof NettyMessage<?>) {
             NettyMessage<PrimaryKey> nmsg = (NettyMessage<PrimaryKey>) msg;
-            PrimaryKey curSrc = mgr.updateAndGet(nmsg.getSource());
             logger.debug("inbound received msg{}: on {}", nmsg, ep);
+            PrimaryKey curSrc = mgr.updateAndGet(nmsg.getSource());
             /*if (filterMessage(nmsg)) {
                 return;
             }*/
@@ -505,6 +507,9 @@ public class IdChannelTransport extends ChannelTransportImpl<PrimaryKey> impleme
     public IdChannelTransport(Peer peer, TransportId transId, PeerId peerId, PrimaryKey key) throws IdConflictException, IOException {
         super(peer, transId, null, true);
         this.peerId = peerId;
+        if (key.getRawKey() == null) { // This means empty key or '*' is specified in spec.
+            key.setRawKey(peerId);
+        }
         this.ep = key;
         NettyLocator peerLocator = key.getLocator(); 
         mgr = new LocatorManager();
@@ -687,7 +692,7 @@ public class IdChannelTransport extends ChannelTransportImpl<PrimaryKey> impleme
     public CompletableFuture<IdChannel> getChannelCreate(int channelNo, PrimaryKey dst, ObjectId sender, ObjectId receiver, TransOptions opts) {
         synchronized(ichannels) {
             // dst.key == null means wildcard. should be new.
-            IdChannel ch = (dst.key == null) ? null : ichannels.get(IdChannel.getKeyString(channelNo, dst));
+            IdChannel ch = (dst.rawKey == null) ? null : ichannels.get(IdChannel.getKeyString(channelNo, dst));
             if (ch == null) {
                 NettyLocator direct = mgr.getLocator(dst);//dst.getLocator();
                 if (direct != null) {// outside NAT
@@ -706,7 +711,7 @@ public class IdChannelTransport extends ChannelTransportImpl<PrimaryKey> impleme
                                     ret.getPrimaryKey(), // destination: the primary key obtained from remote.
                                     sender, receiver, true, ret, this);
                             // update wildcard
-                            if (curDst.key == null) {
+                            if (curDst.rawKey == null) {
                                 // key of the locator is obtained from remote.
                                 mgr.updateKey(direct, ret.getPrimaryKey());
                                 //dst.key = ret.getPrimaryKey().key;
