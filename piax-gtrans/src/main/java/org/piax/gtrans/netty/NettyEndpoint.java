@@ -20,7 +20,7 @@ public interface NettyEndpoint extends Endpoint {
     public int getPort();
     public String getHost();
     public String getKeyString();
-    
+
     static final Pattern SPLITTER = Pattern.compile("[^\\\\]:");
 
     static public List<String> parse(String input) {
