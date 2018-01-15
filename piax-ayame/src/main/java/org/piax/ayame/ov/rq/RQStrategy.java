@@ -211,6 +211,15 @@ public class RQStrategy extends NodeStrategy {
     }
 
     /*
+     * forwardQueryMax (forward query to the right-most node on the range).
+     */
+    @Override
+    public <T> void forwardQueryMax(Range<?> range, RQAdapter<T> adapter, TransOptions opts) {
+        RQRange rEnd = new RQRange(null, convertToRQRange(range).to).assignId();
+        rangeQueryRQRange(Collections.singleton(rEnd), adapter, opts);
+    }
+
+    /*
      * forwadQueryLeft:
      * 
      * - forwardQueryLeft(count)

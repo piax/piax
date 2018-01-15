@@ -271,7 +271,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
             ExecQueryAdapter r = (ExecQueryAdapter) received; 
             if (r.isMaxLessThan) {
                 logger.trace("isMaxLessThan:" + range);
-                return get(r, range.from);
+                return get(r, localNode.key);
             }
             logger.trace("NOT isMaxLessThan:" + range);
             return super.getRaw(received, localNode, range, qid);
@@ -428,8 +428,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
             throws IllegalStateException {
         NestedMessage nmsg = new NestedMessage(sender, receiver, null, peerId, msg);
         if (lu.getMaxNum() == 1) {
-            KeyRange<?> range = lu.getRange();
-            getEntryPoint().rangeQueryAsync(Collections.singleton(new KeyRange<>(range.to, true, range.to, true)),
+            getEntryPoint().forwardQueryMaxAsync(lu.getRange(),
                     new ExecQueryAdapter(receiver, nmsg, true, (ret)-> {
                         try {
                             if (ret == null) {
@@ -482,8 +481,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         NestedMessage nmsg = new NestedMessage(sender, receiver, null, peerId, msg);
         FutureQueue<Object> fq = new FutureQueue<>();
         if (lu.getMaxNum() == 1) {
-            KeyRange<?> range = lu.getRange();
-            getEntryPoint().rangeQueryAsync(Collections.singleton(new KeyRange<>(range.to, true, range.to, true)),
+            getEntryPoint().forwardQueryMaxAsync(lu.getRange(),
                     new ExecQueryAdapter(receiver, nmsg, true, (ret)-> {
                         try {
                             if (ret == null) {

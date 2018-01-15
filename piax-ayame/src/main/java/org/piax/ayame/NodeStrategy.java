@@ -65,6 +65,10 @@ public abstract class NodeStrategy {
             RQAdapter<T> adapter, TransOptions opts) {
         getLower().forwardQueryLeft(range, num, adapter, opts);
     }
+
+    public <T> void forwardQueryMax(Range<?> range, RQAdapter<T> adapter, TransOptions opts) {
+        getLower().forwardQueryMax(range, adapter, opts);
+    }
     
     public void handleLookup(Lookup lookup) {
         getLower().handleLookup(lookup);
