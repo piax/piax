@@ -438,11 +438,6 @@ public class LocalNode extends Node {
         getTopStrategy().forwardQueryLeft(range, num, adapter, opts);
     }
 
-    public <T> void forwardQueryMaxAsync(Range<?> range,
-            RQAdapter<T> adapter, TransOptions opts) {
-        getTopStrategy().forwardQueryMax(range, adapter, opts);
-    }
-
     public void fail() {
         logger.debug("*** {} fails", this);
         this.isFailed = true;

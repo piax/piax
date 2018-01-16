@@ -30,7 +30,6 @@ import java.util.stream.Stream;
 import org.piax.ayame.FTEntry;
 import org.piax.ayame.LocalNode;
 import org.piax.ayame.Node;
-import org.piax.ayame.ov.ddll.DdllKeyRange;
 import org.piax.ayame.ov.rq.RQAdapter;
 import org.piax.ayame.ov.rq.RQStrategy;
 import org.piax.ayame.ov.rq.RQStrategy.RQNodeFactory;
@@ -248,16 +247,9 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         public NestedMessage nmsg;
         @SuppressWarnings("rawtypes")
         transient public Suzaku szk;
-        public boolean isMaxLessThan;
         public ExecQueryAdapter(ObjectId objId, NestedMessage nmsg, Consumer<RemoteValue<Object>> resultsReceiver) {
             super(resultsReceiver);
             this.nmsg = nmsg;
-            this.isMaxLessThan = false;
-        }
-        public ExecQueryAdapter(ObjectId objId, NestedMessage nmsg, boolean isMaxLessThan, Consumer<RemoteValue<Object>> resultsReceiver) {
-            super(resultsReceiver);
-            this.nmsg = nmsg;
-            this.isMaxLessThan = isMaxLessThan;
         }
         @SuppressWarnings("rawtypes")
         public ExecQueryAdapter(Suzaku szk) { // for executor side.
@@ -265,18 +257,6 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
             this.szk = szk;
         }
 
-        @Override
-        protected CompletableFuture<Object> getRaw(RQAdapter<Object> received,
-                LocalNode localNode, DdllKeyRange range, long qid) {
-            ExecQueryAdapter r = (ExecQueryAdapter) received; 
-            if (r.isMaxLessThan) {
-                logger.trace("isMaxLessThan:" + range);
-                return get(r, localNode.key);
-            }
-            logger.trace("NOT isMaxLessThan:" + range);
-            return super.getRaw(received, localNode, range, qid);
-        }
-        
         @Override
         public CompletableFuture<Object> get(RQAdapter<Object> received, DdllKey key) {
             if (EXEC_ASYNC.value()) {
@@ -427,40 +407,21 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
             BiConsumer<Object, Exception> responseReceiver, TransOptions opts)
             throws IllegalStateException {
         NestedMessage nmsg = new NestedMessage(sender, receiver, null, peerId, msg);
-        if (lu.getMaxNum() == 1) {
-            getEntryPoint().forwardQueryMaxAsync(lu.getRange(),
-                    new ExecQueryAdapter(receiver, nmsg, true, (ret)-> {
-                        try {
-                            if (ret == null) {
-                                responseReceiver.accept(Response.EOR, null); // End of response
-                            }
-                            else {
-                                responseReceiver.accept(ret.getValue(), (Exception)ret.getException());
-                            }
+        getEntryPoint().forwardQueryLeftAsync(lu.getRange(), lu.getMaxNum(),
+                new ExecQueryAdapter(receiver, nmsg, (ret)-> {
+                    try {
+                        if (ret == null) {
+                            responseReceiver.accept(Response.EOR, null); // End of response.
                         }
-                        catch (Exception e) {
-                            responseReceiver.accept(null, e);
+                        else {
+                            responseReceiver.accept(ret.getValue(), (Exception)ret.getException());
                         }
-                    })
-            , opts);
-        }
-        else {
-            getEntryPoint().forwardQueryLeftAsync(lu.getRange(), lu.getMaxNum(),
-                    new ExecQueryAdapter(receiver, nmsg, (ret)-> {
-                        try {
-                            if (ret == null) {
-                                responseReceiver.accept(Response.EOR, null); // End of response.
-                            }
-                            else {
-                                responseReceiver.accept(ret.getValue(), (Exception)ret.getException());
-                            }
-                        }
-                        catch (Exception e) {
-                            responseReceiver.accept(null, e);
-                        }
-                    })
-            , opts);
-        }
+                    }
+                    catch (Exception e) {
+                        responseReceiver.accept(null, e);
+                    }
+                })
+                , opts);
     }
 
     /*
@@ -480,52 +441,27 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         logger.debug("opts: {}", opts);
         NestedMessage nmsg = new NestedMessage(sender, receiver, null, peerId, msg);
         FutureQueue<Object> fq = new FutureQueue<>();
-        if (lu.getMaxNum() == 1) {
-            getEntryPoint().forwardQueryMaxAsync(lu.getRange(),
-                    new ExecQueryAdapter(receiver, nmsg, true, (ret)-> {
-                        try {
-                            if (ret == null) {
-                                fq.setEOFuture();
-                            }
-                            else if (ret instanceof RemoteValue<?> &&
-                                    ((RemoteValue<Object>)ret).getValue() instanceof FutureQueue<?>) {
-                                Object val = ret.get();
-                                for (RemoteValue<Object> r : (FutureQueue<Object>)val) {
-                                    fq.add(r);
-                                }
-                            }
-                            else {
-                                fq.add(ret);
-                            }
-                        } catch (Exception e) {
-                            e.printStackTrace();
+        getEntryPoint().forwardQueryLeftAsync(lu.getRange(), lu.getMaxNum(),
+                new ExecQueryAdapter(receiver, nmsg, (ret)-> {
+                    try {
+                        if (ret == null) {
+                            fq.setEOFuture();
                         }
-                    })
-            , opts);
-        }
-        else {
-            getEntryPoint().forwardQueryLeftAsync(lu.getRange(), lu.getMaxNum(),
-                    new ExecQueryAdapter(receiver, nmsg, (ret)-> {
-                        try {
-                            if (ret == null) {
-                                fq.setEOFuture();
+                        else if (ret instanceof RemoteValue<?> &&
+                                ((RemoteValue<Object>)ret).getValue() instanceof FutureQueue<?>) {
+                            Object val = ret.get();
+                            for (RemoteValue<Object> r : (FutureQueue<Object>)val) {
+                                fq.add(r);
                             }
-                            else if (ret instanceof RemoteValue<?> &&
-                                    ((RemoteValue<Object>)ret).getValue() instanceof FutureQueue<?>) {
-                                Object val = ret.get();
-                                for (RemoteValue<Object> r : (FutureQueue<Object>)val) {
-                                    fq.add(r);
-                                }
-                            }
-                            else {
-                                fq.add(ret);
-                            }
-                        } catch (Exception e) {
-                            e.printStackTrace();
                         }
-                    })
-            , opts);
-        }
+                        else {
+                            fq.add(ret);
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                })
+                , opts);
         return fq;
     }
 

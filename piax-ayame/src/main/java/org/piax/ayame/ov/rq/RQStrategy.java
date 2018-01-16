@@ -211,15 +211,6 @@ public class RQStrategy extends NodeStrategy {
     }
 
     /*
-     * forwardQueryMax (forward query to the right-most node on the range).
-     */
-    @Override
-    public <T> void forwardQueryMax(Range<?> range, RQAdapter<T> adapter, TransOptions opts) {
-        RQRange rEnd = new RQRange(null, convertToRQRange(range).to).assignId();
-        rangeQueryRQRange(Collections.singleton(rEnd), adapter, opts);
-    }
-
-    /*
      * forwadQueryLeft:
      * 
      * - forwardQueryLeft(count)
@@ -257,16 +248,26 @@ public class RQStrategy extends NodeStrategy {
         if (num <= 0) {
             throw new IllegalArgumentException("num <= 0");
         }
-        FQLParams<T> p = new FQLParams<>();
-        {
-            p.qid = RandomUtil.getSharedRandom().nextLong();
-            p.num = num;
-            p.rq = convertToRQRange(range);
-            p.adapter = adapter;
-            p.opts = opts;
+        else if (num == 1) {
+            // original range is set only in this case
+            // - to indicate that the query should be executed (get value) on the receiver.
+            // - to check whether the receiver key is included in the specified range.
+            adapter.setOriginalRange(range);
+            RQRange rEnd = new RQRange(null, convertToRQRange(range).to).assignId();
+            rangeQueryRQRange(Collections.singleton(rEnd), adapter, opts);
         }
-        List<Node> visited = new ArrayList<>();
-        startForwardQueryLeft(p, visited);
+        else {
+            FQLParams<T> p = new FQLParams<>();
+            {
+                p.qid = RandomUtil.getSharedRandom().nextLong();
+                p.num = num;
+                p.rq = convertToRQRange(range);
+                p.adapter = adapter;
+                p.opts = opts;
+            }
+            List<Node> visited = new ArrayList<>();
+            startForwardQueryLeft(p, visited);
+        }
     }
 
     // static parameters that does not change while processing the query
@@ -373,6 +374,7 @@ public class RQStrategy extends NodeStrategy {
             RQAdapter<T> received, LocalNode localNode, RQRange r, long qid) {
         // obtain the registered adapter
         RQAdapter<T> rAdapter = getRegisteredAdapter(received.getClass());
+        rAdapter.setOriginalRange(received.getOriginalRange());
         CompletableFuture<T> f;
         try {
             f = rAdapter.getRaw(received, localNode, r, qid);
