@@ -234,8 +234,8 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                 || mode == RetransMode.RELIABLE;
     }
 
-    public boolean isReceiverHalf() {
-		return this.isReceiverHalf;
+    public boolean isRoot() {
+		return this.isRoot;
     }
 
     public Class<? extends RQRequest<T>> getClazz() {
