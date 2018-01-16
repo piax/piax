@@ -100,6 +100,7 @@ public class KryoUtil {
             kryo.register(Integer[].class);
             kryo.register(org.piax.common.ObjectId.class);
             kryo.register(org.piax.common.PeerId.class);
+            kryo.register(org.piax.common.subspace.Range.class);
             kryo.register(org.piax.common.TransportId.class);
             kryo.register(org.piax.common.wrapper.DoubleKey.class);
             kryo.register(org.piax.common.wrapper.StringKey.class);
