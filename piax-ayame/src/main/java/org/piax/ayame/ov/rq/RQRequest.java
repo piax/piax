@@ -425,6 +425,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
          * gapの各範囲を部分範囲に分割し，それぞれ担当ノードを割り当てる．
          * 各ノード毎に割り当てたRQRangeのリストのMapを返す．
          * 
+         * @param ranges ranges to be assigned to delegates
          * @return a map of id and RQRanges
          */
         protected Map<Id, List<RQRange>> assignDelegates(List<RQRange> ranges) {
@@ -618,7 +619,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
          * obtain a result value from local node.
          *  
          * @param ranges このノードが担当する範囲のリスト．各範囲はtargetRangeに含まれる
-         * @returns CompletableFuture
+         * @return CompletableFuture
          */
         public CompletableFuture<List<DKRangeRValue<T>>>
         rqExecuteLocal(List<RQRange> ranges) {
