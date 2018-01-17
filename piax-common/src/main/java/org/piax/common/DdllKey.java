@@ -62,9 +62,8 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
         this.peerId = peerId;
         this.id = id;
         int h = rawKey.hashCode();
-        if (peerId != null) {
-            h ^= peerId.hashCode();
-        }
+        h ^= peerId.hashCode();
+        assert (!peerId.isMinusInfinity() && !peerId.isPlusInfinity());
         this.nonce = nonce;
         this.hash = h ^ nonce;
         this.appData = appData;
@@ -75,10 +74,11 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
         this.peerId = peerId;
         this.id = id;
         int h = rawKey.hashCode();
-        if (peerId != null) {
-            h ^= peerId.hashCode();
-        }
-        this.nonce = RandomUtil.getSharedRandom().nextInt();
+        h ^= peerId.hashCode();
+        if (!peerId.isMinusInfinity() && !peerId.isPlusInfinity())
+        		this.nonce = RandomUtil.getSharedRandom().nextInt();
+        else
+        		this.nonce = 0;
         this.hash = h ^ nonce;
         this.appData = appData;
     }
@@ -225,6 +225,9 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
      * @return  the DdllKey with the specified ID
      */
     public DdllKey getIdChangedKey(String id) {
-        return new DdllKey(rawKey, peerId, id, nonce, appData);
+    		if (!peerId.isMinusInfinity() && !peerId.isPlusInfinity())
+    			return new DdllKey(rawKey, peerId, id, nonce, appData);
+    		else
+    			return new DdllKey(rawKey, peerId, id, appData);
     }
 }
