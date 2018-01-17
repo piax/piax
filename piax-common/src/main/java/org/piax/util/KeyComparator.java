@@ -62,7 +62,7 @@ public class KeyComparator implements Comparator<Comparable<?>> {
 
         @Override
         public int hashCode() {
-            return clazz.hashCode() + (isPlus ? 1 : 0);
+            return (clazz == null ? 0 : clazz.hashCode()) + (isPlus ? 1 : 0);
         }
 
         @Override
@@ -87,16 +87,26 @@ public class KeyComparator implements Comparator<Comparable<?>> {
 
         @Override
         public String toString() {
-            return (isPlus ? "+inf(" : "-inf(") + clazz.getSimpleName() + ")";
+            return (isPlus ? "+inf(" : "-inf(") + (clazz == null ? "" : clazz.getSimpleName()) + ")";
         }
     }
     
     public static Infinity getPlusInfinity(Class<?> clazz) {
         return new Infinity(clazz, true);
     }
-    
+
     public static Infinity getMinusInfinity(Class<?> clazz) {
         return new Infinity(clazz, false);
+    }
+
+    // Get the infinity across all classes.
+    public static Infinity getPlusInfinity() {
+        return new Infinity(null, true);
+    }
+    
+    // Get the infinity across all classes.
+    public static Infinity getMinusInfinity() {
+        return new Infinity(null, false);
     }
 
     private KeyComparator() {}
@@ -111,7 +121,7 @@ public class KeyComparator implements Comparator<Comparable<?>> {
                 logger.debug("key2:{}", key2);
                 return k1.compareTo((Infinity) key2);
             }
-            if (k1.clazz == key2.getClass()) {
+            if (k1.clazz == null || k1.clazz == key2.getClass()) {
                 return k1.isPlus ? 1 : -1;
             }
             return k1.clazz.getName().compareTo(key2.getClass().getName());
@@ -121,7 +131,7 @@ public class KeyComparator implements Comparator<Comparable<?>> {
         if (key2 instanceof Infinity) {
             logger.debug("key2:{}", key2);
             Infinity k2 = (Infinity) key2;
-            if (key1.getClass() == k2.clazz) {
+            if (k2.clazz == null || k2.getClass() == k2.clazz) {
                 return k2.isPlus ? -1 : 1;
             }
             return key1.getClass().getName().compareTo(k2.clazz.getName());
