@@ -74,12 +74,6 @@
       <artifactId>slf4j-api</artifactId>
       <version>1.7.21</version>
     </dependency>
-    <!-- https://mvnrepository.com/artifact/io.netty/netty-all -->
-    <dependency>
-      <groupId>io.netty</groupId>
-      <artifactId>netty-all</artifactId>
-      <version>4.1.6.Final</version>
-    </dependency>
     <!-- https://mvnrepository.com/artifact/com.barchart.udt/barchart-udt-bundle -->
     <dependency>
       <groupId>com.barchart.udt</groupId>
@@ -238,12 +232,18 @@
               <skip>${quickbuild}</skip>
              <!-- <excludePackageNames>*.test</excludePackageNames> -->
               <docfilessubdirs>true</docfilessubdirs>
-              <outputDirectory>${project.build.directory}/api</outputDirectory>
+              <outputDirectory>${project.build.directory}/apidocs</outputDirectory>
               <overview>${project.basedir}/src/javadoc/overview.html</overview>
               <doctitle>PIAX API Reference (${project.version})</doctitle>
               <windowtitle>PIAX API Reference (${project.version})</windowtitle>
-              <detectJavaApiLink>false</detectJavaApiLink>
+              <detectJavaApiLink>true</detectJavaApiLink>
+              <detectLinks>false</detectLinks>
+              <detectOfflineLinks>true</detectOfflineLinks>
               <additionalparam>
+                -link http://docs.oracle.com/javase/8/docs/api/
+                -link http://www.slf4j.org/apidocs/
+
+                -group "PIAX" org.piax*
               </additionalparam>
               <locale>en_US</locale>
             </configuration>
