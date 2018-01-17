@@ -1,8 +1,14 @@
 package test.misc;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import java.util.Random;
 
+import org.junit.jupiter.api.Test;
+import org.piax.common.PeerId;
+import org.piax.common.wrapper.StringKey;
 import org.piax.util.ByteUtil;
+import org.piax.util.KeyComparator;
 
 public class TestUtil {
 
@@ -58,6 +64,16 @@ public class TestUtil {
         byte[] b2 = new byte[3];
         rand.nextBytes(b2);
         printf("%s ASCII?:%s%n", ByteUtil.bytes2Hex(b2), ByteUtil.isASCII(b2));
+    }
+    
+    @Test
+    void keyComparatorTest() {
+        KeyComparator kc = KeyComparator.getInstance();
+        assertTrue(kc.compare(PeerId.newId(), new StringKey("x")) < 0);
+        assertTrue(kc.compare(KeyComparator.getMinusInfinity(), PeerId.newId()) < 0);
+        assertTrue(kc.compare(KeyComparator.getMinusInfinity(), KeyComparator.getMinusInfinity()) == 0);
+        assertTrue(kc.compare(PeerId.newId(), KeyComparator.getMinusInfinity()) > 0);
+        assertTrue(KeyComparator.getMinusInfinity().equals(KeyComparator.getMinusInfinity()));
     }
 
     static void foo() {}
