@@ -30,7 +30,7 @@ public class Upper<K extends ComparableKey<?>> extends LowerUpper {
     public Upper(boolean inclusive, K point, int maxNum) {
         super(new KeyRange<ComparableKey<?>>(
                 point, inclusive, 
-                KeyComparator.getPlusInfinity(point.getClass()), false), 
+                KeyComparator.getPlusInfinity(), false), 
                 true, maxNum);
     }
     

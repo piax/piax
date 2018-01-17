@@ -15,6 +15,7 @@ import org.piax.ayame.ov.ddll.DdllKeyRange;
 import org.piax.ayame.ov.rq.RQRequest.SPECIAL;
 import org.piax.common.DdllKey;
 import org.piax.common.PeerId;
+import org.piax.common.subspace.Range;
 import org.piax.gtrans.RemoteValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,8 +28,10 @@ import org.slf4j.LoggerFactory;
 public abstract class RQAdapter<T> implements Serializable {
     private static final Logger logger = LoggerFactory.getLogger(RQAdapter.class);
     transient protected final Consumer<RemoteValue<T>> resultsReceiver;
+    private Range<?> originalRange;
     public RQAdapter(Consumer<RemoteValue<T>> resultsReceiver) {
         this.resultsReceiver = resultsReceiver;
+        this.originalRange = null;
     }
 
     public Class<? extends RQAdapter<T>> getClazz() {
@@ -36,6 +39,13 @@ public abstract class RQAdapter<T> implements Serializable {
         Class<? extends RQAdapter<T>> clazz
                 = (Class<? extends RQAdapter<T>>)getClass();
         return clazz;
+    }
+
+    public Range<?> getOriginalRange() {
+        return originalRange;
+    }
+    public void setOriginalRange(Range<?> originalRange) {
+        this.originalRange = originalRange;
     }
     /**
      * @param received    the RQAdapter that is received on this node
@@ -47,12 +57,16 @@ public abstract class RQAdapter<T> implements Serializable {
     @SuppressWarnings("unchecked")
     protected CompletableFuture<T> getRaw(RQAdapter<T> received,
             LocalNode localNode, DdllKeyRange range, long qid) {
-        if (range != null && !range.contains(localNode.key)) {
+        // If the original range is set, the receiver need to execute 'get'
+        // only if the key is included in the original range.
+        if ((originalRange != null && originalRange.contains(localNode.key.getRawKey())) ||
+                range.contains(localNode.key)) {
+            return get(received, localNode.key);
+        }
+        else {
             // although SPECIAL.PADDING is not a type of T, using
             // it as T is safe because it is used just as a marker. 
             return CompletableFuture.completedFuture((T) SPECIAL.PADDING);
-        } else {
-            return get(received, localNode.key);
         }
     }
 

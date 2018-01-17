@@ -461,7 +461,40 @@ class TestSuzaku {
             assertTrue(received2.get(), "SG2 receive failed");
             assertTrue(received1.get(), "SG1 receive failed");
         }
-    }    
+    }
+
+    @Test
+    public void lowerEqualsIdTest() throws Exception {
+        AtomicBoolean received1 = new AtomicBoolean(false);
+        AtomicBoolean received2 = new AtomicBoolean(false);
+        AtomicBoolean received3 = new AtomicBoolean(false);
+        try (
+                Overlay<LowerUpper, DoubleKey> ov1 = new Suzaku<>("id:0.0:tcp:localhost:12367");
+                Overlay<LowerUpper, DoubleKey> ov2 = new Suzaku<>("id:0.2:tcp:localhost:12368");
+                Overlay<LowerUpper, DoubleKey> ov3 = new Suzaku<>("id:0.2:tcp:localhost:12369");
+             ) {
+            ov1.setListener((trans, rmsg) -> {
+                received1.set(true);
+            });
+            ov2.setListener((trans, rmsg) -> {
+                received2.set(true);
+            });
+            ov3.setListener((trans, rmsg) -> {
+                received3.set(true);
+            });
+            assertTrue(ov1.join("tcp:localhost:12367"));
+            assertTrue(ov2.join("tcp:localhost:12367"));
+            assertTrue(ov3.join("tcp:localhost:12367"));
+
+            Thread.sleep(500);
+
+            ov1.send(new Lower<DoubleKey>(false, new DoubleKey(0.2), 1), "data");
+            Thread.sleep(1000);
+            assertFalse(received3.get(), "ov3 received falsely");
+            assertFalse(received2.get(), "ov2 received falsely");
+            assertTrue(received1.get(), "ov1 receive failed");
+        }
+    }
 
 
 }
