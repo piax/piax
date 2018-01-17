@@ -30,9 +30,9 @@ import org.slf4j.LoggerFactory;
  * When repairing a linked-list, keys that have the same ID is used as a 
  * hint for finding a live left node.
  * <p>
- * appData is an application-specific data, which is not used by the
- * DDLL package. For example, a skip graph implementation org.piax.gtrans.ov.sg uses 
- * this field for passing a org.piax.gtrans.ov.sg.MembershipVector. 
+ * appData is an application-specific data.
+ * For example, the skip graph implementation (org.piax.gtrans.ov.sg) uses 
+ * this field for passing a membership vector.
  */
 public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
     /*--- logger ---*/
@@ -57,30 +57,32 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
     // To distinguish key instances with same key, peerId, and id.
     private final int nonce;
 
-    public DdllKey(Comparable<?> key, PeerId peerId, String id, int nonce, Object appData) {
+    // private constructor for unsafe operation
+    private DdllKey(@SuppressWarnings("unused") boolean dummy,
+            Comparable<?> key, PeerId peerId, String id, 
+            int nonce, Object appData) {
         this.rawKey = key;
         this.peerId = peerId;
         this.id = id;
         int h = rawKey.hashCode();
         h ^= peerId.hashCode();
-        assert (!peerId.isMinusInfinity() && !peerId.isPlusInfinity());
         this.nonce = nonce;
         this.hash = h ^ nonce;
         this.appData = appData;
     }
 
-    public DdllKey(Comparable<?> key, PeerId peerId, String id, Object appData) {
-        this.rawKey = key;
-        this.peerId = peerId;
-        this.id = id;
-        int h = rawKey.hashCode();
-        h ^= peerId.hashCode();
-        if (!peerId.isMinusInfinity() && !peerId.isPlusInfinity())
-        		this.nonce = RandomUtil.getSharedRandom().nextInt();
-        else
-        		this.nonce = 0;
-        this.hash = h ^ nonce;
-        this.appData = appData;
+    public DdllKey(Comparable<?> key, PeerId peerId, String id, int nonce,
+            Object appData) {
+        this(true, key, peerId, id, nonce, appData);
+        assert (!peerId.isMinusInfinity() && !peerId.isPlusInfinity());
+    }
+
+    public DdllKey(Comparable<?> key, PeerId peerId, String id,
+            Object appData) {
+        this(true, key, peerId, id,
+                (peerId.isMinusInfinity() || peerId.isPlusInfinity()) ?
+                        0 : RandomUtil.getSharedRandom().nextInt(),
+                        appData);
     }
 
     public DdllKey(Comparable<?> key, PeerId peerId) {
@@ -225,9 +227,6 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
      * @return  the DdllKey with the specified ID
      */
     public DdllKey getIdChangedKey(String id) {
-    		if (!peerId.isMinusInfinity() && !peerId.isPlusInfinity())
-    			return new DdllKey(rawKey, peerId, id, nonce, appData);
-    		else
-    			return new DdllKey(rawKey, peerId, id, appData);
+        return new DdllKey(true, rawKey, peerId, id, nonce, appData);
     }
 }
