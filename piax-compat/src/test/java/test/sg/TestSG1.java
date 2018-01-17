@@ -25,6 +25,7 @@ import org.piax.gtrans.Peer;
 import org.piax.gtrans.PeerLocator;
 import org.piax.gtrans.RemoteValue;
 import org.piax.gtrans.TransOptions;
+import org.piax.gtrans.impl.BaseTransportMgr;
 import org.piax.gtrans.ov.sg.SkipGraph;
 import org.piax.gtrans.raw.emu.EmuLocator;
 import org.piax.gtrans.raw.tcp.TcpLocator;
@@ -130,6 +131,7 @@ public class TestSG1 {
     }
 
     private static void init(int numNode, int factor) throws Exception {
+        BaseTransportMgr.BASE_TRANSPORT_MANAGER_CLASS.set("org.piax.gtrans.impl.DefaultBaseTransportGenerator");
         TestSG1.numNode = numNode;
         // 安定している唯一のノード
         TestSG1.seedNo = 0;// next();

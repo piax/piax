@@ -16,6 +16,7 @@ import java.util.concurrent.TimeUnit;
 import org.piax.common.PeerId;
 import org.piax.gtrans.Peer;
 import org.piax.gtrans.PeerLocator;
+import org.piax.gtrans.impl.BaseTransportMgr;
 import org.piax.gtrans.ov.Link;
 import org.piax.gtrans.ov.ddll.NeighborSet;
 import org.piax.gtrans.ov.ddll.Node;
@@ -127,7 +128,7 @@ public class TestDdll4 extends TestDdll1 {
     }
 
     public static void main(String[] args) throws Exception {
-        
+        BaseTransportMgr.BASE_TRANSPORT_MANAGER_CLASS.set("org.piax.gtrans.impl.DefaultBaseTransportGenerator");
         if (args.length != 0 && args.length != 1) {
             System.err.println("usage: <cmd> numNode");
             System.err.println(" ex. <cmd> 100");
