@@ -192,6 +192,7 @@ public class TestDdll1 {
 
     public static void main(String[] args) throws Exception {
         BaseTransportMgr.BASE_TRANSPORT_MANAGER_CLASS.set("org.piax.gtrans.impl.DefaultBaseTransportGenerator");
+        Peer.RECEIVE_ASYNC.set(true);
         if (args.length != 0 && args.length != 1) {
             System.err.println("usage: <cmd> numNode");
             System.err.println(" ex. <cmd> 100");
