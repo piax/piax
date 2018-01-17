@@ -375,10 +375,10 @@ public class RQManager<E extends Endpoint> extends RingManager<E> implements
         SubRange keyRange =
                 new SubRange(
                         new DdllKey(range.from, range.fromInclusive
-                                ? PeerId.MINUS_INFINITY : PeerId.PLUS_INFINITY, 0),
+                                ? PeerId.MINUS_INFINITY : PeerId.PLUS_INFINITY),
                         true,
                         new DdllKey(range.to, range.toInclusive
-                                ? PeerId.PLUS_INFINITY : PeerId.MINUS_INFINITY, 0),
+                                ? PeerId.PLUS_INFINITY : PeerId.MINUS_INFINITY),
                         false);
         return keyRange;
     }
@@ -755,13 +755,13 @@ public class RQManager<E extends Endpoint> extends RingManager<E> implements
         Comparable rawFromKey = range.to;
         DdllKey fromKey =
                 range.toInclusive ? new DdllKey(rawFromKey,
-                        PeerId.PLUS_INFINITY, 0) : new DdllKey(rawFromKey,
-                        PeerId.MINUS_INFINITY, 0);
+                        PeerId.PLUS_INFINITY) : new DdllKey(rawFromKey,
+                        PeerId.MINUS_INFINITY);
         Comparable rawToKey = range.from;
         DdllKey toKey =
                 range.fromInclusive ? new DdllKey(rawToKey,
-                        PeerId.MINUS_INFINITY, 0) : new DdllKey(rawToKey,
-                        PeerId.PLUS_INFINITY, 0);
+                        PeerId.MINUS_INFINITY) : new DdllKey(rawToKey,
+                        PeerId.PLUS_INFINITY);
 
         List<RemoteValue<?>> rset = new ArrayList<RemoteValue<?>>();
         QueryId qid = new QueryId(peerId, rand.nextLong());
