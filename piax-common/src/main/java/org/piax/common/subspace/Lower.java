@@ -29,7 +29,7 @@ public class Lower<K extends ComparableKey<?>> extends LowerUpper {
      */
     public Lower(boolean inclusive, K point, int maxNum) {
         super(new KeyRange<ComparableKey<?>>(
-                KeyComparator.getMinusInfinity(point.getClass()), false, 
+                KeyComparator.getMinusInfinity(), false, 
                 point, inclusive), false, maxNum);
     }
     
