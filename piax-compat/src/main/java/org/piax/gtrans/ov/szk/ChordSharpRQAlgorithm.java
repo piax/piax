@@ -30,7 +30,6 @@ import org.piax.gtrans.impl.NestedMessage;
 import org.piax.gtrans.ov.Link;
 import org.piax.gtrans.ov.ddll.Node.InsertPoint;
 import org.piax.gtrans.ov.ring.MessagingFramework;
-import org.piax.gtrans.ov.ring.rq.DKRangeLink;
 import org.piax.gtrans.ov.ring.rq.QueryId;
 import org.piax.gtrans.ov.ring.rq.RQAlgorithm;
 import org.piax.gtrans.ov.ring.rq.RQManager;
@@ -138,7 +137,7 @@ public class ChordSharpRQAlgorithm<E extends Endpoint> implements RQAlgorithm {
         if (list == null) {
             return;
         }
-        for (DKRangeLink kr : list) {
+        for (SubRange kr : list) {
             Link link = kr.getLink();
             RQVNode<E> n = manager.getVNode(link.key.getRawKey());
             if (n == null) {

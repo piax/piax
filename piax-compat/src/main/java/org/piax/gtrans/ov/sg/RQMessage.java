@@ -254,7 +254,7 @@ public class RQMessage<E extends Endpoint> extends SGRequestMessage<E> {
     public static class RQReplyMessage<E extends Endpoint> extends SGReplyMessage<E> {
         private static final long serialVersionUID = 1L;
         final PeerId senderId;
-        final Collection<DdllKeyRange<RemoteValue<?>>> vals;
+        final Collection<DdllKeyRangeWithData<RemoteValue<?>>> vals;
         /** is final reply? */
         final boolean isFinal;
         final int hops;
@@ -270,7 +270,7 @@ public class RQMessage<E extends Endpoint> extends SGRequestMessage<E> {
          * @param hops max hop count observed by this node (maybe)
          */
         public RQReplyMessage(SkipGraph<E> sg, RQMessage<E> replyTo,
-                Collection<DdllKeyRange<RemoteValue<?>>> vals, boolean isFinal,
+                Collection<DdllKeyRangeWithData<RemoteValue<?>>> vals, boolean isFinal,
                 int hops) {
             super(sg, replyTo);
             this.senderId = sg.peerId;

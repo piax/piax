@@ -17,14 +17,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
 
+import org.piax.ayame.ov.ddll.DdllKeyRange;
 import org.piax.common.DdllKey;
 import org.piax.common.subspace.Range;
 import org.piax.gtrans.ov.Link;
 import org.piax.gtrans.ov.ddll.Node;
 
-public class SubRange extends DKRangeLink {
+public class SubRange extends DdllKeyRange {
     private static final long serialVersionUID = 1L;
     public final static int MAXID = 100000;
+    final Link link;
     public Integer[] ids;
 
     public SubRange(DdllKey from, boolean fromInclusive, DdllKey to,
@@ -42,13 +44,15 @@ public class SubRange extends DKRangeLink {
     }
 
     public SubRange(Link aux, Range<DdllKey> subRange, Integer[] ids) {
-        super(aux, subRange);
+        super(subRange);
+        this.link = aux;
         this.ids = ids;
     }
 
     public SubRange(Link aux, DdllKey from, boolean fromInclusive, DdllKey to,
             boolean toInclusive, Integer[] ids) {
-        super(aux, from, fromInclusive, to, toInclusive);
+        super(from, fromInclusive, to, toInclusive);
+        this.link = aux;
         this.ids = ids;
     }
 
@@ -62,6 +66,10 @@ public class SubRange extends DKRangeLink {
     public SubRange newRange(DdllKey from, boolean fromInclusive,
             DdllKey to, boolean toInclusive) {
         return new SubRange(from, fromInclusive, to, toInclusive);
+    }
+
+    public Link getLink() {
+        return link;
     }
 
     @Override

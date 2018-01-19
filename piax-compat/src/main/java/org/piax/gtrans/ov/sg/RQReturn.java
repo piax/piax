@@ -70,7 +70,7 @@ public class RQReturn<E extends Endpoint> extends TimerTask {
     // final NavigableMap<DdllKey, RemoteValue<?>> rvals;
     // XXX: return value 1つづつに DdllKeyRange を保持するのはメモリ効率が悪い．
     // XXX: 中継ノードから親ノードに渡すときに，連続するKeyRangeをまとめると良い．
-    final NavigableMap<DdllKey, DdllKeyRange<RemoteValue<?>>> rvals;
+    final NavigableMap<DdllKey, DdllKeyRangeWithData<RemoteValue<?>>> rvals;
     final transient boolean isRoot;
 
     /** child messages */
@@ -93,7 +93,7 @@ public class RQReturn<E extends Endpoint> extends TimerTask {
         this.isRoot = isRoot;
         this.parentMsg = msg;
         // this.rvals = new ConcurrentSkipListMap<DdllKey, RemoteValue<?>>();
-        this.rvals = new ConcurrentSkipListMap<DdllKey, DdllKeyRange<RemoteValue<?>>>();
+        this.rvals = new ConcurrentSkipListMap<DdllKey, DdllKeyRangeWithData<RemoteValue<?>>>();
         this.gaps = new ConcurrentSkipListMap<DdllKey, Range<DdllKey>>();
         for (Range<DdllKey> range : msg.subRanges) {
             gaps.put(range.from, range);
@@ -179,7 +179,7 @@ public class RQReturn<E extends Endpoint> extends TimerTask {
             }
         }
         // rvals.put(r.from, rval);
-        rvals.put(r.from, new DdllKeyRange<RemoteValue<?>>(rval, r));
+        rvals.put(r.from, new DdllKeyRangeWithData<RemoteValue<?>>(rval, r));
 
         // if root, set rval to ReturnSet (yos)
         if (fq != null) {
@@ -246,8 +246,8 @@ public class RQReturn<E extends Endpoint> extends TimerTask {
             return;
         }
         logger.debug("{}: flush(): {}", sg.toStringShort(), this);
-        Collection<DdllKeyRange<RemoteValue<?>>> vals =
-                new ArrayList<DdllKeyRange<RemoteValue<?>>>(rvals.values());
+        Collection<DdllKeyRangeWithData<RemoteValue<?>>> vals =
+                new ArrayList<DdllKeyRangeWithData<RemoteValue<?>>>(rvals.values());
         logger.debug("{}: send reply. vals={}, hops = {}", sg.toStringShort(),
                 vals, maxHops + 1);
         RQReplyMessage<E> rep =
@@ -308,7 +308,7 @@ public class RQReturn<E extends Endpoint> extends TimerTask {
     private Collection<RemoteValue<?>> getResults() {
         List<RemoteValue<?>> list = new ArrayList<RemoteValue<?>>();
         // for (RemoteValue<?> rval : rvals.values()) {
-        for (DdllKeyRange<RemoteValue<?>> rval : rvals.values()) {
+        for (DdllKeyRangeWithData<RemoteValue<?>> rval : rvals.values()) {
             try {
                 Object v = rval.aux.get();
                 if (v != null) {

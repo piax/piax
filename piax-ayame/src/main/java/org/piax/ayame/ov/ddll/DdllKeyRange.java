@@ -35,6 +35,7 @@ public class DdllKeyRange extends Range<DdllKey> {
         return rangeString();
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public DdllKeyRange newRange(DdllKey from, boolean fromInclusive,
             DdllKey to, boolean toInclusive) {
