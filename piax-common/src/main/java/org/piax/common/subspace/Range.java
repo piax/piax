@@ -23,7 +23,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * 範囲を定義するためのクラス
+ * a class that represents a single range.
+ * 
+ * @param <K> the type of minimum and maximum keys of the range
  */
 public class Range<K extends Comparable<?>> implements Serializable, Cloneable {
     private static final long serialVersionUID = 1L;
@@ -37,37 +39,53 @@ public class Range<K extends Comparable<?>> implements Serializable, Cloneable {
     public final boolean fromInclusive;
     public final boolean toInclusive;
 
+    /**
+     * construct a non-circular range [from, to]
+     * 
+     * @param from the minimum key (inclusive)
+     * @param to   the maximum key (inclusive)
+     */
     public Range(K from, K to) {
-        /*
-         * TODO think!
-         * this(from, true, to, false); の方がよいかもしれない
-         */
+        // this(from, true, to, false); の方がよいかもしれない (yos)
         this(from, true, to, true);
     }
 
+    /**
+     * construct [key, key]
+     *
+     * @param key  the minimum and maximum key
+     */
     public Range(K key) {
         this(key, true, key, true);
     }
 
+    /**
+     * construct a range 
+     *
+     * @param from  the minimum key
+     * @param fromInclusive  true if from is inclusive
+     * @param to  the maximum key
+     * @param toInclusive  true if to is inclusive 
+     */
     public Range(K from, boolean fromInclusive, K to, boolean toInclusive) {
-        this(true, from, fromInclusive, to, toInclusive);
+        this(false, from, fromInclusive, to, toInclusive);
     }
 
     /**
-     * サブクラス（具体的には、CircularRangeのような拡張）のために、引数のチェックを選択できる
+     * construct a range.
+     * this constructor allows circular ranges such as [1, 0).
      *
-     * @param checkArgs if true, check the validation of arguments
-     * @param from low endpoint
-     * @param fromInclusive true if the low endpoint is to be included in the Range
-     * @param to high endpoint
-     * @param toInclusive true if the high endpoint is to be included in the Range
+     * @param allowCircular true if circular range is allowed
+     * @param from  the minimum key
+     * @param fromInclusive  true if from is inclusive
+     * @param to  the maximum key
+     * @param toInclusive  true if to is inclusive 
      */
-    protected Range(boolean checkArgs, K from, boolean fromInclusive, K to,
+    public Range(boolean allowCircular, K from, boolean fromInclusive, K to,
             boolean toInclusive) {
-        if (checkArgs) {
-            if (from == null || to == null)
-                throw new IllegalArgumentException(
-                        "argument should not be null");
+        if (from == null || to == null)
+            throw new NullPointerException("from and to should not be null");
+        if (!allowCircular) {
             if (keyComp.compare(from, to) > 0) {
                 logger.warn("from:{} to:{}", from, to);
                 throw new IllegalArgumentException("from > to");
@@ -100,54 +118,50 @@ public class Range<K extends Comparable<?>> implements Serializable, Cloneable {
         }
     }
 
+    /**
+     * returns whether the range represents [x, x].
+     * @return true if the range represents [x, x].
+     */
     public boolean isSingleton() {
         return fromInclusive && toInclusive && keyComp.compare(from, to) == 0;
     }
 
+    /**
+     * returns whether the range represents [x, x).
+     * @return true if the range represents [x, x).
+     */
     public boolean isWhole() {
         return fromInclusive ^ toInclusive && keyComp.compare(from, to) == 0;
     }
 
     /**
-     * Returns true if a key is within this Range.
-     * <p>
-     * Comparable wildcard type key is specified.
+     * returns true if a key is within this range.
      *
-     * @param key the target key.
+     * @param key the key to compare with
      * @return true if the key is within this range.
      */
     public boolean contains(Comparable<?> key) {
-        /*boolean b1 =
-                fromInclusive ? keyComp.compare(from, key) <= 0 : keyComp
-                        .compare(from, key) < 0;
-        boolean b2 =
-                toInclusive ? keyComp.compare(key, to) <= 0 : keyComp.compare(
-                        key, to) < 0;
-        boolean ret = b1 && b2;*/
         if (isWhole()) {
             return true;
         }
         if (isSingleton()) {
             return (keyComp.compare(from, key) == 0);
         }
-        boolean ret2 =
+        boolean ret =
                 keyComp.isOrdered(from, key, to)
                         && (fromInclusive || keyComp.compare(from, key) != 0)
                         && (toInclusive || keyComp.compare(key, to) != 0);
         if (logger.isDebugEnabled()) {
             logger.debug("\"{} contains {}:{}\" returns {}", this.toString2(), key,
-                    key.getClass().getSimpleName(), ret2);
+                    key.getClass().getSimpleName(), ret);
         }
-        /*if (ret != ret2) {
-            logger.debug("ret = {}, ret2 = {}, this={}, key={}", ret, ret2, this, key);
-        }*/
-        return ret2;
+        return ret;
     }
 
     /**
-     * check if another range is fully-contained in this range.
+     * check if another range ⊆ this range.
      *
-     * @param another   another range
+     * @param another  another range
      * @return true if this range contains another.
      */
     public boolean contains(Range<K> another) {
@@ -192,37 +206,6 @@ public class Range<K extends Comparable<?>> implements Serializable, Cloneable {
                     false);
         }
         return false;
-        /*
-                if (keyComp.compare(this.from, another.from) == 0) {
-                    boolean isFromCovered = (this.fromInclusive || !another.fromInclusive);
-                    if (isFromCovered) {
-                        // this     ======
-                        // another  ===
-                        return Node.isOrdered(this.from, another.to, this.to);
-                    }
-                    return false;
-                }
-                if (keyComp.compare(this.to, another.to) == 0) {
-                    boolean isToCovered = (this.toInclusive || !another.toInclusive);
-                    if (isToCovered) {
-                        // this     ======
-                        // another     ===
-                        return Node.isOrdered(this.from, another.from, this.to);
-                    }
-                    return false;
-                }
-                // this    ======
-                // another  ====
-                boolean rc =
-                        Node.isOrdered(this.from, another.from, this.to)
-                                && Node.isOrdered(this.from, another.to, this.to)
-                                && (another.isSingleton() || !Node.isOrdered(
-                                        another.from, this.to, another.to));
-                return rc;
-                // 最後の項は以下の場合を false にするため
-                // this:     ========
-                // another: ===    ===
-        */
     }
 
     @Override
@@ -282,14 +265,24 @@ public class Range<K extends Comparable<?>> implements Serializable, Cloneable {
         return true;
     }
 
+    /**
+     * split the range with given k.
+     * if k is included in the range, the results is {#min, k), [k, max#}.
+     * otherwise, the results is {#min, max#}.
+     * #min is either '(' or '[' and max# is either ')' or ']', depending on
+     * the openness of this range.
+     *
+     * @param k the key to split
+     * @return the split ranges
+     */
     @SuppressWarnings("unchecked")
     public Range<K>[] split(K k) {
         if (keyComp.compare(from, k) < 0 && keyComp.compare(k, to) < 0) {
-            Range<K> left = new Range<K>(from, fromInclusive, k, false);
-            Range<K> right= new Range<K>(k, true, to, toInclusive);
-            return new Range[]{left, right};
+            Range<K> left = newRange(from, fromInclusive, k, false);
+            Range<K> right = newRange(k, true, to, toInclusive);
+            return new Range[] { left, right };
         } else {
-            return new Range[]{this};
+            return new Range[] { this };
         }
     }
 
@@ -303,22 +296,23 @@ public class Range<K extends Comparable<?>> implements Serializable, Cloneable {
         }
     }
 
-
     /**
      * create a new range.
      * <p>this method is used for manipulating ranges such as retain().
      * <p>subclasses must override this method to create an instance of
      * the same class.
      *
-     * @param from
-     * @param fromInclusive
-     * @param to
-     * @param toInclusive
+     * @param <T> the actual type of Range
+     * @param from  the minimum key
+     * @param fromInclusive  true if from is inclusive
+     * @param to  the maximum key
+     * @param toInclusive  true if to is inclusive
      * @return new Range instance
      */
-    public Range<K> newRange(K from, boolean fromInclusive, K to,
+    @SuppressWarnings("unchecked")
+    public <T extends Range<K>> T newRange(K from, boolean fromInclusive, K to,
             boolean toInclusive) {
-        return new Range<K>(false, from, fromInclusive, to, toInclusive);
+        return (T)new Range<K>(true, from, fromInclusive, to, toInclusive);
     }
 
     public Range<K> newRange(Range<K> another) {
@@ -326,9 +320,14 @@ public class Range<K extends Comparable<?>> implements Serializable, Cloneable {
                 another.to, another.toInclusive);
     }
 
-   /**
-     * このインスタンスが表す範囲からrを削除した場合に残る範囲のリストを返す．
-     * 削除した範囲のリストは intersect に追加する．
+    public interface RangeFactory<T extends Range<K>, K extends Comparable<?>> {
+        T newRange(K from, boolean fromInclusive, K to, boolean toInclusive);
+    }
+
+    /**
+     * returns remaining range(s) when subtracting a specified range from this
+     * range.  the subtracted range(s) (intersected range) are added to
+     * `intersect' if `intersect' is not null.
      *
      * このクラスのサブクラス X から呼び出す場合，返り値の型は List&lt;X&gt; である．
      *
@@ -336,36 +335,36 @@ public class Range<K extends Comparable<?>> implements Serializable, Cloneable {
      * example:
      *   this:     [==========]
      *   r:           [===]
-     *   returned: [=]     [==]
+     *   returned: [==)   (===]
      *
      *   this:     [==========]
      *   r:                 [===]
-     *   returned: [=======]
+     *   returned: [========)
      *
      * </pre>
-     * @param r         range to delete
+     * @param <T>       the type of range class
+     * @param r         range to subtract
      * @param intersect the list to add ranges that intersects with r
-     * @return a list of retained ranges.
+     * @return a list of retained ranges.  null means nothing is retained.
      */
     @SuppressWarnings("unchecked")
     public <T extends Range<K>> List<T> retain(Range<K> r, List<T> intersect) {
         T r0 = (T)newRange(r);
+        if (intersect == null) {
+            intersect = new ArrayList<>();
+        }
         if (r.contains(this)) {
-            if (intersect != null) {
-                intersect.add((T)newRange(this.from, this.fromInclusive,
-                        this.to, this.toInclusive));
-            }
+            intersect.add((T)newRange(this.from, this.fromInclusive,
+                    this.to, this.toInclusive));
             return null; // nothing is left
         }
         if (isWhole()) {
-            if (intersect != null) {
-                intersect.add(r0);
-            }
+            intersect.add(r0);
             return Collections.singletonList((T)newRange(r.to,
                     !r.toInclusive, r.from, !r.fromInclusive));
         }
         if (this.contains(r.from) && !this.contains(r.to)) {
-            // range: [ ...... ]
+            // this: [ ...... ]
             // r:         [ .........]
             addIfValidRange(r0, intersect, r.from, r.fromInclusive, this.to,
                     this.toInclusive);
@@ -373,7 +372,7 @@ public class Range<K extends Comparable<?>> implements Serializable, Cloneable {
                     fromInclusive, r.from, !r.fromInclusive));
         }
         if (!this.contains(r.from) && this.contains(r.to)) {
-            // range:     [ ...... ]
+            // this:     [ ...... ]
             // r:  [ .........]
             addIfValidRange(r0, intersect, this.from, this.fromInclusive, r.to,
                     r.toInclusive);
@@ -385,28 +384,20 @@ public class Range<K extends Comparable<?>> implements Serializable, Cloneable {
             if (keyComp.isOrdered(r.from, this.to, r.to) && !r.isSingleton()
                     && keyComp.compare(this.to, r.to) != 0) {
                 List<T> tmp = new ArrayList<>();
-                /*
-                 *   range:  [ ..... ]
-                 *   r:    ....]   [.....
-                 */
+                // this:  [ ..... ]
+                // r:    ....]  [.....
                 addIfValidRange(r0, tmp, this.from, this.fromInclusive, r.to,
                         r.toInclusive);
                 addIfValidRange(r0, tmp, r.from, r.fromInclusive, this.to,
                         this.toInclusive);
                 merge(tmp);
-                if (intersect != null) {
-                    intersect.addAll(tmp);
-                }
+                intersect.addAll(tmp);
                 return Collections.singletonList((T)newRange(r.to,
                         !r.toInclusive, r.from, !r.fromInclusive));
             }
-            /*
-             *   range:  [ ..... ]
-             *   r:        [...]
-             */
-            if (intersect != null) {
-                intersect.add((T)newRange(r));
-            }
+            // this:  [ ..... ]
+            // r:       [...]
+            intersect.add((T)newRange(r));
             List<T> retain = new ArrayList<>();
             if (keyComp.compare(from, r.from) != 0) {
                 T r1 = (T)newRange(from, fromInclusive, r.from,
@@ -426,13 +417,10 @@ public class Range<K extends Comparable<?>> implements Serializable, Cloneable {
     private static <K extends Comparable<?>, T extends Range<K>> void
         addIfValidRange(T templ, List<T> intersect,
             K from, boolean fromInclusive, K to, boolean toInclusive) {
-        if (intersect == null) {
-            return;
-        }
         boolean valid =
                 (keyComp.compare(from, to) != 0 || (fromInclusive && toInclusive));
         if (valid) {
-            intersect.add((T)templ.newRange(from, fromInclusive, to,
+            intersect.add(templ.newRange(from, fromInclusive, to,
                     toInclusive));
         }
     }
@@ -443,32 +431,35 @@ public class Range<K extends Comparable<?>> implements Serializable, Cloneable {
             return;
         }
         assert ranges.size() == 2;
-        Range<K> r1 = ranges.get(0);
-        Range<K> r2 = ranges.get(1);
+        T r1 = ranges.get(0);
+        T r2 = ranges.get(1);
         if (r2.isFollowedBy(r1)) {
-            T r = (T)r2.concatenate(r1);
+            T r = r2.newRange(r2.from, r2.fromInclusive, r1.to, r1.toInclusive);
             ranges.clear();
             ranges.add(r);
         }
     }
 
+    /**
+     * returns if another range intersects this range.
+     *
+     * @param another  another range
+     * @return true if another range intersects this range.
+     */
     public boolean intersects(Range<K> another) {
         List<Range<K>> intersect = new ArrayList<>();
         retain(another, intersect);
         return !intersect.isEmpty();
     }
 
+    /**
+     * returns if this range is immediately followed by another range.
+     *
+     * @param another  another range
+     * @return true if this range is immediately followed by another range.
+     */
     public boolean isFollowedBy(Range<K> another) {
         return (keyComp.compare(this.to, another.from) == 0
                 && (this.toInclusive ^ another.fromInclusive));
-    }
-
-    public Range<K> concatenate(Range<K> another) {
-        if (isFollowedBy(another)) {
-            return newRange(this.from, this.fromInclusive,
-                    another.to, another.toInclusive);
-        }
-        throw new IllegalArgumentException(this + " and " + another
-                + " are not adjacent");
     }
 }

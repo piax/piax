@@ -18,7 +18,7 @@ import java.util.List;
 
 import org.piax.common.DdllKey;
 import org.piax.common.Endpoint;
-import org.piax.common.subspace.CircularRange;
+import org.piax.common.subspace.Range;
 import org.piax.gtrans.ov.Link;
 import org.piax.gtrans.ov.ddll.Node;
 import org.piax.gtrans.ov.ddll.Node.InsertPoint;
@@ -319,7 +319,7 @@ public class RingVNode<E extends Endpoint> implements NodeObserver {
     }
 
     public void fixLeftLinks(Link link, List<Link> failedLinks, RQMessage msg,
-            List<CircularRange<DdllKey>> failedRanges) {
+            List<Range<DdllKey>> failedRanges) {
         logger.debug("fixLeftLinks: link={}, failedLinks={}, msg={}, failedRanges={}", 
                 link, failedLinks, msg, failedRanges);
     }

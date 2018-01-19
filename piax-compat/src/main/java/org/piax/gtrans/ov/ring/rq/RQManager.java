@@ -33,7 +33,6 @@ import org.piax.common.Id;
 import org.piax.common.ObjectId;
 import org.piax.common.PeerId;
 import org.piax.common.TransportId;
-import org.piax.common.subspace.CircularRange;
 import org.piax.common.subspace.Range;
 import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.IdConflictException;
@@ -505,8 +504,7 @@ public class RQManager<E extends Endpoint> extends RingManager<E> implements
          * 
          * 担当ノードが FIXLEFT (FIXPEERID) の範囲を failedRanges に集める．
          */
-        List<CircularRange<DdllKey>> failedRanges =
-                new ArrayList<CircularRange<DdllKey>>();
+        List<Range<DdllKey>> failedRanges = new ArrayList<>();
         //synchronized (rqRet) {
             for (Map.Entry<Id, List<SubRange>> ent : map.entrySet()) {
                 Id p = ent.getKey();

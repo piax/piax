@@ -18,7 +18,6 @@ import java.util.Comparator;
 import java.util.List;
 
 import org.piax.common.DdllKey;
-import org.piax.common.subspace.CircularRange;
 import org.piax.common.subspace.Range;
 import org.piax.gtrans.ov.ddll.Node;
 import org.piax.util.KeyComparator;
@@ -45,8 +44,8 @@ public class RangeUtils {
      * @param b the right side key.
      * @return the retained range.
      */
-    public static <K extends Comparable<K>> CircularRange<K> retainRange(
-            CircularRange<K> r, K a, K b) {
+    public static <K extends Comparable<K>> Range<K> retainRange(
+            Range<K> r, K a, K b) {
         if (r.contains(a) && keyComp.compare(a, r.from) != 0) {
             throw new Error("a is in r");
         }
@@ -60,7 +59,7 @@ public class RangeUtils {
                 // Range   [-----------)
                 //     a------b
                 //     -------b          a--
-                return new CircularRange<K>(b, true, r.to, r.toInclusive);
+                return new Range<K>(true, b, true, r.to, r.toInclusive);
             }
         } else {
             // Range      [------)
@@ -109,23 +108,22 @@ public class RangeUtils {
         }
     }
 
-    public static List<CircularRange<DdllKey>> concatAdjacentRanges(
-            List<CircularRange<DdllKey>> ranges) {
+    public static List<Range<DdllKey>> concatAdjacentRanges(
+            List<Range<DdllKey>> ranges) {
         Collections.sort(ranges, new Comparator<Range<?>>() {
             @Override
             public int compare(Range<?> o1, Range<?> o2) {
                 return keyComp.compare(o1.from, o2.from);
             }
         });
-        List<CircularRange<DdllKey>> merged =
-                new ArrayList<CircularRange<DdllKey>>();
-        CircularRange<DdllKey> prev = null;
-        for (CircularRange<DdllKey> r : ranges) {
+        List<Range<DdllKey>> merged = new ArrayList<>();
+        Range<DdllKey> prev = null;
+        for (Range<DdllKey> r : ranges) {
             if (prev == null) {
                 prev = r;
             } else if (prev.to.compareTo(r.from) == 0) {
                 prev =
-                        new CircularRange<DdllKey>(prev.from,
+                        new Range<DdllKey>(true, prev.from,
                                 prev.fromInclusive, r.to, r.toInclusive);
             } else {
                 merged.add(prev);

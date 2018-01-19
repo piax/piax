@@ -204,7 +204,9 @@ public class RQStrategy extends NodeStrategy {
             }).filter(Objects::nonNull)
             .collect(Collectors.toList());
             // it is not necessary to do every iteration...
-            ent.setRange(new DdllKeyRange(from.val, true, to.val, false));
+            if (from.val != null && to.val != null) {
+                ent.setRange(new DdllKeyRange(from.val, true, to.val, false));
+            }
             ent.putCollectedData(clazz, adapter.reduceCollectedData(vals));
         }
         return ent;

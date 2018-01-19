@@ -18,7 +18,6 @@ import java.util.Map;
 import java.util.NavigableMap;
 
 import org.piax.common.DdllKey;
-import org.piax.common.subspace.CircularRange;
 import org.piax.common.subspace.Range;
 import org.piax.gtrans.ov.Link;
 import org.piax.gtrans.ov.ddll.Node;
@@ -60,14 +59,14 @@ public class SubRange extends DKRangeLink {
     }
 
     @Override
-    protected SubRange newInstance(DdllKey from, boolean fromInclusive,
+    public SubRange newRange(DdllKey from, boolean fromInclusive,
             DdllKey to, boolean toInclusive) {
         return new SubRange(from, fromInclusive, to, toInclusive);
     }
 
     @Override
     public SubRange[] split(DdllKey k) {
-        CircularRange<DdllKey>[] s = super.split(k);
+        Range<DdllKey>[] s = super.split(k);
         // Java cannot cast CircularRange[] into SubRange[] so..
         SubRange[] ret = new SubRange[s.length];
         System.arraycopy(s, 0, ret, 0, s.length);

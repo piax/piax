@@ -10,7 +10,6 @@ import java.util.NavigableMap;
 import org.piax.ayame.Node;
 import org.piax.ayame.ov.ddll.DdllKeyRange;
 import org.piax.common.DdllKey;
-import org.piax.common.subspace.CircularRange;
 import org.piax.common.subspace.Range;
 
 public class RQRange extends DdllKeyRange {
@@ -71,8 +70,8 @@ public class RQRange extends DdllKeyRange {
 
     @Override
     public RQRange[] split(DdllKey k) {
-        CircularRange<DdllKey>[] s = super.split(k);
-        // Java cannot cast CircularRange[] into SubRange[] so..
+        Range<DdllKey>[] s = super.split(k);
+        // Java cannot cast Range[] into RQRange[] so..
         RQRange[] ret = new RQRange[s.length];
         System.arraycopy(s, 0, ret, 0, s.length);
         return ret;
