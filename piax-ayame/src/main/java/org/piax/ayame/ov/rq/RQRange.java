@@ -68,15 +68,6 @@ public class RQRange extends DdllKeyRange {
                 + "]";
     }
 
-    @Override
-    public RQRange[] split(DdllKey k) {
-        Range<DdllKey>[] s = super.split(k);
-        // Java cannot cast Range[] into RQRange[] so..
-        RQRange[] ret = new RQRange[s.length];
-        System.arraycopy(s, 0, ret, 0, s.length);
-        return ret;
-    }
-
     /**
      * このrangeを，entsの各エントリのkeyで指定された部分範囲に分割する．
      * 各部分範囲の担当ノードには，各エントリのvalueで指定されたNodeを割り当てる．
@@ -95,12 +86,12 @@ public class RQRange extends DdllKeyRange {
         }
         RQRange r = this;
         for (Map.Entry<DdllKey, Node> ent : ents.entrySet()) {
-            RQRange[] split = this.split(ent.getKey());
-            if (split.length == 2) {
-                ranges.add(new RQRange(aux, split[0]));
+            List<RQRange> split = split(ent.getKey());
+            if (split.size() == 2) {
+                ranges.add(new RQRange(aux, split.get(0)));
                 aux = ent.getValue();
             }
-            r = split[split.length - 1];
+            r = split.get(split.size() - 1);
         }
         ranges.add(new RQRange(aux, r));
         return ranges;

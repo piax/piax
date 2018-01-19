@@ -72,15 +72,6 @@ public class SubRange extends DdllKeyRange {
         return link;
     }
 
-    @Override
-    public SubRange[] split(DdllKey k) {
-        Range<DdllKey>[] s = super.split(k);
-        // Java cannot cast CircularRange[] into SubRange[] so..
-        SubRange[] ret = new SubRange[s.length];
-        System.arraycopy(s, 0, ret, 0, s.length);
-        return ret;
-    }
-
     public List<SubRange> split(NavigableMap<DdllKey, Link> ents) {
         SubRange r = this;
         List<SubRange> ranges = new ArrayList<SubRange>();
@@ -89,12 +80,12 @@ public class SubRange extends DdllKeyRange {
             aux = ents.get(this.from);
         }
         for (Map.Entry<DdllKey, Link> ent : ents.entrySet()) {
-            SubRange[] split = this.split(ent.getKey());
-            if (split.length == 2) {
-                ranges.add(new SubRange(aux, split[0]));
+            List<SubRange> split = split(ent.getKey());
+            if (split.size() == 2) {
+                ranges.add(new SubRange(aux, split.get(0)));
                 aux = ent.getValue();
             }
-            r = split[split.length - 1];
+            r = split.get(split.size() - 1);
         }
         ranges.add(new SubRange(aux, r));
         return ranges;

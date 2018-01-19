@@ -155,8 +155,8 @@ public class RQReturn<E extends Endpoint> extends TimerTask {
             if (r.to.compareTo(gap.to) < 0) {
                 // (------gap-------)
                 // [--r---][-newgap-)
-                Range<DdllKey>[] sp = gap.split(r.to);
-                gaps.put(sp[1].from, sp[1]);
+                List<Range<DdllKey>> sp = gap.split(r.to);
+                gaps.put(sp.get(1).from, sp.get(1));
             } else {
                 // (------gap-------)
                 // _____[--r------------]
@@ -165,13 +165,13 @@ public class RQReturn<E extends Endpoint> extends TimerTask {
         } else if (r.from.compareTo(gap.to) < 0) {
             // (-----gap-------)
             // (-newgap-)[--r--......
-            Range<DdllKey>[] sp = gap.split(r.from);
-            gaps.put(ent.getKey(), sp[0]);
-            if (r.to.compareTo(sp[1].to) < 0) {
+            List<Range<DdllKey>> sp = gap.split(r.from);
+            gaps.put(ent.getKey(), sp.get(0));
+            if (r.to.compareTo(sp.get(1).to) < 0) {
                 // (-------gap--------)
                 // ____[--r--)(-newgap-)
-                Range<DdllKey>[] sp2 = sp[1].split(r.to);
-                gaps.put(sp2[1].from, sp2[1]);
+                List<Range<DdllKey>> sp2 = sp.get(1).split(r.to);
+                gaps.put(sp2.get(1).from, sp2.get(1));
             } else {
                 // (-------gap--------)
                 // [-----r---------------)

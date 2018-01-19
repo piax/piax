@@ -272,18 +272,22 @@ public class Range<K extends Comparable<?>> implements Serializable, Cloneable {
      * #min is either '(' or '[' and max# is either ')' or ']', depending on
      * the openness of this range.
      *
+     * @param <T> type of the Range class
      * @param k the key to split
      * @return the split ranges
      */
     @SuppressWarnings("unchecked")
-    public Range<K>[] split(K k) {
+    public <T extends Range<K>> List<T> split(K k) {
+        List<T> list = new ArrayList<>();
         if (keyComp.compare(from, k) < 0 && keyComp.compare(k, to) < 0) {
-            Range<K> left = newRange(from, fromInclusive, k, false);
-            Range<K> right = newRange(k, true, to, toInclusive);
-            return new Range[] { left, right };
+            T left = newRange(from, fromInclusive, k, false);
+            T right = newRange(k, true, to, toInclusive);
+            list.add(left);
+            list.add(right);
         } else {
-            return new Range[] { this };
+            list.add((T)this);
         }
+        return list;
     }
 
     @SuppressWarnings("unchecked")
@@ -354,13 +358,13 @@ public class Range<K extends Comparable<?>> implements Serializable, Cloneable {
             intersect = new ArrayList<>();
         }
         if (r.contains(this)) {
-            intersect.add((T)newRange(this.from, this.fromInclusive,
+            intersect.add(newRange(this.from, this.fromInclusive,
                     this.to, this.toInclusive));
             return null; // nothing is left
         }
         if (isWhole()) {
             intersect.add(r0);
-            return Collections.singletonList((T)newRange(r.to,
+            return Collections.singletonList(newRange(r.to,
                     !r.toInclusive, r.from, !r.fromInclusive));
         }
         if (this.contains(r.from) && !this.contains(r.to)) {
@@ -368,7 +372,7 @@ public class Range<K extends Comparable<?>> implements Serializable, Cloneable {
             // r:         [ .........]
             addIfValidRange(r0, intersect, r.from, r.fromInclusive, this.to,
                     this.toInclusive);
-            return Collections.singletonList((T)newRange(from,
+            return Collections.singletonList(newRange(from,
                     fromInclusive, r.from, !r.fromInclusive));
         }
         if (!this.contains(r.from) && this.contains(r.to)) {
@@ -376,7 +380,7 @@ public class Range<K extends Comparable<?>> implements Serializable, Cloneable {
             // r:  [ .........]
             addIfValidRange(r0, intersect, this.from, this.fromInclusive, r.to,
                     r.toInclusive);
-            return Collections.singletonList((T)newRange(r.to,
+            return Collections.singletonList(newRange(r.to,
                     !r.toInclusive, to, toInclusive));
         }
 
@@ -392,7 +396,7 @@ public class Range<K extends Comparable<?>> implements Serializable, Cloneable {
                         this.toInclusive);
                 merge(tmp);
                 intersect.addAll(tmp);
-                return Collections.singletonList((T)newRange(r.to,
+                return Collections.singletonList(newRange(r.to,
                         !r.toInclusive, r.from, !r.fromInclusive));
             }
             // this:  [ ..... ]
@@ -400,12 +404,12 @@ public class Range<K extends Comparable<?>> implements Serializable, Cloneable {
             intersect.add((T)newRange(r));
             List<T> retain = new ArrayList<>();
             if (keyComp.compare(from, r.from) != 0) {
-                T r1 = (T)newRange(from, fromInclusive, r.from,
+                T r1 = newRange(from, fromInclusive, r.from,
                         !r.fromInclusive);
                 retain.add(r1);
             }
             if (keyComp.compare(r.to, to) != 0) {
-                T r2 = (T)newRange(r.to, !r.toInclusive, to, toInclusive);
+                T r2 = newRange(r.to, !r.toInclusive, to, toInclusive);
                 retain.add(r2);
             }
             merge(retain);

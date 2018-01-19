@@ -46,12 +46,12 @@ public class DdllKeyRangeWithData<E> implements Serializable {
             aux = ents.get(r.from);
         }
         for (Map.Entry<DdllKey, E> ent: ents.entrySet()) {
-            Range<DdllKey>[] split = r.split(ent.getKey());
-            if (split.length == 2) {
-                ranges.add(new DdllKeyRangeWithData<E>(aux, split[0]));
+            List<Range<DdllKey>> split = r.split(ent.getKey());
+            if (split.size() == 2) {
+                ranges.add(new DdllKeyRangeWithData<E>(aux, split.get(0)));
                 aux = ent.getValue();
             }
-            r = split[split.length - 1];
+            r = split.get(split.size() - 1);
         }
         ranges.add(new DdllKeyRangeWithData<E>(aux, r));
         return ranges;
