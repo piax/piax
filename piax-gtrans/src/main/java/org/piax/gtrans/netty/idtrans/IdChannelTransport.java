@@ -11,6 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.piax.common.ObjectId;
+import org.piax.common.Option.IntegerOption;
 import org.piax.common.PeerId;
 import org.piax.common.TransportId;
 import org.piax.gtrans.Channel;
@@ -77,11 +78,11 @@ public class IdChannelTransport extends ChannelTransportImpl<PrimaryKey> impleme
     final protected ChannelGroup cchannels =
             new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
     final ChannelFuture serverFuture;
-    // XXX should be private
-    protected NettyBootstrap<PrimaryKey> bs;
-    protected AtomicInteger seq;
 
-    static public int RAW_POOL_SIZE = 30;
+    private NettyBootstrap<PrimaryKey> bs;
+    private AtomicInteger seq;
+
+    static public IntegerOption RAW_POOL_SIZE = new IntegerOption(30, "-pool-size");
     
     public AttributeKey<String> rawChannelKey = AttributeKey.valueOf("rawKey");
 
@@ -661,7 +662,7 @@ public class IdChannelTransport extends ChannelTransportImpl<PrimaryKey> impleme
             ArrayList<LocatorChannelEntry> obsoletes = new ArrayList<>();
             raws.values().stream()
            .sorted((x, y) ->{return (int)(x.channel.lastUse - y.channel.lastUse);})
-           .limit(RAW_POOL_SIZE > raws.size() ? 0 : raws.size() - RAW_POOL_SIZE)
+           .limit(RAW_POOL_SIZE.value() > raws.size() ? 0 : raws.size() - RAW_POOL_SIZE.value())
            .forEach((ent) -> {
                 // in order of most recently unused. 
                obsoletes.add(ent);
