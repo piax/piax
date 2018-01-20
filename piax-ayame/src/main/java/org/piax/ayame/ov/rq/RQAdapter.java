@@ -59,7 +59,8 @@ public abstract class RQAdapter<T> implements Serializable {
             LocalNode localNode, DdllKeyRange range, long qid) {
         // If the original range is set, the receiver need to execute 'get'
         // only if the key is included in the original range.
-        if ((originalRange != null && originalRange.contains(localNode.key.getRawKey())) ||
+        if (range == null ||
+                (originalRange != null && originalRange.contains(localNode.key.getRawKey())) ||
                 range.contains(localNode.key)) {
             return get(received, localNode.key);
         }
