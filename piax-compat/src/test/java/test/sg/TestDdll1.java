@@ -15,12 +15,14 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+import org.piax.common.Endpoint;
 import org.piax.common.PeerId;
 import org.piax.gtrans.Peer;
-import org.piax.gtrans.PeerLocator;
 import org.piax.gtrans.Transport;
 import org.piax.gtrans.impl.BaseTransportMgr;
 import org.piax.gtrans.impl.ReceiverThreadPool;
+import org.piax.gtrans.netty.NettyLocator;
+import org.piax.gtrans.netty.idtrans.PrimaryKey;
 import org.piax.gtrans.ov.Link;
 import org.piax.gtrans.ov.ddll.Node;
 import org.piax.gtrans.ov.ddll.Node.InsertionResult;
@@ -176,13 +178,16 @@ public class TestDdll1 {
                 });
     }
 
-    static PeerLocator newLocator(String locatorType, int vport) {
-        PeerLocator peerLocator;
+    static Endpoint newLocator(String locatorType, int vport) {
+        Endpoint peerLocator;
         if (locatorType.equals("emu")) {
             peerLocator = new EmuLocator(vport);
         } else if (locatorType.equals("udp")) {
             peerLocator = new UdpLocator(
                     new InetSocketAddress("localhost", 10000 + vport));
+        } else if (locatorType.equals("id")) {
+            peerLocator = new PrimaryKey(
+                    new NettyLocator(new InetSocketAddress("localhost", 10000 + vport)));
         } else {
             peerLocator = new TcpLocator(
                     new InetSocketAddress("localhost", 10000 + vport));
@@ -220,7 +225,7 @@ public class TestDdll1 {
         // new
         for (int i = 0; i < nodes.length; i++) {
             peers[i] = Peer.getInstance(new PeerId("P" + i));
-            PeerLocator loc = newLocator(locatorType, i);
+            Endpoint loc = newLocator(locatorType, i);
             managers[i] = new NodeManager(
                     peers[i].newBaseChannelTransport(loc));
             nodes[i] = managers[i].createNode(i, "");
