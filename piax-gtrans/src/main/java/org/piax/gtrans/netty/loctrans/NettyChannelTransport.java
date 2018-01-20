@@ -1,13 +1,4 @@
-package org.piax.gtrans.netty;
-
-import io.netty.bootstrap.Bootstrap;
-import io.netty.bootstrap.ServerBootstrap;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.EventLoopGroup;
-import io.netty.channel.group.ChannelGroup;
-import io.netty.channel.group.DefaultChannelGroup;
-import io.netty.util.AttributeKey;
-import io.netty.util.concurrent.GlobalEventExecutor;
+package org.piax.gtrans.netty.loctrans;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -31,14 +22,27 @@ import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.Transport;
 import org.piax.gtrans.TransportListener;
 import org.piax.gtrans.impl.ChannelTransportImpl;
+import org.piax.gtrans.netty.ControlMessage;
 import org.piax.gtrans.netty.ControlMessage.ControlType;
-import org.piax.gtrans.netty.NettyRawChannel.Stat;
+import org.piax.gtrans.netty.NettyEndpoint;
+import org.piax.gtrans.netty.NettyLocator;
+import org.piax.gtrans.netty.NettyMessage;
 import org.piax.gtrans.netty.bootstrap.NettyBootstrap;
 import org.piax.gtrans.netty.bootstrap.SslBootstrap;
 import org.piax.gtrans.netty.bootstrap.TcpBootstrap;
 import org.piax.gtrans.netty.bootstrap.UdtBootstrap;
+import org.piax.gtrans.netty.loctrans.NettyRawChannel.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import io.netty.bootstrap.Bootstrap;
+import io.netty.bootstrap.ServerBootstrap;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.group.ChannelGroup;
+import io.netty.channel.group.DefaultChannelGroup;
+import io.netty.util.AttributeKey;
+import io.netty.util.concurrent.GlobalEventExecutor;
 
 public abstract class NettyChannelTransport<E extends NettyEndpoint> extends ChannelTransportImpl<E> implements ChannelTransport<E> {
 
@@ -66,7 +70,6 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
     protected AtomicInteger seq;
 
     static public int RAW_POOL_SIZE = 30;
-    static public boolean PARALLEL_RECEIVE = true;
     
     public AttributeKey<String> rawChannelKey = AttributeKey.valueOf("rawKey");
 

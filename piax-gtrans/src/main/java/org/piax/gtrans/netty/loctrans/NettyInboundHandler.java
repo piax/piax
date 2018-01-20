@@ -1,4 +1,4 @@
-package org.piax.gtrans.netty;
+package org.piax.gtrans.netty.loctrans;
 
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
@@ -18,14 +18,9 @@ public class NettyInboundHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) {
-        if (NettyChannelTransport.PARALLEL_RECEIVE) {
-            trans.getPeer().execute(() -> {
-                trans.inboundReceive(ctx, msg);
-            });
-        }
-        else {
+        trans.getPeer().execute(() -> {
             trans.inboundReceive(ctx, msg);
-        }
+        });
     }
 
     @Override
