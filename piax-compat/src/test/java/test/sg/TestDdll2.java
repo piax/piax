@@ -13,9 +13,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+import org.piax.common.Endpoint;
 import org.piax.common.PeerId;
 import org.piax.gtrans.Peer;
-import org.piax.gtrans.PeerLocator;
 import org.piax.gtrans.impl.BaseTransportMgr;
 import org.piax.gtrans.ov.Link;
 import org.piax.gtrans.ov.ddll.NeighborSet;
@@ -129,6 +129,7 @@ public class TestDdll2 extends TestDdll1 {
 
     public static void main(String[] args) throws Exception {
         BaseTransportMgr.BASE_TRANSPORT_MANAGER_CLASS.set("org.piax.gtrans.impl.DefaultBaseTransportGenerator");
+        Peer.RECEIVE_ASYNC.set(true);
         if (args.length != 0 && args.length != 1) {
             System.err.println("usage: <cmd> numNode");
             System.err.println(" ex. <cmd> 100");
@@ -162,7 +163,7 @@ public class TestDdll2 extends TestDdll1 {
         // new
         for (int i = 0; i < nodes.length; i++) {
             peers[i] = Peer.getInstance(PeerId.newId());
-            PeerLocator loc = newLocator(locatorType, i);
+            Endpoint loc = newLocator(locatorType, i);
             managers[i] = new NodeManager(
                     peers[i].newBaseChannelTransport(loc));
             nodes[i] = managers[i].createNode(i, "");

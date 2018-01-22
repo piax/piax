@@ -229,6 +229,7 @@ public class TestSG {
 
     private static void init(int numNode, int factor) throws Exception {
         BaseTransportMgr.BASE_TRANSPORT_MANAGER_CLASS.set("org.piax.gtrans.impl.DefaultBaseTransportGenerator");
+        Peer.RECEIVE_ASYNC.set(true);
         TestSG.numNode = numNode;
         // 安定している唯一のノード
         TestSG.seedNo = 0;// next();

@@ -20,12 +20,12 @@ import io.netty.util.concurrent.DefaultThreadFactory;
 
 import java.util.concurrent.ThreadFactory;
 
-import org.piax.gtrans.netty.NettyChannelTransport;
 import org.piax.gtrans.netty.NettyEndpoint;
-import org.piax.gtrans.netty.NettyInboundHandler;
 import org.piax.gtrans.netty.NettyLocator;
-import org.piax.gtrans.netty.NettyOutboundHandler;
-import org.piax.gtrans.netty.NettyRawChannel;
+import org.piax.gtrans.netty.loctrans.NettyChannelTransport;
+import org.piax.gtrans.netty.loctrans.NettyInboundHandler;
+import org.piax.gtrans.netty.loctrans.NettyOutboundHandler;
+import org.piax.gtrans.netty.loctrans.NettyRawChannel;
 
 public class UdtBootstrap<E extends NettyEndpoint> extends NettyBootstrap<E> {
     EventLoopGroup parentGroup;
