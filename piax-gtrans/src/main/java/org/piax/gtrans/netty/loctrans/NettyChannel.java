@@ -1,4 +1,4 @@
-package org.piax.gtrans.netty;
+package org.piax.gtrans.netty.loctrans;
 
 import java.io.IOException;
 import java.util.concurrent.BlockingQueue;
@@ -9,6 +9,8 @@ import org.piax.common.ObjectId;
 import org.piax.common.TransportId;
 import org.piax.gtrans.Channel;
 import org.piax.gtrans.NetworkTimeoutException;
+import org.piax.gtrans.netty.NettyEndpoint;
+import org.piax.gtrans.netty.NettyMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

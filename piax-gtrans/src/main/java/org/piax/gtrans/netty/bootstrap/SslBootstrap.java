@@ -25,12 +25,12 @@ import java.security.cert.CertificateException;
 
 import javax.net.ssl.SSLException;
 
-import org.piax.gtrans.netty.NettyChannelTransport;
 import org.piax.gtrans.netty.NettyEndpoint;
-import org.piax.gtrans.netty.NettyInboundHandler;
 import org.piax.gtrans.netty.NettyLocator;
-import org.piax.gtrans.netty.NettyOutboundHandler;
-import org.piax.gtrans.netty.NettyRawChannel;
+import org.piax.gtrans.netty.loctrans.NettyChannelTransport;
+import org.piax.gtrans.netty.loctrans.NettyInboundHandler;
+import org.piax.gtrans.netty.loctrans.NettyOutboundHandler;
+import org.piax.gtrans.netty.loctrans.NettyRawChannel;
 
 public class SslBootstrap<E extends NettyEndpoint> extends NettyBootstrap<E> {
 //    private static final Logger logger = LoggerFactory.getLogger(NettySslTransport.class.getName());

@@ -6,10 +6,8 @@ import org.piax.common.PeerId;
 import org.piax.common.TransportId;
 import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.Peer;
-import org.piax.gtrans.netty.NettyChannelTransport;
 import org.piax.gtrans.netty.NettyLocator;
 import org.piax.gtrans.netty.NettyMessage;
-import org.piax.gtrans.netty.NettyRawChannel;
 
 public class LocatorChannelTransport extends NettyChannelTransport<NettyLocator> {
     
