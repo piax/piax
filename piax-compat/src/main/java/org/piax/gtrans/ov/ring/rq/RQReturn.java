@@ -372,12 +372,10 @@ public class RQReturn {
         // delete the range r from gaps
         gaps.remove(ent.getKey());
         List<Range<DdllKey>> retains = gap.retain(r, null);
-        if (retains != null) {
-            for (Range<DdllKey> p : retains) {
-                SubRange s = new SubRange(p.from, p.fromInclusive, p.to,
-                        p.toInclusive);
-                gaps.put(s.from, s);
-            }
+        for (Range<DdllKey> p : retains) {
+            SubRange s = new SubRange(p.from, p.fromInclusive, p.to,
+                    p.toInclusive);
+            gaps.put(s.from, s);
         }
         logger.debug("XXX: gap={}, r={}, retains={}, gaps={}", gap, r, retains, gaps);
 

@@ -174,6 +174,12 @@ public class Range<K extends Comparable<?>> implements Serializable, Cloneable {
         boolean isLeftIn;
         isLeftIn = keyComp.isOrdered(this.from, another.from, this.to);
         if (isLeftIn) {
+            if (isSingleton() && keyComp.compare(this.from, another.from) != 0) {
+                // [5, 5] should not contain [0, 5).
+                isLeftIn = false;
+            }
+        }
+        if (isLeftIn) {
             if (keyComp.compare(this.from, another.from) == 0) {
                 isLeftIn = this.fromInclusive || !another.fromInclusive;
             }
@@ -185,6 +191,12 @@ public class Range<K extends Comparable<?>> implements Serializable, Cloneable {
         }
         boolean isRightIn;
         isRightIn = keyComp.isOrdered(this.from, another.to, this.to);
+        if (isRightIn) {
+            if (isSingleton() && keyComp.compare(this.to, another.to) != 0) {
+                // [5, 5] should not contain [5, 10).
+                isRightIn = false;
+            }
+        }
         if (isRightIn) {
             if (keyComp.compare(this.to, another.to) == 0) {
                 isRightIn = this.toInclusive || !another.toInclusive;
@@ -302,7 +314,7 @@ public class Range<K extends Comparable<?>> implements Serializable, Cloneable {
 
     /**
      * create a new range.
-     * <p>this method is used for manipulating ranges such as retain().
+     * <p>this method is used for creating ranges by methods such as retain().
      * <p>subclasses must override this method to create an instance of
      * the same class.
      *
@@ -322,10 +334,6 @@ public class Range<K extends Comparable<?>> implements Serializable, Cloneable {
     public Range<K> newRange(Range<K> another) {
         return newRange(another.from, another.fromInclusive,
                 another.to, another.toInclusive);
-    }
-
-    public interface RangeFactory<T extends Range<K>, K extends Comparable<?>> {
-        T newRange(K from, boolean fromInclusive, K to, boolean toInclusive);
     }
 
     /**
@@ -349,7 +357,7 @@ public class Range<K extends Comparable<?>> implements Serializable, Cloneable {
      * @param <T>       the type of range class
      * @param r         range to subtract
      * @param intersect the list to add ranges that intersects with r
-     * @return a list of retained ranges.  null means nothing is retained.
+     * @return a list of retained ranges, possibly empty.
      */
     @SuppressWarnings("unchecked")
     public <T extends Range<K>> List<T> retain(Range<K> r, List<T> intersect) {
@@ -360,7 +368,7 @@ public class Range<K extends Comparable<?>> implements Serializable, Cloneable {
         if (r.contains(this)) {
             intersect.add(newRange(this.from, this.fromInclusive,
                     this.to, this.toInclusive));
-            return null; // nothing is left
+            return Collections.emptyList(); // nothing is left
         }
         if (isWhole()) {
             intersect.add(r0);

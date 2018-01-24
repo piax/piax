@@ -217,10 +217,6 @@ public abstract class RQConditionalAdapter<T, U> extends RQAdapter<T> {
                         intersections.addAll(intersect);
                     }
                 }
-                if (retain == null) {
-                    q = null;
-                    break inner;
-                }
                 switch (retain.size()) {
                 case 2:
                     x.add(retain.get(1));

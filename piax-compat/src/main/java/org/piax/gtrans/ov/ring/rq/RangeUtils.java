@@ -30,46 +30,6 @@ public class RangeUtils {
     private static KeyComparator keyComp = KeyComparator.getInstance();
 
     /**
-     * Range r から，[a, b) の区間を削除し，残った Range を返す．
-     * aはrの外側にあるか，aはrの左端と等しい必要がある (手抜き)．
-     * 残らない場合は null が返される．
-     * 
-     * r         [-------------------)
-     *     [a--------------b)
-     *                      [--ret---)
-     *     
-     * @param <K> the type of comparable.
-     * @param r the range.
-     * @param a the left side key.
-     * @param b the right side key.
-     * @return the retained range.
-     */
-    public static <K extends Comparable<K>> Range<K> retainRange(
-            Range<K> r, K a, K b) {
-        if (r.contains(a) && keyComp.compare(a, r.from) != 0) {
-            throw new Error("a is in r");
-        }
-        if (Node.isOrdered(a, r.from, b) && keyComp.compare(r.from, b) != 0) {
-            // Range   [-----------)
-            //      a-----..
-            if (Node.isOrdered(a, r.to, b) && !r.contains(b)) {
-                // empty
-                return null;
-            } else {
-                // Range   [-----------)
-                //     a------b
-                //     -------b          a--
-                return new Range<K>(true, b, true, r.to, r.toInclusive);
-            }
-        } else {
-            // Range      [------)
-            //       a--b
-            //       --b           a-
-            return r;
-        }
-    }
-
-    /**
      * Range r から，[a, b) の区間を削除したときの，削除された Range を返す．
      * aはrの外側にあるか，aはrの左端と等しい必要がある (手抜き)．
      * 削除されない場合は null が返る．
@@ -134,11 +94,5 @@ public class RangeUtils {
             merged.add(prev);
         }
         return merged;
-    }
-
-    public static <K extends Comparable<K>> boolean hasCommon(Range<K> range,
-            K from, K to) {
-        return (Node.isOrdered(from, range.from, to) || Node.isOrdered(from,
-                range.to, to));
     }
 }
