@@ -1,6 +1,6 @@
 package test.async;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -23,7 +23,6 @@ import org.piax.ayame.ov.rq.RQAdapter;
 import org.piax.ayame.ov.rq.RQStrategy.RQNodeFactory;
 import org.piax.ayame.ov.suzaku.SuzakuStrategy;
 import org.piax.ayame.ov.suzaku.SuzakuStrategy.SuzakuNodeFactory;
-import org.piax.common.subspace.CircularRange;
 import org.piax.common.subspace.Range;
 import org.piax.gtrans.RemoteValue;
 import org.piax.gtrans.TransOptions;
@@ -93,7 +92,7 @@ public class TestAsync2 extends AsyncTestBase {
         TransOptions opts = new TransOptions();
         testFQLeft(new DdllNodeFactory(), opts,
                 receiver -> new FastValueProvider(receiver),
-                new CircularRange<Integer>(400, true, 100, true),
+                new Range<Integer>(true, 400, true, 100, true),
                 Arrays.asList(0, 100, 400), "[]", -1);
     }
     
@@ -103,7 +102,7 @@ public class TestAsync2 extends AsyncTestBase {
         TransOptions opts = new TransOptions();
         testFQLeft(new DdllNodeFactory(), opts,
                 receiver -> new FastValueProvider(receiver),
-                new CircularRange<Integer>(150, true, 160, true),
+                new Range<Integer>(true, 150, true, 160, true),
                 Arrays.asList(), "[]", -1);
     }
 

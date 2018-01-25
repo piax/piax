@@ -13,36 +13,13 @@
 package org.piax.ayame.ov.ddll;
 
 import org.piax.common.DdllKey;
-import org.piax.common.subspace.CircularRange;
 import org.piax.common.subspace.Range;
 
 /**
  * A range of DdllKey
  */
-public class DdllKeyRange extends CircularRange<DdllKey> {
+public class DdllKeyRange extends Range<DdllKey> {
     private static final long serialVersionUID = 1L;
-
-    /*
-     * Split a range with given values, taken from the keys of `ents'. 
-     *
-     * @param <E>   the type of aux part
-     * @param r     the range to be split
-     * @param ents  the keys
-     * @return  ranges split
-     */
-    /*public static <E> List<DdllKeyRange> split(CircularRange<DdllKey> r,
-            NavigableMap<DdllKey, E> ents) {
-        List<DdllKeyRange> ranges = new ArrayList<DdllKeyRange>();
-        for (Map.Entry<DdllKey, E> ent : ents.entrySet()) {
-            CircularRange<DdllKey>[] split = r.split(ent.getKey());
-            if (split.length == 2) {
-                ranges.add(new DdllKeyRange(split[0]));
-            }
-            r = split[split.length - 1];
-        }
-        ranges.add(new DdllKeyRange(r));
-        return ranges;
-    }*/
 
     public DdllKeyRange(Range<DdllKey> range) {
         this(range.from, range.fromInclusive, range.to, range.toInclusive);
@@ -50,7 +27,7 @@ public class DdllKeyRange extends CircularRange<DdllKey> {
 
     public DdllKeyRange(DdllKey from, boolean fromInclusive, DdllKey to,
             boolean toInclusive) {
-        super(from, fromInclusive, to, toInclusive);
+        super(true, from, fromInclusive, to, toInclusive);
     }
 
     @Override
@@ -58,8 +35,9 @@ public class DdllKeyRange extends CircularRange<DdllKey> {
         return rangeString();
     }
 
+    @SuppressWarnings("unchecked")
     @Override
-    public Range<DdllKey> newRange(DdllKey from, boolean fromInclusive,
+    public DdllKeyRange newRange(DdllKey from, boolean fromInclusive,
             DdllKey to, boolean toInclusive) {
         return new DdllKeyRange(from, fromInclusive, to, toInclusive);
     }

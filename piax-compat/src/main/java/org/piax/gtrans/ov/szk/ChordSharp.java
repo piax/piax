@@ -31,7 +31,7 @@ import org.piax.common.Endpoint;
 import org.piax.common.Id;
 import org.piax.common.PeerId;
 import org.piax.common.TransportId;
-import org.piax.common.subspace.CircularRange;
+import org.piax.common.subspace.Range;
 import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.TransOptions;
@@ -331,7 +331,7 @@ public class ChordSharp<E extends Endpoint> extends RQManager<E> implements
      */
     @SuppressWarnings("unused")
     private NavigableMap<DdllKey, FTEntry> fragmentPoints0(
-            CircularRange<DdllKey> queryRange, List<FTEntry> ftlist) {
+            Range<DdllKey> queryRange, List<FTEntry> ftlist) {
         NavigableMap<DdllKey, FTEntry> frags =
                 new ConcurrentSkipListMap<DdllKey, FTEntry>();
         for (FTEntry ent : ftlist) {
@@ -371,7 +371,7 @@ public class ChordSharp<E extends Endpoint> extends RQManager<E> implements
      * @return (分割点のDdllKey, 分割点に対応するLinkのList)のNavigableMap
      */
     public NavigableMap<DdllKey, List<Link>> fragmentPoints(
-            CircularRange<DdllKey> queryRange, List<List<Link>> goodNodes,
+            Range<DdllKey> queryRange, List<List<Link>> goodNodes,
             List<SubRange[]> closeRanges, Set<Endpoint> maybeFailed) {
         NavigableMap<DdllKey, List<Link>> frags =
                 new ConcurrentSkipListMap<DdllKey, List<Link>>();
@@ -550,7 +550,7 @@ public class ChordSharp<E extends Endpoint> extends RQManager<E> implements
      * @return
      */
     private Link pickupDelegate(List<Link> ent,
-            CircularRange<DdllKey> queryRange, Set<Endpoint> maybeFailed) {
+            Range<DdllKey> queryRange, Set<Endpoint> maybeFailed) {
         for (int i = 0; i < 2; i++) {
             for (Link link : ent) {
                 if (i == 0 && maybeFailed.contains(link.addr)) {

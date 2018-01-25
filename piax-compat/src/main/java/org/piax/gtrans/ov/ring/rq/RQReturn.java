@@ -32,7 +32,6 @@ import org.piax.ayame.ov.rq.DKRangeRValue;
 import org.piax.common.DdllKey;
 import org.piax.common.Endpoint;
 import org.piax.common.PeerId;
-import org.piax.common.subspace.CircularRange;
 import org.piax.common.subspace.Range;
 import org.piax.gtrans.FutureQueue;
 import org.piax.gtrans.RemoteValue;
@@ -369,16 +368,14 @@ public class RQReturn {
             return;
         }
         // add remaining ranges to gaps
-        CircularRange<DdllKey> gap = ent.getValue();
+        Range<DdllKey> gap = ent.getValue();
         // delete the range r from gaps
         gaps.remove(ent.getKey());
         List<Range<DdllKey>> retains = gap.retain(r, null);
-        if (retains != null) {
-            for (Range<DdllKey> p : retains) {
-                SubRange s = new SubRange(p.from, p.fromInclusive, p.to,
-                        p.toInclusive);
-                gaps.put(s.from, s);
-            }
+        for (Range<DdllKey> p : retains) {
+            SubRange s = new SubRange(p.from, p.fromInclusive, p.to,
+                    p.toInclusive);
+            gaps.put(s.from, s);
         }
         logger.debug("XXX: gap={}, r={}, retains={}, gaps={}", gap, r, retains, gaps);
 

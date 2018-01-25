@@ -21,10 +21,10 @@ public class MessagePath implements Serializable {
     final int hop;
     final DdllKey from;
     final DdllKey to;
-    final Collection<? extends DKRangeLink> targetRanges;
+    final Collection<? extends SubRange> targetRanges;
 
     public MessagePath(int hop, DdllKey from, DdllKey to,
-            Collection<? extends DKRangeLink> targetRanges) {
+            Collection<? extends SubRange> targetRanges) {
         this.hop = hop;
         this.from = from;
         this.to = to;
@@ -49,7 +49,7 @@ public class MessagePath implements Serializable {
         return to;
     }
 
-    public Collection<? extends DKRangeLink> getTargetRanges() {
+    public Collection<? extends SubRange> getTargetRanges() {
         return targetRanges;
     }
 }
