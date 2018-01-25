@@ -177,11 +177,10 @@ public class Range<K extends Comparable<?>> implements Serializable, Cloneable {
         return String.format("%s%s..%s%s", s1, from, to, s2);
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
     public boolean isSameRange(Range<K> another) {
-        return ((Comparable)another.from).compareTo(from) == 0
+        return keyComp.compare(another.from, from) == 0
                 && another.fromInclusive == fromInclusive
-                && ((Comparable)another.to).compareTo(to) == 0
+                && keyComp.compare(another.to, to) == 0
                 && another.toInclusive == toInclusive;
     }
 
@@ -348,6 +347,7 @@ public class Range<K extends Comparable<?>> implements Serializable, Cloneable {
     enum Sign { MINUS, ZERO, PLUS };
     static class InnerKey<K extends Comparable<K>>
     implements Comparable<InnerKey<K>> {
+        protected static final KeyComparator keyComp = KeyComparator.getInstance();
         final K val;
         final Sign sign;
         InnerKey(K val, Sign sign) {
@@ -356,7 +356,7 @@ public class Range<K extends Comparable<?>> implements Serializable, Cloneable {
         }
         @Override
         public int compareTo(InnerKey<K> o) {
-            int comp = val.compareTo(o.val);
+            int comp = keyComp.compare(val, o.val);
             if (comp != 0) {
                 return comp;
             }
@@ -406,8 +406,8 @@ public class Range<K extends Comparable<?>> implements Serializable, Cloneable {
                 //   another: ====]   [====
                 return keyComp.isOrdered(from, another.from, another.to) &&
                         keyComp.isOrdered(another.from, another.to, to) &&
-                        to.compareTo(another.from) != 0 &&
-                        from.compareTo(another.to) != 0;
+                        keyComp.compare(to, another.from) != 0 &&
+                        keyComp.compare(from, another.to) != 0;
             }
             return false;
         }
@@ -418,7 +418,7 @@ public class Range<K extends Comparable<?>> implements Serializable, Cloneable {
                     || keyComp.isOrdered(r.from, false, this.to, r.to, true);
         }
         boolean isWhole() {
-            return from.compareTo(to) == 0;
+            return keyComp.compare(from, to) == 0;
         }
         List<SimpleRange<K>> retain(SimpleRange<K> r, List<SimpleRange<K>> removed) {
             List<SimpleRange<K>> retains = new ArrayList<>();
@@ -435,7 +435,7 @@ public class Range<K extends Comparable<?>> implements Serializable, Cloneable {
             InnerKey<K> min = contains(r.from) ? r.from : this.from;
             InnerKey<K> max = contains(r.to) ? r.to : this.to;
             if (keyComp.isOrdered(this.from, min, max)
-                    && this.from.compareTo(max) != 0) {
+                    && keyComp.compare(this.from, max) != 0) {
                 // this: [             ]
                 // r:    ....[....]....
                 if (isWhole()) {  // simplify the results

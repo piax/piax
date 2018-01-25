@@ -466,10 +466,8 @@ public class TestRange {
             assertFalse(r6_6.contains(r5_5));
             List<Range<Integer>> removed = new ArrayList<>();
             List<Range<Integer>> retain = r5_5.retain(r6_6, removed);
-            System.out.println(retain);
             assertTrue(retain.size() == 1);
             assertTrue(retain.get(0).isSameRange(new Range<Integer>(true, 6, false, 6, false)));
-            System.out.println(removed);
             assertTrue(removed.size() == 1);
             assertTrue(removed.get(0).isSameRange(new Range<Integer>(6, true, 6, true)));
         }
