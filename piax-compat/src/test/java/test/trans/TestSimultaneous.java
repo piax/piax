@@ -28,7 +28,7 @@ import org.piax.gtrans.ov.Link;
 import org.piax.gtrans.ov.Overlay;
 import org.piax.gtrans.ov.OverlayListener;
 import org.piax.gtrans.ov.OverlayReceivedMessage;
-import org.piax.gtrans.ov.szk.Suzaku;
+import org.piax.gtrans.ov.suzaku.Suzaku;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

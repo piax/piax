@@ -179,7 +179,7 @@ public class SkipGraph<E extends Endpoint> extends RPCInvoker<SkipGraphIf<E>, E>
         logger.debug("SkipGraph: transId={}", trans.getTransportId());
 
         timer = new Timer("SGTimer@" + myLocator, true);
-        FIXLEFT = new Link(myLocator, new DdllKey(0, FIXPEERID, 0));
+        FIXLEFT = new Link(myLocator, new DdllKey(0, FIXPEERID));
 
         sgmf = new SGMessagingFramework<E>(this);
 

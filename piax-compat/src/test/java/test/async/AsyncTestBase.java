@@ -44,8 +44,12 @@ import org.piax.gtrans.ov.suzaku.NetEventSender;
 import org.piax.gtrans.raw.emu.EmuLocator;
 import org.piax.gtrans.raw.tcp.TcpLocator;
 import org.piax.gtrans.raw.udp.UdpLocator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class AsyncTestBase {
+    private static final Logger logger = LoggerFactory
+            .getLogger(AsyncTestBase.class);
     static LocalNode[] nodes;
     static StarLatencyProvider latencyProvider;
 
@@ -79,7 +83,7 @@ public class AsyncTestBase {
                             new NetEventSender(transId, trans);
                     peerId2sender.put(peerId, sender);
                 } catch (IOException | IdConflictException e) {
-                    System.out.println("***** got " + e);
+                    logger.debug("***** got " + e);
                     e.printStackTrace();
                     throw new Error("something wrong!", e);
                 }
@@ -145,9 +149,9 @@ public class AsyncTestBase {
     }
 
     public static void dump(LocalNode[] nodes) {
-        System.out.println("node dump:");
+        logger.debug("node dump:");
         for (int i = 0; i < nodes.length; i++) {
-            System.out.println(i + ": " + nodes[i].toStringDetail());
+            logger.debug(i + ": " + nodes[i].toStringDetail());
         }
     }
 
@@ -159,7 +163,7 @@ public class AsyncTestBase {
             try {
                 assertTrue(f.get());
             } catch (InterruptedException | ExecutionException e) {
-                System.out.println("Node " + i);
+                logger.debug("Node " + i);
                 e.getCause().printStackTrace();
                 fail(e.toString());
             }
@@ -192,7 +196,7 @@ public class AsyncTestBase {
             Optional<RequestEvent<?, ?>> o1 = m1.values().stream()
                     .filter(req -> !isTransientRequest(req)).findAny();
             if (o1.isPresent()) {
-                System.out.println(nodes[i] + ": ongoingRequests: " + m1);
+                logger.debug(nodes[i] + ": ongoingRequests: " + m1);
                 fail("");
             }
             Map<Integer, RequestEvent<?, ?>> m2 =
@@ -200,7 +204,7 @@ public class AsyncTestBase {
             Optional<RequestEvent<?, ?>> o2 = m2.values().stream()
                     .filter(req -> !isTransientRequest(req)).findAny();
             if (o2.isPresent()) {
-                System.out.println(nodes[i] + ": unAckedRequests: " + m2);
+                logger.debug(nodes[i] + ": unAckedRequests: " + m2);
                 fail("");
             }
         }
@@ -261,7 +265,7 @@ public class AsyncTestBase {
         };
         job.val.accept(1);*/
         job.val = (index) -> {
-            System.out.println("T" + EventExecutor.getVTime() + ": inserting " + index);
+            logger.debug("T" + EventExecutor.getVTime() + ": inserting " + index);
             if (index > 0) {
                 futures[index] = nodes[index].joinAsync(nodes[0]);
                 futures[index].thenRun(() -> job.val.accept(index - 1));
@@ -334,7 +338,7 @@ public class AsyncTestBase {
             SlowValueProvider r = (SlowValueProvider) received;
             CompletableFuture<Integer> f = new CompletableFuture<>();
             EventExecutor.sched("slowvalueprovider", r.delay, () -> {
-                System.out.println("provider finished: " + key);
+                logger.debug("provider finished: " + key);
                 f.complete(result(key));
             });
             return f;
@@ -363,7 +367,7 @@ public class AsyncTestBase {
             CompletableFuture<Integer> f = new CompletableFuture<>();
             int val = result(key);
             EventExecutor.sched("slowvalueprovider", p.delay, () -> {
-                System.out.println(
+                logger.debug(
                         "provider finished: " + key + ", count=" + p.count);
                 f.complete(val);
             });

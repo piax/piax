@@ -561,6 +561,9 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
             super(req);
             this.pred = pred;
             this.succ = succ;
+            if (pred == null || succ == null || req == null) {
+                logger.error("pred={}, succ={}, req={}", pred, succ, req);
+            }
             assert Node.isOrdered(pred.key, true, req.key, succ.key, false);
         }
     }

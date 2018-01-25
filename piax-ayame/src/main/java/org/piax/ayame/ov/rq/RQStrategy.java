@@ -380,8 +380,7 @@ public class RQStrategy extends NodeStrategy {
             f = rAdapter.getRaw(received, localNode, r, qid);
         } catch (Throwable exc) {
             // if getRaw terminates exceptionally...
-            System.err.println("getLocalValue: got " + exc);
-            exc.printStackTrace();
+            logger.debug("getLocalValue: got ", exc);
             RemoteValue<T> rval = new RemoteValue<>(getLocalNode().peerId, exc);
             return CompletableFuture.completedFuture(rval);
         }
