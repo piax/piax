@@ -45,6 +45,20 @@ public class RangeUtils {
      * @return the removed range.
      */
     public static <K extends Comparable<K>> Range<K> removedRange(Range<K> r, K a, K b) {
+        // this method can be replaced with the followings snippet but
+        // we have not tested the new code so ...
+        /*
+        Range<K> another = new Range<>(a, true, b, false);
+        List<Range<K>> removed = new ArrayList<>();
+        r.retain(another, removed);
+        if (removed.isEmpty()) {
+            return null;
+        }
+        if (removed.size() != 1) {
+            throw new Error("mulitple results");
+        }
+        return removed.get(0);
+         */
         if (r.contains(a) && keyComp.compare(a, r.from) != 0) {
             throw new Error("a is in r");
         }
