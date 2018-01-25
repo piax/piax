@@ -474,5 +474,21 @@ public class TestRange {
             assertTrue(removed.get(0).isSameRange(new Range<Integer>(6, true, 6, true)));
         }
     }
+    @Test
+    public void test4() {
+        Range<Integer> r1 = new Range<>(true, 0, true, 10, false);
+        Range<Integer> r2 = new Range<>(true, 10, true, 0, false);
+        Range<Integer> r3 = new Range<>(true, 10, true, 0, true);
+        Range<Integer> r4 = new Range<>(true, 10, false, 0, false);
+        Range<Integer> r5 = new Range<>(true, 10, false, 0, true);
 
+        assertFalse(r1.contains(r2));
+        assertFalse(r2.contains(r1));
+        assertFalse(r1.contains(r3));
+        assertFalse(r3.contains(r1));
+        assertFalse(r1.contains(r4));
+        assertFalse(r4.contains(r1));
+        assertFalse(r1.contains(r5));
+        assertFalse(r5.contains(r1));
+    }
 }

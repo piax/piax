@@ -15,12 +15,13 @@ package org.piax.common.subspace;
 
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.piax.util.KeyComparator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 
 /**
  * a class that represents a single range.
@@ -140,22 +141,9 @@ public class Range<K extends Comparable<?>> implements Serializable, Cloneable {
      * @param key the key to compare with
      * @return true if the key is within this range.
      */
+    @SuppressWarnings({ "unchecked", "rawtypes" })
     public boolean contains(Comparable<?> key) {
-        if (isWhole()) {
-            return true;
-        }
-        if (isSingleton()) {
-            return (keyComp.compare(from, key) == 0);
-        }
-        boolean ret =
-                keyComp.isOrdered(from, key, to)
-                        && (fromInclusive || keyComp.compare(from, key) != 0)
-                        && (toInclusive || keyComp.compare(key, to) != 0);
-        if (logger.isDebugEnabled()) {
-            logger.debug("\"{} contains {}:{}\" returns {}", this.toString2(), key,
-                    key.getClass().getSimpleName(), ret);
-        }
-        return ret;
+        return new SimpleRange(this).contains(key);
     }
 
     /**
@@ -164,60 +152,11 @@ public class Range<K extends Comparable<?>> implements Serializable, Cloneable {
      * @param another  another range
      * @return true if this range contains another.
      */
+    @SuppressWarnings({ "rawtypes", "unchecked" })
     public boolean contains(Range<K> another) {
-        if (isWhole()) {
-            return true;
-        }
-        if (another.isWhole()) {
-            return false;
-        }
-        boolean isLeftIn;
-        isLeftIn = keyComp.isOrdered(this.from, another.from, this.to);
-        if (isLeftIn) {
-            if (isSingleton() && keyComp.compare(this.from, another.from) != 0) {
-                // [5, 5] should not contain [0, 5).
-                isLeftIn = false;
-            }
-        }
-        if (isLeftIn) {
-            if (keyComp.compare(this.from, another.from) == 0) {
-                isLeftIn = this.fromInclusive || !another.fromInclusive;
-            }
-        }
-        if (isLeftIn) {
-            if (keyComp.compare(another.from, this.to) == 0) {
-                isLeftIn = this.toInclusive || !another.toInclusive;
-            }
-        }
-        boolean isRightIn;
-        isRightIn = keyComp.isOrdered(this.from, another.to, this.to);
-        if (isRightIn) {
-            if (isSingleton() && keyComp.compare(this.to, another.to) != 0) {
-                // [5, 5] should not contain [5, 10).
-                isRightIn = false;
-            }
-        }
-        if (isRightIn) {
-            if (keyComp.compare(this.to, another.to) == 0) {
-                isRightIn = this.toInclusive || !another.toInclusive;
-            }
-        }
-        if (isRightIn) {
-            if (keyComp.compare(another.to, this.to) == 0) {
-                isRightIn = this.toInclusive || !another.toInclusive;
-            }
-        }
-        if (isLeftIn && isRightIn) {
-            if (another.isSingleton()) {
-                return true;
-            }
-            // exclude the case such as:
-            //      this:  [=========]
-            //   another: ====]   [====
-            return !keyComp.isOrdered(another.from, true, this.to, another.to,
-                    false);
-        }
-        return false;
+        SimpleRange sr1 = new SimpleRange(this);
+        SimpleRange sr2 = new SimpleRange(another);
+        return sr1.contains(sr2);
     }
 
     @Override
@@ -359,97 +298,21 @@ public class Range<K extends Comparable<?>> implements Serializable, Cloneable {
      * @param intersect the list to add ranges that intersects with r
      * @return a list of retained ranges, possibly empty.
      */
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({ "unchecked", "rawtypes" })
     public <T extends Range<K>> List<T> retain(Range<K> r, List<T> intersect) {
-        T r0 = (T)newRange(r);
-        if (intersect == null) {
-            intersect = new ArrayList<>();
+        SimpleRange sr1 = new SimpleRange(this);
+        SimpleRange sr2 = new SimpleRange(r);
+        List<SimpleRange> removed = new ArrayList<>();
+        List<SimpleRange> retains = sr1.retain(sr2, removed);
+        List<T> retains2 = retains.stream()
+            .map(s -> (T)newRangeFromSimpleRange(s))
+            .collect(Collectors.toList());
+        if (intersect != null) {
+            removed.stream()
+                .map(s -> (T)newRangeFromSimpleRange(s))
+                .forEach(range -> intersect.add(range));
         }
-        if (r.contains(this)) {
-            intersect.add(newRange(this.from, this.fromInclusive,
-                    this.to, this.toInclusive));
-            return Collections.emptyList(); // nothing is left
-        }
-        if (isWhole()) {
-            intersect.add(r0);
-            return Collections.singletonList(newRange(r.to,
-                    !r.toInclusive, r.from, !r.fromInclusive));
-        }
-        if (this.contains(r.from) && !this.contains(r.to)) {
-            // this: [ ...... ]
-            // r:         [ .........]
-            addIfValidRange(r0, intersect, r.from, r.fromInclusive, this.to,
-                    this.toInclusive);
-            return Collections.singletonList(newRange(from,
-                    fromInclusive, r.from, !r.fromInclusive));
-        }
-        if (!this.contains(r.from) && this.contains(r.to)) {
-            // this:     [ ...... ]
-            // r:  [ .........]
-            addIfValidRange(r0, intersect, this.from, this.fromInclusive, r.to,
-                    r.toInclusive);
-            return Collections.singletonList(newRange(r.to,
-                    !r.toInclusive, to, toInclusive));
-        }
-
-        if (this.contains(r.from) && this.contains(r.to)) {
-            if (keyComp.isOrdered(r.from, this.to, r.to) && !r.isSingleton()
-                    && keyComp.compare(this.to, r.to) != 0) {
-                List<T> tmp = new ArrayList<>();
-                // this:  [ ..... ]
-                // r:    ....]  [.....
-                addIfValidRange(r0, tmp, this.from, this.fromInclusive, r.to,
-                        r.toInclusive);
-                addIfValidRange(r0, tmp, r.from, r.fromInclusive, this.to,
-                        this.toInclusive);
-                merge(tmp);
-                intersect.addAll(tmp);
-                return Collections.singletonList(newRange(r.to,
-                        !r.toInclusive, r.from, !r.fromInclusive));
-            }
-            // this:  [ ..... ]
-            // r:       [...]
-            intersect.add((T)newRange(r));
-            List<T> retain = new ArrayList<>();
-            if (keyComp.compare(from, r.from) != 0) {
-                T r1 = newRange(from, fromInclusive, r.from,
-                        !r.fromInclusive);
-                retain.add(r1);
-            }
-            if (keyComp.compare(r.to, to) != 0) {
-                T r2 = newRange(r.to, !r.toInclusive, to, toInclusive);
-                retain.add(r2);
-            }
-            merge(retain);
-            return retain;
-        }
-        return Collections.singletonList((T)this);
-    }
-
-    private static <K extends Comparable<?>, T extends Range<K>> void
-        addIfValidRange(T templ, List<T> intersect,
-            K from, boolean fromInclusive, K to, boolean toInclusive) {
-        boolean valid =
-                (keyComp.compare(from, to) != 0 || (fromInclusive && toInclusive));
-        if (valid) {
-            intersect.add(templ.newRange(from, fromInclusive, to,
-                    toInclusive));
-        }
-    }
-
-    private static <K extends Comparable<?>, T extends Range<K>> void merge(
-            List<T> ranges) {
-        if (ranges.size() <= 1) {
-            return;
-        }
-        assert ranges.size() == 2;
-        T r1 = ranges.get(0);
-        T r2 = ranges.get(1);
-        if (r2.isFollowedBy(r1)) {
-            T r = r2.newRange(r2.from, r2.fromInclusive, r1.to, r1.toInclusive);
-            ranges.clear();
-            ranges.add(r);
-        }
+        return retains2;
     }
 
     /**
@@ -458,10 +321,11 @@ public class Range<K extends Comparable<?>> implements Serializable, Cloneable {
      * @param another  another range
      * @return true if another range intersects this range.
      */
-    public boolean intersects(Range<K> another) {
-        List<Range<K>> intersect = new ArrayList<>();
-        retain(another, intersect);
-        return !intersect.isEmpty();
+    @SuppressWarnings({ "rawtypes", "unchecked" })
+    public boolean hasIntersection(Range<K> another) {
+        SimpleRange sr1 = new SimpleRange(this);
+        SimpleRange sr2 = new SimpleRange(another);
+        return sr1.hasIntersection(sr2);
     }
 
     /**
@@ -473,5 +337,132 @@ public class Range<K extends Comparable<?>> implements Serializable, Cloneable {
     public boolean isFollowedBy(Range<K> another) {
         return (keyComp.compare(this.to, another.from) == 0
                 && (this.toInclusive ^ another.fromInclusive));
+    }
+
+    @SuppressWarnings("unchecked")
+    private <T extends Range<K>> T newRangeFromSimpleRange(SimpleRange<?> s) {
+        return newRange((K)s.from.val, s.from.sign == Sign.MINUS,
+                (K)s.to.val, s.to.sign == Sign.PLUS);
+    }
+
+    enum Sign { MINUS, ZERO, PLUS };
+    static class InnerKey<K extends Comparable<K>>
+    implements Comparable<InnerKey<K>> {
+        final K val;
+        final Sign sign;
+        InnerKey(K val, Sign sign) {
+            this.val = val;
+            this.sign = sign;
+        }
+        @Override
+        public int compareTo(InnerKey<K> o) {
+            int comp = val.compareTo(o.val);
+            if (comp != 0) {
+                return comp;
+            }
+            return sign.compareTo(o.sign);
+        }
+    }
+
+    /**
+     * a simple range class that only supports closed ends (e.g., [10, 20]).
+     * [x, x] is treated as a whole range [-∞, +∞].
+     * <p>
+     * this class simplifies "openness" (open ends or closed ends) of Range
+     * class.
+     *  
+     * @param <K> type of the minimum and maximum value.
+     */
+    static class SimpleRange<K extends Comparable<K>> {
+        static final KeyComparator keyComp = KeyComparator.getInstance();
+        InnerKey<K> from;
+        InnerKey<K> to;
+        SimpleRange(Range<K> r) {
+            this.from = new InnerKey<>(r.from, r.fromInclusive ? Sign.MINUS : Sign.PLUS);
+            this.to = new InnerKey<>(r.to, r.toInclusive ? Sign.PLUS: Sign.MINUS);
+        }
+        SimpleRange(InnerKey<K> from, InnerKey<K> to) {
+            this.from = from;
+            this.to = to;
+        }
+        boolean contains(K key) {
+            InnerKey<K> ikey = new InnerKey<>(key, Sign.ZERO);
+            return keyComp.isOrdered(from, ikey, to);
+        }
+        boolean contains(InnerKey<K> key) {
+            return keyComp.isOrdered(from, key, to);
+        }
+        boolean contains(SimpleRange<K> another) {
+            if (isWhole()) {
+                return true;
+            }
+            if (another.isWhole()) {
+                return false;
+            }
+            if (keyComp.isOrdered(from, another.from, to)
+                    && keyComp.isOrdered(from, another.to, to)) {
+                // exclude cases such as:
+                //      this:  [=========]
+                //   another: ====]   [====
+                return keyComp.isOrdered(from, another.from, another.to) &&
+                        keyComp.isOrdered(another.from, another.to, to) &&
+                        to.compareTo(another.from) != 0 &&
+                        from.compareTo(another.to) != 0;
+            }
+            return false;
+        }
+        boolean hasIntersection(SimpleRange<K> r) {
+            return keyComp.isOrdered(this.from, true, r.from, this.to, false)
+                    || keyComp.isOrdered(this.from, false, r.to, this.to, true)
+                    || keyComp.isOrdered(r.from, true, this.from, r.to, false)
+                    || keyComp.isOrdered(r.from, false, this.to, r.to, true);
+        }
+        boolean isWhole() {
+            return from.compareTo(to) == 0;
+        }
+        List<SimpleRange<K>> retain(SimpleRange<K> r, List<SimpleRange<K>> removed) {
+            List<SimpleRange<K>> retains = new ArrayList<>();
+            if (r.isWhole()) {
+                removed.add(this);
+                return retains;
+            }
+            if (!hasIntersection(r)) {
+                retains.add(this);
+                return retains;
+            }
+            // this: [             ]
+            // r:    ......[........
+            InnerKey<K> min = contains(r.from) ? r.from : this.from;
+            InnerKey<K> max = contains(r.to) ? r.to : this.to;
+            if (keyComp.isOrdered(this.from, min, max)
+                    && this.from.compareTo(max) != 0) {
+                // this: [             ]
+                // r:    ....[....]....
+                if (isWhole()) {  // simplify the results
+                    addIfNotPoint(retains, max, min);
+                } else {
+                    addIfNotPoint(retains, this.from, min);
+                    addIfNotPoint(retains, max, this.to);
+                }
+                addIfNotPoint(removed, min, max);
+            } else {
+                // this: [             ]
+                // r:    ....]    [....
+                addIfNotPoint(retains, max, min);
+                if (isWhole()) {  // simplify the results
+                    addIfNotPoint(removed, min, max);
+                } else {
+                    addIfNotPoint(removed, this.from, max);
+                    addIfNotPoint(removed, min, this.to);
+                }
+            }
+            return retains;
+        }
+        private void addIfNotPoint(List<SimpleRange<K>> list,
+                InnerKey<K> min, InnerKey<K> max) {
+            if (min.compareTo(max) != 0) {
+                list.add(new SimpleRange<>(min, max));
+            }
+        }
     }
 }
