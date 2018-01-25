@@ -185,7 +185,7 @@ public class RQManager<E extends Endpoint> extends RingManager<E> implements
                     throws IdConflictException, IOException {
         super(transId, trans);
         this.execQueryCallback = execQueryCallback;
-        FIXLEFT = new Link(myLocator, new DdllKey(0, FIXPEERID, 0));
+        FIXLEFT = new Link(myLocator, new DdllKey(0, FIXPEERID));
 
         schedule(new PurgeTask(),
                 (long) (Math.random() * QID_EXPIRATION_TASK_PERIOD),
