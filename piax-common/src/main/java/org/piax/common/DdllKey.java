@@ -130,7 +130,7 @@ public class DdllKey implements Comparable<DdllKey>, Serializable, Cloneable {
 //            }
             return cmp;
         }
-        cmp = ((Integer)nonce).compareTo(o.nonce);
+        cmp = Integer.compare(nonce, o.nonce);
         if (cmp != 0) {
 //            if (logger.isDebugEnabled()) {
 //                logger.debug("compareTo: {}, {} = {}", this, o, cmp);
