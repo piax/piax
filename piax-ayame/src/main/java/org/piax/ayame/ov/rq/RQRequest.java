@@ -215,6 +215,14 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         catcher.rqDisseminate(catcher.gaps);
     }
  
+    public void forceRun(Collection<RQRange> newRanges) {
+        if (catcher == null) {
+            // note that catcher is transient
+            this.catcher = new RQCatcher(newRanges);
+        }
+        catcher.rqDisseminateWithoutHook(catcher.gaps);
+    }
+    
     public void receiveReply(RQReplyDirect<T> rep) {
         logger.debug("RQRequest: direct reply received: {}", rep);
         catcher.replyReceived(rep);
@@ -359,6 +367,9 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             Map<Id, List<RQRange>> map = assignDelegates(ranges);
             if (logger.isTraceEnabled()) {
                 logger.trace("aggregated: {}", map);
+            }
+            for (Id del: map.keySet()) {
+            		logger.debug("delegators {}: {}", del, map.get(del));
             }
             PeerId peerId = getLocalNode().getPeerId();
 
@@ -527,6 +538,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         }
 
         void replyReceived(RQReplyDirect<T> reply) {
+            logger.debug("RQRequest: direct reply received: {}", reply);
             addRemoteValues(reply.vals);
         }
 
