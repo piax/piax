@@ -31,6 +31,7 @@ import org.piax.ayame.FTEntry;
 import org.piax.ayame.LocalNode;
 import org.piax.ayame.Node;
 import org.piax.ayame.ov.rq.RQAdapter;
+import org.piax.ayame.ov.rq.RQHookIf;
 import org.piax.ayame.ov.rq.RQStrategy;
 import org.piax.ayame.ov.rq.RQStrategy.RQNodeFactory;
 import org.piax.ayame.ov.suzaku.SuzakuStrategy;
@@ -83,6 +84,8 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
     NetEventSender sender;
     Map<K,LocalNode> nodes;
     
+    RQHookIf<Object> hook = null;
+
     static {
         // ayame related classes
         // XXX need to think where these registration should be located
@@ -633,6 +636,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
             factory.setupNode(node);
             RQStrategy s = (RQStrategy)node.getTopStrategy();
             s.registerAdapter(new ExecQueryAdapter(this));
+            s.setHook(hook);
 
             if (initial) {
                 logger.debug("initial=" + node.key + "self=" + node.addr);
@@ -819,5 +823,13 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
     public int getHeight(Comparable<?> key) {
         SuzakuStrategy szk = SuzakuStrategy.getSuzakuStrategy(nodes.get(key));
         return szk.getFingerTableSize();
+    }
+    
+    public void setHook(RQHookIf<Object> hook) {
+    		this.hook = hook;
+    }
+    
+    public RQHookIf<Object> getHook() {
+        return hook;
     }
 }

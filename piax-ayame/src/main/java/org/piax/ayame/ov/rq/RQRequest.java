@@ -59,13 +59,13 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
     /** range query retransmission period */
     public static int RQ_RETRANS_PERIOD = 10 * 1000;
 
-    final long qid;
+    public final long qid;
     Node root;       // DIRECT only
     int rootEventId; // DIRECT only
     // XXX: note that wrap-around query ranges such as [10, 5) do not work
     // for now (k-abe)
-    protected final Collection<RQRange> targetRanges;
-    final RQAdapter<T> adapter;
+    public final Collection<RQRange> targetRanges;
+    public final RQAdapter<T> adapter;
     final TransOptions opts;
     final boolean isRoot;
 
@@ -75,7 +75,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
      */
     final Set<Node> obstacles;
 
-    transient RQCatcher catcher; // receiver half only
+    public transient RQCatcher catcher; // receiver half only
 
     enum SPECIAL {
         PADDING;
@@ -215,6 +215,14 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         catcher.rqDisseminate(catcher.gaps);
     }
  
+    public void forceRun(Collection<RQRange> newRanges) {
+        if (catcher == null) {
+            // note that catcher is transient
+            this.catcher = new RQCatcher(newRanges);
+        }
+        catcher.rqDisseminateWithoutHook(catcher.gaps);
+    }
+    
     public void receiveReply(RQReplyDirect<T> rep) {
         logger.debug("RQRequest: direct reply received: {}", rep);
         catcher.replyReceived(rep);
@@ -234,10 +242,21 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                 || mode == RetransMode.RELIABLE;
     }
 
+    public boolean isRoot() {
+		return this.isRoot;
+    }
+
+    public Class<? extends RQRequest<T>> getClazz() {
+        @SuppressWarnings("unchecked")
+        Class<? extends RQRequest<T>> clazz
+                = (Class<? extends RQRequest<T>>)getClass();
+        return clazz;
+    }
+    
     /**
      * A class for storing results of a range query used by parent nodes.
      */
-    class RQCatcher {
+    public class RQCatcher {
         
         /*
          * range [--------------------) 
@@ -299,6 +318,19 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         }
 
         private void rqDisseminate(List<RQRange> ranges) {
+        		boolean sendChild = true;
+            RQStrategy strategy = RQStrategy.getRQStrategy(getLocalNode());
+        		if (strategy.getHook() != null) {
+        			sendChild = strategy.getHook().hook((RQRequest)RQRequest.this);
+        		}
+        		rqDisseminate0(ranges, sendChild);
+        }
+
+        public void rqDisseminateWithoutHook(List<RQRange> ranges) {
+        		rqDisseminate0(ranges, true);
+        }
+        		         
+        private void rqDisseminate0(List<RQRange> ranges, boolean sendChild) {
             if (logger.isTraceEnabled()) {
                 logger.trace("rqDisseminate start: {}", this);
                 logger.trace("                     {}", RQRequest.this);
@@ -336,12 +368,16 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             if (logger.isTraceEnabled()) {
                 logger.trace("aggregated: {}", map);
             }
+            for (Id del: map.keySet()) {
+            		logger.debug("delegators {}: {}", del, map.get(del));
+            }
             PeerId peerId = getLocalNode().getPeerId();
 
             /*
              * send aggregated requests to children.
              */
-            map.entrySet().stream()
+            if (sendChild) {
+            	map.entrySet().stream()
                 .filter(ent -> !ent.getKey().equals(peerId))
                 .forEach(ent -> {
                     List<RQRange> sub = ent.getValue();
@@ -373,10 +409,15 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                     getLocalNode().post(m);
                     cleanup.add(() -> m.cleanup());
                 });
-
+            }
             // obtain values for local ranges
-            CompletableFuture<List<DKRangeRValue<T>>> future
-                = rqExecuteLocal(map.get(peerId));
+            CompletableFuture<List<DKRangeRValue<T>>> future = null;
+            RQStrategy strategy = RQStrategy.getRQStrategy(getLocalNode());
+            if (strategy.getHook() != null) {
+            		future = strategy.getHook().executeLocal((RQRequest)RQRequest.this, map.get(peerId));
+            } else {
+            		future = rqExecuteLocal(map.get(peerId));
+            }
             future.thenAccept((List<DKRangeRValue<T>> rvals) -> {
                 addRemoteValues(rvals);
                 responder.rqDisseminateFinish();
@@ -385,6 +426,9 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                 exc.getCause().printStackTrace();
                 return null; // or System.exit(1);
             });
+            if (strategy.getHook() != null) {
+            		strategy.getHook().addHistory((RQRequest)RQRequest.this);
+            }
             logger.trace("rqDisseminate finished");
         }
 
@@ -392,6 +436,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
          * gapの各範囲を部分範囲に分割し，それぞれ担当ノードを割り当てる．
          * 各ノード毎に割り当てたRQRangeのリストのMapを返す．
          * 
+         * @param ranges ranges to be assigned to delegates
          * @return a map of id and RQRanges
          */
         protected Map<Id, List<RQRange>> assignDelegates(List<RQRange> ranges) {
@@ -493,6 +538,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         }
 
         void replyReceived(RQReplyDirect<T> reply) {
+            logger.debug("RQRequest: direct reply received: {}", reply);
             addRemoteValues(reply.vals);
         }
 
@@ -585,9 +631,9 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
          * obtain a result value from local node.
          *  
          * @param ranges このノードが担当する範囲のリスト．各範囲はtargetRangeに含まれる
-         * @returns CompletableFuture
+         * @return CompletableFuture
          */
-        private CompletableFuture<List<DKRangeRValue<T>>>
+        public CompletableFuture<List<DKRangeRValue<T>>>
         rqExecuteLocal(List<RQRange> ranges) {
             logger.trace("rqExecuteLocal: ranges={}", ranges);
             // results of locally-resolved ranges

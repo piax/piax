@@ -41,6 +41,7 @@ import java.util.Random;
 public class RandomUtil {
 
     public static Random shared = null;
+    public static Long seed = null;
     public static void setSharedRandom(Random rand) {
         shared = rand;
     }
@@ -62,7 +63,7 @@ public class RandomUtil {
      * @return seedの初期生成コリジョンのないRandomオブジェクト
      */
     public static Random newCollisionlessRandom() {
-        long seed = System.nanoTime();
+        long seed = RandomUtil.seed != null? RandomUtil.seed: System.nanoTime();
         try {
             seed += Arrays.hashCode(InetAddress.getLocalHost().getAddress());
         } catch (UnknownHostException e) {
