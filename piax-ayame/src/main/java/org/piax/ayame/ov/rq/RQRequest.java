@@ -1,6 +1,7 @@
 package org.piax.ayame.ov.rq;
 
 import java.io.Serializable;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -68,6 +69,12 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
     public final RQAdapter<T> adapter;
     final TransOptions opts;
     final boolean isRoot;
+
+    // Collective Store and Forward
+    public Serializable topic;
+    public ZonedDateTime deadline;
+    public Long period;
+    public Set<Long> collectedQid;
 
     /**
      * failed nodes. this field is used for avoiding and repairing dead links.
