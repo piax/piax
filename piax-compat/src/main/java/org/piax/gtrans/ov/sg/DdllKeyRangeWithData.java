@@ -27,7 +27,7 @@ import org.piax.common.subspace.Range;
  * @author k-abe
  * @param <E> type of the supplementary data
  */
-public class DdllKeyRange<E> implements Serializable {
+public class DdllKeyRangeWithData<E> implements Serializable {
     private static final long serialVersionUID = 1L;
     
     /**
@@ -38,39 +38,39 @@ public class DdllKeyRange<E> implements Serializable {
      * @param ents  the keys
      * @return  ranges split
      */
-    public static <E> List<DdllKeyRange<E>> split(Range<DdllKey> r, 
+    public static <E> List<DdllKeyRangeWithData<E>> split(Range<DdllKey> r, 
             NavigableMap<DdllKey, E> ents) {
-        List<DdllKeyRange<E>> ranges = new ArrayList<DdllKeyRange<E>>();
+        List<DdllKeyRangeWithData<E>> ranges = new ArrayList<DdllKeyRangeWithData<E>>();
         E aux = null;
         if (ents.containsKey(r.from)) {
             aux = ents.get(r.from);
         }
         for (Map.Entry<DdllKey, E> ent: ents.entrySet()) {
-            Range<DdllKey>[] split = r.split(ent.getKey());
-            if (split.length == 2) {
-                ranges.add(new DdllKeyRange<E>(aux, split[0]));
+            List<Range<DdllKey>> split = r.split(ent.getKey());
+            if (split.size() == 2) {
+                ranges.add(new DdllKeyRangeWithData<E>(aux, split.get(0)));
                 aux = ent.getValue();
             }
-            r = split[split.length - 1];
+            r = split.get(split.size() - 1);
         }
-        ranges.add(new DdllKeyRange<E>(aux, r));
+        ranges.add(new DdllKeyRangeWithData<E>(aux, r));
         return ranges;
     }
 
     E aux;
     final Range<DdllKey> range;
     
-    public DdllKeyRange(E aux, Range<DdllKey> range) {
+    public DdllKeyRangeWithData(E aux, Range<DdllKey> range) {
         this.aux = aux;
         this.range = range;
     }
 
-    public DdllKeyRange<E> concatenate(DdllKeyRange<E> another, boolean auxRight) {
+    public DdllKeyRangeWithData<E> concatenate(DdllKeyRangeWithData<E> another, boolean auxRight) {
         if (range.to.compareTo(another.range.from) != 0) {
             throw new IllegalArgumentException("not continuous: " + this
                     + " and " + another);
         }
-        DdllKeyRange<E> kr = new DdllKeyRange<E>(auxRight ? another.aux : aux,
+        DdllKeyRangeWithData<E> kr = new DdllKeyRangeWithData<E>(auxRight ? another.aux : aux,
                 new Range<DdllKey>(range.from, range.fromInclusive,
                         another.range.to, another.range.toInclusive));
         return kr;

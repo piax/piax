@@ -17,15 +17,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
 
+import org.piax.ayame.ov.ddll.DdllKeyRange;
 import org.piax.common.DdllKey;
-import org.piax.common.subspace.CircularRange;
 import org.piax.common.subspace.Range;
 import org.piax.gtrans.ov.Link;
 import org.piax.gtrans.ov.ddll.Node;
 
-public class SubRange extends DKRangeLink {
+public class SubRange extends DdllKeyRange {
     private static final long serialVersionUID = 1L;
     public final static int MAXID = 100000;
+    final Link link;
     public Integer[] ids;
 
     public SubRange(DdllKey from, boolean fromInclusive, DdllKey to,
@@ -43,13 +44,15 @@ public class SubRange extends DKRangeLink {
     }
 
     public SubRange(Link aux, Range<DdllKey> subRange, Integer[] ids) {
-        super(aux, subRange);
+        super(subRange);
+        this.link = aux;
         this.ids = ids;
     }
 
     public SubRange(Link aux, DdllKey from, boolean fromInclusive, DdllKey to,
             boolean toInclusive, Integer[] ids) {
-        super(aux, from, fromInclusive, to, toInclusive);
+        super(from, fromInclusive, to, toInclusive);
+        this.link = aux;
         this.ids = ids;
     }
 
@@ -60,18 +63,13 @@ public class SubRange extends DKRangeLink {
     }
 
     @Override
-    protected SubRange newInstance(DdllKey from, boolean fromInclusive,
+    public SubRange newRange(DdllKey from, boolean fromInclusive,
             DdllKey to, boolean toInclusive) {
         return new SubRange(from, fromInclusive, to, toInclusive);
     }
 
-    @Override
-    public SubRange[] split(DdllKey k) {
-        CircularRange<DdllKey>[] s = super.split(k);
-        // Java cannot cast CircularRange[] into SubRange[] so..
-        SubRange[] ret = new SubRange[s.length];
-        System.arraycopy(s, 0, ret, 0, s.length);
-        return ret;
+    public Link getLink() {
+        return link;
     }
 
     public List<SubRange> split(NavigableMap<DdllKey, Link> ents) {
@@ -82,12 +80,12 @@ public class SubRange extends DKRangeLink {
             aux = ents.get(this.from);
         }
         for (Map.Entry<DdllKey, Link> ent : ents.entrySet()) {
-            SubRange[] split = this.split(ent.getKey());
-            if (split.length == 2) {
-                ranges.add(new SubRange(aux, split[0]));
+            List<SubRange> split = split(ent.getKey());
+            if (split.size() == 2) {
+                ranges.add(new SubRange(aux, split.get(0)));
                 aux = ent.getValue();
             }
-            r = split[split.length - 1];
+            r = split.get(split.size() - 1);
         }
         ranges.add(new SubRange(aux, r));
         return ranges;

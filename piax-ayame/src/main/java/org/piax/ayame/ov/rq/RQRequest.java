@@ -588,11 +588,9 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             gaps.remove(gap);
             List<Range<DdllKey>> retains = gap.retain(range, null);
             // add the remaining ranges to gaps
-            if (retains != null) {
-                for (Range<DdllKey> p : retains) {
-                    RQRange s = new RQRange(gap.getNode(), p.from, p.to, gap.ids);
-                    gaps.add(s);
-                }
+            for (Range<DdllKey> p : retains) {
+                RQRange s = new RQRange(gap.getNode(), p.from, p.to, gap.ids);
+                gaps.add(s);
             }
             logger.debug("addRV: gap={}, r={}, retains={}, gaps={}", gap, range,
                     retains, gaps);

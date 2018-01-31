@@ -1,6 +1,6 @@
 package test.async;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -23,14 +23,17 @@ import org.piax.ayame.ov.rq.RQAdapter;
 import org.piax.ayame.ov.rq.RQStrategy.RQNodeFactory;
 import org.piax.ayame.ov.suzaku.SuzakuStrategy;
 import org.piax.ayame.ov.suzaku.SuzakuStrategy.SuzakuNodeFactory;
-import org.piax.common.subspace.CircularRange;
 import org.piax.common.subspace.Range;
 import org.piax.gtrans.RemoteValue;
 import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.TransOptions.ResponseType;
 import org.piax.gtrans.TransOptions.RetransMode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-public class AsyncTest2 extends AsyncTestBase {
+public class TestAsync2 extends AsyncTestBase {
+    private static final Logger logger = LoggerFactory
+            .getLogger(TestAsync2.class);
     @Test
     public void testSuzakuBase4() {
         SuzakuStrategy.B.set(2);
@@ -42,7 +45,7 @@ public class AsyncTest2 extends AsyncTestBase {
     }
 
     private void testBasicInsDel(NodeFactory factory) {
-        System.out.println("** testBasicInsDel");
+        logger.debug("** testBasicInsDel");
         init(0);
         nodes = createNodes(factory, 16);
         insertAll(20*60*1000);
@@ -89,7 +92,7 @@ public class AsyncTest2 extends AsyncTestBase {
         TransOptions opts = new TransOptions();
         testFQLeft(new DdllNodeFactory(), opts,
                 receiver -> new FastValueProvider(receiver),
-                new CircularRange<Integer>(400, true, 100, true),
+                new Range<Integer>(true, 400, true, 100, true),
                 Arrays.asList(0, 100, 400), "[]", -1);
     }
     
@@ -99,7 +102,7 @@ public class AsyncTest2 extends AsyncTestBase {
         TransOptions opts = new TransOptions();
         testFQLeft(new DdllNodeFactory(), opts,
                 receiver -> new FastValueProvider(receiver),
-                new CircularRange<Integer>(150, true, 160, true),
+                new Range<Integer>(true, 150, true, 160, true),
                 Arrays.asList(), "[]", -1);
     }
 
@@ -142,14 +145,14 @@ public class AsyncTest2 extends AsyncTestBase {
             Range<Integer> range, List<Integer> expect, String expectedErr,
             int failNode) {
         NodeFactory factory = new RQNodeFactory(base);
-        System.out.println("** testFQLeft");
+        logger.debug("** testFQLeft");
         init();
         Indirect<Long> startTime = new Indirect<>(EventExecutor.getVTime());
         Indirect<Long> endTime = new Indirect<>();
         List<RemoteValue<Integer>> results = new ArrayList<>();
         RQAdapter<Integer> provider = providerFactory
                 .apply((RemoteValue<Integer> ret) -> {
-                    System.out.println("GOT RESULT: " + ret);
+                    logger.debug("GOT RESULT: " + ret);
                     results.add(ret);
                     if (ret == null) {
                         endTime.val = EventExecutor.getVTime();
@@ -176,10 +179,10 @@ public class AsyncTest2 extends AsyncTestBase {
                 .map(rv -> rv.getException().getMessage())
                 .sorted()
                 .collect(Collectors.toList());
-        System.out.println("RVALS = " + rvals);
-        System.out.println("EXCEPTIONS = " + evals);
-        System.out.println("EXPECTED = " + expect);
-        System.out.println("Elapsed = " + (endTime.val - startTime.val));
+        logger.debug("RVALS = " + rvals);
+        logger.debug("EXCEPTIONS = " + evals);
+        logger.debug("EXPECTED = " + expect);
+        logger.debug("Elapsed = " + (endTime.val - startTime.val));
         assertTrue(rvals.equals(expect));
         assertTrue(evals.toString().equals(expectedErr));
         IntStream.range(0, nodes.length)
@@ -190,7 +193,7 @@ public class AsyncTest2 extends AsyncTestBase {
     void checkFingerTable(int index) {
         LocalNode n = nodes[index];
         SuzakuStrategy szk = SuzakuStrategy.getSuzakuStrategy(n);
-        System.out.println("checking: " + n);
+        logger.debug("checking: " + n);
         int s = szk.getFingerTableSize();
         for (int i = 0; i < s; i++) {
             FTEntry ent = szk.getFingerTableEntry(i); 

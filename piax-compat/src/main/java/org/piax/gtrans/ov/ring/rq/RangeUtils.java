@@ -18,7 +18,6 @@ import java.util.Comparator;
 import java.util.List;
 
 import org.piax.common.DdllKey;
-import org.piax.common.subspace.CircularRange;
 import org.piax.common.subspace.Range;
 import org.piax.gtrans.ov.ddll.Node;
 import org.piax.util.KeyComparator;
@@ -29,46 +28,6 @@ import org.piax.util.KeyComparator;
  */
 public class RangeUtils {
     private static KeyComparator keyComp = KeyComparator.getInstance();
-
-    /**
-     * Range r から，[a, b) の区間を削除し，残った Range を返す．
-     * aはrの外側にあるか，aはrの左端と等しい必要がある (手抜き)．
-     * 残らない場合は null が返される．
-     * 
-     * r         [-------------------)
-     *     [a--------------b)
-     *                      [--ret---)
-     *     
-     * @param <K> the type of comparable.
-     * @param r the range.
-     * @param a the left side key.
-     * @param b the right side key.
-     * @return the retained range.
-     */
-    public static <K extends Comparable<K>> CircularRange<K> retainRange(
-            CircularRange<K> r, K a, K b) {
-        if (r.contains(a) && keyComp.compare(a, r.from) != 0) {
-            throw new Error("a is in r");
-        }
-        if (Node.isOrdered(a, r.from, b) && keyComp.compare(r.from, b) != 0) {
-            // Range   [-----------)
-            //      a-----..
-            if (Node.isOrdered(a, r.to, b) && !r.contains(b)) {
-                // empty
-                return null;
-            } else {
-                // Range   [-----------)
-                //     a------b
-                //     -------b          a--
-                return new CircularRange<K>(b, true, r.to, r.toInclusive);
-            }
-        } else {
-            // Range      [------)
-            //       a--b
-            //       --b           a-
-            return r;
-        }
-    }
 
     /**
      * Range r から，[a, b) の区間を削除したときの，削除された Range を返す．
@@ -86,6 +45,20 @@ public class RangeUtils {
      * @return the removed range.
      */
     public static <K extends Comparable<K>> Range<K> removedRange(Range<K> r, K a, K b) {
+        // this method can be replaced with the followings snippet but
+        // we have not tested the new code so ...
+        /*
+        Range<K> another = new Range<>(a, true, b, false);
+        List<Range<K>> removed = new ArrayList<>();
+        r.retain(another, removed);
+        if (removed.isEmpty()) {
+            return null;
+        }
+        if (removed.size() != 1) {
+            throw new Error("mulitple results");
+        }
+        return removed.get(0);
+         */
         if (r.contains(a) && keyComp.compare(a, r.from) != 0) {
             throw new Error("a is in r");
         }
@@ -109,23 +82,22 @@ public class RangeUtils {
         }
     }
 
-    public static List<CircularRange<DdllKey>> concatAdjacentRanges(
-            List<CircularRange<DdllKey>> ranges) {
+    public static List<Range<DdllKey>> concatAdjacentRanges(
+            List<Range<DdllKey>> ranges) {
         Collections.sort(ranges, new Comparator<Range<?>>() {
             @Override
             public int compare(Range<?> o1, Range<?> o2) {
                 return keyComp.compare(o1.from, o2.from);
             }
         });
-        List<CircularRange<DdllKey>> merged =
-                new ArrayList<CircularRange<DdllKey>>();
-        CircularRange<DdllKey> prev = null;
-        for (CircularRange<DdllKey> r : ranges) {
+        List<Range<DdllKey>> merged = new ArrayList<>();
+        Range<DdllKey> prev = null;
+        for (Range<DdllKey> r : ranges) {
             if (prev == null) {
                 prev = r;
             } else if (prev.to.compareTo(r.from) == 0) {
                 prev =
-                        new CircularRange<DdllKey>(prev.from,
+                        new Range<DdllKey>(true, prev.from,
                                 prev.fromInclusive, r.to, r.toInclusive);
             } else {
                 merged.add(prev);
@@ -136,11 +108,5 @@ public class RangeUtils {
             merged.add(prev);
         }
         return merged;
-    }
-
-    public static <K extends Comparable<K>> boolean hasCommon(Range<K> range,
-            K from, K to) {
-        return (Node.isOrdered(from, range.from, to) || Node.isOrdered(from,
-                range.to, to));
     }
 }

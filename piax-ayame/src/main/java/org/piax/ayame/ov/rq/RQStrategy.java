@@ -209,7 +209,9 @@ public class RQStrategy extends NodeStrategy {
             }).filter(Objects::nonNull)
             .collect(Collectors.toList());
             // it is not necessary to do every iteration...
-            ent.setRange(new DdllKeyRange(from.val, true, to.val, false));
+            if (from.val != null && to.val != null) {
+                ent.setRange(new DdllKeyRange(from.val, true, to.val, false));
+            }
             ent.putCollectedData(clazz, adapter.reduceCollectedData(vals));
         }
         return ent;
@@ -385,8 +387,7 @@ public class RQStrategy extends NodeStrategy {
             f = rAdapter.getRaw(received, localNode, r, qid);
         } catch (Throwable exc) {
             // if getRaw terminates exceptionally...
-            System.err.println("getLocalValue: got " + exc);
-            exc.printStackTrace();
+            logger.debug("getLocalValue: got ", exc);
             RemoteValue<T> rval = new RemoteValue<>(getLocalNode().peerId, exc);
             return CompletableFuture.completedFuture(rval);
         }

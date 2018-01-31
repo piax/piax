@@ -30,8 +30,12 @@ import org.piax.common.subspace.Range;
 import org.piax.gtrans.RemoteValue;
 import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.TransOptions.ResponseType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TestAggr extends AsyncTestBase {
+    private static final Logger logger = LoggerFactory
+            .getLogger(TestAggr.class);
     @Test
     public void testAggrQuery1() {
         SuzakuStrategy.UPDATE_FINGER_PERIOD.set(10*1000);
@@ -73,16 +77,16 @@ public class TestAggr extends AsyncTestBase {
             Function<Consumer<RemoteValue<Integer>>, RQAdapter<Integer>> adapterFactory,
             Range<Integer> range, List<Integer> expect, String expectedErr) {
         NodeFactory factory = new RQNodeFactory(base);
-        System.out.println("** testRQ1");
+        logger.debug("** testRQ1");
         init();
         RQAdapter<Integer> adapter = adapterFactory.apply(null);
-        System.out.println("adapter=" + adapter);
+        logger.debug("adapter=" + adapter);
         createAndInsert(factory, 5, adapter, null, 10*60*1000);
         {
             List<RemoteValue<Integer>> results = new ArrayList<>();
             Collection<Range<Integer>> ranges = Collections.singleton(range);
             RQAdapter<Integer> f = adapterFactory.apply(ret -> {
-                System.out.println("GOT RESULT: " + ret);
+                logger.debug("GOT RESULT: " + ret);
                 results.add(ret);
             });
             nodes[0].rangeQueryAsync(ranges, f, opts);
@@ -102,9 +106,9 @@ public class TestAggr extends AsyncTestBase {
                     .map(rv -> rv.getException().getMessage())
                     .sorted()
                     .collect(Collectors.toList());
-            System.out.println("RVALS = " + rvals);
-            System.out.println("EXCEPTIONS = " + evals);
-            System.out.println("EXPECTED = " + expect);
+            logger.debug("RVALS = " + rvals);
+            logger.debug("EXCEPTIONS = " + evals);
+            logger.debug("EXPECTED = " + expect);
             assertTrue(rvals.equals(expect));
             assertTrue(evals.toString().equals(expectedErr));
             checkMemoryLeakage(nodes);
@@ -130,7 +134,7 @@ public class TestAggr extends AsyncTestBase {
         }
         @Override
         public Integer reduce(Integer a, Integer b) {
-            System.out.println("REDUCE: " + a + " and " + b);
+            logger.debug("REDUCE: " + a + " and " + b);
             return a + b;
         }
     }
@@ -161,7 +165,7 @@ public class TestAggr extends AsyncTestBase {
         @Override
         public boolean match(DdllKeyRange range, Integer val) {
             boolean rc = (this.bitmap & val) != 0;
-            System.out.println("bitmap=" + bitmap
+            logger.debug("bitmap=" + bitmap
                     + ", val=" + val + ", range=" + range + ", rc=" + rc);
             return rc;
         }

@@ -30,15 +30,15 @@ import org.piax.common.DdllKey;
 import org.piax.common.Endpoint;
 import org.piax.common.PeerId;
 import org.piax.common.TransportId;
-import org.piax.common.subspace.CircularRange;
+import org.piax.common.subspace.Range;
 import org.piax.gtrans.ChannelTransport;
 import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.RPCException;
 import org.piax.gtrans.RPCInvoker;
 import org.piax.gtrans.RemoteValue;
 import org.piax.gtrans.TransOptions;
-import org.piax.gtrans.ov.ddll.Node.InsertPoint;
 import org.piax.gtrans.ov.Link;
+import org.piax.gtrans.ov.ddll.Node.InsertPoint;
 import org.piax.gtrans.ov.ddll.NodeManager;
 import org.piax.gtrans.ov.ring.rq.RQMessage;
 import org.piax.util.KeyComparator;
@@ -541,7 +541,7 @@ public class RingManager<E extends Endpoint> extends RPCInvoker<RingIf, E>
     }
 
     public void fixRoutingTables(Collection<Link> failedNodes,
-            RQMessage parentMsg, Collection<CircularRange<DdllKey>> ranges) {
+            RQMessage parentMsg, Collection<Range<DdllKey>> ranges) {
         logger.debug(
                 "fixRoutingTables: failedNodes={}, parentMsg={}, ranges={}",
                 failedNodes, parentMsg, ranges);

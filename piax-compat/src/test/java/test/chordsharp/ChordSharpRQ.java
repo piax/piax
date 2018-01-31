@@ -13,9 +13,11 @@ import java.util.Collection;
 import java.util.List;
 
 import org.piax.common.subspace.Range;
+import org.piax.gtrans.Peer;
 import org.piax.gtrans.RemoteValue;
 import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.TransOptions.ResponseType;
+import org.piax.gtrans.impl.BaseTransportMgr;
 import org.piax.gtrans.ov.ring.rq.MessagePath;
 import org.piax.gtrans.ov.ring.rq.RQResults;
 import org.slf4j.Logger;
@@ -31,6 +33,8 @@ public class ChordSharpRQ extends ChordSharpExpBase {
     }
 
     public static void main(String[] args) throws Exception {
+        BaseTransportMgr.BASE_TRANSPORT_MANAGER_CLASS.set("org.piax.gtrans.impl.DefaultBaseTransportGenerator");
+        Peer.RECEIVE_ASYNC.set(true);
         if (args.length != 0 && args.length != 1) {
             System.err.println("usage: <cmd> numNode");
             System.err.println(" ex. <cmd> 100");
