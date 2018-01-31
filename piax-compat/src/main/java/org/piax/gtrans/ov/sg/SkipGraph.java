@@ -179,7 +179,7 @@ public class SkipGraph<E extends Endpoint> extends RPCInvoker<SkipGraphIf<E>, E>
         logger.debug("SkipGraph: transId={}", trans.getTransportId());
 
         timer = new Timer("SGTimer@" + myLocator, true);
-        FIXLEFT = new Link(myLocator, new DdllKey(0, FIXPEERID, 0));
+        FIXLEFT = new Link(myLocator, new DdllKey(0, FIXPEERID));
 
         sgmf = new SGMessagingFramework<E>(this);
 
@@ -688,7 +688,7 @@ public class SkipGraph<E extends Endpoint> extends RPCInvoker<SkipGraphIf<E>, E>
         }
         // 本来，col から insp を取得すべきだが，col には aux 情報がないので，
         // 仕方なく rqRet.rvals から直接取得している．
-        for (DdllKeyRange<RemoteValue<?>> kr : rqRet.rvals.values()) {
+        for (DdllKeyRangeWithData<RemoteValue<?>> kr : rqRet.rvals.values()) {
             if (kr.aux.getOption() != null) {
                 InsertPoint insp = (InsertPoint) kr.aux.getOption();
                 logger.debug("find: insert point = {}, {}", insp, kr);
@@ -1326,16 +1326,16 @@ public class SkipGraph<E extends Endpoint> extends RPCInvoker<SkipGraphIf<E>, E>
                 new StrictMap<PeerId, List<Range<DdllKey>>>(new HashMap());
         StrictMap<PeerId, Link> idMap =
                 new StrictMap<PeerId, Link>(new HashMap<PeerId, Link>());
-        List<DdllKeyRange<RemoteValue<?>>> rvals =
-                new ArrayList<DdllKeyRange<RemoteValue<?>>>();
+        List<DdllKeyRangeWithData<RemoteValue<?>>> rvals =
+                new ArrayList<DdllKeyRangeWithData<RemoteValue<?>>>();
         for (Range<DdllKey> subRange : msg.subRanges) {
-            List<DdllKeyRange<Link>> subsubRanges =
+            List<DdllKeyRangeWithData<Link>> subsubRanges =
                     rqSplit(subRange, allLinks, msg.failedLinks, rvals);
             if (subsubRanges == null) {
                 continue;
             }
 
-            for (DdllKeyRange<Link> kr : subsubRanges) {
+            for (DdllKeyRangeWithData<Link> kr : subsubRanges) {
                 PeerId pid =
                         (kr.aux == FIXLEFT ? FIXPEERID : kr.aux.key.getPeerId());
                 List<Range<DdllKey>> list = map.get(pid);
@@ -1485,8 +1485,8 @@ public class SkipGraph<E extends Endpoint> extends RPCInvoker<SkipGraphIf<E>, E>
                 rval = execQuery(n.rawkey, msg.query);
                 logger.debug("{}: execQuery returns: {}", h, rval);
             }
-            DdllKeyRange<RemoteValue<?>> er =
-                    new DdllKeyRange<RemoteValue<?>>(rval, range);
+            DdllKeyRangeWithData<RemoteValue<?>> er =
+                    new DdllKeyRangeWithData<RemoteValue<?>>(rval, range);
             rvals.add(er);
         }
 
@@ -1495,7 +1495,7 @@ public class SkipGraph<E extends Endpoint> extends RPCInvoker<SkipGraphIf<E>, E>
          * note that addRemoteValue() may send a reply internally.
          */
         synchronized (rqRet) {
-            for (DdllKeyRange<RemoteValue<?>> er : rvals) {
+            for (DdllKeyRangeWithData<RemoteValue<?>> er : rvals) {
                 rqRet.addRemoteValue(er.aux, er.range);
             }
         }
@@ -1514,9 +1514,9 @@ public class SkipGraph<E extends Endpoint> extends RPCInvoker<SkipGraphIf<E>, E>
      * @param rvals
      * @return subranges
      */
-    private List<DdllKeyRange<Link>> rqSplit(final Range<DdllKey> range0,
+    private List<DdllKeyRangeWithData<Link>> rqSplit(final Range<DdllKey> range0,
             final NavigableMap<DdllKey, Link> allLinks,
-            Collection<Link> failedLinks, List<DdllKeyRange<RemoteValue<?>>> rvals) {
+            Collection<Link> failedLinks, List<DdllKeyRangeWithData<RemoteValue<?>>> rvals) {
         String h = "rqSplit(" + peerId + ", " + toStringShort() + ")";
 
         if (failedLinks == null) {
@@ -1572,8 +1572,8 @@ public class SkipGraph<E extends Endpoint> extends RPCInvoker<SkipGraphIf<E>, E>
                     InsertPoint insp =
                             new InsertPoint(node.getMyLinkAtLevel0(), right);
                     rv.setOption(insp);
-                    DdllKeyRange<RemoteValue<?>> kr =
-                            new DdllKeyRange<RemoteValue<?>>(rv, removed);
+                    DdllKeyRangeWithData<RemoteValue<?>> kr =
+                            new DdllKeyRangeWithData<RemoteValue<?>>(rv, removed);
                     logger.debug("{}: dummy rval {}", h, kr);
                     rvals.add(kr);
                     // shrink the range
@@ -1604,11 +1604,11 @@ public class SkipGraph<E extends Endpoint> extends RPCInvoker<SkipGraphIf<E>, E>
         for (Link l : failedLinks) {
             extAllLinks.put(l.key, l);
         }
-        List<DdllKeyRange<Link>> ranges = DdllKeyRange.split(range, extAllLinks);
+        List<DdllKeyRangeWithData<Link>> ranges = DdllKeyRangeWithData.split(range, extAllLinks);
 
         // XXX: THINK!
         if (false) {
-            DdllKeyRange<Link> firstRange = ranges.get(0);
+            DdllKeyRangeWithData<Link> firstRange = ranges.get(0);
             if (firstRange.aux == null) {
                 for (Link l : failedLinks) {
                     if (l.key.compareTo(firstRange.range.from) == 0) {
@@ -1667,7 +1667,7 @@ public class SkipGraph<E extends Endpoint> extends RPCInvoker<SkipGraphIf<E>, E>
          */
         // 単純にするためにrangesの最後にダミーの [Y, ?) (sentinel) を入れる
         {
-            DdllKeyRange<Link> l = ranges.get(ranges.size() - 1);
+            DdllKeyRangeWithData<Link> l = ranges.get(ranges.size() - 1);
             DdllKey key = l.range.to;
             Map.Entry<DdllKey, Link> ent = allLinks.ceilingEntry(key);
             if (ent == null) {
@@ -1684,7 +1684,7 @@ public class SkipGraph<E extends Endpoint> extends RPCInvoker<SkipGraphIf<E>, E>
                 assert ent != null;
             }
             // add a sentinel
-            ranges.add(new DdllKeyRange<Link>(ent.getValue(), null));
+            ranges.add(new DdllKeyRangeWithData<Link>(ent.getValue(), null));
         }
 
         logger.debug("{}: allLinks = {}", h, allLinks.values());
@@ -1692,17 +1692,17 @@ public class SkipGraph<E extends Endpoint> extends RPCInvoker<SkipGraphIf<E>, E>
         logger.debug("{}: failedLinks = {}", h, failedLinks);
         logger.debug("{}: ranges = {}", h, ranges);
 
-        List<DdllKeyRange<Link>> ranges2 = new ArrayList<DdllKeyRange<Link>>();
-        List<DdllKeyRange<Link>> carryovers = new ArrayList<DdllKeyRange<Link>>();
+        List<DdllKeyRangeWithData<Link>> ranges2 = new ArrayList<DdllKeyRangeWithData<Link>>();
+        List<DdllKeyRangeWithData<Link>> carryovers = new ArrayList<DdllKeyRangeWithData<Link>>();
         for (int i = 0; i < ranges.size(); i++) {
-            DdllKeyRange<Link> r = ranges.get(i);
+            DdllKeyRangeWithData<Link> r = ranges.get(i);
             if (r.aux == null || failedLinks.contains(r.aux)) {
                 carryovers.add(r);
             } else {
                 if (!carryovers.isEmpty()) {
                     logger.debug("carryovers = {}", carryovers);
-                    DdllKeyRange<Link> missingRange = null;
-                    for (DdllKeyRange<Link> kr : carryovers) {
+                    DdllKeyRangeWithData<Link> missingRange = null;
+                    for (DdllKeyRangeWithData<Link> kr : carryovers) {
                         if (missingRange == null) {
                             missingRange = kr;
                         } else {
@@ -1712,7 +1712,7 @@ public class SkipGraph<E extends Endpoint> extends RPCInvoker<SkipGraphIf<E>, E>
 
                     if (r.aux.key.getPeerId().equals(peerId)) {
                         boolean knownNodeFailure = false;
-                        for (DdllKeyRange<Link> kr : carryovers) {
+                        for (DdllKeyRangeWithData<Link> kr : carryovers) {
                             if (kr.aux == null) {
                                 continue;
                             }
@@ -1793,7 +1793,7 @@ public class SkipGraph<E extends Endpoint> extends RPCInvoker<SkipGraphIf<E>, E>
      * @param hops the hops.
      */
     void rqSetReturnValue(RQReturn<E> rq, PeerId sender,
-            Collection<DdllKeyRange<RemoteValue<?>>> vals, int hops) {
+            Collection<DdllKeyRangeWithData<RemoteValue<?>>> vals, int hops) {
         String h = "rqSetReturnValue(" + peerId + ", " + toStringShort() + ")";
         logger.debug("{}, sender = {}, rq = {}, rvals = {}, hops = {}",
                 h, sender, rq, vals, hops);
@@ -1806,7 +1806,7 @@ public class SkipGraph<E extends Endpoint> extends RPCInvoker<SkipGraphIf<E>, E>
         }
         rq.incrementRcvCount();
         rq.updateHops(hops);
-        for (DdllKeyRange<RemoteValue<?>> er : vals) {
+        for (DdllKeyRangeWithData<RemoteValue<?>> er : vals) {
             rq.addRemoteValue(er.aux, er.range);
         }
         logger.debug("{}: rq = {}", h, rq);

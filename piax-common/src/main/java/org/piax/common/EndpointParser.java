@@ -18,17 +18,6 @@ public class EndpointParser {
         EndpointParser.registerParser("udt", "org.piax.gtrans.netty.NettyLocator");
         EndpointParser.registerParser("ssl", "org.piax.gtrans.netty.NettyLocator");
     }
-    
-    public static void registerParser(String spec, EndpointParsable parser) {
-        Class clazz = parser.getClass();
-        Method method = null;
-        try {
-            method = clazz.getMethod("parse", new Class[]{ String.class });
-        } catch (NoSuchMethodException | SecurityException e) {
-            throw new RuntimeException(e);
-        }
-        map.put(spec, method);
-    }
 
     public static void registerParser(String spec, String nameOfParsable) {
         map.put(spec, nameOfParsable);

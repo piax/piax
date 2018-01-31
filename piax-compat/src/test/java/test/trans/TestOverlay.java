@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.piax.common.ComparableKey;
 import org.piax.common.Destination;
@@ -32,6 +33,7 @@ import org.piax.gtrans.ReceivedMessage;
 import org.piax.gtrans.RemoteValue;
 import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.Transport;
+import org.piax.gtrans.impl.BaseTransportMgr;
 import org.piax.gtrans.ov.Overlay;
 import org.piax.gtrans.ov.OverlayListener;
 import org.piax.gtrans.ov.OverlayReceivedMessage;
@@ -64,6 +66,11 @@ public class TestOverlay {
 
     public String newId() {
         return "id" + (seq++);
+    }
+
+    @BeforeAll
+    public static void setup() {
+        BaseTransportMgr.BASE_TRANSPORT_MANAGER_CLASS.set("org.piax.gtrans.impl.DefaultBaseTransportGenerator");
     }
 
     @Test
@@ -605,8 +612,10 @@ public class TestOverlay {
 
         });
 
+        try {
         DCLTranslator parser = new DCLTranslator();
-        DestinationCondition dst = parser.parseDCL("age in (3..)");
+        DestinationCondition dst = parser.parseDCL("age in (3..7)");
+        
 
         tr2.request(dst, "req");
         tr1.request(dst, "req");
@@ -619,10 +628,13 @@ public class TestOverlay {
 
         send_recv2 = false;
         send_recv3 = false;
-        tr1.send("age in (..3]", "req");
+        tr1.send("age in (0..3]", "req");
         Thread.sleep(1000);
         assertTrue(!send_recv2, "SG2 falsely received");
         assertTrue(send_recv3, "SG3 receive failed");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         }
         Peer.RECEIVE_ASYNC.set(false);
         Suzaku.EXEC_ASYNC.set(false);
@@ -771,7 +783,7 @@ public class TestOverlay {
 
         });
 
-        List<Object> l = Arrays.asList(tr1.request("age in (..7)", "req")
+        List<Object> l = Arrays.asList(tr1.request("age in (0..7)", "req")
                 .getAllValues());
         received2 = l.contains("recv2");
         received3 = l.contains("recv3");

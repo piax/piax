@@ -17,12 +17,12 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
+import org.piax.ayame.EventException.NetEventException;
+import org.piax.ayame.EventException.TimeoutException;
 import org.piax.ayame.EventExecutor;
 import org.piax.ayame.Indirect;
 import org.piax.ayame.Node;
 import org.piax.ayame.NodeFactory;
-import org.piax.ayame.EventException.NetEventException;
-import org.piax.ayame.EventException.TimeoutException;
 import org.piax.ayame.ov.ddll.DdllStrategy.DdllNodeFactory;
 import org.piax.ayame.ov.rq.RQAdapter;
 import org.piax.ayame.ov.rq.RQAdapter.InsertionPointAdapter;
@@ -35,18 +35,22 @@ import org.piax.gtrans.RemoteValue;
 import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.TransOptions.ResponseType;
 import org.piax.gtrans.TransOptions.RetransMode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-public class AsyncTest extends AsyncTestBase {
+public class TestAsync extends AsyncTestBase {
+    private static final Logger logger = LoggerFactory
+            .getLogger(TestAsync.class);
     @Test
     public void testTerminate1() {
         EventExecutor.reset();
         Indirect<Boolean> chk1 = new Indirect<>(false), chk2 = new Indirect<>(false);
         EventExecutor.sched("test.testTerminate1-1", 50, () -> {
-            System.out.println("chk1: " + EventExecutor.getVTime());
+            logger.debug("chk1: " + EventExecutor.getVTime());
             chk1.val = true;
         });
         EventExecutor.sched("test.testTerminate1-2", 150, () -> {
-            System.out.println("chk2: "+ EventExecutor.getVTime());
+            logger.debug("chk2: "+ EventExecutor.getVTime());
             chk2.val = true;
         });
 
@@ -70,11 +74,11 @@ public class AsyncTest extends AsyncTestBase {
         EventExecutor.reset();
         Indirect<Boolean> chk1 = new Indirect<>(false), chk2 = new Indirect<>(false);
         EventExecutor.sched("test.testTerminate2-1", 50, () -> {
-            System.out.println("chk1: " + EventExecutor.getVTime());
+            logger.debug("chk1: " + EventExecutor.getVTime());
             chk1.val = true;
         });
         EventExecutor.sched("test.testTerminate2-2", 1000, () -> {
-            System.out.println("chk2: "+ EventExecutor.getVTime());
+            logger.debug("chk2: "+ EventExecutor.getVTime());
             chk2.val = true;
         });
         EventExecutor.startExecutorThread();
@@ -104,7 +108,7 @@ public class AsyncTest extends AsyncTestBase {
     }
 
     private void testBasicInsDel(NodeFactory factory) {
-        System.out.println("** testBasicInsDel");
+        logger.debug("** testBasicInsDel");
         init();
         nodes = createNodes(factory, 2);
         nodes[0].joinInitialNode();
@@ -141,7 +145,7 @@ public class AsyncTest extends AsyncTestBase {
     }
 
     private void testParallelInsDel(NodeFactory factory) {
-        System.out.println("** testParallelInsDel");
+        logger.debug("** testParallelInsDel");
         init();
         nodes = createNodes(factory, 4);
         nodes[0].joinInitialNode();
@@ -177,7 +181,7 @@ public class AsyncTest extends AsyncTestBase {
 
     // simple failure
     private void testFix1(NodeFactory factory) {
-        System.out.println("** testFix");
+        logger.debug("** testFix");
         init();
         nodes = createNodes(factory, 4);
         nodes[0].joinInitialNode();
@@ -212,7 +216,7 @@ public class AsyncTest extends AsyncTestBase {
 
     // leave and fail (3 nodes)
     private void testFix2(NodeFactory factory) {
-        System.out.println("** testFix2");
+        logger.debug("** testFix2");
         init();
         nodes = createNodes(factory, 3);
         nodes[0].joinInitialNode();
@@ -245,7 +249,7 @@ public class AsyncTest extends AsyncTestBase {
 
     // leave and fail (2 nodes)
     private void testFix3(NodeFactory factory) {
-        System.out.println("** testFix3");
+        logger.debug("** testFix3");
         init();
         nodes = createNodes(factory, 2);
         nodes[0].joinInitialNode();
@@ -267,7 +271,7 @@ public class AsyncTest extends AsyncTestBase {
     // join and fail
     @Test
     public void testDdllJoinFail1() {
-        System.out.println("** testDdllJoinFail1");
+        logger.debug("** testDdllJoinFail1");
         init();
         nodes = createNodes(new DdllNodeFactory(), 2);
         nodes[0].joinInitialNode();
@@ -275,7 +279,7 @@ public class AsyncTest extends AsyncTestBase {
         {
             CompletableFuture<Boolean> f1 = nodes[1].joinAsync(nodes[0]);
             f1.whenComplete((rc, exc) -> 
-                System.out.println("rc=" + rc + ", exc=" + exc));
+                logger.debug("rc=" + rc + ", exc=" + exc));
             EventExecutor.startSimulation(40000);
             dump(nodes);
             assertTrue(f1.isDone());
@@ -292,7 +296,7 @@ public class AsyncTest extends AsyncTestBase {
     // join and fail
     @Test
     public void testDdllJoinFail2() {
-        System.out.println("** testDdllJoinFail2");
+        logger.debug("** testDdllJoinFail2");
         init();
         nodes = createNodes(new DdllNodeFactory(), 3);
         nodes[0].joinInitialNode();
@@ -314,7 +318,7 @@ public class AsyncTest extends AsyncTestBase {
     // join and fail (RQStrategy)
     @Test
     public void testDdllJoinFail3() {
-        System.out.println("** testDdllJoinFail3");
+        logger.debug("** testDdllJoinFail3");
         init();
         nodes = createNodes(new RQNodeFactory(new SuzakuNodeFactory(3)), 3);
         nodes[0].joinInitialNode();
@@ -448,7 +452,7 @@ public class AsyncTest extends AsyncTestBase {
             Function<Consumer<RemoteValue<Integer>>, RQAdapter<Integer>> providerFactory,
             Range<Integer> range, List<Integer> expect, String expectedErr) {
         NodeFactory factory = new RQNodeFactory(base);
-        System.out.println("** testRQ1");
+        logger.debug("** testRQ1");
         init();
         RQAdapter<Integer> nodeProvider = providerFactory.apply(null);
         createAndInsert(factory, 5, nodeProvider);
@@ -456,7 +460,7 @@ public class AsyncTest extends AsyncTestBase {
         Collection<Range<Integer>> ranges = Collections.singleton(range);
         List<RemoteValue<Integer>> results = new ArrayList<>();
         RQAdapter<Integer> provider = providerFactory.apply((ret) -> {
-            System.out.println("GOT RESULT: " + ret);
+            logger.debug("GOT RESULT: " + ret);
             results.add(ret);
         });
         nodes[0].rangeQueryAsync(ranges, provider, opts); 
@@ -475,9 +479,9 @@ public class AsyncTest extends AsyncTestBase {
                 .map(rv -> rv.getException().getMessage())
                 .sorted()
                 .collect(Collectors.toList());
-        System.out.println("RVALS = " + rvals);
-        System.out.println("EXCEPTIONS = " + evals);
-        System.out.println("EXPECTED = " + expect);
+        logger.debug("RVALS = " + rvals);
+        logger.debug("EXCEPTIONS = " + evals);
+        logger.debug("EXPECTED = " + expect);
         assertTrue(rvals.equals(expect));
         assertTrue(evals.toString().equals(expectedErr));
         checkConsistent(nodes);
@@ -497,7 +501,7 @@ public class AsyncTest extends AsyncTestBase {
             Function<Consumer<RemoteValue<Node[]>>, RQAdapter<Node[]>> providerFactory,
             Range<Integer> range, String expect) {
         NodeFactory factory = new RQNodeFactory(base);
-        System.out.println("** testRQ2");
+        logger.debug("** testRQ2");
         init();
         RQAdapter<Node[]> baseProvider = providerFactory.apply(null);
         createAndInsert(factory, 5, baseProvider);
@@ -506,7 +510,7 @@ public class AsyncTest extends AsyncTestBase {
             List<RemoteValue<Node[]>> results = new ArrayList<>();
             RQAdapter<Node[]> provider = providerFactory.apply(
                     ret -> {
-                        System.out.println("GOT RESULT: " + ret);
+                        logger.debug("GOT RESULT: " + ret);
                         results.add(ret);
                     });
 
@@ -521,8 +525,8 @@ public class AsyncTest extends AsyncTestBase {
                     .collect(Collectors.toList());
             assertTrue(rvals.size() == 2);
             String rstr = rvals.toString();
-            System.out.println("RVALS = " + rstr);
-            System.out.println("EXPECT = " + expect);
+            logger.debug("RVALS = " + rstr);
+            logger.debug("EXPECT = " + expect);
             assertTrue(rstr.toString().equals(expect));
             checkMemoryLeakage(nodes);
         }
@@ -593,7 +597,7 @@ public class AsyncTest extends AsyncTestBase {
                 receiver -> new SlowCacheValueProvider(receiver, 10000),
                 new Range<Integer>(200, true, 400, false),
                 Arrays.asList(300));
-        System.out.println(getPrivateField(EventExecutor.class, "timeq"));
+        logger.debug(getPrivateField(EventExecutor.class, "timeq").toString());
     }
 
     private void testRetrans(NodeFactory base,
@@ -601,7 +605,7 @@ public class AsyncTest extends AsyncTestBase {
             Function<Consumer<RemoteValue<Integer>>, RQAdapter<Integer>> providerFactory,
             Range<Integer> range, List<Integer> expect) {
         NodeFactory factory = new RQNodeFactory(base);
-        System.out.println("** testSlowRetrans");
+        logger.debug("** testSlowRetrans");
         init();
         RQAdapter<Integer> baseProvider = providerFactory.apply(null);
         createAndInsert(factory, 5, baseProvider);
@@ -610,7 +614,7 @@ public class AsyncTest extends AsyncTestBase {
             Collection<Range<Integer>> ranges = Collections.singleton(range);
             List<RemoteValue<Integer>> results = new ArrayList<>();
             RQAdapter<Integer> p = providerFactory.apply(ret -> {
-                System.out.println("GOT RESULT: " + ret);
+                logger.debug("GOT RESULT: " + ret);
                 results.add(ret);
                 
             });
@@ -624,8 +628,8 @@ public class AsyncTest extends AsyncTestBase {
                     .map(rv -> rv.getValue())   // extract Integer
                     .sorted()
                     .collect(Collectors.toList());
-            System.out.println("RVALS = " + rvals);
-            System.out.println("EXPECT = " + expect);
+            logger.debug("RVALS = " + rvals);
+            logger.debug("EXPECT = " + expect);
             assertTrue(rvals.equals(expect));
             checkMemoryLeakage(nodes[0], nodes[1], nodes[3], nodes[4]);
         }
@@ -666,14 +670,14 @@ public class AsyncTest extends AsyncTestBase {
             Function<Integer, String> mapper,
             Range<Integer> range, List<Integer> expect) {
         NodeFactory factory = new RQNodeFactory(base);
-        System.out.println("** testMultikey");
+        logger.debug("** testMultikey");
         init();
         createAndInsert(factory, 5, mapper);
         {
             Collection<Range<Integer>> ranges = Collections.singleton(range);
             List<RemoteValue<DdllKey>> results = new ArrayList<>();
             RQAdapter<DdllKey> p = providerFactory.apply(ret -> {
-                System.out.println("GOT RESULT: " + ret);
+                logger.debug("GOT RESULT: " + ret);
                 results.add(ret);
             });
             nodes[0].rangeQueryAsync(ranges, p, opts);
@@ -686,8 +690,8 @@ public class AsyncTest extends AsyncTestBase {
                     .map(rv -> rv.getRawKey()) // extract Comparable
                     .sorted()
                     .collect(Collectors.toList());
-            System.out.println("RVALS = " + rvals);
-            System.out.println("EXPECT = " + expect);
+            logger.debug("RVALS = " + rvals);
+            logger.debug("EXPECT = " + expect);
             assertTrue(rvals.equals(expect));
             checkMemoryLeakage(nodes[0], nodes[1], nodes[3], nodes[4]);
         }

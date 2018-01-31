@@ -7,6 +7,7 @@ import java.net.InetSocketAddress;
 import java.util.Arrays;
 import java.util.List;
 
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.piax.common.ComparableKey;
 import org.piax.common.Destination;
@@ -30,6 +31,7 @@ import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.TransOptions.RetransMode;
 import org.piax.gtrans.Transport;
 import org.piax.gtrans.TransportListener;
+import org.piax.gtrans.impl.BaseTransportMgr;
 import org.piax.gtrans.netty.NettyLocator;
 import org.piax.gtrans.netty.idtrans.PrimaryKey;
 import org.piax.gtrans.ov.Overlay;
@@ -53,6 +55,12 @@ public class TestTransport {
     boolean udp_received1, udp_received2;
     private static final Logger logger = 
             LoggerFactory.getLogger(TestTransport.class);
+    
+    @BeforeAll
+    public static void setup() {
+        BaseTransportMgr.BASE_TRANSPORT_MANAGER_CLASS.set("org.piax.gtrans.impl.DefaultBaseTransportGenerator");
+    }
+    
     @Test
     public void UDPTransportTest() throws Exception {
         // get peers
