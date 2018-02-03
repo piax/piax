@@ -51,6 +51,10 @@ public class RandomUtil {
         }
         return shared;
     }
+    public static Random renewSharedRandom() {
+        shared = newCollisionlessRandom();
+        return shared;
+    }
     /**
      * seedの初期生成を工夫し、その際に起こりうるコリジョンを抑制したRandomオブジェクトを生成する。
      * <p>

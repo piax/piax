@@ -1,7 +1,6 @@
 package org.piax.ayame.ov.rq;
 
 import java.io.Serializable;
-import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -72,9 +71,10 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
 
     // Collective Store and Forward
     public Serializable topic;
-    public ZonedDateTime deadline;
+    public Long deadline;
     public Long period;
-    public Set<Long> collectedQid;
+    public final Collection<RQRange> originalTargetRanges;
+    public Set<Long> collectedQids;
 
     /**
      * failed nodes. this field is used for avoiding and repairing dead links.
@@ -121,6 +121,12 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         this.adapter = adapter;
         this.opts = opts;
         this.obstacles = new HashSet<>();
+        this.originalTargetRanges = new ArrayList<RQRange>(ranges); // Use ArrayList because kryo raises exception if you use unmodifiableCollection() here. 
+        
+        RQStrategy strategy = RQStrategy.getRQStrategy(getLocalNode());
+		if (strategy.getCSFHook() != null) {
+			strategy.getCSFHook().setupRQ((RQRequest)this);
+		}
     }
 
     /**
@@ -148,6 +154,12 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         this.opts = parent.opts;
         this.obstacles = parent.obstacles;
         this.catcher = parent.catcher;
+        
+        this.topic = parent.topic;
+        this.deadline = parent.deadline;
+        this.period = parent.period;
+        this.collectedQids = parent.collectedQids;
+        this.originalTargetRanges = parent.originalTargetRanges;
     }
 
     @Override
@@ -160,7 +172,8 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                 + ", root=" + root
                 + ", rootEvId=" + rootEventId
                 + ", target=" + targetRanges
-                + ", obstacles=" + obstacles + "]";
+                + ", obstacles=" + obstacles + "]"
+                + ", qids=" + collectedQids;
     }
 
     @Override
@@ -222,12 +235,34 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         catcher.rqDisseminate(catcher.gaps);
     }
  
-    public void forceRun(Collection<RQRange> newRanges) {
+    public void runWithoutLocal() {
+    		// check if we've received the same query
+        // targetRanges に含まれる各部分範囲について，受信済みかどうかを個別に判定しているが，
+        // 現在の実装では，1つのRQRequestで受信済みと非受信済みの範囲が混在することはない．
+        RQStrategy strategy = RQStrategy.getRQStrategy(getLocalNode());
+        Set<Integer> history = strategy.queryHistory.computeIfAbsent(qid,
+                q -> {
+                    EventExecutor.sched("purge_qh-" + qid,
+                            opts.getTimeout() + RQ_EXPIRATION_GRACE,
+                            () -> strategy.queryHistory.remove(qid));
+                    return new HashSet<>();
+                });
+        List<RQRange> filtered = targetRanges.stream()
+            .filter(r -> {
+                int lastId = r.ids[r.ids.length - 1];
+                boolean received = history.contains(lastId);
+                logger.debug("[{}]: received={}", r, received);
+                return !received;
+            }).collect(Collectors.toList());
+        if (filtered.isEmpty()) {
+            logger.debug("already received");
+            return;
+        }
         if (catcher == null) {
             // note that catcher is transient
-            this.catcher = new RQCatcher(newRanges);
+            this.catcher = new RQCatcher(filtered);
         }
-        catcher.rqDisseminateWithoutHook(catcher.gaps);
+        catcher.rqDisseminateWithoutLocal(catcher.gaps);
     }
     
     public void receiveReply(RQReplyDirect<T> rep) {
@@ -327,29 +362,31 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         private void rqDisseminate(List<RQRange> ranges) {
         		boolean sendChild = true;
             RQStrategy strategy = RQStrategy.getRQStrategy(getLocalNode());
-        		if (strategy.getHook() != null) {
-        			sendChild = strategy.getHook().hook((RQRequest)RQRequest.this);
+        		if (strategy.getCSFHook() != null) {
+        			sendChild = strategy.getCSFHook().hook((RQRequest)RQRequest.this);
         		}
-        		rqDisseminate0(ranges, sendChild);
+        		rqDisseminate0(ranges, sendChild, true);
         }
 
-        public void rqDisseminateWithoutHook(List<RQRange> ranges) {
-        		rqDisseminate0(ranges, true);
+        public void rqDisseminateWithoutLocal(List<RQRange> ranges) {
+        		rqDisseminate0(ranges, true, false);
         }
         		         
-        private void rqDisseminate0(List<RQRange> ranges, boolean sendChild) {
+        private void rqDisseminate0(List<RQRange> ranges, boolean sendChild, boolean executeLocal) {
             if (logger.isTraceEnabled()) {
                 logger.trace("rqDisseminate start: {}", this);
                 logger.trace("                     {}", RQRequest.this);
             }
-
+            if (gaps == null || gaps.isEmpty()) {
+            		logger.debug("rqDisseminate: all gap filled");
+            		return;
+            }
             Set<Integer> history = strategy.queryHistory.get(qid);
             if (history == null) {
                 // retransmission too late! 
+            		logger.debug("rqDisseminate: too late: qid={}", qid);
                 return;
             }
-            ranges.stream().forEach(r -> history.addAll(Arrays.asList(r.ids)));
-
             List<FTEntry> ftents = getTopStrategy().getRoutingEntries();
             if (ftents.isEmpty()) {
                 logger.trace("no routing entry available!");
@@ -365,7 +402,6 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                 logger.trace("rqd#ranges={}",  ranges0);
                 logger.trace("rqd#locally={}", locallyResolved);
             }
-            assert gaps != null && !gaps.isEmpty();
             locallyResolved.stream().forEach(dkr -> {
                 addRemoteValue(dkr.getRemoteValue(), dkr);
             });
@@ -388,6 +424,8 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                 .filter(ent -> !ent.getKey().equals(peerId))
                 .forEach(ent -> {
                     List<RQRange> sub = ent.getValue();
+                    // Childに投げたものだけ記録する
+                    sub.stream().forEach(r -> history.addAll(Arrays.asList(r.ids)));
                     Node dlg = sub.get(0).getNode();
                     RQRequest<T> m = new RQRequest<>(RQRequest.this, dlg, sub, 
                             (Throwable th) -> {
@@ -417,13 +455,15 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                     cleanup.add(() -> m.cleanup());
                 });
             }
+            if (executeLocal) {
             // obtain values for local ranges
             CompletableFuture<List<DKRangeRValue<T>>> future = null;
+            List<RQRange> localRange = map.get(peerId);
             RQStrategy strategy = RQStrategy.getRQStrategy(getLocalNode());
-            if (strategy.getHook() != null) {
-            		future = strategy.getHook().executeLocal((RQRequest)RQRequest.this, map.get(peerId));
+            if (strategy.getCSFHook() != null) {
+            		future = strategy.getCSFHook().executeLocal((RQRequest)RQRequest.this, localRange);
             } else {
-            		future = rqExecuteLocal(map.get(peerId));
+            		future = rqExecuteLocal(localRange);
             }
             future.thenAccept((List<DKRangeRValue<T>> rvals) -> {
                 addRemoteValues(rvals);
@@ -432,11 +472,8 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                 System.err.println("addRemoteValues completes exceptionally");
                 exc.getCause().printStackTrace();
                 return null; // or System.exit(1);
-            });
-            if (strategy.getHook() != null) {
-            		strategy.getHook().addHistory((RQRequest)RQRequest.this);
-            }
-            logger.trace("rqDisseminate finished");
+            });}
+            logger.trace("[{}]: rqDisseminate finished", peerId);
         }
 
         /**
@@ -571,6 +608,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         }
 
         private void addRemoteValue(RemoteValue<T> rval, Range<DdllKey> range) {
+        		logger.debug("addRV[{}]: rval={}, range={}", getLocalNode().getPeerId(), rval, range);
             if (rvals.containsKey(range.from)) {
                 return;
             }

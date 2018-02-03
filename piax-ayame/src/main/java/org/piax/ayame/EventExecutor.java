@@ -50,6 +50,7 @@ public class EventExecutor {
         nmsgs = 0;
         nextEventSerial = 0;
         timeq.clear();
+        RandomUtil.renewSharedRandom();
         LocalNode.resetLocalNodeMap();
         Node.resetInstances();
     }

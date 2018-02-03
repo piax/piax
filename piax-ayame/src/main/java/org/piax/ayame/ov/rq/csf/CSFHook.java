@@ -6,9 +6,6 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
-import java.time.temporal.ChronoUnit;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -22,27 +19,24 @@ import java.util.stream.Collectors;
 
 import org.piax.ayame.Event.TimerEvent;
 import org.piax.ayame.EventExecutor;
-import org.piax.ayame.ov.rq.RQHookIf;
 import org.piax.ayame.ov.rq.RQRange;
 import org.piax.ayame.ov.rq.RQRequest;
 import org.piax.ayame.ov.rq.DKRangeRValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class CSFHook<T> implements RQHookIf<T> {
+public abstract class CSFHook<T> implements CSFHookIf<T> {
     
     private static final Logger logger = LoggerFactory.getLogger(CSFHook.class);
     
-    private DateTimeFormatter f = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss.SSS");
+    private static final long DEFAULT_PERIOD = 60 * 1000;
+    private static final long DEFAULT_TIMER_OFFSET = 1 * 1000;
     
-    private static final long DEFAULT_PERIOD = TimeUnit.SECONDS.toSeconds(60);
-    private static final long DEFAULT_TIMER_OFFSET = TimeUnit.SECONDS.toSeconds(1);
-    
-    private String name;
+    protected String name;
     
     // stored message
     Map<Serializable, Map<Long, RQRequest<T>>> storedMessages;
-    Set<Long> history;
+    protected Set<Long> history;
     
     // for timer
     private long timer_offset = DEFAULT_TIMER_OFFSET;
@@ -65,17 +59,19 @@ public class CSFHook<T> implements RQHookIf<T> {
     @Override
     public boolean hook(RQRequest<T> req) {
 		logger.debug("[{}]: {}: sender {} vs receiver {}", name, req.getLocalNode(), req.sender, req.receiver);
-		//if (req.isRoot()) {
+
 		if (req.sender != null) {
             // 受信側
             // check deadline
+			if (req.deadline == null)
+				return true;
     			logger.debug("{}[{}]: receiver", req.qid, name);
             Long period = timerPeriods.get(req.topic);
-            ZonedDateTime last = req.deadline;
-            ZonedDateTime nextRequestTime = getNextRequestTime(period);
-            logger.debug("DEADLINE [{}] period={}, deadline={}, nextReq={}, topic={}", name, period, last!=null?last.format(f):"null", nextRequestTime!=null?nextRequestTime.format(f):"null", req.topic);
-            if ((period != null) && (nextRequestTime != null) && nextRequestTime.isAfter(last)) {
-                logger.debug("FWRD [{}] period={}, deadline={}, nextReq={}, topic={}", name, period, last.format(f), nextRequestTime.format(f), req.topic);
+            Long last = req.deadline;
+            Long nextRequestTime = getNextRequestTime(period);
+            logger.debug("DEADLINE [{}] period={}, deadline={}, nextReq={}, topic={}", name, period, last!=null? last:"null", nextRequestTime!=null?nextRequestTime:"null", req.topic);
+            if ((period != null) && (nextRequestTime != null) && nextRequestTime > last) {
+                logger.debug("FWRD [{}] period={}, deadline={}, nextReq={}, topic={}", name, period, last, nextRequestTime, req.topic);
                 return true;
             }
             if (!storedMessages.containsKey(req.topic)) {
@@ -93,12 +89,13 @@ public class CSFHook<T> implements RQHookIf<T> {
             // 送信側
             // timer start
         		logger.debug("{}[{}]: sender", req.qid, name);
-            long new_period = req.period;
+            Long new_period = req.period;
             Long old_period = timerPeriods.get(req.topic);
-            if (old_period == null || old_period != new_period) {
-                logger.debug("[{}] save new period period={}", new_period);
+            if (new_period != null && (old_period == null || old_period != new_period)) {
+                logger.debug("[{}] save new period period={}", name, new_period);
                 timerPeriods.put(req.topic, new_period);
-                restartTimer(new_period, req.topic, req.deadline);
+                if (req.deadline != null)
+                		restartTimer(new_period, req.topic, req.deadline);
             }
             Map<Long, RQRequest<T>> topicMap = storedMessages.get(req.topic);
             if (topicMap == null) {
@@ -109,47 +106,59 @@ public class CSFHook<T> implements RQHookIf<T> {
             for (Iterator<Map.Entry<Long, RQRequest<T>>> it = topicMap.entrySet().iterator(); it.hasNext();) {
                 Map.Entry<Long, RQRequest<T>> ent = it.next();
                 RQRequest<T> storedreq = ent.getValue();
-                if (equalsSubrange(req.targetRanges, storedreq.targetRanges)) {
+                logger.debug("CSFHook.hook: range: {}, {} vs {}, {}", req.originalTargetRanges, req.adapter.getOriginalRange(), storedreq.originalTargetRanges, storedreq.adapter.getOriginalRange());
+                if (equalsSubrange(req.originalTargetRanges, storedreq.originalTargetRanges)) {
                     if (!isMerged(req, storedreq)) {
-                        logger.debug("| merged qids={}, targetRange={}", storedreq.collectedQid.stream().map(n->n.toString()).collect(Collectors.joining(",")), storedreq.targetRanges);
+                        logger.debug("| merged qids={}, targetRanges={}", storedreq.collectedQids, storedreq.targetRanges);
                         addMessage(req, storedreq);
                     } else {
-                        logger.debug("| merged already: qids={}, targetRange={}", storedreq.collectedQid.stream().map(n->n.toString()).collect(Collectors.joining(",")), storedreq.targetRanges);
+                        logger.debug("| merged already: qids={}, targetRanges={}", storedreq.collectedQids, storedreq.targetRanges);
                         addQidToPayload(req, storedreq);
                     }
                     it.remove();
                 } else {
-                    logger.debug("| subrange differ. qid={} targetRange={}", storedreq.qid, storedreq.targetRanges);
+                    logger.debug("| targetRange differ. qid={} originalTargetRanges={} vs qid={} originalTargetRanges={}", req.qid, req.originalTargetRanges, storedreq.qid, storedreq.originalTargetRanges);
                 }
             }
             return true;
         }
     }
     
-    private void addQidToPayload(RQRequest<T> req, RQRequest<T> storedreq) {
-		// TODO Auto-generated method stub
-		
+    protected void addQidToPayload(RQRequest<T> req, RQRequest<T> storedreq) {
+		if (req.collectedQids == null) {
+			req.collectedQids = new HashSet<Long>();
+			req.collectedQids.add(req.qid);
+		}
+		req.collectedQids.add(storedreq.qid);
+		req.collectedQids.addAll(storedreq.collectedQids);
 	}
 
 	protected void addQid(RQRequest<T> req, Long qid) {
-        if (req.collectedQid == null) {
-    			req.collectedQid = new HashSet<Long>();
+        if (req.collectedQids == null) {
+    			req.collectedQids = new HashSet<Long>();
+    			req.collectedQids.add(req.qid);
         }
-		req.collectedQid.add(qid);
+		req.collectedQids.add(qid);
 	}
 
 	protected void addMessage(RQRequest<T> req, RQRequest<T> storedreq) {
-		if (req.collectedQid == null) {
-			req.collectedQid = new HashSet<Long>();
+		if (req.collectedQids == null) {
+			req.collectedQids = new HashSet<Long>();
+			req.collectedQids.add(req.qid);
 		}
-		req.collectedQid.addAll(storedreq.collectedQid);
+		req.collectedQids.addAll(storedreq.collectedQids);
+		req.collectedQids.add(storedreq.qid);
+		assert storedreq.deadline != null;
+		if (req.deadline == null || req.deadline > storedreq.deadline)
+			req.deadline = storedreq.deadline;
+		logger.debug("| merged into: topic={} qid={} qids={} targetRange={}", req.topic, req.qid, req.collectedQids, req.targetRanges);
 	}
 
 	protected boolean isMerged(RQRequest<T> req, RQRequest<T> storedreq) {
-		if (req.collectedQid == null) {
+		if (req.collectedQids == null) {
 			return false;
 		}
-		return req.collectedQid.containsAll(storedreq.collectedQid);
+		return req.collectedQids.containsAll(storedreq.collectedQids);
 	}
 
 	private boolean equalsSubrange(Collection<RQRange> subRange1, Collection<RQRange> subRange2) {
@@ -161,18 +170,19 @@ public class CSFHook<T> implements RQHookIf<T> {
         stopAllTimer();
     }
     
-    @Override
-    public void addHistory(RQRequest<T> req) {
+    protected void addHistory(RQRequest<T> req) {
         if (req.deadline == null) {
             return;
         }
         
         history.add(req.qid);
-        history.addAll(req.collectedQid);
+        if (req.collectedQids != null)
+        		history.addAll(req.collectedQids);
         logger.debug("[{}] add history. {}", name, history);
     }
     
     public CompletableFuture<List<DKRangeRValue<T>>> executeLocal(RQRequest<T> req, List<RQRange> ranges) {
+    		logger.debug("[{}]: executeLocal: qid={} qids={} targetRanges={}", name, req.qid, req.collectedQids, req.targetRanges);
         if (req.deadline == null) {
             return CompletableFuture.completedFuture(null);
         }
@@ -185,12 +195,23 @@ public class CSFHook<T> implements RQHookIf<T> {
             logger.error("cannot clone: " + e.toString());
             return CompletableFuture.completedFuture(null);
         }
-        removeReceivedMessage(copied);
+        if (removeReceivedMessage(copied)) {
+        		logger.debug("[{}]: all messages are already received", name);
+        		return CompletableFuture.completedFuture(null);
+        }
+		addHistory(req);
+		logger.info("CSFHook: execute {}", copied);
         return copied.catcher.rqExecuteLocal(ranges);
     }
     
-    protected void removeReceivedMessage(RQRequest<T> copied) {
-		copied.collectedQid.removeAll(history);
+    protected boolean removeReceivedMessage(RQRequest<T> copied) {
+		logger.debug("remove received: qid={} qids={} vs qids={}", copied.qid, copied.collectedQids, history);
+    		if (copied.collectedQids == null) {
+    			return false;
+    		}
+		copied.collectedQids.removeAll(history);
+		logger.debug("removed to: qids={}", copied.collectedQids);
+		return copied.collectedQids.isEmpty();
 	}
 
 	private RQRequest<T> deepCopy(RQRequest<T> req) throws IOException, ClassNotFoundException {
@@ -204,15 +225,19 @@ public class CSFHook<T> implements RQHookIf<T> {
         ObjectInputStream ois = new ObjectInputStream(bais);
         @SuppressWarnings("unchecked")
 		RQRequest<T> copy = (RQRequest<T>)ois.readObject();
-        copy.catcher = req.catcher;
+    		// catcher is transient
+        if (copy.catcher == null)
+    			copy.catcher = copy.new RQCatcher(req.targetRanges);
+        logger.debug("org adapter={}", req.adapter);
+        logger.debug("copied adapter={}", copy.adapter);
         return copy;
     }
     
-    private ZonedDateTime getNextRequestTime(Long period) {
+    private Long getNextRequestTime(Long period) {
         
         if (period == null) return null;
         
-        return ZonedDateTime.now().plus(TimeUnit.SECONDS.toMillis(period), ChronoUnit.MILLIS);
+        return EventExecutor.getVTime() + period;
     }
     
     // timer
@@ -220,30 +245,26 @@ public class CSFHook<T> implements RQHookIf<T> {
         return unsentTimerList.containsKey(topic);
     }
     
-    private void startDefaultTimer(Serializable topic, ZonedDateTime deadline) {
-        
+    private void startDefaultTimer(Serializable topic, Long deadline) {
         if (isUnsentTimerStarted(topic)) {
             logger.debug("[{}] default unsent message timer has already started.");
             return;
         }
         
         // default timer の開始は (default period で回ってくる次のリクエストの予定時間の少しあと(+ offset)) または (deadlineの少し前(- offset)) のどちらか先に来る方 
-        ZonedDateTime nextReqTimeWithOffset = ZonedDateTime.now()
-                                                .plus(TimeUnit.SECONDS.toMillis(DEFAULT_PERIOD), ChronoUnit.MILLIS)
-                                                .plus(TimeUnit.SECONDS.toMillis(timer_offset), ChronoUnit.MILLIS);
-        ZonedDateTime deadlineWithOffset = deadline.minus(TimeUnit.SECONDS.toMillis(timer_offset), ChronoUnit.MILLIS);
-        ZonedDateTime timerDelay = nextReqTimeWithOffset;
-        if (nextReqTimeWithOffset.isAfter(deadlineWithOffset)) {
+        long nextReqTimeWithOffset = EventExecutor.getVTime() + DEFAULT_PERIOD + timer_offset;
+        long deadlineWithOffset = deadline - timer_offset;
+        long timerDelay = nextReqTimeWithOffset;
+        if (nextReqTimeWithOffset > deadlineWithOffset) {
             timerDelay = deadlineWithOffset;
         }
-        long delay = ChronoUnit.MILLIS.between(ZonedDateTime.now(), timerDelay);
-        TimerEvent ev = scheduleCSFTimer(topic, delay, TimeUnit.SECONDS.toMillis(DEFAULT_PERIOD));
+        long delay = timerDelay - EventExecutor.getVTime();
+        TimerEvent ev = scheduleCSFTimer(topic, delay, DEFAULT_PERIOD);
         unsentTimerList.put(topic,  ev);
-        logger.debug("[{}] start default hook timer. delay={}, period={}", name, delay, TimeUnit.SECONDS.toMillis(DEFAULT_PERIOD));
+        logger.debug("[{}] start default hook timer. delay={}, period={}", name, delay, DEFAULT_PERIOD);
     }
     
-    private void restartTimer(long new_period, Serializable topic, ZonedDateTime deadline) {
-        
+    private void restartTimer(long new_period, Serializable topic, Long deadline) {
         TimerEvent ev = unsentTimerList.get(topic);
         if (ev != null) {
             // stop old timer
@@ -254,14 +275,14 @@ public class CSFHook<T> implements RQHookIf<T> {
         
         // delay 次の request より少しあと、あるいは deadline より少し前のどちらかの先に来る方
         // interval 周期的送信の周期 
-        ZonedDateTime nextReqTimeWithOffset = getNextRequestTime(new_period).plus(TimeUnit.SECONDS.toMillis(timer_offset), ChronoUnit.MILLIS);
-        ZonedDateTime deadlineWithOffset = deadline.minus(TimeUnit.SECONDS.toMillis(timer_offset),ChronoUnit.MILLIS);
-        ZonedDateTime timerDelay = nextReqTimeWithOffset;
-        if (nextReqTimeWithOffset.isAfter(deadlineWithOffset)) {
+        long nextReqTimeWithOffset = getNextRequestTime(new_period) + timer_offset;
+        long deadlineWithOffset = deadline - timer_offset;
+        long timerDelay = nextReqTimeWithOffset;
+        if (nextReqTimeWithOffset > deadlineWithOffset) {
             timerDelay = deadlineWithOffset;
         }
-        long delay = ChronoUnit.MILLIS.between(ZonedDateTime.now(), timerDelay);
-        long interval = TimeUnit.SECONDS.toMillis(new_period);
+        long delay = timerDelay - EventExecutor.getVTime();
+        long interval = new_period;
         ev = scheduleCSFTimer(topic, delay, interval);
         logger.debug("[{}] start hook timer. topic={} delay={}, period={}", name, topic, delay, interval);
         unsentTimerList.put(topic,  ev);
@@ -306,17 +327,17 @@ public class CSFHook<T> implements RQHookIf<T> {
                                      continue;
                                  }
                                  if (!isMerged(root, rqr)) {
-                                     logger.debug("| merged qids={}", rqr.collectedQid.stream().map(n->n.toString()).collect(Collectors.joining(",")));
+                                     logger.debug("| merged qids={}", rqr.collectedQids.stream().map(n->n.toString()).collect(Collectors.joining(",")));
                                      addMessage(root, rqr);
                                  } else {
-                                     logger.debug("| merged already: qids={}", rqr.collectedQid.stream().map(n->n.toString()).collect(Collectors.joining(",")));
+                                     logger.debug("| merged already: qids={}", rqr.collectedQids.stream().map(n->n.toString()).collect(Collectors.joining(",")));
                                      addQidToPayload(root, rqr);
                                  }
                                  it.remove();
                              }
                              logger.debug("TIMER[{}] disseminate: topic={}, targetRanges={}", name,
                                      topic, root.targetRanges);
-                             root.forceRun(rqrange.stream().collect(Collectors.toList()));
+                             root.runWithoutLocal();
                          }
                      }
                  } catch (Exception e) {

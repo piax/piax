@@ -27,6 +27,7 @@ import org.piax.ayame.ov.ddll.DdllKeyRange;
 import org.piax.ayame.ov.rq.RQAdapter.InsertionPointAdapter;
 import org.piax.ayame.ov.rq.RQAdapter.KeyAdapter;
 import org.piax.ayame.ov.rq.RQEvent.GetLocalValueRequest;
+import org.piax.ayame.ov.rq.csf.CSFHookIf;
 import org.piax.ayame.ov.suzaku.FingerTable;
 import org.piax.common.DdllKey;
 import org.piax.common.PeerId;
@@ -81,7 +82,7 @@ public class RQStrategy extends NodeStrategy {
     /**
      * hook for collective store and forward
      */
-    RQHookIf<?> hook = null;
+    CSFHookIf<?> hook = null;
 
     @Override
     public void handleLookup(Lookup l) {
@@ -409,11 +410,11 @@ public class RQStrategy extends NodeStrategy {
         return ret;
     }
     
-    public void setHook(RQHookIf<?> hooks) {
+    public void setCSFHook(CSFHookIf<?> hooks) {
     		this.hook = hooks;
     }
 
-    public RQHookIf<?> getHook() {
+    public CSFHookIf<?> getCSFHook() {
         return hook;
     }
 }

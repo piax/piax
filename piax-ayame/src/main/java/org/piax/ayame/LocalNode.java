@@ -26,6 +26,8 @@ import org.piax.ayame.EventException.RetriableException;
 import org.piax.ayame.EventException.TimeoutException;
 import org.piax.ayame.EventSender.EventSenderSim;
 import org.piax.ayame.ov.rq.RQAdapter;
+import org.piax.ayame.ov.rq.RQStrategy;
+import org.piax.ayame.ov.rq.csf.CSFHookIf;
 import org.piax.common.DdllKey;
 import org.piax.common.Endpoint;
 import org.piax.common.PeerId;
@@ -541,5 +543,14 @@ public class LocalNode extends Node {
     // called from EventExecutor.reset()
     public static void resetLocalNodeMap() {
         localNodeMap.clear();
+    }
+    
+    public void setCSFHook(CSFHookIf hook) {
+    		RQStrategy strategy = (RQStrategy)getStrategy(RQStrategy.class);
+    		if (strategy == null) {
+    			logger.debug("[{}]: no RQStrategy", peerId);
+    			return;
+    		}
+    		strategy.setCSFHook(hook);
     }
 }

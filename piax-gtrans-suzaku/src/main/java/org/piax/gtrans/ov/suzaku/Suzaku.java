@@ -31,9 +31,9 @@ import org.piax.ayame.FTEntry;
 import org.piax.ayame.LocalNode;
 import org.piax.ayame.Node;
 import org.piax.ayame.ov.rq.RQAdapter;
-import org.piax.ayame.ov.rq.RQHookIf;
 import org.piax.ayame.ov.rq.RQStrategy;
 import org.piax.ayame.ov.rq.RQStrategy.RQNodeFactory;
+import org.piax.ayame.ov.rq.csf.CSFHookIf;
 import org.piax.ayame.ov.suzaku.SuzakuStrategy;
 import org.piax.ayame.ov.suzaku.SuzakuStrategy.SuzakuNodeFactory;
 import org.piax.common.ComparableKey;
@@ -84,7 +84,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
     NetEventSender sender;
     Map<K,LocalNode> nodes;
     
-    RQHookIf<Object> hook = null;
+    CSFHookIf<Object> hook = null;
 
     static {
         // ayame related classes
@@ -477,6 +477,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         Collection<K> matchedKeys = Collections.<K>singleton((K) key.getRawKey());
         
         logger.debug("matchedKeys:{} nmsg:{}", matchedKeys, nmsg);
+        logger.error("matchedKeys:", (new Throwable()));
 
         // matchしたkeyセットと upperが登録しているkeyセットの共通部分を求める
         Set<K> keys = getKeys(nmsg.receiver);
@@ -636,7 +637,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
             factory.setupNode(node);
             RQStrategy s = (RQStrategy)node.getTopStrategy();
             s.registerAdapter(new ExecQueryAdapter(this));
-            s.setHook(hook);
+            s.setCSFHook(hook);
 
             if (initial) {
                 logger.debug("initial=" + node.key + "self=" + node.addr);
@@ -825,11 +826,11 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         return szk.getFingerTableSize();
     }
     
-    public void setHook(RQHookIf<Object> hook) {
+    public void setHook(CSFHookIf<Object> hook) {
     		this.hook = hook;
     }
     
-    public RQHookIf<Object> getHook() {
+    public CSFHookIf<Object> getHook() {
         return hook;
     }
 }
