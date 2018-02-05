@@ -477,7 +477,6 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         Collection<K> matchedKeys = Collections.<K>singleton((K) key.getRawKey());
         
         logger.debug("matchedKeys:{} nmsg:{}", matchedKeys, nmsg);
-        logger.error("matchedKeys:", (new Throwable()));
 
         // matchしたkeyセットと upperが登録しているkeyセットの共通部分を求める
         Set<K> keys = getKeys(nmsg.receiver);
