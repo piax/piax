@@ -226,11 +226,13 @@ public abstract class CSFHook<T> implements CSFHookIf<T> {
         @SuppressWarnings("unchecked")
 		RQRequest<T> copy = (RQRequest<T>)ois.readObject();
     		// catcher is transient
+        if (copy.cleanup == null)
+        	copy.cleanup = req.cleanup;
         if (copy.catcher == null)
-    			copy.catcher = copy.new RQCatcher(req.targetRanges);
-        logger.debug("org adapter={}", req.adapter);
-        logger.debug("copied adapter={}", copy.adapter);
-        return copy;
+    		copy.catcher = copy.new RQCatcher(req.targetRanges);
+        if (copy.adapter.resultsReceiver == null)
+        	copy.adapter.resultsReceiver = req.adapter.resultsReceiver;	
+         return copy;
     }
     
     private Long getNextRequestTime(Long period) {
