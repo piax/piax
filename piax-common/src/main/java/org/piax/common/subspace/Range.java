@@ -365,12 +365,10 @@ public class Range<K extends Comparable<?>> implements Serializable, Cloneable {
     }
 
     /**
-     * a simple range class that only supports closed ends (e.g., [10, 20]).
-     * [x, x] is treated as a whole range [-∞, +∞].
-     * <p>
-     * this class simplifies "openness" (open ends or closed ends) of Range
-     * class.
-     *  
+     * a simple range class that does not support openness
+     * (open ends or closed ends). 
+     * [x, x) is treated as a whole range [-∞, +∞].
+     *
      * @param <K> type of the minimum and maximum value.
      */
     static class SimpleRange<K extends Comparable<K>> {
@@ -387,11 +385,17 @@ public class Range<K extends Comparable<?>> implements Serializable, Cloneable {
         }
         boolean contains(K key) {
             InnerKey<K> ikey = new InnerKey<>(key, Sign.ZERO);
-            return keyComp.isOrdered(from, ikey, to);
+            return keyComp.isOrdered(from, true, ikey, to, false);
         }
+        // key ∈ [from, to)
         boolean contains(InnerKey<K> key) {
-            return keyComp.isOrdered(from, key, to);
+            return keyComp.isOrdered(from, true, key, to, false);
         }
+        // key ∈ (from, to]
+        boolean containsExInc(InnerKey<K> key) {
+            return keyComp.isOrdered(from, false, key, to, true);
+        }
+        // another ⊆ this
         boolean contains(SimpleRange<K> another) {
             if (isWhole()) {
                 return true;
@@ -399,23 +403,19 @@ public class Range<K extends Comparable<?>> implements Serializable, Cloneable {
             if (another.isWhole()) {
                 return false;
             }
-            if (keyComp.isOrdered(from, another.from, to)
-                    && keyComp.isOrdered(from, another.to, to)) {
-                // exclude cases such as:
-                //      this:  [=========]
-                //   another: ====]   [====
-                return keyComp.isOrdered(from, another.from, another.to) &&
-                        keyComp.isOrdered(another.from, another.to, to) &&
-                        keyComp.compare(to, another.from) != 0 &&
-                        keyComp.compare(from, another.to) != 0;
-            }
-            return false;
+            return (contains(another.from)
+                    && containsExInc(another.to)
+                    &&
+                    // exclude cases such as:
+                    //      this:  [=========)
+                    //   another: ====)   [====
+                    !another.contains(this.to));
         }
         boolean hasIntersection(SimpleRange<K> r) {
-            return keyComp.isOrdered(this.from, true, r.from, this.to, false)
-                    || keyComp.isOrdered(this.from, false, r.to, this.to, true)
-                    || keyComp.isOrdered(r.from, true, this.from, r.to, false)
-                    || keyComp.isOrdered(r.from, false, this.to, r.to, true);
+            return contains(r.from)
+                    || containsExInc(r.to)
+                    || r.contains(this.from)
+                    || r.containsExInc(this.to);
         }
         boolean isWhole() {
             return keyComp.compare(from, to) == 0;
