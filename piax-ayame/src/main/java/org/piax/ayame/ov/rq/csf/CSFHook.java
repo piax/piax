@@ -21,7 +21,7 @@ import org.piax.common.DdllKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public abstract class CSFHook<T> implements CSFHookIf<T> {
+public class CSFHook<T> implements CSFHookIf<T> {
     
     private static final Logger logger = LoggerFactory.getLogger(CSFHook.class);
     
@@ -57,22 +57,13 @@ public abstract class CSFHook<T> implements CSFHookIf<T> {
     public CSFHook(String name, LocalNode node) {
         this.name = name;
         this.strategy = RQStrategy.getRQStrategy(node);
+        strategy.registerAdapter(new CSFHookAdapter());
         unsentTimerList = new HashMap<>();
         timerPeriods = new HashMap<>();
         storedMessages = new HashMap<>();
         history = new HashSet<>();
     }
-
-    @Override
-    public boolean setupRQ(RQRequest<T> req) {
-    		// avoid postpone sending RQMultiRequest
-    		// setupRQ should not setup if super.setupRQ() returned false;
-    		if (req instanceof RQMultiRequest) {
-    			return false;
-    		}
-    		return true;
-    }
-
+    
     public void setTimerOffset(long offset) {
         this.timer_offset = offset;
     }
@@ -88,15 +79,16 @@ public abstract class CSFHook<T> implements CSFHookIf<T> {
 		if (!isRoot) {
             // 受信側
             // check deadline
-			if (req.deadline == null)
+            Long extraTime = req.getOpts().getExtraTime();
+			if (extraTime == null)
 				return false;
     			logger.debug("[{}]: receiver={}, qid={}", name, req.receiver, req.qid);
             Long period = timerPeriods.get(req.receiver);
-            Long last = req.deadline;
             Long nextRequestTime = getNextRequestTime(period);
-            logger.debug("DEADLINE [{}] period={}, deadline={}, nextReq={}, receiver={}", name, period, last!=null? last:"null", nextRequestTime!=null?nextRequestTime:"null", req.receiver);
+            long last = getDeadline(extraTime);
+            logger.debug("DEADLINE [{}] period={}, extraTime={}, deadline={}, nextReq={}, receiver={}", name, period, extraTime!=null?extraTime:"null", last, nextRequestTime!=null?nextRequestTime:"null", req.receiver);
             if ((period != null) && (nextRequestTime != null) && nextRequestTime > last) {
-                logger.debug("FWRD [{}] period={}, deadline={}, nextReq={}, receiver={}", name, period, last, nextRequestTime, req.receiver);
+                logger.debug("FWRD [{}] period={}, extraTime={}, deadline={}, nextReq={}, receiver={}", name, period, extraTime!=null?extraTime:"null", last, nextRequestTime, req.receiver);
                 return false;
             }
             if (!storedMessages.containsKey(req.receiver)) {
@@ -107,20 +99,23 @@ public abstract class CSFHook<T> implements CSFHookIf<T> {
             req.prepareForMerge(strategy.getLocalNode());
             reqSet.add(req);
             if (!isUnsentTimerStarted(req.receiver)) {
-                startDefaultTimer(req.receiver, req.deadline);
+                startDefaultTimer(req.receiver, last);
             }
             return true;
         } else {
             // Root
             // timer start
         		logger.debug("[{}]: root class={}, qid={}", name, req.getClass(), req.qid);
-            Long new_period = req.period;
+            Long new_period = req.getOpts().getPeriod();
             Long old_period = timerPeriods.get(req.receiver);
             if (new_period != null && (old_period == null || old_period != new_period)) {
                 logger.debug("[{}] save new period period={}", name, new_period);
                 timerPeriods.put(req.receiver, new_period);
-                if (req.deadline != null)
-                		restartTimer(new_period, req.receiver, req.deadline);
+                Long extraTime = req.getOpts().getExtraTime();
+                if (extraTime != null) {
+                    long last = getDeadline(extraTime);
+                    	restartTimer(NetworkParams.toVTime(new_period * 1000), req.receiver, last);
+                }
             }
             Set<RQRequest<T>> reqSet = storedMessages.get(req.receiver);
             if (reqSet == null) {
@@ -137,9 +132,11 @@ public abstract class CSFHook<T> implements CSFHookIf<T> {
                 		ret = new RQMultiRequest<T>(req, range, new CSFHookAdapter<T>());
                 		logger.debug("| merged {}", req);
                 		req.prepareForMerge(strategy.getLocalNode());
+                		req.subExtraTime();
                 		ret.addRQRequest(req);
                 }
                 logger.debug("| merged {}", storedreq);
+                storedreq.subExtraTime();
                 ret.addRQRequest(storedreq);
                 it.remove();
             }
@@ -160,10 +157,15 @@ public abstract class CSFHook<T> implements CSFHookIf<T> {
         
         if (period == null) return null;
         
-        return EventExecutor.getVTime() + period;
+        return EventExecutor.getVTime() + NetworkParams.toVTime(period * 1000);
     }
     
-    // timer
+    private long getDeadline(Long extraTime) {
+        
+        return EventExecutor.getVTime() + NetworkParams.toVTime(extraTime * 1000);
+    }
+    
+   // timer
     private boolean isUnsentTimerStarted(Node receiver) {
         return unsentTimerList.containsKey(receiver);
     }
@@ -238,6 +240,7 @@ public abstract class CSFHook<T> implements CSFHookIf<T> {
         						logger.debug("TIMER[{}]: RQMultiRequest={}", name, send);
         					} 
         					logger.debug("| merged qid={}, targetRanges={}", storedreq.qid, storedreq.getTargetRanges());
+        					storedreq.subExtraTime();
         					send.addRQRequest(storedreq);
         					it.remove();
         				}
@@ -250,11 +253,4 @@ public abstract class CSFHook<T> implements CSFHookIf<T> {
             }
         });
     }
-    
-    public long toDeadline(RQRequest<T> req) {
-    		if (req.deadline == null)
-    			return 0;
-    		return req.deadline - EventExecutor.getVTime();
-    }
-    
 }

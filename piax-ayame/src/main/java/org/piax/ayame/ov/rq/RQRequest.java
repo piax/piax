@@ -67,12 +67,8 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
     // for now (k-abe)
     protected final Collection<RQRange> targetRanges;
     public final RQAdapter<T> adapter;
-    protected final TransOptions opts;
+    TransOptions opts;
     final boolean isRoot;
-
-    // Collective Store and Forward
-    public Long deadline;
-    public Long period;
 
     /**
      * failed nodes. this field is used for avoiding and repairing dead links.
@@ -85,6 +81,8 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
     enum SPECIAL {
         PADDING;
     }
+    
+    long receivedTime = 0;
 
     /**
      * create a root RQRequest.
@@ -119,11 +117,6 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         this.adapter = adapter;
         this.opts = opts;
         this.obstacles = new HashSet<>();
-        
-        RQStrategy strategy = RQStrategy.getRQStrategy(getLocalNode());
-		if (getLocalNode().getCSFHook() != null) {
-			getLocalNode().getCSFHook().setupRQ((RQRequest)this);
-		}
     }
 
     /**
@@ -151,9 +144,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         this.opts = parent.opts;
         this.obstacles = parent.obstacles;
         this.catcher = parent.catcher;
-        
-        this.deadline = parent.deadline;
-        this.period = parent.period;
+        this.receivedTime = parent.receivedTime;
     }
 
     /*
@@ -181,8 +172,8 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
     protected long getAckTimeoutValue() {
     		long timeout = 0;
         if (isUseAck(opts)) {
-    			if (getLocalNode().getCSFHook() != null) {
-    				timeout += getLocalNode().getCSFHook().toDeadline((RQRequest)this);
+    			if (getLocalNode().getCSFHook() != null && opts.getExtraTime() != null) {
+    				timeout += NetworkParams.toVTime(opts.getExtraTime() * 1000);
     			}
         		timeout += NetworkParams.ACK_TIMEOUT;
         }
@@ -198,8 +189,8 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             opts.getResponseType() == ResponseType.DIRECT && !isRoot) {
         		// nothing to add
         } else {
-    			if (getLocalNode().getCSFHook() != null) {
-    				timeout += getLocalNode().getCSFHook().toDeadline((RQRequest)this);
+    			if (getLocalNode().getCSFHook() != null && opts.getExtraTime() != null) {
+    				timeout += NetworkParams.toVTime(opts.getExtraTime() * 1000);
     			}
             // XXX: 再送時には短いタイムアウトで!
             timeout += opts.getTimeout();
@@ -220,6 +211,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         // check if we've received the same query
         // targetRanges に含まれる各部分範囲について，受信済みかどうかを個別に判定しているが，
         // 現在の実装では，1つのRQRequestで受信済みと非受信済みの範囲が混在することはない．
+    		receivedTime = EventExecutor.getVTime();
         RQStrategy strategy = RQStrategy.getRQStrategy(getLocalNode());
         Set<Integer> history = strategy.queryHistory.computeIfAbsent(qid,
                 q -> {
@@ -262,6 +254,23 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         return mode == RetransMode.NONE_ACK
                 || mode == RetransMode.FAST
                 || mode == RetransMode.RELIABLE;
+    }
+
+    public TransOptions getOpts() {
+    		return opts;
+    }
+    
+    public void opts(TransOptions opts) {
+    		this.opts = opts;
+    }
+
+    public void subExtraTime() {
+		Long extraTime = opts.getExtraTime();
+    		if (extraTime != null) {
+    			long newExtraTime = extraTime - (EventExecutor.getVTime() - receivedTime) / 1000;
+    			logger.debug("[{}]: newExtraTime={} receivedTime={}, extraTime={}", getLocalNode().getPeerId(), newExtraTime, receivedTime, extraTime);
+    			opts = opts.extraTime((newExtraTime > 0)? newExtraTime: 0);
+    		}
     }
 
     public void prepareForMerge(LocalNode node) {
@@ -423,8 +432,10 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                     		handled = getLocalNode().getCSFHook().storeOrForward((RQRequest)m, RQRequest.this.sender == null);
         				}
                     logger.debug("handled={}: {}", handled, m);
-                		if (!handled)
+                		if (!handled) {
+            				m.subExtraTime();
                 			getLocalNode().post(m);
+                		}
                 		cleanup.add(() -> m.cleanup());
                 		logger.debug("[{}]: cleanups {}", getLocalNode().getPeerId(), cleanup);
                 });

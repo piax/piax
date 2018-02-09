@@ -5,6 +5,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import org.piax.ayame.EventExecutor;
 import org.piax.ayame.LocalNode;
@@ -15,6 +16,8 @@ import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.TransOptions.RetransMode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.esotericsoftware.minlog.Log;
 
 public class RQMultiRequest<T> extends RQRequest<T> {
     /*--- logger ---*/
@@ -28,6 +31,8 @@ public class RQMultiRequest<T> extends RQRequest<T> {
 	 */
 	RQMultiRequest(RQRequest<T> req, Collection<RQRange> dest, RQAdapter<T> adapter) {
 		super(req, dest, adapter);
+		// RQMultiRequest shoud not have extraTime
+		opts(req.getOpts().extraTime(null));
 	}
 
 	/*
@@ -43,17 +48,17 @@ public class RQMultiRequest<T> extends RQRequest<T> {
                 (Throwable th) -> {
                     logger.debug("{} for {}", th, this);
                     getLocalNode().addPossiblyFailedNode(receiver);
-                    RetransMode mode = opts.getRetransMode();
+                    RetransMode mode = getOpts().getRetransMode();
                     if (mode == RetransMode.FAST || mode == RetransMode.RELIABLE) {
                         if (receiver == getLocalNode().succ) {
                             logger.debug("start fast retransmission! (delayed) {}", getTargetRanges());
                             EventExecutor.sched(
                                     "rq-retry-successor-failure",
                                     RQ_RETRY_SUCCESSOR_FAILURE_DELAY,
-                                    () -> catcher.rqDisseminate((List<RQRange>)getTargetRanges()));
+                                    () -> catcher.rqDisseminate(getTargetRanges().stream().collect(Collectors.toList())));
                         } else {
                             logger.debug("start fast retransmission! {}", getTargetRanges());
-                            catcher.rqDisseminate((List<RQRange>)getTargetRanges());
+                            catcher.rqDisseminate(getTargetRanges().stream().collect(Collectors.toList()));
                         }
                     }
                 });
@@ -78,13 +83,17 @@ public class RQMultiRequest<T> extends RQRequest<T> {
 
 	@Override
     public void run() {
-		if (beforeRunHook(getLocalNode()))
-				super.run();
+		if (beforeRunHook(getLocalNode())) {
+			logger.debug("run {}", this);
+			super.run();
+			
+		}
 		for (RQRequest<T> req: set) {
+			logger.debug("run {}", this);
 			// reset catcher
 			RQRequest<T> receiver = (RQRequest<T>)req.clone();
 			if (receiver.beforeRunHook(getLocalNode()))
 				receiver.run();
 		}
-    }
+    	}
 }
