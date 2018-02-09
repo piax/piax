@@ -113,9 +113,7 @@ public class CSFTestAsync extends AsyncTestBase {
     }
 
     private void testCSFWith(ResponseType response, RetransMode retrans) {
-        TransOptions opts = new TransOptions();
-        opts.setResponseType(response);
-        opts.setRetransMode(retrans);
+        TransOptions opts = new TransOptions(response, retrans);
         testCSFPatterns(new DdllNodeFactory(), opts,
                 (receiver, csf) -> new FastCSFProvider(receiver, csf),
                 new Range<Integer>(0, true, 500, true));
@@ -123,8 +121,7 @@ public class CSFTestAsync extends AsyncTestBase {
 
     @Test
     public void testCSFNoResponse() {
-        TransOptions opts = new TransOptions();
-        opts.setResponseType(ResponseType.NO_RESPONSE);
+        TransOptions opts = new TransOptions(ResponseType.NO_RESPONSE);
         testCSFPatterns(new DdllNodeFactory(), opts, 
                 (receiver, csf) -> new FastCSFProvider(receiver, csf),
                 new Range<Integer>(200, true, 400, false));
@@ -132,8 +129,7 @@ public class CSFTestAsync extends AsyncTestBase {
 
     @Test
     public void testCSFAggregateSlowProvider() {
-        TransOptions opts = new TransOptions();
-        opts.setResponseType(ResponseType.AGGREGATE);
+        TransOptions opts = new TransOptions(ResponseType.AGGREGATE);
         testCSFPatterns(new DdllNodeFactory(), opts,
                 (receiver, csf) -> new SlowCSFProvider(receiver, csf, 3000),
                 new Range<Integer>(200, true, 400, false));
@@ -141,9 +137,7 @@ public class CSFTestAsync extends AsyncTestBase {
 
     @Test
     public void testCSFTimeout() {
-        TransOptions opts = new TransOptions();
-        opts.setResponseType(ResponseType.DIRECT);
-        opts.setTimeout(10000);
+        TransOptions opts = new TransOptions(ResponseType.DIRECT).timeout(10000);
         testCSFPatterns(new DdllNodeFactory(), opts,
                 (receiver, csf) -> new SlowCSFProvider(receiver, csf, 20000),
                 new Range<Integer>(200, true, 400, false));
@@ -151,8 +145,7 @@ public class CSFTestAsync extends AsyncTestBase {
     
     @Test
     public void testCSFAggregateSuzaku() {
-        TransOptions opts = new TransOptions();
-        opts.setResponseType(ResponseType.AGGREGATE);
+        TransOptions opts = new TransOptions(ResponseType.AGGREGATE);
         testCSFPatterns(new SuzakuNodeFactory(3), opts,
                 (receiver, csf) -> new FastCSFProvider(receiver, csf),
                 new Range<Integer>(200, true, 400, false));
@@ -160,8 +153,7 @@ public class CSFTestAsync extends AsyncTestBase {
 
     @Test
     public void testCSFDirectSuzaku() {
-        TransOptions opts = new TransOptions();
-        opts.setResponseType(ResponseType.DIRECT);
+        TransOptions opts = new TransOptions(ResponseType.DIRECT);
         testCSFPatterns(new SuzakuNodeFactory(3), opts,
                 (receiver, csf) -> new FastCSFProvider(receiver, csf),
                 new Range<Integer>(200, true, 300, false));
