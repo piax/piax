@@ -20,7 +20,7 @@ import org.piax.common.Option.IntegerOption;
 /**
  * A transport options
  */
-public class TransOptions implements Serializable {
+public final class TransOptions implements Serializable {
 	private static final long serialVersionUID = 8743238717571271663L;
 
 	public enum ResponseType {
