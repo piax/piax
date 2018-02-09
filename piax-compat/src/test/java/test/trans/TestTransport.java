@@ -620,14 +620,13 @@ public class TestTransport {
         tr1.send(new KeyRange<DoubleKey>(new DoubleKey(2.0), new DoubleKey(3.0)),
                 key.getKey().toString());
 
-        Thread.sleep(2000);
+        Thread.sleep(3000);
         assertTrue(sg_received2, "SG2 receive failed");
         assertTrue(sg_received3, "SG3 receive failed");
         assertTrue(sg_received1, "SG1 receive failed");
-
-        p1.fin();
         p2.fin();
         p3.fin();
+        p1.fin();
     }
     
     @Test

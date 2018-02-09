@@ -35,8 +35,8 @@ import org.piax.gtrans.netty.loctrans.NettyRawChannel.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.netty.bootstrap.AbstractBootstrap;
 import io.netty.bootstrap.Bootstrap;
-import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.group.ChannelGroup;
@@ -99,9 +99,9 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
             serverGroup = bs.getChildEventLoopGroup();
             clientGroup = bs.getClientEventLoopGroup();
 
-            ServerBootstrap b = bs.getServerBootstrap(new NettyInboundHandler(this));
-            b.bind(new InetSocketAddress(ep.getHost(), ep.getPort()))
-                    .syncUninterruptibly();
+            AbstractBootstrap b = bs.getServerBootstrap(new NettyInboundHandler(this));
+            //b.bind(new InetSocketAddress(ep.getHost(), ep.getPort())).syncUninterruptibly();
+            b.bind(new InetSocketAddress(ep.getPort())).syncUninterruptibly();
             logger.debug("bound " + ep);
         }
         isRunning = true;
@@ -252,7 +252,7 @@ public abstract class NettyChannelTransport<E extends NettyEndpoint> extends Cha
             NettyLocator l = directLocator(dst);
             if (l != null) {
                 Bootstrap b = bs.getBootstrap(l, new NettyOutboundHandler(raw, this));
-                b.connect(l.getHost(), l.getPort());
+                bs.connect(b, l.getHost(), l.getPort());
             }
             else {
                 logger.debug("destination is not directly connectable.");

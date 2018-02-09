@@ -162,8 +162,8 @@
             </property>
           </systemProperties>
           <excludes>
-            <include>**/TestRetrans.java</include> <!-- depend on timing -->
-            <include>**/TestSimultaneous.java</include> <!--  no meaning -->
+            <exclude>**/TestRetrans.java</exclude> <!-- depend on timing -->
+            <exclude>**/TestSimultaneous.java</exclude> <!--  no meaning -->
           </excludes>
         </configuration>
       </plugin>

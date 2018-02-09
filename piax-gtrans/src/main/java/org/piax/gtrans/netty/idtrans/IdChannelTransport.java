@@ -37,8 +37,8 @@ import org.piax.gtrans.netty.idtrans.LocatorChannel.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.netty.bootstrap.AbstractBootstrap;
 import io.netty.bootstrap.Bootstrap;
-import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
@@ -258,10 +258,10 @@ public class IdChannelTransport extends ChannelTransportImpl<PrimaryKey> impleme
                 } // synchronized raws
                 break;
             case ACK:
-                logger.debug("illegal attempt ACK received from client");
+                logger.debug("attempt ACK received from client");
                 break;
             case NACK:
-                logger.debug("illegal attempt NACK received from client");
+                logger.debug("attempt NACK received from client");
                 break;
             case CLOSE:
                 logger.debug("close id channel: {}/{}", (int)cmsg.getArg(), curSrc);
@@ -388,7 +388,7 @@ public class IdChannelTransport extends ChannelTransportImpl<PrimaryKey> impleme
             logger.debug("outbound attempt response=" + cmsg.type + ",from=" + curSrc + ",on=" + ep);
             switch(cmsg.type) {
             case ATTEMPT:
-                logger.debug("illegal attempt received from server");
+                logger.debug("attempt received from server");
                 break;
             case ACK:
                 synchronized(ent) {
@@ -533,7 +533,7 @@ public class IdChannelTransport extends ChannelTransportImpl<PrimaryKey> impleme
             bossGroup = bs.getParentEventLoopGroup();
             serverGroup = bs.getChildEventLoopGroup();
             clientGroup = bs.getClientEventLoopGroup();
-            ServerBootstrap b = bs.getServerBootstrap(new InboundHandler(this));
+            AbstractBootstrap b = bs.getServerBootstrap(new InboundHandler(this));
             serverFuture = b.bind(new InetSocketAddress(peerLocator.getHost(), peerLocator.getPort()))
                     .syncUninterruptibly();
             logger.debug("bound " + ep);
@@ -641,7 +641,10 @@ public class IdChannelTransport extends ChannelTransportImpl<PrimaryKey> impleme
         else {
             Bootstrap b = bs.getBootstrap(locator, new OutboundHandler(ent, this));
             b.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, (int)opts.getTimeout());
-            ChannelFuture f = b.connect(locator.getHost(), locator.getPort());
+            
+            ChannelFuture f = bs.connect(b, locator.getHost(), locator.getPort());
+            
+            if (f != null) {
             f.addListener((future) -> {
                 if (future.isCancelled()) {
                     logger.trace("connection timed out to {}: {} sec", locator, opts.getTimeout());
@@ -653,6 +656,7 @@ public class IdChannelTransport extends ChannelTransportImpl<PrimaryKey> impleme
                 // change locator channel entry to the one with <future and channel>
                 ent.channel.setNettyChannel(((ChannelFuture)future).channel()); 
             });
+            }
         }
         return ent.future;
     }

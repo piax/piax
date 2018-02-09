@@ -1,5 +1,13 @@
 package org.piax.gtrans.netty.bootstrap;
 
+import java.security.cert.CertificateException;
+
+import javax.net.ssl.SSLException;
+
+import org.piax.gtrans.netty.NettyEndpoint;
+import org.piax.gtrans.netty.NettyLocator;
+
+import io.netty.bootstrap.AbstractBootstrap;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelInboundHandlerAdapter;
@@ -11,26 +19,12 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.handler.codec.serialization.ClassResolvers;
-import io.netty.handler.codec.serialization.ObjectDecoder;
-import io.netty.handler.codec.serialization.ObjectEncoder;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import io.netty.handler.ssl.util.SelfSignedCertificate;
-
-import java.security.cert.CertificateException;
-
-import javax.net.ssl.SSLException;
-
-import org.piax.gtrans.netty.NettyEndpoint;
-import org.piax.gtrans.netty.NettyLocator;
-import org.piax.gtrans.netty.loctrans.NettyChannelTransport;
-import org.piax.gtrans.netty.loctrans.NettyInboundHandler;
-import org.piax.gtrans.netty.loctrans.NettyOutboundHandler;
-import org.piax.gtrans.netty.loctrans.NettyRawChannel;
 
 public class SslBootstrap<E extends NettyEndpoint> extends NettyBootstrap<E> {
 //    private static final Logger logger = LoggerFactory.getLogger(NettySslTransport.class.getName());
@@ -118,7 +112,7 @@ public class SslBootstrap<E extends NettyEndpoint> extends NettyBootstrap<E> {
     }
 
     @Override
-    public ServerBootstrap getServerBootstrap(ChannelInboundHandlerAdapter ihandler) {
+    public AbstractBootstrap getServerBootstrap(ChannelInboundHandlerAdapter ihandler) {
         ServerBootstrap b = new ServerBootstrap();
         b.group(parentGroup, childGroup)
         .channel(NioServerSocketChannel.class)

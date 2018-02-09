@@ -40,8 +40,7 @@ public class TestAggr extends AsyncTestBase {
     public void testAggrQuery1() {
         SuzakuStrategy.UPDATE_FINGER_PERIOD.set(10*1000);
         DdllStrategy.pingPeriod.set(0);
-        TransOptions opts = new TransOptions();
-        opts.setResponseType(ResponseType.AGGREGATE);
+        TransOptions opts = new TransOptions(ResponseType.AGGREGATE);
         testRQ1(new SuzakuNodeFactory(3), opts,
                 receiver -> new AggrTestAdapter(receiver),
                 new Range<Integer>(100, true, 400, false),
@@ -52,8 +51,7 @@ public class TestAggr extends AsyncTestBase {
     public void testAggrQuery2() {
         SuzakuStrategy.UPDATE_FINGER_PERIOD.set(10*1000);
         DdllStrategy.pingPeriod.set(0);
-        TransOptions opts = new TransOptions();
-        opts.setResponseType(ResponseType.DIRECT);
+        TransOptions opts = new TransOptions(ResponseType.DIRECT);
         testRQ1(new SuzakuNodeFactory(3), opts,
                 receiver -> new AggrTestAdapter(receiver),
                 new Range<Integer>(0, true, 500, true),
@@ -64,8 +62,7 @@ public class TestAggr extends AsyncTestBase {
     public void testCondQuery1() {
         SuzakuStrategy.UPDATE_FINGER_PERIOD.set(10*1000);
         DdllStrategy.pingPeriod.set(0);
-        TransOptions opts = new TransOptions();
-        opts.setResponseType(ResponseType.AGGREGATE);
+        TransOptions opts = new TransOptions(ResponseType.AGGREGATE);
         testRQ1(new SuzakuNodeFactory(3), opts,
                 receiver -> new CondTestAdapter(receiver, 0b10101),
                 new Range<Integer>(0, true, 500, true),
