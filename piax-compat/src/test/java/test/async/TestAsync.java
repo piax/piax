@@ -368,9 +368,7 @@ public class TestAsync extends AsyncTestBase {
     }
 
     private void testRQ1With(ResponseType response, RetransMode retrans) {
-        TransOptions opts = new TransOptions();
-        opts.setResponseType(response);
-        opts.setRetransMode(retrans);
+        TransOptions opts = new TransOptions(response, retrans);
         testRQ1(new DdllNodeFactory(), opts,
                 (receiver) -> new FastValueProvider(receiver),
                 new Range<Integer>(0, true, 500, true),
@@ -379,8 +377,7 @@ public class TestAsync extends AsyncTestBase {
 
     @Test
     public void testRQ1NoResponse() {
-        TransOptions opts = new TransOptions();
-        opts.setResponseType(ResponseType.NO_RESPONSE);
+        TransOptions opts = new TransOptions(ResponseType.NO_RESPONSE);
         testRQ1(new DdllNodeFactory(), opts, 
                 (receiver) -> new FastValueProvider(receiver),
                 new Range<Integer>(200, true, 400, false),
@@ -389,8 +386,7 @@ public class TestAsync extends AsyncTestBase {
 
     @Test
     public void testRQ1AggregateSlowProvider() {
-        TransOptions opts = new TransOptions();
-        opts.setResponseType(ResponseType.AGGREGATE);
+        TransOptions opts = new TransOptions(ResponseType.AGGREGATE);
         testRQ1(new DdllNodeFactory(), opts,
                 (receiver) -> new SlowValueProvider(receiver, 3000),
                 new Range<Integer>(200, true, 400, false),
@@ -399,9 +395,7 @@ public class TestAsync extends AsyncTestBase {
 
     @Test
     public void testRQ1Timeout() {
-        TransOptions opts = new TransOptions();
-        opts.setResponseType(ResponseType.DIRECT);
-        opts.setTimeout(10000);
+        TransOptions opts = new TransOptions(ResponseType.DIRECT).timeout(10000);
         testRQ1(new DdllNodeFactory(), opts,
                 (receiver) -> new SlowValueProvider(receiver, 20000),
                 new Range<Integer>(200, true, 400, false),
@@ -410,8 +404,7 @@ public class TestAsync extends AsyncTestBase {
 
     @Test
     public void testRQ1AggregateSuzaku() {
-        TransOptions opts = new TransOptions();
-        opts.setResponseType(ResponseType.AGGREGATE);
+        TransOptions opts = new TransOptions(ResponseType.AGGREGATE);
         testRQ1(new SuzakuNodeFactory(3), opts,
                 (receiver) -> new FastValueProvider(receiver),
                 new Range<Integer>(200, true, 400, false),
@@ -420,8 +413,7 @@ public class TestAsync extends AsyncTestBase {
 
     @Test
     public void testRQ1DirectSuzaku() {
-        TransOptions opts = new TransOptions();
-        opts.setResponseType(ResponseType.DIRECT);
+        TransOptions opts = new TransOptions(ResponseType.DIRECT);
         testRQ1(new SuzakuNodeFactory(3), opts,
                 (receiver) -> new FastValueProvider(receiver),
                 new Range<Integer>(200, true, 400, false),
@@ -430,8 +422,7 @@ public class TestAsync extends AsyncTestBase {
     
     @Test
     public void testRQ1ExceptionInProvider() {
-        TransOptions opts = new TransOptions();
-        opts.setResponseType(ResponseType.AGGREGATE);
+        TransOptions opts = new TransOptions(ResponseType.AGGREGATE);
         testRQ1(new DdllNodeFactory(), opts, 
                 receiver -> new ErrorProvider(receiver),
                 new Range<Integer>(0, true, 500, true),
@@ -490,8 +481,7 @@ public class TestAsync extends AsyncTestBase {
     
     @Test
     public void testRQInsertionPointProvider() {
-        TransOptions opts = new TransOptions();
-        opts.setResponseType(ResponseType.DIRECT);
+        TransOptions opts = new TransOptions(ResponseType.DIRECT);
         testRQ2(new SuzakuNodeFactory(3), opts,
                 (receiver) -> new InsertionPointAdapter(receiver),
                 new Range<Integer>(150), "[N100!P100, N200!P200]");
@@ -534,9 +524,7 @@ public class TestAsync extends AsyncTestBase {
 
     @Test
     public void testRetransDirectNoneSuzaku() {
-        TransOptions opts = new TransOptions();
-        opts.setResponseType(ResponseType.DIRECT);
-        opts.setRetransMode(RetransMode.NONE);
+        TransOptions opts = new TransOptions(ResponseType.DIRECT, RetransMode.NONE);
         testRetrans(new SuzakuNodeFactory(3), opts,
                 receiver -> new FastValueProvider(receiver),
                 new Range<Integer>(200, true, 400, false),
@@ -545,9 +533,7 @@ public class TestAsync extends AsyncTestBase {
 
     @Test
     public void testRetransDirectNoneAckSuzaku() {
-        TransOptions opts = new TransOptions();
-        opts.setResponseType(ResponseType.DIRECT);
-        opts.setRetransMode(RetransMode.NONE_ACK);
+        TransOptions opts = new TransOptions(ResponseType.DIRECT, RetransMode.NONE_ACK);
         testRetrans(new SuzakuNodeFactory(3), opts,
                 receiver -> new FastValueProvider(receiver),
                 new Range<Integer>(200, true, 400, false),
@@ -556,9 +542,7 @@ public class TestAsync extends AsyncTestBase {
 
     @Test
     public void testRetransDirectSlowSuzaku() {
-        TransOptions opts = new TransOptions();
-        opts.setResponseType(ResponseType.DIRECT);
-        opts.setRetransMode(RetransMode.SLOW);
+        TransOptions opts = new TransOptions(ResponseType.DIRECT, RetransMode.SLOW);
         testRetrans(new SuzakuNodeFactory(3), opts,
                 receiver -> new FastValueProvider(receiver),
                 new Range<Integer>(200, true, 400, false),
@@ -567,10 +551,8 @@ public class TestAsync extends AsyncTestBase {
 
     @Test
     public void testRetransAggregateSlowSuzaku() {
-        TransOptions opts = new TransOptions();
-        opts.setResponseType(ResponseType.AGGREGATE);
-        opts.setRetransMode(RetransMode.SLOW);
-        opts.setTimeout(15*1000);
+        TransOptions opts = new TransOptions(ResponseType.AGGREGATE, RetransMode.SLOW)
+                .timeout(15*1000);
         testRetrans(new SuzakuNodeFactory(3), opts, 
                 receiver -> new FastValueProvider(receiver),
                 new Range<Integer>(100, true, 400, true),
@@ -579,10 +561,8 @@ public class TestAsync extends AsyncTestBase {
 
     @Test
     public void testRetransAggregateFastSuzaku() {
-        TransOptions opts = new TransOptions();
-        opts.setResponseType(ResponseType.AGGREGATE);
-        opts.setRetransMode(RetransMode.FAST);
-        opts.setTimeout(15*1000);
+        TransOptions opts = new TransOptions(ResponseType.AGGREGATE, RetransMode.FAST)
+        .timeout(15*1000);
         testRetrans(new SuzakuNodeFactory(3), opts,
                 receiver -> new FastValueProvider(receiver),
                 new Range<Integer>(100, true, 400, true),
@@ -591,8 +571,7 @@ public class TestAsync extends AsyncTestBase {
 
     @Test
     public void testCache() {
-        TransOptions opts = new TransOptions();
-        opts.setResponseType(ResponseType.AGGREGATE);
+        TransOptions opts = new TransOptions(ResponseType.AGGREGATE);
         testRetrans(new SuzakuNodeFactory(3), opts, 
                 receiver -> new SlowCacheValueProvider(receiver, 10000),
                 new Range<Integer>(200, true, 400, false),
@@ -637,8 +616,7 @@ public class TestAsync extends AsyncTestBase {
 
     @Test
     public void testMultikeySuzaku() {
-        TransOptions opts = new TransOptions();
-        opts.setResponseType(ResponseType.AGGREGATE);
+        TransOptions opts = new TransOptions(ResponseType.AGGREGATE);
         testMultikey(new SuzakuNodeFactory(3), opts,
                 receiver -> new KeyAdapter(receiver),
                 k -> {
@@ -654,8 +632,7 @@ public class TestAsync extends AsyncTestBase {
 
     @Test
     public void testMultikeySuzakuOnOneNode() {
-        TransOptions opts = new TransOptions();
-        opts.setResponseType(ResponseType.AGGREGATE);
+        TransOptions opts = new TransOptions(ResponseType.AGGREGATE);
         testMultikey(new SuzakuNodeFactory(3), opts,
                 receiver -> new KeyAdapter(receiver),
                 k -> {

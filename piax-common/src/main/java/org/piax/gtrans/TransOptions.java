@@ -20,7 +20,7 @@ import org.piax.common.Option.IntegerOption;
 /**
  * A transport options
  */
-public class TransOptions implements Serializable {
+public final class TransOptions implements Serializable {
 	private static final long serialVersionUID = 8743238717571271663L;
 
 	public enum ResponseType {
@@ -58,13 +58,13 @@ public class TransOptions implements Serializable {
 	//private static final DeliveryMode DEFAULT_DELIVERY_MODE = DeliveryMode.ACCEPT_ONCE;
 	private static final boolean DEFAULT_INSPECT = false;
 	
-	private long timeout; // timeout for the response.
-	private boolean inspect; // true means professional mode.
+	private final long timeout; // timeout for the response.
+	private final boolean inspect; // true means professional mode.
 	
 	// Options for RequestTransport
-	private ResponseType responseType;
-	private RetransMode retransMode;
-	private DeliveryMode deliveryMode;
+	private final ResponseType responseType;
+	private final RetransMode retransMode;
+	private final DeliveryMode deliveryMode;
 	
 	/**
 	 */
@@ -76,10 +76,11 @@ public class TransOptions implements Serializable {
 		if (opts == null) {
 			opts = new TransOptions();
 		}
-		setTimeout(opts.timeout);
-		setResponseType(opts.responseType);
-		setRetransMode(opts.retransMode);
-		setInspect(opts.inspect);
+		this.timeout = opts.timeout;
+		this.responseType = opts.responseType;
+		this.retransMode = opts.retransMode;
+		this.deliveryMode = opts.deliveryMode;
+		this.inspect = opts.inspect;
 	}
 	
 	/**
@@ -229,33 +230,32 @@ public class TransOptions implements Serializable {
 	public long getTimeout() {
 		return timeout;
 	}
-
-	public void setTimeout(long timeout) {
-		this.timeout = timeout;
-	}
-
-	public boolean isInspect() {
-		return inspect;
-	}
-
-	public void setInspect(boolean inspect) {
-		this.inspect = inspect;
-	}
-
-	public ResponseType getResponseType() {
-		return responseType;
-	}
-
-	public void setResponseType(ResponseType responseType) {
-		this.responseType = responseType;
-	}
-
+	
 	public RetransMode getRetransMode() {
-		return retransMode;
+	    return retransMode;
+	}
+	
+	public ResponseType getResponseType() {
+        return responseType;
+    }
+	
+	public boolean isInspect() {
+        return inspect;
+    }
+
+	public TransOptions timeout(long timeout) {
+	    return new TransOptions(timeout, this.responseType, this.retransMode, this.deliveryMode, this.inspect);
 	}
 
-	public void setRetransMode(RetransMode retransMode) {
-		this.retransMode = retransMode;
+	public TransOptions inspect(boolean inspect) {
+	    return new TransOptions(this.timeout, this.responseType, this.retransMode, this.deliveryMode, inspect);
 	}
 
+	public TransOptions responseType(ResponseType responseType) {
+	    return new TransOptions(this.timeout, responseType, this.retransMode, this.deliveryMode, this.inspect);
+	}
+
+	public TransOptions retransMode(RetransMode retransMode) {
+	    return new TransOptions(this.timeout, this.responseType, retransMode, this.deliveryMode, this.inspect);
+	}
 }

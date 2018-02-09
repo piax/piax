@@ -1,6 +1,6 @@
 package test.async;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -68,8 +68,7 @@ public class TestAsync2 extends AsyncTestBase {
     @Test
     public void testForwardQueryLeft1NoResponse() {
         // normal case
-        TransOptions opts = new TransOptions();
-        opts.setResponseType(ResponseType.NO_RESPONSE);
+        TransOptions opts = new TransOptions(ResponseType.NO_RESPONSE);
         testFQLeft(new DdllNodeFactory(), opts,
                 receiver -> new FastValueProvider(receiver),
                 new Range<Integer>(0, true, 500, true),
@@ -119,8 +118,7 @@ public class TestAsync2 extends AsyncTestBase {
     @Test
     public void testForwardQueryLeftFail2() {
         // right-most node failure
-        TransOptions opts = new TransOptions();
-        opts.setRetransMode(RetransMode.RELIABLE);
+        TransOptions opts = new TransOptions(RetransMode.RELIABLE);
         testFQLeft(new DdllNodeFactory(), opts,
                 receiver -> new FastValueProvider(receiver),
                 new Range<Integer>(0, true, 500, true),
@@ -130,9 +128,8 @@ public class TestAsync2 extends AsyncTestBase {
     @Test
     public void testForwardQueryLeftFail3() {
         // right-most node failure
-        TransOptions opts = new TransOptions();
-        opts.setRetransMode(RetransMode.SLOW);
-        opts.setTimeout(2000);
+        TransOptions opts = new TransOptions(RetransMode.SLOW)
+        .timeout(2000);
         testFQLeft(new DdllNodeFactory(), opts,
                 receiver -> new FastValueProvider(receiver),
                 new Range<Integer>(0, true, 500, true),

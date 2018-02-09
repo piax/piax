@@ -15,7 +15,6 @@ import org.piax.common.Endpoint;
 import org.piax.common.ObjectId;
 import org.piax.common.PeerId;
 import org.piax.common.TransportId;
-import org.piax.common.dcl.DCLTranslator;
 import org.piax.common.subspace.KeyRange;
 import org.piax.common.subspace.Lower;
 import org.piax.common.subspace.LowerUpper;
@@ -29,6 +28,7 @@ import org.piax.gtrans.PeerLocator;
 import org.piax.gtrans.ReceivedMessage;
 import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.TransOptions.RetransMode;
+import org.piax.gtrans.dcl.DCLTranslator;
 import org.piax.gtrans.Transport;
 import org.piax.gtrans.TransportListener;
 import org.piax.gtrans.impl.BaseTransportMgr;
@@ -620,14 +620,13 @@ public class TestTransport {
         tr1.send(new KeyRange<DoubleKey>(new DoubleKey(2.0), new DoubleKey(3.0)),
                 key.getKey().toString());
 
-        Thread.sleep(2000);
+        Thread.sleep(3000);
         assertTrue(sg_received2, "SG2 receive failed");
         assertTrue(sg_received3, "SG3 receive failed");
         assertTrue(sg_received1, "SG1 receive failed");
-
-        p1.fin();
         p2.fin();
         p3.fin();
+        p1.fin();
     }
     
     @Test
