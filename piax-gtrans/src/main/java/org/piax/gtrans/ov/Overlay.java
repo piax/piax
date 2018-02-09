@@ -23,11 +23,11 @@ import org.piax.common.Endpoint;
 import org.piax.common.ObjectId;
 import org.piax.common.TransportId;
 import org.piax.common.Option.StringOption;
-import org.piax.common.dcl.parser.ParseException;
 import org.piax.gtrans.FutureQueue;
 import org.piax.gtrans.ProtocolUnsupportedException;
 import org.piax.gtrans.RequestTransport;
 import org.piax.gtrans.TransOptions;
+import org.piax.gtrans.dcl.parser.ParseException;
 
 /**
  * The common overlay interface. 

@@ -26,8 +26,8 @@ import org.piax.common.Key;
 import org.piax.common.ObjectId;
 import org.piax.common.PeerId;
 import org.piax.common.TransportIdPath;
-import org.piax.common.dcl.VarDestinationPair;
 import org.piax.gtrans.IdConflictException;
+import org.piax.gtrans.dcl.VarDestinationPair;
 import org.piax.gtrans.ov.NoSuchOverlayException;
 import org.piax.gtrans.ov.Overlay;
 

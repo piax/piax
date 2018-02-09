@@ -1,9 +1,9 @@
 package test.combined;
 
 import org.piax.common.Destination;
-import org.piax.common.dcl.DCLTranslator;
-import org.piax.common.dcl.DestinationCondition;
-import org.piax.common.dcl.parser.ParseException;
+import org.piax.gtrans.dcl.DCLTranslator;
+import org.piax.gtrans.dcl.DestinationCondition;
+import org.piax.gtrans.dcl.parser.ParseException;
 
 public class TestDCL {
     
