@@ -8,13 +8,13 @@ import java.util.function.Consumer;
 
 import org.piax.ayame.EventExecutor;
 import org.piax.ayame.LocalNode;
+import org.piax.ayame.ov.rq.RQAdapter;
 import org.piax.ayame.ov.rq.RQRange;
 import org.piax.ayame.ov.rq.RQRequest;
+import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.TransOptions.RetransMode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.esotericsoftware.minlog.Log;
 
 public class RQMultiRequest<T> extends RQRequest<T> {
     /*--- logger ---*/
@@ -26,8 +26,8 @@ public class RQMultiRequest<T> extends RQRequest<T> {
 	/*
 	 * Create root RQMultirequest
 	 */
-	RQMultiRequest(RQRequest<T> req, Collection<RQRange> dest) {
-		super(req, dest);
+	RQMultiRequest(RQRequest<T> req, Collection<RQRange> dest, RQAdapter<T> adapter) {
+		super(req, dest, adapter);
 	}
 
 	/*

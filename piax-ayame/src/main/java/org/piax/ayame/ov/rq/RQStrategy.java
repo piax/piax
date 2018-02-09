@@ -78,11 +78,6 @@ public class RQStrategy extends NodeStrategy {
      * {@link org.piax.ayame.ov.rq.RQAdapter.CacheAdapter}
      *  */ 
     Map<PeerId, Map<Long, CompletableFuture<?>>> resultCache = new HashMap<>();
-    
-    /**
-     * hook for collective store and forward
-     */
-    CSFHookIf<?> hook = null;
 
     @Override
     public void handleLookup(Lookup l) {
@@ -408,13 +403,5 @@ public class RQStrategy extends NodeStrategy {
             });
         });
         return ret;
-    }
-    
-    public void setCSFHook(CSFHookIf<?> hooks) {
-    		this.hook = hooks;
-    }
-
-    public CSFHookIf<?> getCSFHook() {
-        return hook;
     }
 }

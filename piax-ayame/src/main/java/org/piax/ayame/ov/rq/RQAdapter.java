@@ -27,7 +27,7 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class RQAdapter<T> implements Serializable {
     private static final Logger logger = LoggerFactory.getLogger(RQAdapter.class);
-    transient public Consumer<RemoteValue<T>> resultsReceiver;
+    transient protected final Consumer<RemoteValue<T>> resultsReceiver;
     private Range<?> originalRange;
     public RQAdapter(Consumer<RemoteValue<T>> resultsReceiver) {
         this.resultsReceiver = resultsReceiver;

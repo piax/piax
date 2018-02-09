@@ -2,7 +2,6 @@ package test.async;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -13,6 +12,7 @@ import java.util.function.Consumer;
 
 import org.junit.jupiter.api.Test;
 import org.piax.ayame.EventExecutor;
+import org.piax.ayame.NetworkParams;
 import org.piax.ayame.NodeFactory;
 import org.piax.ayame.ov.ddll.DdllStrategy.DdllNodeFactory;
 import org.piax.ayame.ov.rq.RQAdapter;
@@ -25,7 +25,6 @@ import org.piax.gtrans.RemoteValue;
 import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.TransOptions.ResponseType;
 import org.piax.gtrans.TransOptions.RetransMode;
-import org.piax.util.RandomUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -117,30 +116,27 @@ public class CSFTestAsync extends AsyncTestBase {
         TransOptions opts = new TransOptions();
         opts.setResponseType(response);
         opts.setRetransMode(retrans);
-        testCSF(new DdllNodeFactory(), opts,
+        testCSFPatterns(new DdllNodeFactory(), opts,
                 (receiver, csf) -> new FastCSFProvider(receiver, csf),
-                new Range<Integer>(0, true, 500, true),
-                Arrays.asList(0, 100, 200, 300, 400));
+                new Range<Integer>(0, true, 500, true));
     }
 
     @Test
     public void testCSFNoResponse() {
         TransOptions opts = new TransOptions();
         opts.setResponseType(ResponseType.NO_RESPONSE);
-        testCSF(new DdllNodeFactory(), opts, 
+        testCSFPatterns(new DdllNodeFactory(), opts, 
                 (receiver, csf) -> new FastCSFProvider(receiver, csf),
-                new Range<Integer>(200, true, 400, false),
-                Arrays.asList());
+                new Range<Integer>(200, true, 400, false));
     }
 
     @Test
     public void testCSFAggregateSlowProvider() {
         TransOptions opts = new TransOptions();
         opts.setResponseType(ResponseType.AGGREGATE);
-        testCSF(new DdllNodeFactory(), opts,
+        testCSFPatterns(new DdllNodeFactory(), opts,
                 (receiver, csf) -> new SlowCSFProvider(receiver, csf, 3000),
-                new Range<Integer>(200, true, 400, false),
-                Arrays.asList(200, 300));
+                new Range<Integer>(200, true, 400, false));
     }
 
     @Test
@@ -148,74 +144,88 @@ public class CSFTestAsync extends AsyncTestBase {
         TransOptions opts = new TransOptions();
         opts.setResponseType(ResponseType.DIRECT);
         opts.setTimeout(10000);
-        testCSF(new DdllNodeFactory(), opts,
+        testCSFPatterns(new DdllNodeFactory(), opts,
                 (receiver, csf) -> new SlowCSFProvider(receiver, csf, 20000),
-                new Range<Integer>(200, true, 400, false),
-                Arrays.asList());
+                new Range<Integer>(200, true, 400, false));
     }
-
+    
     @Test
     public void testCSFAggregateSuzaku() {
         TransOptions opts = new TransOptions();
         opts.setResponseType(ResponseType.AGGREGATE);
-        testCSF(new SuzakuNodeFactory(3), opts,
+        testCSFPatterns(new SuzakuNodeFactory(3), opts,
                 (receiver, csf) -> new FastCSFProvider(receiver, csf),
-                new Range<Integer>(200, true, 400, false),
-                Arrays.asList(200, 300));
+                new Range<Integer>(200, true, 400, false));
     }
 
     @Test
     public void testCSFDirectSuzaku() {
         TransOptions opts = new TransOptions();
         opts.setResponseType(ResponseType.DIRECT);
-        testCSF(new SuzakuNodeFactory(3), opts,
+        testCSFPatterns(new SuzakuNodeFactory(3), opts,
                 (receiver, csf) -> new FastCSFProvider(receiver, csf),
-                new Range<Integer>(200, true, 300, false),
-                Arrays.asList(400));
+                new Range<Integer>(200, true, 300, false));
     }
     
-    private void testCSF(NodeFactory base, 
+    private void testCSFPatterns(NodeFactory base, 
             TransOptions opts,
             BiFunction<Consumer<RemoteValue<Integer>>, CSFContent, RQAdapter<Integer>> providerFactory,
-            Range<Integer> range, List<Integer> expect) {
-        testCSF(base, opts, providerFactory, range, expect, "[]");
+            Range<Integer> range) {
+    		// store and forward
+		testCSF(base, opts, providerFactory, range, new CSFContent(30L, null), new CSFContent(null, 10L));
+		// immediately forward
+		testCSF(base, opts, providerFactory, range, new CSFContent(10L, null), new CSFContent(null, 20L));
+		// timeout
+		testCSF(base, opts, providerFactory, range, new CSFContent(10L, null), null);
     }
 
     private void testCSF(NodeFactory base, 
             TransOptions opts,
             BiFunction<Consumer<RemoteValue<Integer>>, CSFContent, RQAdapter<Integer>> providerFactory,
-            Range<Integer> range, List<Integer> expect, String expectedErr) {
+            Range<Integer> range, CSFContent c1, CSFContent c2) {
         NodeFactory factory = new RQNodeFactory(base);
         logger.debug("** testCSF");
         logger.debug("ResponseType: {}", opts.getResponseType());
         logger.debug("RetransMode: {}", opts.getRetransMode());
+        logger.debug("Deadline of stored message: {}", c1 != null? c1.deadline: "null");
+        logger.debug("Period of relay message: {}", c2 != null? c2.period: "null");
         init();
         RQAdapter<Integer> nodeProvider = providerFactory.apply(null, null);
         createAndInsert(factory, 4, nodeProvider);
         Collection<Range<Integer>> ranges = Collections.singleton(range);
         List<RemoteValue<Integer>> results = new ArrayList<>();
         for (int i = 0; i < nodes.length; i++) {
-    			nodes[i].setCSFHook(new CSFHook<Integer>("H" + i * 100) {
-    				public void setupRQ(RQRequest<Integer> req) {
+    			nodes[i].setCSFHook(new CSFHook<Integer>("H" + i * 100, nodes[i]) {
+    				public boolean setupRQ(RQRequest<Integer> req) {
+    					if (!super.setupRQ(req))
+    						return false;
     					assertTrue(req.adapter instanceof CSFProvider);
-    					req.topic = ((CSFProvider)req.adapter).getCSF().topic;
-    					req.deadline = ((CSFProvider)req.adapter).getCSF().deadline;
-    					req.period = ((CSFProvider)req.adapter).getCSF().period;
+    					CSFProvider provider = (CSFProvider)req.adapter;
+    					if (provider.getCSF().deadline != null) {
+    						req.deadline = EventExecutor.getVTime() + NetworkParams.toVTime(provider.getCSF().deadline * 1000);
+    					}
+    					if (provider.getCSF().period != null) {
+        					req.period = NetworkParams.toVTime(provider.getCSF().period * 1000);
+    					}
+    					return true;
     				}
     			});
         }
         RQAdapter<Integer> providerDeadline = providerFactory.apply((ret) -> {
             logger.debug("GOT RESULT: " + ret);
             results.add(ret);
-        }, new CSFContent("topic", EventExecutor.getVTime() + 30 * 1000, null));
+        }, c1);
         nodes[0].rangeQueryAsync(ranges, providerDeadline, opts); 
         EventExecutor.startSimulation(3000);
-        //nodes[0].rangeQueryAsync(ranges, providerDeadline, opts); 
-        RQAdapter<Integer> providerPeriod = providerFactory.apply((ret) -> {
-            logger.debug("GOT RESULT: " + ret);
-            results.add(ret);
-        }, new CSFContent("topic", null, (long)20 * 1000));
-        nodes[1].rangeQueryAsync(ranges,  providerPeriod, opts);
+        nodes[0].rangeQueryAsync(ranges, providerDeadline, opts); 
+        EventExecutor.startSimulation(3000);
+        if (c2 != null) {
+        		RQAdapter<Integer> providerPeriod = providerFactory.apply((ret) -> {
+        			logger.debug("GOT RESULT: " + ret);
+        			results.add(ret);
+        		}, c2);
+        		nodes[1].rangeQueryAsync(ranges,  providerPeriod, opts);
+        }
         EventExecutor.startSimulation(50000);
     }
 }

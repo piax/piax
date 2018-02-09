@@ -25,6 +25,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 import org.piax.ayame.FTEntry;
@@ -84,7 +85,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
     NetEventSender sender;
     Map<K,LocalNode> nodes;
     
-    CSFHookIf<Object> hook = null;
+    Function<LocalNode, CSFHookIf<Object>> hook = null;
 
     static {
         // ayame related classes
@@ -636,7 +637,8 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
             factory.setupNode(node);
             RQStrategy s = (RQStrategy)node.getTopStrategy();
             s.registerAdapter(new ExecQueryAdapter(this));
-            s.setCSFHook(hook);
+            if (hook != null)
+            		node.setCSFHook(hook.apply(node));
 
             if (initial) {
                 logger.debug("initial=" + node.key + "self=" + node.addr);
@@ -825,11 +827,11 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         return szk.getFingerTableSize();
     }
     
-    public void setHook(CSFHookIf<Object> hook) {
+    public void setHook(Function<LocalNode, CSFHookIf<Object>> hook) {
     		this.hook = hook;
     }
     
-    public CSFHookIf<Object> getHook() {
+    public Function<LocalNode, CSFHookIf<Object>> getHook() {
         return hook;
     }
 }

@@ -26,7 +26,6 @@ import org.piax.ayame.EventException.RetriableException;
 import org.piax.ayame.EventException.TimeoutException;
 import org.piax.ayame.EventSender.EventSenderSim;
 import org.piax.ayame.ov.rq.RQAdapter;
-import org.piax.ayame.ov.rq.RQStrategy;
 import org.piax.ayame.ov.rq.csf.CSFHookIf;
 import org.piax.common.DdllKey;
 import org.piax.common.Endpoint;
@@ -72,6 +71,8 @@ public class LocalNode extends Node {
     public final static int PURGE_FAILED_NODE_TIME = 2*60*1000; 
     private Set<Node> possiblyFailedNodes = new HashSet<>();
 
+    	transient protected CSFHookIf hook = null;
+    	
     public LocalNode(DdllKey ddllkey, Endpoint e) {
         this(EventSenderSim.getInstance(), ddllkey);
     }
@@ -545,12 +546,11 @@ public class LocalNode extends Node {
         localNodeMap.clear();
     }
     
-    public void setCSFHook(CSFHookIf hook) {
-    		RQStrategy strategy = (RQStrategy)getStrategy(RQStrategy.class);
-    		if (strategy == null) {
-    			logger.debug("[{}]: no RQStrategy", peerId);
-    			return;
-    		}
-    		strategy.setCSFHook(hook);
+    public void setCSFHook(CSFHookIf<?> hook) {
+    		this.hook = hook;
+    }
+    
+    public CSFHookIf<?> getCSFHook() {
+    		return hook;
     }
 }

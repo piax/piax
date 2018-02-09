@@ -283,9 +283,9 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
     public static abstract class RequestEvent<T extends RequestEvent<T, U>,
             U extends ReplyEvent<T, U>> extends Event {
         protected boolean isReceiverHalf = false;
-        transient CompletableFuture<U> future;
+        protected transient CompletableFuture<U> future;
         transient TimerEvent replyTimeoutEvent, ackTimeoutEvent;
-        public transient List<Runnable> cleanup = new ArrayList<>();
+        protected transient List<Runnable> cleanup = new ArrayList<>();
         transient LocalNode local;
 
         public RequestEvent(Node receiver) {
