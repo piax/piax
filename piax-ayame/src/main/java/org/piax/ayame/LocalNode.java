@@ -316,6 +316,12 @@ public class LocalNode extends Node {
         }
     }
 
+    public CompletableFuture<Boolean> addKeyAsync(Endpoint introducer) {
+    		logger.debug("{}: addkeyAsync", this);
+    		Node temp = Node.getWildcardInstance(introducer);
+    		return joinAsync(temp);
+    }
+    
     public boolean removeKey() throws IOException, InterruptedException {
         logger.debug("{}: removeKey", this);
         CompletableFuture<Boolean> future = leaveAsync();
