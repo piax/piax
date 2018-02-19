@@ -627,7 +627,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         logger.trace("ENTRY:");
         logger.debug("szRemoveKey:" + key);
         LocalNode n = nodes.get(key);
-        CompletableFuture<Boolean> f = n.leaveAsync();
+        CompletableFuture<Void> f = n.leaveAsync();
         try {
             f.get();
         } catch (InterruptedException | ExecutionException e) {
@@ -636,8 +636,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         f.whenComplete((r, e)->{
             if (e != null) {
                 logger.warn("removing key {}:{}", key, e);
-            }
-            if (r) {
+            } else {
                 logger.debug("leave completed for key {}", key);
                 nodes.remove(key);
             }

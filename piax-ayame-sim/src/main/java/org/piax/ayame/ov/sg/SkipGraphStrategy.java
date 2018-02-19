@@ -84,19 +84,17 @@ public class SkipGraphStrategy extends NodeStrategy {
 
     @Override
     public void join(LookupDone lookupDone,
-            CompletableFuture<Boolean> joinFuture) {
+            CompletableFuture<Void> joinFuture) {
         logger.trace("{}: join route: {}", n, lookupDone.route); 
         logger.trace("lookup hops: {}", lookupDone.hops());
         n.counters.add("join.lookup", lookupDone.hops());
-        CompletableFuture<Boolean> future = new CompletableFuture<>();
+        CompletableFuture<Void> future = new CompletableFuture<>();
         base.join(lookupDone, future);
         future.whenComplete((rc, exc) -> {
             if (exc != null) {
                 joinFuture.completeExceptionally(exc);
-            } else if (rc) {
-                nodeInserted();
-                joinFuture.complete(rc);
             } else {
+                nodeInserted();
                 joinFuture.complete(rc);
             }
         });
@@ -104,12 +102,12 @@ public class SkipGraphStrategy extends NodeStrategy {
     
 
     @Override
-    public void leave(CompletableFuture<Boolean> leaveComplete) {
+    public void leave(CompletableFuture<Void> leaveComplete) {
         logger.trace("{}: start leave", n);
-        CompletableFuture<Boolean> future = new CompletableFuture<>();
+        CompletableFuture<Void> future = new CompletableFuture<>();
         base.leave(future);
         future.whenComplete((rc, exc) -> {
-            assert rc;
+            assert exc == null;
             // SetRAckを受信した場合の処理
             logger.debug("{}: mode=grace", n);
             n.mode = NodeMode.DELETED;
@@ -120,7 +118,7 @@ public class SkipGraphStrategy extends NodeStrategy {
                 getTable(right).setLeftNeighbor(i, left);
             }
             System.out.println("SG:leaved" + n);
-            leaveComplete.complete(true);
+            leaveComplete.complete(null);
         });
     }
 

@@ -120,23 +120,16 @@ public class TestDdll1 {
         switch (ttype) {
         case INSERT:
             try {
-                boolean rc = nodes[n].addKey(seedLoc);
-                if (!rc) {
-                    System.out.printf(" [%d] insert failed *** %n", n);
-                } else {
-                    System.out.printf(" [%d] insert %n", n);
-                }
+                nodes[n].addKey(seedLoc);
+                System.out.printf(" [%d] insert %n", n);
             } catch (InterruptedException | IOException e) {
                 System.out.println("addKey throws " + e);
             }
             break;
         case DELETE:
             try {
-                if (!nodes[n].removeKey()) {
-                    System.out.printf(" [%d] delete failed *** %n", n);
-                } else {
-                    System.out.printf(" [%d] delete %n", n);
-                }
+                nodes[n].removeKey();
+                System.out.printf(" [%d] delete %n", n);
             } catch (InterruptedException | IOException e) {
                 System.out.println("removeKey throws " + e);
             }
