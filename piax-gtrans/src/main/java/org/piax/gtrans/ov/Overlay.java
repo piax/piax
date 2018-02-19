@@ -16,6 +16,7 @@ package org.piax.gtrans.ov;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
 
 import org.piax.common.Destination;
@@ -177,6 +178,34 @@ public interface Overlay<D extends Destination, K extends Destination> extends
     boolean addKey(K key) throws IOException;
 
     /**
+     * 指定されたkeyをオーバレイに非同期に登録する。
+     * <p>
+     * 同一key が複数回登録される場合は、
+     * key がすでにオーバレイに登録されていても、false は返らない。
+     * <p>
+     * null を key として登録することはできない。
+     * 引数に nullを指定した場合は、IllegalArgumentException が発生する。
+     * 引数が、実装クラスにとって適切な型でない場合は、
+     * ClassCastException が発生する。
+     * また、実装クラスがこのメソッドをサポートしない場合は、
+     * UnsupportedOperationException が発生する。
+     * 実装クラス特有の例外が発生した場合は、CompletableFuture
+     * にIOExceptionのサブクラスとなる例外が帰る。
+     * 
+     * @param upper このオーバーレイを利用するエンティティのObjectId
+     * @param key オーバレイに登録するkey
+     * @return 登録用のCompletionStageを表すCompletableFuture
+     * @throws IllegalArgumentException keyに nullが指定された場合
+     * @throws ClassCastException 引数が適切な型でない場合
+     * @throws UnsupportedOperationException
+     *                  オーバレイがこのメソッドをサポートしていない場合
+     *                  
+     */
+    CompletableFuture<Boolean> addKeyAsync(ObjectId upper, K key);
+    
+    CompletableFuture<Boolean> addKeyAsync(K key) throws IOException;
+    
+    /**
      * 指定されたkeyをオーバレイから登録削除する。
      * <p>
      * key がオーバレイに登録されていない場合は、falseが返る。
@@ -204,8 +233,35 @@ public interface Overlay<D extends Destination, K extends Destination> extends
     
     boolean removeKey(K key) throws IOException;
     
-    Set<K> getKeys(ObjectId upper);
+    /**
+     * 指定されたkeyをオーバレイから非同期に登録削除する。
+     * <p>
+     * key がオーバレイに登録されていない場合は、falseが返る。
+     * 同一key が複数回登録される場合は、
+     * addKey された回数と同じ回数だけremoveKeyが呼ばれないとkeyは削除されない。
+     * <p>
+     * null を key として指定することはできない。
+     * 引数に nullを指定した場合は、IllegalArgumentException が発生する。
+     * 引数が、実装クラスにとって適切な型でない場合は、
+     * ClassCastException が発生する。
+     * また、実装クラスがこのメソッドをサポートしない場合は、
+     * UnsupportedOperationException が発生する。
+     * 実装クラス特有の例外が発生した場合は、CompletableFuture
+     * にIOExceptionのサブクラスとなる例外が帰る。
+     * 
+     * @param upper このオーバーレイを利用するエンティティのObjectId
+     * @param key オーバレイから登録削除するkey
+     * @return 登録削除用のCompletionStageを表すCompletableFuture
+     * @throws IllegalArgumentException keyに nullが指定された場合
+     * @throws ClassCastException 引数が適切な型でない場合
+     * @throws UnsupportedOperationException
+     *                  オーバレイがこのメソッドをサポートしていない場合
+     */
+    CompletableFuture<Boolean> removeKeyAsync(ObjectId upper, K key);
     
+    CompletableFuture<Boolean> removeKeyAsync(K key);
+
+    Set<K> getKeys(ObjectId upper);
     Set<K> getKeys();
 
     boolean join(Endpoint seed) throws IOException;
