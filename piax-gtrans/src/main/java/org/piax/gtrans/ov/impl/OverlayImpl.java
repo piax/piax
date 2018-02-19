@@ -47,8 +47,6 @@ import org.piax.gtrans.ov.OverlayReceivedMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.esotericsoftware.minlog.Log;
-
 /**
  * 
  */
@@ -329,7 +327,7 @@ public abstract class OverlayImpl<D extends Destination, K extends Key> extends
             ret = lowerAddKeyAsync(key);
             ret = ret.whenComplete((result, ex) -> {
             		if (ex != null) {
-            			Log.warn("addKeyAsync: {}", ex);
+            			logger.warn("addKeyAsync: {}", ex);
             		}
             		if (result) {
                 		synchronized (keyRegister) {
