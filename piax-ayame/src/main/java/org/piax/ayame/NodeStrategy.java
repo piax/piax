@@ -48,11 +48,11 @@ public abstract class NodeStrategy {
     }
 
     public void join(LookupDone lookupDone,
-            CompletableFuture<Boolean> joinFuture) {
+            CompletableFuture<Void> joinFuture) {
         getLower().join(lookupDone, joinFuture);
     }
 
-    public void leave(CompletableFuture<Boolean> leaveComplete) {
+    public void leave(CompletableFuture<Void> leaveComplete) {
         getLower().leave(leaveComplete);
     }
 

@@ -297,6 +297,10 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
             return this.future;
         }*/
 
+        public CompletableFuture<U> onReply() {
+            return this.future;
+        }
+
         /**
          * assign a reply handler for this request.
          *

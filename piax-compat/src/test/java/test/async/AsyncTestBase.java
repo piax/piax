@@ -156,12 +156,12 @@ public class AsyncTestBase {
     }
 
     @SafeVarargs
-    static final void checkCompleted(CompletableFuture<Boolean>... futures) {
+    static final void checkCompleted(CompletableFuture<Void>... futures) {
         for (int i = 0; i < futures.length; i++) {
-            CompletableFuture<Boolean> f = futures[i];
+            CompletableFuture<Void> f = futures[i];
             assertTrue(f.isDone());
             try {
-                assertTrue(f.get());
+                f.get();
             } catch (InterruptedException | ExecutionException e) {
                 logger.debug("Node " + i);
                 e.getCause().printStackTrace();
@@ -253,7 +253,7 @@ public class AsyncTestBase {
         nodes[0].joinInitialNode();
         @SuppressWarnings("unchecked")
         // insert all nodes sequentially
-        CompletableFuture<Boolean>[] futures = new CompletableFuture[num];
+        CompletableFuture<Void>[] futures = new CompletableFuture[num];
         Indirect<Consumer<Integer>> job = new Indirect<>();
         /*job.val = (index) -> {
             if (index < num) {

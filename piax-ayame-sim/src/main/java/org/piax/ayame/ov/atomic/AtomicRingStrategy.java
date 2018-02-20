@@ -60,7 +60,7 @@ public class AtomicRingStrategy extends NodeStrategy {
     Node oldPred = null;
     List<Node> rejects = new ArrayList<Node>();
     long unlockTime;
-    CompletableFuture<Boolean> joinFuture;
+    CompletableFuture<Void> joinFuture;
 
     public static enum Status {
         OUT, JOINREQ, JOINING, INSIDE
@@ -92,7 +92,7 @@ public class AtomicRingStrategy extends NodeStrategy {
 
     @Override
     public void join(LookupDone l, 
-            CompletableFuture<Boolean> joinFuture) {
+            CompletableFuture<Void> joinFuture) {
         join(l.succ);
         this.joinFuture = joinFuture;
     }

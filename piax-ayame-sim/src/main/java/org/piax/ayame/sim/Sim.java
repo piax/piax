@@ -248,14 +248,12 @@ public class Sim {
 
     private static void joinAsync(LocalNode n, LocalNode introducer,
             Runnable callback, FailureCallback failure) {
-        CompletableFuture<Boolean> future = n.joinAsync(introducer);
+        CompletableFuture<Void> future = n.joinAsync(introducer);
         future.handle((rc, exc) -> {
             if (exc != null) {
                 failure.run((EventException)exc);
-            } else if (rc) {
-                callback.run();
             } else {
-                System.out.println("joinAsync finished with false!");
+                callback.run();
             }
             return false;
         });
@@ -744,9 +742,8 @@ public class Sim {
                         r = RandomUtil.getSharedRandom().nextInt(ndel);
                     } while (failed[r]);
                     failed[r] = true; 
-                    CompletableFuture<Boolean> future = nodes[delStart + r].leaveAsync();
+                    CompletableFuture<Void> future = nodes[delStart + r].leaveAsync();
                     future.handle((rc, exc) -> {
-                        assert rc;
                         cNode--;
                         return false;
                     });

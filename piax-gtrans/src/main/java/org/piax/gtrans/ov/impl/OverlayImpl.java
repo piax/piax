@@ -20,6 +20,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 
@@ -309,7 +310,43 @@ public abstract class OverlayImpl<D extends Destination, K extends Key> extends
     public boolean addKey(K key) throws IOException {
     		return addKey(getDefaultAppId(), key);
     }
-    
+
+    protected CompletableFuture<Boolean> lowerAddKeyAsync(K key) {
+        return CompletableFuture.completedFuture(true);
+    }
+
+    public CompletableFuture<Boolean> addKeyAsync(ObjectId upper, K key) {
+        this.checkActive();
+        boolean exists = false;
+        CompletableFuture<Boolean> ret = CompletableFuture.completedFuture(true);
+        synchronized (keyRegister) {
+            // if this key not exists, add to overlay
+            exists = keyRegister.containsKey(key);
+        }
+        if (!exists) {
+            ret = lowerAddKeyAsync(key);
+            ret = ret.whenComplete((result, ex) -> {
+                if (ex != null) {
+                    logger.warn("addKeyAsync: {}", ex);
+                }
+                if (result) {
+                    synchronized (keyRegister) {
+                        registerKey(upper, key);
+                    }
+                }
+            });
+        } else {
+            synchronized (keyRegister) {
+                registerKey(upper, key);
+            }
+        }
+        return ret;
+    }
+
+    public CompletableFuture<Boolean> addKeyAsync(K key) {
+        return addKeyAsync(getDefaultAppId(), key);
+    }
+
 //    public boolean addKey(ObjectId upper, String key) throws IOException {
 //        return addKey(upper, (Key) new WrappedComparableKey<String>(key));
 //    }
@@ -340,6 +377,48 @@ public abstract class OverlayImpl<D extends Destination, K extends Key> extends
     }
     public boolean removeKey(K key) throws IOException {
     		return removeKey(getDefaultAppId(), key);
+    }
+
+    protected CompletableFuture<Boolean> lowerRemoveKeyAsync(K key) {
+        return CompletableFuture.completedFuture(true);
+    }
+
+    public CompletableFuture<Boolean> removeKeyAsync(ObjectId upper, K key) {
+        this.checkActive();
+        int num;
+        CompletableFuture<Boolean> ret = CompletableFuture.completedFuture(false);
+        if (key instanceof PrimaryKey || key instanceof PeerId) {
+            throw new IllegalArgumentException("Primary key or Peer Id cannot be removed (leave instead)");
+        }
+        synchronized (keyRegister) {
+            if (!keyRegister.containsKey(key)) {
+                return ret;
+            }
+            num = numOfRegisteredKey(key);
+        }
+        // if this key is single, do remove from overlay
+        if (num == 1) {
+            ret = lowerRemoveKeyAsync(key);
+            ret = ret.whenComplete((result, ex) -> {
+                if (ex != null) {
+                    logger.warn("removeKeyAsync: {}, {}", key, ex);
+                }
+                if (result) {
+                    synchronized (keyRegister) {
+                        unregisterKey(upper, key);
+                    }
+                }
+            });
+        } else {
+            synchronized (keyRegister) {
+                unregisterKey(upper, key);
+            }
+        }
+        return ret;
+    }
+
+    public CompletableFuture<Boolean> removeKeyAsync(K key) {
+        return removeKeyAsync(getDefaultAppId(), key);
     }
 
 //    public boolean removeKey(ObjectId upper, String key) throws IOException {

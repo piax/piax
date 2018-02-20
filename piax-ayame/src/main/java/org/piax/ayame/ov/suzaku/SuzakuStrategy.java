@@ -189,25 +189,23 @@ public class SuzakuStrategy extends NodeStrategy {
 
     @Override
     public void join(LookupDone lookupDone, 
-            CompletableFuture<Boolean> joinFuture) {
+            CompletableFuture<Void> joinFuture) {
         logger.trace("Suzaku#join: {}, {} hops", lookupDone.route,
                 lookupDone.hops()); 
         logger.trace("Suzaku#join: {} joins between {} and {}", n.key
                 , lookupDone.pred, lookupDone.succ);
         assert Node.isOrdered(lookupDone.pred.key, n.key, lookupDone.succ.key);
         n.counters.add("join.lookup", lookupDone.hops());
-        CompletableFuture<Boolean> future = new CompletableFuture<>();
+        CompletableFuture<Void> future = new CompletableFuture<>();
         ddll.join(lookupDone, future);
         future.whenComplete((rc, exc) -> {
             if (exc != null) {
                 joinFuture.completeExceptionally(exc);
-            } else if (rc) {
+            } else {
                 // 右ノードが変更された契機でリバースポインタの不要なエントリを削除
                 SuzakuStrategy szk = SuzakuStrategy.getSuzakuStrategy(n);
                 szk.table.sanitizeRevPtrs();
                 nodeInserted();
-                joinFuture.complete(rc);
-            } else {
                 joinFuture.complete(rc);
             }
         });
@@ -255,7 +253,7 @@ public class SuzakuStrategy extends NodeStrategy {
     }
 
     @Override
-    public void leave(CompletableFuture<Boolean> leaveComplete) {
+    public void leave(CompletableFuture<Void> leaveComplete) {
         logger.trace("leave {}", n);
         // jobはSetRが成功した場合に左ノード上で実行される
         SetRJob job;
@@ -265,10 +263,9 @@ public class SuzakuStrategy extends NodeStrategy {
             job = null;
         }
         logger.debug("{}: start DDLL deletion", n);
-        CompletableFuture<Boolean> future = new CompletableFuture<>();
+        CompletableFuture<Void> future = new CompletableFuture<>();
         ddll.leave(future, job);
         future.whenComplete((rc, exc) -> {
-            assert rc;
             // SetRAckを受信した場合の処理
             n.mode = NodeMode.GRACE;
             logger.debug("{}: mode=grace", n);
@@ -281,7 +278,7 @@ public class SuzakuStrategy extends NodeStrategy {
                     NetworkParams.ONEWAY_DELAY, () -> {
                     n.mode = NodeMode.DELETED;
                     logger.debug("{}: mode=deleted", n);
-                    leaveComplete.complete(true);
+                    leaveComplete.complete(null);
                 });
         });
     }
