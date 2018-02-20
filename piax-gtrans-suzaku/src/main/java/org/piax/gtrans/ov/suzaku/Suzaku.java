@@ -623,6 +623,71 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         return true;
     }
 
+    private CompletableFuture<Boolean> szAddKeyAsync(Endpoint seed, K key) {
+        logger.trace("ENTRY:");
+        CompletableFuture<Void> lowerret = null;
+        CompletableFuture<Boolean> ret = new CompletableFuture<Boolean>();
+        LocalNode node = new LocalNode(sender, new DdllKey(key, peer.getPeerId(), "", null));
+        factory.setupNode(node);
+        RQStrategy s = (RQStrategy)node.getTopStrategy();
+        s.registerAdapter(new ExecQueryAdapter(this));
+
+        logger.debug("seed=" + (seed == null ? node.addr : seed) + ","+ node.key + "self=" + node.addr);
+        lowerret = node.addKeyAsync(seed != null ? seed : node.addr);
+        lowerret.whenComplete((result, ex) -> {
+            if (ex != null) {
+                logger.warn("adding key {}:{}", key, ex);
+                ret.completeExceptionally(ex);
+            } else {
+                nodes.put(key, node);
+                ret.complete(true);
+            }
+        });
+        return ret;
+    }
+
+    @Override
+    protected CompletableFuture<Boolean> lowerAddKeyAsync(K key) {
+        if (!isJoined) return CompletableFuture.completedFuture(true);
+        return szAddKeyAsync(null, key);
+    }
+
+    @Override
+    public CompletableFuture<Boolean> addKeyAsync(ObjectId upper, K key) {
+        logger.trace("ENTRY:");
+        logger.debug("upper:{} key:{}", upper, key);
+        CompletableFuture<Boolean> ret = CompletableFuture.completedFuture(true);
+        if (key == null) {
+            throw new IllegalArgumentException("null key specified");
+        }
+        boolean exists = false;
+        synchronized(keyRegister) {
+            exists = keyRegister.containsKey(key);
+        }
+        if (!exists) {
+            ret = lowerAddKeyAsync(key);
+            ret = ret.whenComplete((result, ex) -> {
+                if (ex != null) {
+                    logger.warn("addKeyAsync: {}", ex);
+                }
+                if (result) {
+                    synchronized(keyRegister) {
+                        if (!keyRegister.containsKey(key)) {
+                            super.registerKey(upper, key);
+                        }
+                    }
+                }
+            });
+        } else {
+            synchronized(keyRegister) {
+                if (!keyRegister.containsKey(key)) {
+                    super.registerKey(upper, key);
+                }
+            }
+        }
+        return ret;
+    }
+
     private void szRemoveKey(K key) throws IOException {
         logger.trace("ENTRY:");
         logger.debug("szRemoveKey:" + key);
@@ -675,6 +740,73 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
             }
         }
         return true;
+    }
+
+    private CompletableFuture<Boolean> szRemoveKeyAsync(K key) {
+        logger.trace("ENTRY:");
+        logger.debug("szRemoveKey:" + key);
+        CompletableFuture<Void> lowerret = null;
+        CompletableFuture<Boolean> ret = new CompletableFuture<Boolean>();
+        LocalNode n = nodes.get(key);
+        lowerret = n.leaveAsync();
+        lowerret.whenComplete((result, ex) -> {
+            if (ex != null) {
+                logger.warn("removing key {}:{}", key, ex);
+                ret.completeExceptionally(ex);
+            } else {
+                nodes.remove(key);
+                ret.complete(true);
+            }
+        });
+        return ret;
+    }
+
+    @Override
+    protected CompletableFuture<Boolean> lowerRemoveKeyAsync(K key) {
+        if (!isJoined) return CompletableFuture.completedFuture(false); 
+        return szRemoveKeyAsync(key);
+    }
+
+    @Override
+    public CompletableFuture<Boolean> removeKeyAsync(ObjectId upper, K key) {
+        logger.trace("ENTRY:");
+        logger.debug("upper:{} key:{}", upper, key);
+        CompletableFuture<Boolean> ret = CompletableFuture.completedFuture(false);
+        if (key == null) {
+            throw new IllegalArgumentException("null key specified");
+        }
+        if (key instanceof PrimaryKey || key instanceof PeerId) {
+            throw new IllegalArgumentException("Primary key or Peer Id cannot be removed (leave instead)");
+        }
+        this.checkActive();
+        synchronized (keyRegister) {
+            if (!keyRegister.containsKey(key)) {
+                return ret;
+            }
+        }
+        // if this key is single, do remove from overlay
+        if (numOfRegisteredKey(key) == 1) {
+            ret = lowerRemoveKeyAsync(key);
+            ret = ret.whenComplete((result, ex) -> {
+                if (ex != null) {
+                    logger.warn("removeKeyAsync: {}", ex);
+                }
+                if (result) {
+                    synchronized (keyRegister) {
+                        if (keyRegister.containsKey(key)) {
+                            unregisterKey(upper, key);
+                        }
+                    }
+                }
+            });
+        } else {
+            synchronized (keyRegister) {
+                if (keyRegister.containsKey(key)) {
+                    unregisterKey(upper, key);
+                }
+            }
+        }
+        return ret;
     }
 
     private Link[] nodes2Links(List<Node> nodes) {
