@@ -627,20 +627,22 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
 
     private CompletableFuture<Boolean> szAddKeyAsync(Endpoint seed, K key) {
         logger.trace("ENTRY:");
-        CompletableFuture<Boolean> ret = null;
+        CompletableFuture<Void> lowerret = null;
+        CompletableFuture<Boolean> ret = new CompletableFuture<Boolean>();
         LocalNode node = new LocalNode(sender, new DdllKey(key, peer.getPeerId(), "", null));
         factory.setupNode(node);
         RQStrategy s = (RQStrategy)node.getTopStrategy();
         s.registerAdapter(new ExecQueryAdapter(this));
 
         logger.debug("seed=" + (seed == null ? node.addr : seed) + ","+ node.key + "self=" + node.addr);
-        ret = node.addKeyAsync(seed != null ? seed : node.addr);
-        ret = ret.whenComplete((result, ex) -> {
+        lowerret = node.addKeyAsync(seed != null ? seed : node.addr);
+        lowerret.whenComplete((result, ex) -> {
         		if (ex != null) {
         			logger.warn("adding key {}:{}", key, ex);
-        		}
-        		if (result) {
+        			ret.completeExceptionally(ex);
+        		} else {
         			nodes.put(key, node);
+        			ret.complete(true);
         		}
         });
         return ret;
@@ -745,15 +747,17 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
     private CompletableFuture<Boolean> szRemoveKeyAsync(K key) {
         logger.trace("ENTRY:");
         logger.debug("szRemoveKey:" + key);
-        CompletableFuture<Boolean> ret = null;
+        CompletableFuture<Void> lowerret = null;
+        CompletableFuture<Boolean> ret = new CompletableFuture<Boolean>();
         LocalNode n = nodes.get(key);
-        ret = n.leaveAsync();
-        ret = ret.whenComplete((result, ex) -> {
+        lowerret = n.leaveAsync();
+        lowerret.whenComplete((result, ex) -> {
     			if (ex != null) {
     				logger.warn("removing key {}:{}", key, ex);
-    			}
-    			if (result) {
+    				ret.completeExceptionally(ex);
+    			} else {
     				nodes.remove(key);
+    				ret.complete(true);
     			}
         });
         return ret;
