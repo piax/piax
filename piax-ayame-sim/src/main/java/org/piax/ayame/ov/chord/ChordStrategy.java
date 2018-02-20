@@ -49,9 +49,9 @@ public class ChordStrategy extends NodeStrategy {
 
     @Override
     public void join(LookupDone l, 
-            CompletableFuture<Boolean> joinFuture) {
+            CompletableFuture<Void> joinFuture) {
         join(l.succ);
-        joinFuture.complete(true);
+        joinFuture.complete(null);
     }
 
     public void join(Node succ) {

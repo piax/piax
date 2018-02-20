@@ -83,7 +83,7 @@ public abstract class AtomicRingEvent {
             r.status = Status.INSIDE;
             r.unlock();
             //receiver.inserted();
-            r.joinFuture.complete(true);
+            r.joinFuture.complete(null);
         }
     }
 

@@ -22,10 +22,10 @@ import java.util.Map;
 import org.piax.common.ComparableKey;
 import org.piax.common.Id;
 import org.piax.common.Key;
-import org.piax.common.dcl.VarDestinationPair;
 import org.piax.common.subspace.KeyContainable;
 import org.piax.common.wrapper.Keys;
 import org.piax.common.wrapper.WrappedComparableKey;
+import org.piax.gtrans.dcl.VarDestinationPair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

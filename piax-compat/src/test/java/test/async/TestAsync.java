@@ -1,6 +1,9 @@
 package test.async;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -113,13 +116,13 @@ public class TestAsync extends AsyncTestBase {
         nodes = createNodes(factory, 2);
         nodes[0].joinInitialNode();
         {
-            CompletableFuture<Boolean> f = nodes[1].joinAsync(nodes[0]);
+            CompletableFuture<Void> f = nodes[1].joinAsync(nodes[0]);
             EventExecutor.startSimulation(30000);
             checkCompleted(f);
         }
         checkConsistent(nodes);
         {
-            CompletableFuture<Boolean> f = nodes[1].leaveAsync();
+            CompletableFuture<Void> f = nodes[1].leaveAsync();
             EventExecutor.startSimulation(30000);
             checkCompleted(f);
             checkConsistent(nodes[0]);
@@ -127,7 +130,7 @@ public class TestAsync extends AsyncTestBase {
         }
 
         {
-            CompletableFuture<Boolean> f = nodes[0].leaveAsync();
+            CompletableFuture<Void> f = nodes[0].leaveAsync();
             EventExecutor.startSimulation(30000);
             checkCompleted(f);
             checkMemoryLeakage(nodes[0]);
@@ -150,18 +153,18 @@ public class TestAsync extends AsyncTestBase {
         nodes = createNodes(factory, 4);
         nodes[0].joinInitialNode();
         {
-            CompletableFuture<Boolean> f1 = nodes[1].joinAsync(nodes[0]);
-            CompletableFuture<Boolean> f2 = nodes[2].joinAsync(nodes[0]);
-            CompletableFuture<Boolean> f3 = nodes[3].joinAsync(nodes[0]);
+            CompletableFuture<Void> f1 = nodes[1].joinAsync(nodes[0]);
+            CompletableFuture<Void> f2 = nodes[2].joinAsync(nodes[0]);
+            CompletableFuture<Void> f3 = nodes[3].joinAsync(nodes[0]);
             EventExecutor.startSimulation(30000);
             checkCompleted(f1, f2, f3);
             checkConsistent(nodes);
         }
         
         {
-            CompletableFuture<Boolean> f1 = nodes[1].leaveAsync();
-            CompletableFuture<Boolean> f2 = nodes[2].leaveAsync();
-            CompletableFuture<Boolean> f3 = nodes[3].leaveAsync();
+            CompletableFuture<Void> f1 = nodes[1].leaveAsync();
+            CompletableFuture<Void> f2 = nodes[2].leaveAsync();
+            CompletableFuture<Void> f3 = nodes[3].leaveAsync();
             EventExecutor.startSimulation(30000);
             checkCompleted(f1, f2, f3);
             checkMemoryLeakage(nodes[1], nodes[2], nodes[3]);
@@ -186,9 +189,9 @@ public class TestAsync extends AsyncTestBase {
         nodes = createNodes(factory, 4);
         nodes[0].joinInitialNode();
         {
-            CompletableFuture<Boolean> f1 = nodes[1].joinAsync(nodes[0]);
-            CompletableFuture<Boolean> f2 = nodes[2].joinAsync(nodes[0]);
-            CompletableFuture<Boolean> f3 = nodes[3].joinAsync(nodes[0]);
+            CompletableFuture<Void> f1 = nodes[1].joinAsync(nodes[0]);
+            CompletableFuture<Void> f2 = nodes[2].joinAsync(nodes[0]);
+            CompletableFuture<Void> f3 = nodes[3].joinAsync(nodes[0]);
             EventExecutor.sched("test.testFix1", 10000, () -> {
                 nodes[1].fail();
                 nodes[2].fail();  
@@ -221,9 +224,9 @@ public class TestAsync extends AsyncTestBase {
         nodes = createNodes(factory, 3);
         nodes[0].joinInitialNode();
         {
-            CompletableFuture<Boolean> f1 = nodes[1].joinAsync(nodes[0]);
-            CompletableFuture<Boolean> f2 = nodes[2].joinAsync(nodes[0]);
-            Indirect<CompletableFuture<Boolean>> f3 = new Indirect<>();
+            CompletableFuture<Void> f1 = nodes[1].joinAsync(nodes[0]);
+            CompletableFuture<Void> f2 = nodes[2].joinAsync(nodes[0]);
+            Indirect<CompletableFuture<Void>> f3 = new Indirect<>();
             EventExecutor.sched("test.testFix2", 10000, () -> {
                 nodes[1].fail();
                 f3.val = nodes[2].leaveAsync();
@@ -254,8 +257,8 @@ public class TestAsync extends AsyncTestBase {
         nodes = createNodes(factory, 2);
         nodes[0].joinInitialNode();
         {
-            CompletableFuture<Boolean> f1 = nodes[1].joinAsync(nodes[0]);
-            Indirect<CompletableFuture<Boolean>> f2 = new Indirect<>();
+            CompletableFuture<Void> f1 = nodes[1].joinAsync(nodes[0]);
+            Indirect<CompletableFuture<Void>> f2 = new Indirect<>();
             EventExecutor.sched("test.testFix3", 10000, () -> {
                 nodes[0].fail();
                 f2.val = nodes[1].leaveAsync();
@@ -277,7 +280,7 @@ public class TestAsync extends AsyncTestBase {
         nodes[0].joinInitialNode();
         nodes[0].fail();
         {
-            CompletableFuture<Boolean> f1 = nodes[1].joinAsync(nodes[0]);
+            CompletableFuture<Void> f1 = nodes[1].joinAsync(nodes[0]);
             f1.whenComplete((rc, exc) -> 
                 logger.debug("rc=" + rc + ", exc=" + exc));
             EventExecutor.startSimulation(40000);
@@ -301,8 +304,8 @@ public class TestAsync extends AsyncTestBase {
         nodes = createNodes(new DdllNodeFactory(), 3);
         nodes[0].joinInitialNode();
         {
-            Indirect<CompletableFuture<Boolean>> f2 = new Indirect<>();
-            CompletableFuture<Boolean> f1 = nodes[1].joinAsync(nodes[0]);
+            Indirect<CompletableFuture<Void>> f2 = new Indirect<>();
+            CompletableFuture<Void> f1 = nodes[1].joinAsync(nodes[0]);
             f1.thenRun(() -> {
                 nodes[1].fail();
                 f2.val = nodes[2].joinAsync(nodes[0]);
@@ -323,8 +326,8 @@ public class TestAsync extends AsyncTestBase {
         nodes = createNodes(new RQNodeFactory(new SuzakuNodeFactory(3)), 3);
         nodes[0].joinInitialNode();
         {
-            Indirect<CompletableFuture<Boolean>> f2 = new Indirect<>();
-            CompletableFuture<Boolean> f1 = nodes[1].joinAsync(nodes[0]);
+            Indirect<CompletableFuture<Void>> f2 = new Indirect<>();
+            CompletableFuture<Void> f1 = nodes[1].joinAsync(nodes[0]);
             f1.thenRun(() -> {
                 nodes[1].fail();
                 f2.val = nodes[2].joinAsync(nodes[0]);
@@ -368,9 +371,7 @@ public class TestAsync extends AsyncTestBase {
     }
 
     private void testRQ1With(ResponseType response, RetransMode retrans) {
-        TransOptions opts = new TransOptions();
-        opts.setResponseType(response);
-        opts.setRetransMode(retrans);
+        TransOptions opts = new TransOptions(response, retrans);
         testRQ1(new DdllNodeFactory(), opts,
                 (receiver) -> new FastValueProvider(receiver),
                 new Range<Integer>(0, true, 500, true),
@@ -379,8 +380,7 @@ public class TestAsync extends AsyncTestBase {
 
     @Test
     public void testRQ1NoResponse() {
-        TransOptions opts = new TransOptions();
-        opts.setResponseType(ResponseType.NO_RESPONSE);
+        TransOptions opts = new TransOptions(ResponseType.NO_RESPONSE);
         testRQ1(new DdllNodeFactory(), opts, 
                 (receiver) -> new FastValueProvider(receiver),
                 new Range<Integer>(200, true, 400, false),
@@ -389,8 +389,7 @@ public class TestAsync extends AsyncTestBase {
 
     @Test
     public void testRQ1AggregateSlowProvider() {
-        TransOptions opts = new TransOptions();
-        opts.setResponseType(ResponseType.AGGREGATE);
+        TransOptions opts = new TransOptions(ResponseType.AGGREGATE);
         testRQ1(new DdllNodeFactory(), opts,
                 (receiver) -> new SlowValueProvider(receiver, 3000),
                 new Range<Integer>(200, true, 400, false),
@@ -399,9 +398,7 @@ public class TestAsync extends AsyncTestBase {
 
     @Test
     public void testRQ1Timeout() {
-        TransOptions opts = new TransOptions();
-        opts.setResponseType(ResponseType.DIRECT);
-        opts.setTimeout(10000);
+        TransOptions opts = new TransOptions(ResponseType.DIRECT).timeout(10000);
         testRQ1(new DdllNodeFactory(), opts,
                 (receiver) -> new SlowValueProvider(receiver, 20000),
                 new Range<Integer>(200, true, 400, false),
@@ -410,8 +407,7 @@ public class TestAsync extends AsyncTestBase {
 
     @Test
     public void testRQ1AggregateSuzaku() {
-        TransOptions opts = new TransOptions();
-        opts.setResponseType(ResponseType.AGGREGATE);
+        TransOptions opts = new TransOptions(ResponseType.AGGREGATE);
         testRQ1(new SuzakuNodeFactory(3), opts,
                 (receiver) -> new FastValueProvider(receiver),
                 new Range<Integer>(200, true, 400, false),
@@ -420,8 +416,7 @@ public class TestAsync extends AsyncTestBase {
 
     @Test
     public void testRQ1DirectSuzaku() {
-        TransOptions opts = new TransOptions();
-        opts.setResponseType(ResponseType.DIRECT);
+        TransOptions opts = new TransOptions(ResponseType.DIRECT);
         testRQ1(new SuzakuNodeFactory(3), opts,
                 (receiver) -> new FastValueProvider(receiver),
                 new Range<Integer>(200, true, 400, false),
@@ -430,8 +425,7 @@ public class TestAsync extends AsyncTestBase {
     
     @Test
     public void testRQ1ExceptionInProvider() {
-        TransOptions opts = new TransOptions();
-        opts.setResponseType(ResponseType.AGGREGATE);
+        TransOptions opts = new TransOptions(ResponseType.AGGREGATE);
         testRQ1(new DdllNodeFactory(), opts, 
                 receiver -> new ErrorProvider(receiver),
                 new Range<Integer>(0, true, 500, true),
@@ -490,8 +484,7 @@ public class TestAsync extends AsyncTestBase {
     
     @Test
     public void testRQInsertionPointProvider() {
-        TransOptions opts = new TransOptions();
-        opts.setResponseType(ResponseType.DIRECT);
+        TransOptions opts = new TransOptions(ResponseType.DIRECT);
         testRQ2(new SuzakuNodeFactory(3), opts,
                 (receiver) -> new InsertionPointAdapter(receiver),
                 new Range<Integer>(150), "[N100!P100, N200!P200]");
@@ -534,9 +527,7 @@ public class TestAsync extends AsyncTestBase {
 
     @Test
     public void testRetransDirectNoneSuzaku() {
-        TransOptions opts = new TransOptions();
-        opts.setResponseType(ResponseType.DIRECT);
-        opts.setRetransMode(RetransMode.NONE);
+        TransOptions opts = new TransOptions(ResponseType.DIRECT, RetransMode.NONE);
         testRetrans(new SuzakuNodeFactory(3), opts,
                 receiver -> new FastValueProvider(receiver),
                 new Range<Integer>(200, true, 400, false),
@@ -545,9 +536,7 @@ public class TestAsync extends AsyncTestBase {
 
     @Test
     public void testRetransDirectNoneAckSuzaku() {
-        TransOptions opts = new TransOptions();
-        opts.setResponseType(ResponseType.DIRECT);
-        opts.setRetransMode(RetransMode.NONE_ACK);
+        TransOptions opts = new TransOptions(ResponseType.DIRECT, RetransMode.NONE_ACK);
         testRetrans(new SuzakuNodeFactory(3), opts,
                 receiver -> new FastValueProvider(receiver),
                 new Range<Integer>(200, true, 400, false),
@@ -556,9 +545,7 @@ public class TestAsync extends AsyncTestBase {
 
     @Test
     public void testRetransDirectSlowSuzaku() {
-        TransOptions opts = new TransOptions();
-        opts.setResponseType(ResponseType.DIRECT);
-        opts.setRetransMode(RetransMode.SLOW);
+        TransOptions opts = new TransOptions(ResponseType.DIRECT, RetransMode.SLOW);
         testRetrans(new SuzakuNodeFactory(3), opts,
                 receiver -> new FastValueProvider(receiver),
                 new Range<Integer>(200, true, 400, false),
@@ -567,10 +554,8 @@ public class TestAsync extends AsyncTestBase {
 
     @Test
     public void testRetransAggregateSlowSuzaku() {
-        TransOptions opts = new TransOptions();
-        opts.setResponseType(ResponseType.AGGREGATE);
-        opts.setRetransMode(RetransMode.SLOW);
-        opts.setTimeout(15*1000);
+        TransOptions opts = new TransOptions(ResponseType.AGGREGATE, RetransMode.SLOW)
+                .timeout(15*1000);
         testRetrans(new SuzakuNodeFactory(3), opts, 
                 receiver -> new FastValueProvider(receiver),
                 new Range<Integer>(100, true, 400, true),
@@ -579,10 +564,8 @@ public class TestAsync extends AsyncTestBase {
 
     @Test
     public void testRetransAggregateFastSuzaku() {
-        TransOptions opts = new TransOptions();
-        opts.setResponseType(ResponseType.AGGREGATE);
-        opts.setRetransMode(RetransMode.FAST);
-        opts.setTimeout(15*1000);
+        TransOptions opts = new TransOptions(ResponseType.AGGREGATE, RetransMode.FAST)
+        .timeout(15*1000);
         testRetrans(new SuzakuNodeFactory(3), opts,
                 receiver -> new FastValueProvider(receiver),
                 new Range<Integer>(100, true, 400, true),
@@ -591,8 +574,7 @@ public class TestAsync extends AsyncTestBase {
 
     @Test
     public void testCache() {
-        TransOptions opts = new TransOptions();
-        opts.setResponseType(ResponseType.AGGREGATE);
+        TransOptions opts = new TransOptions(ResponseType.AGGREGATE);
         testRetrans(new SuzakuNodeFactory(3), opts, 
                 receiver -> new SlowCacheValueProvider(receiver, 10000),
                 new Range<Integer>(200, true, 400, false),
@@ -637,8 +619,7 @@ public class TestAsync extends AsyncTestBase {
 
     @Test
     public void testMultikeySuzaku() {
-        TransOptions opts = new TransOptions();
-        opts.setResponseType(ResponseType.AGGREGATE);
+        TransOptions opts = new TransOptions(ResponseType.AGGREGATE);
         testMultikey(new SuzakuNodeFactory(3), opts,
                 receiver -> new KeyAdapter(receiver),
                 k -> {
@@ -654,8 +635,7 @@ public class TestAsync extends AsyncTestBase {
 
     @Test
     public void testMultikeySuzakuOnOneNode() {
-        TransOptions opts = new TransOptions();
-        opts.setResponseType(ResponseType.AGGREGATE);
+        TransOptions opts = new TransOptions(ResponseType.AGGREGATE);
         testMultikey(new SuzakuNodeFactory(3), opts,
                 receiver -> new KeyAdapter(receiver),
                 k -> {

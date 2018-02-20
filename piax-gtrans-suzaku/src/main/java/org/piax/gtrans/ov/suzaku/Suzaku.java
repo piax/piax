@@ -27,6 +27,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
+import org.piax.ayame.EventSender;
 import org.piax.ayame.FTEntry;
 import org.piax.ayame.LocalNode;
 import org.piax.ayame.Node;
@@ -82,7 +83,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
 
     RQNodeFactory factory;
     @SuppressWarnings("rawtypes")
-    NetEventSender sender;
+    EventSender sender;
     Map<K,LocalNode> nodes;
     
     static {
@@ -114,64 +115,6 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         KryoUtil.register(org.piax.ayame.ov.ddll.DdllEvent.GetCandidatesReply.class);
         KryoUtil.register(org.piax.ayame.ov.ddll.DdllEvent.SetL.class);
     }
-    
-/*
-    static public class SuzakuEventSender<E extends Endpoint> implements EventSender, TransportListener<E> {
-        TransportId transId;
-        ChannelTransport<E> trans;
-        public static AtomicInteger count = new AtomicInteger(0);
-
-        public SuzakuEventSender(TransportId transId, ChannelTransport<E> trans) {
-            this.transId = transId;
-            this.trans = trans;
-            trans.setListener(transId, this);
-            if (count.incrementAndGet() == 1) {
-                EventExecutor.reset();
-                EventExecutor.startExecutorThread();
-            }
-        }
-
-        public Endpoint getEndpoint() {
-            return trans.getEndpoint();
-        }
-
-        public void fin() {
-            if (count.decrementAndGet() == 0) {
-                EventExecutor.terminate();
-            }
-        }
-
-        @SuppressWarnings("unchecked")
-        @Override
-        public CompletableFuture<Void> send(Event ev) {
-            assert ev.delay == Node.NETWORK_LATENCY;
-            //ev.vtime = EventExecutor.getVTime() + ev.delay;
-            ev.vtime = 0;
-            logger.trace("*** {}|send/forward event {}", ev.sender, ev);
-
-            if (ev.receiver.addr.equals(getEndpoint())) {
-                recv(ev);
-                return CompletableFuture.completedFuture(null);
-            }
-            
-            return trans.sendAsync(transId, (E) ev.receiver.addr, ev);
-        }
-
-        @Override
-        public void onReceive(Transport<E> trans, ReceivedMessage rmsg) {
-            logger.trace("*** recv (on: {} from: {}) {}", trans.getEndpoint(), rmsg.getSource(), rmsg.getMessage());
-            recv((Event)rmsg.getMessage());
-        }
-
-        public void recv(Event ev) {
-            EventExecutor.enqueue(ev);
-        }
-        
-        public boolean isRunning() {
-            return trans.isUp();
-        }
-    }
-*/
 
     public Suzaku() throws IdConflictException, IOException {
         this(Overlay.DEFAULT_ENDPOINT.value());
@@ -182,7 +125,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
                 Peer.getInstance(PeerId.newId()).newBaseChannelTransport(Endpoint.newEndpoint(spec)),
                 DEFAULT_SUZAKU_TYPE);
     }
-    
+
     public Suzaku(ChannelTransport<?> lowerTrans) throws IdConflictException,
             IOException {
         this(DEFAULT_TRANSPORT_ID, lowerTrans, DEFAULT_SUZAKU_TYPE);
@@ -218,7 +161,9 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
             e.printStackTrace();
         }
         super.fin();
-        sender.fin();
+        if (sender instanceof NetEventSender) {
+            ((NetEventSender)sender).fin();
+        }
         peer.fin();
     }
 
@@ -535,11 +480,11 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         
         //return getEndpoint().equals(seed);
     }
-    
+
     public boolean join() throws ProtocolUnsupportedException, IOException {
         return join(lowerTrans.getEndpoint().newSameTypeEndpoint(Overlay.DEFAULT_SEED.value()));
     }
-    
+
     public boolean join(String spec) throws ProtocolUnsupportedException, IOException {
         return join(lowerTrans.getEndpoint().newSameTypeEndpoint(spec));
     }
@@ -615,7 +560,8 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
                 return false;
             }
             for (K key : keyRegister.keySet()) {
-                if (sender.isRunning()) {
+                if (sender instanceof NetEventSender && ((NetEventSender)sender).isRunning() || 
+                        !(sender instanceof NetEventSender)) {
                     szRemoveKey(key);
                 }
             }
@@ -746,7 +692,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         logger.trace("ENTRY:");
         logger.debug("szRemoveKey:" + key);
         LocalNode n = nodes.get(key);
-        CompletableFuture<Boolean> f = n.leaveAsync();
+        CompletableFuture<Void> f = n.leaveAsync();
         try {
             f.get();
         } catch (InterruptedException | ExecutionException e) {
@@ -755,8 +701,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         f.whenComplete((r, e)->{
             if (e != null) {
                 logger.warn("removing key {}:{}", key, e);
-            }
-            if (r) {
+            } else {
                 logger.debug("leave completed for key {}", key);
                 nodes.remove(key);
             }

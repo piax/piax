@@ -150,9 +150,9 @@ public abstract class RequestTransportImpl<D extends Destination> extends
             throws ProtocolUnsupportedException, IOException {
         logger.trace("ENTRY:");
         // Default implementation is to use request as a send.
-        TransOptions newOpts = new TransOptions(opts);
-        newOpts.setResponseType(ResponseType.NO_RESPONSE);
-        request(sender, receiver, dst, new IsEasySend(msg), newOpts);
+        request(sender, receiver, dst, new IsEasySend(msg), 
+                opts == null ? new TransOptions(ResponseType.NO_RESPONSE) :
+                    opts.responseType(ResponseType.NO_RESPONSE));
     }
     
     public void send(ObjectId sender, ObjectId receiver, D dst, Object msg)

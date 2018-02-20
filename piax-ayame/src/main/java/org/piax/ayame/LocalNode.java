@@ -298,17 +298,16 @@ public class LocalNode extends Node {
      * insert a key into a ring.
      * 
      * @param introducer a node that has been inserted to the ring.
-     * @return true on success
      * @throws IOException thrown in communication errors
      * @throws InterruptedException thrown if interrupted
      */
-    public boolean addKey(Endpoint introducer) throws IOException,
+    public void addKey(Endpoint introducer) throws IOException,
         InterruptedException {
         logger.debug("{}: addkey", this);
         Node temp = Node.getWildcardInstance(introducer);
-        CompletableFuture<Boolean> future = joinAsync(temp);
+        CompletableFuture<Void> future = joinAsync(temp);
         try {
-            return future.get();
+            future.get();
         } catch (ExecutionException e) {
             throw new IOException(e.getCause());
         } catch (InterruptedException e) {
@@ -316,17 +315,17 @@ public class LocalNode extends Node {
         }
     }
 
-    public CompletableFuture<Boolean> addKeyAsync(Endpoint introducer) {
+    public CompletableFuture<Void> addKeyAsync(Endpoint introducer) {
     		logger.debug("{}: addkeyAsync", this);
     		Node temp = Node.getWildcardInstance(introducer);
     		return joinAsync(temp);
     }
     
-    public boolean removeKey() throws IOException, InterruptedException {
+    public void removeKey() throws IOException, InterruptedException {
         logger.debug("{}: removeKey", this);
-        CompletableFuture<Boolean> future = leaveAsync();
+        CompletableFuture<Void> future = leaveAsync();
         try {
-            return future.get();
+            future.get();
         } catch (ExecutionException e) {
             throw new IOException(e.getCause());
         } catch (InterruptedException e) {
@@ -351,8 +350,8 @@ public class LocalNode extends Node {
      *         success or failure.  The result can be obtained with the
      *         boolean value.
      */
-    public CompletableFuture<Boolean> joinAsync(Node introducer) { 
-        CompletableFuture<Boolean> joinFuture = new CompletableFuture<>();
+    public CompletableFuture<Void> joinAsync(Node introducer) { 
+        CompletableFuture<Void> joinFuture = new CompletableFuture<>();
         EventExecutor.runNow("joinAsync", () -> {
             joinAsync(introducer, INSERTION_DELETION_RETRY, joinFuture);
         });
@@ -366,7 +365,7 @@ public class LocalNode extends Node {
      * @param joinFuture
      */
     private void joinAsync(Node introducer, int count,
-            CompletableFuture<Boolean> joinFuture) {
+            CompletableFuture<Void> joinFuture) {
         if (insertionStartTime == -1) {
             insertionStartTime = getVTime();
         }
@@ -394,7 +393,7 @@ public class LocalNode extends Node {
                     retry.accept(new TimeoutException());
                     return;
                 }
-                CompletableFuture<Boolean> future = new CompletableFuture<>();
+                CompletableFuture<Void> future = new CompletableFuture<>();
                 getTopStrategy().join(results, future);
                 future.whenComplete((rc, exc2) -> {
                     if (exc2 != null) {
@@ -402,36 +401,30 @@ public class LocalNode extends Node {
                         retry.accept(exc2);
                         return;
                     }
-                    if (rc) {
-                        insertionEndTime = getVTime();
-                        mode = NodeMode.INSERTED;
-                    }
-                    joinFuture.complete(rc);
+                    insertionEndTime = getVTime();
+                    mode = NodeMode.INSERTED;
+                    joinFuture.complete(null);
                 });
             }
         });
         post(ev);
     }
 
-    public CompletableFuture<Boolean> leaveAsync() {
+    public CompletableFuture<Void> leaveAsync() {
         logger.debug("Node {} leaves", this);
         if (mode != NodeMode.INSERTED) {
-            CompletableFuture<Boolean> f = new CompletableFuture<>();
+            CompletableFuture<Void> f = new CompletableFuture<>();
             f.completeExceptionally(new IllegalStateException("not inserted"));
             return f;
         }
         mode = NodeMode.DELETING;
-        CompletableFuture<Boolean> future = new CompletableFuture<>();
+        CompletableFuture<Void> future = new CompletableFuture<>();
         EventExecutor.runNow("leaveAsync", () -> {
             getTopStrategy().leave(future);
         });
-        CompletableFuture<Boolean> f = future.thenApply(rc -> {
-            if (rc) {
-                cleanup();
-            }
-            return rc;
+        return future.thenRun(() -> {
+            cleanup();
         });
-        return f;
     }
     
     public <T> void rangeQueryAsync(Collection<? extends Range<?>> ranges,
@@ -470,7 +463,7 @@ public class LocalNode extends Node {
         for (LocalNode v : getSiblings()) {
             successors.add(v.succ);
         }
-        // XXX: merge maybeFailedNode over siblings
+        // XXX: merge possiblyFailedNodes over siblings
         return allNodes.stream()
                 .map(ent -> ent.allNodes())
                 .flatMap(list -> {

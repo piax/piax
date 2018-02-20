@@ -146,12 +146,12 @@ public class DdllStrategy extends NodeStrategy {
 
     @Override
     public void join(LookupDone l, 
-            CompletableFuture<Boolean> joinFuture) {
+            CompletableFuture<Void> joinFuture) {
         join(l.pred, l.succ, joinFuture, null);
     }
 
     public void join(Node pred, Node succ,
-            CompletableFuture<Boolean> joinComplete, SetRJob setRjob) {
+            CompletableFuture<Void> joinComplete, SetRJob setRjob) {
         n.pred = pred;
         n.succ = succ;
         setStatus(DdllStatus.INS);
@@ -175,7 +175,7 @@ public class DdllStrategy extends NodeStrategy {
                 // nbrs does not contain the immediate left node
                 leftNbrs.add(getPredecessor());
                 logger.trace("{}: INSERTED, vtime = {}", n, msg.vtime);
-                joinComplete.complete(true);
+                joinComplete.complete(null);
             } else if (msg0 instanceof SetRNak){
                 SetRNak msg = (SetRNak)msg0;
                 n.counters.add("join.ddll", 2); // SetR and SetRNak
@@ -226,11 +226,11 @@ public class DdllStrategy extends NodeStrategy {
     }
 
     @Override
-    public void leave(CompletableFuture<Boolean> leaveComplete) {
+    public void leave(CompletableFuture<Void> leaveComplete) {
         leave(leaveComplete, null);
     }
 
-    public void leave(CompletableFuture<Boolean> leaveComplete,
+    public void leave(CompletableFuture<Void> leaveComplete,
             SetRJob setRjob) {
         logger.debug("{}: leave start", n);
         stopPeriodicalPing();
@@ -242,7 +242,7 @@ public class DdllStrategy extends NodeStrategy {
                 } else {
                     // leave ungracefully
                     logger.debug("leave ungracefully");
-                    leaveComplete.complete(false);
+                    leaveComplete.complete(null);
                 }
             });
             return;
@@ -250,7 +250,7 @@ public class DdllStrategy extends NodeStrategy {
         if (n.succ == n) {
             // last node case
             setStatus(DdllStatus.OUT);
-            leaveComplete.complete(true);
+            leaveComplete.complete(null);
             return;
         }
         setStatus(DdllStatus.DEL);
@@ -271,7 +271,7 @@ public class DdllStrategy extends NodeStrategy {
             } else if (msg0 instanceof SetRAck) {
                 setStatus(DdllStatus.OUT);
                 logger.debug("{}: DELETED, vtime = {}", n, msg0.vtime);
-                leaveComplete.complete(true);
+                leaveComplete.complete(null);
             } else if (msg0 instanceof SetRNak) {
                 setStatus(DdllStatus.IN);
                 logger.debug("{}: retry deletion:", n, this.toStringDetail());

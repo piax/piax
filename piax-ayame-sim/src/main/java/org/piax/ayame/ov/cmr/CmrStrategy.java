@@ -48,7 +48,7 @@ public class CmrStrategy extends NodeStrategy {
     }
     Status status = Status.OUT;
     Node t;
-    CompletableFuture<Boolean> joinFuture;
+    CompletableFuture<Void> joinFuture;
 
     public static void load() {
     }
@@ -76,7 +76,7 @@ public class CmrStrategy extends NodeStrategy {
     }
 
     @Override
-    public void join(LookupDone l, CompletableFuture<Boolean> joinFuture) {
+    public void join(LookupDone l, CompletableFuture<Void> joinFuture) {
         this.joinFuture = joinFuture;
         join(l.pred, l.succ);
     }
@@ -118,7 +118,7 @@ public class CmrStrategy extends NodeStrategy {
             n.pred = msg.a;
             status = Status.IN;
             n.post(new CmrDone(n.pred));
-            joinFuture.complete(true);
+            joinFuture.complete(null);
         } else if (status == Status.LVG) {
             // not implemented
         }

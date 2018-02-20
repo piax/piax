@@ -7,8 +7,9 @@ import org.piax.gtrans.netty.NettyLocator;
 import org.piax.gtrans.netty.kryo.KryoDecoder;
 import org.piax.gtrans.netty.kryo.KryoEncoder;
 
+import io.netty.bootstrap.AbstractBootstrap;
 import io.netty.bootstrap.Bootstrap;
-import io.netty.bootstrap.ServerBootstrap;
+import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.EventLoopGroup;
@@ -29,7 +30,7 @@ public abstract class NettyBootstrap<E extends NettyEndpoint> {
     Bootstrap getBootstrap(NettyRawChannel<E> raw, NettyChannelTransport<E> trans);
      */
     public abstract Bootstrap getBootstrap(NettyLocator dst, ChannelInboundHandlerAdapter ohandler);// { return null; }
-    public abstract ServerBootstrap getServerBootstrap(ChannelInboundHandlerAdapter ihandler);// { return null; }
+    public abstract AbstractBootstrap getServerBootstrap(ChannelInboundHandlerAdapter ihandler);// { return null; }
 
     public enum SerializerType {
         Java, Kryo
@@ -54,5 +55,9 @@ public abstract class NettyBootstrap<E extends NettyEndpoint> {
                     new ObjectDecoder(ClassResolvers.cacheDisabled(GTransConfigValues.classLoaderForDeserialize)));
             break;
         }
+    }
+    
+    public ChannelFuture connect(Bootstrap b, String host, int port) {
+        return b.connect(host, port);
     }
 }
