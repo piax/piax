@@ -69,8 +69,6 @@ import org.piax.gtrans.ov.impl.OverlayImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.esotericsoftware.minlog.Log;
-
 public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         extends OverlayImpl<D, K> implements RoutingTableAccessor {
     /*--- logger ---*/
@@ -637,13 +635,13 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         logger.debug("seed=" + (seed == null ? node.addr : seed) + ","+ node.key + "self=" + node.addr);
         lowerret = node.addKeyAsync(seed != null ? seed : node.addr);
         lowerret.whenComplete((result, ex) -> {
-        		if (ex != null) {
-        			logger.warn("adding key {}:{}", key, ex);
-        			ret.completeExceptionally(ex);
-        		} else {
-        			nodes.put(key, node);
-        			ret.complete(true);
-        		}
+            if (ex != null) {
+                logger.warn("adding key {}:{}", key, ex);
+                ret.completeExceptionally(ex);
+            } else {
+                nodes.put(key, node);
+                ret.complete(true);
+            }
         });
         return ret;
     }
@@ -669,16 +667,16 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         if (!exists) {
             ret = lowerAddKeyAsync(key);
             ret = ret.whenComplete((result, ex) -> {
-            		if (ex != null) {
-            			Log.warn("addKeyAsync: {}", ex);
-            		}
-            		if (result) {
-            			synchronized(keyRegister) {
-            				if (!keyRegister.containsKey(key)) {
-            					super.registerKey(upper, key);
-            				}
-            			}
-            		}
+                if (ex != null) {
+                    logger.warn("addKeyAsync: {}", ex);
+                }
+                if (result) {
+                    synchronized(keyRegister) {
+                        if (!keyRegister.containsKey(key)) {
+                            super.registerKey(upper, key);
+                        }
+                    }
+                }
             });
         } else {
             synchronized(keyRegister) {
@@ -752,13 +750,13 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         LocalNode n = nodes.get(key);
         lowerret = n.leaveAsync();
         lowerret.whenComplete((result, ex) -> {
-    			if (ex != null) {
-    				logger.warn("removing key {}:{}", key, ex);
-    				ret.completeExceptionally(ex);
-    			} else {
-    				nodes.remove(key);
-    				ret.complete(true);
-    			}
+            if (ex != null) {
+                logger.warn("removing key {}:{}", key, ex);
+                ret.completeExceptionally(ex);
+            } else {
+                nodes.remove(key);
+                ret.complete(true);
+            }
         });
         return ret;
     }
@@ -790,23 +788,23 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
         if (numOfRegisteredKey(key) == 1) {
             ret = lowerRemoveKeyAsync(key);
             ret = ret.whenComplete((result, ex) -> {
-            		if (ex != null) {
-            			Log.warn("removeKeyAsync: {}", ex);
-            		}
-            		if (result) {
-            			synchronized (keyRegister) {
-            				if (keyRegister.containsKey(key)) {
-            					unregisterKey(upper, key);
-            				}
-            			}
-            		}
+                if (ex != null) {
+                    logger.warn("removeKeyAsync: {}", ex);
+                }
+                if (result) {
+                    synchronized (keyRegister) {
+                        if (keyRegister.containsKey(key)) {
+                            unregisterKey(upper, key);
+                        }
+                    }
+                }
             });
         } else {
-    		synchronized (keyRegister) {
-    			if (keyRegister.containsKey(key)) {
-    				unregisterKey(upper, key);
-    			}
-    		}
+            synchronized (keyRegister) {
+                if (keyRegister.containsKey(key)) {
+                    unregisterKey(upper, key);
+                }
+            }
         }
         return ret;
     }

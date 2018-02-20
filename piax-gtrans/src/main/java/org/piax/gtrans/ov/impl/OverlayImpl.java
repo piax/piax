@@ -310,15 +310,15 @@ public abstract class OverlayImpl<D extends Destination, K extends Key> extends
     public boolean addKey(K key) throws IOException {
     		return addKey(getDefaultAppId(), key);
     }
-   
+
     protected CompletableFuture<Boolean> lowerAddKeyAsync(K key) {
-    		return CompletableFuture.completedFuture(true);
+        return CompletableFuture.completedFuture(true);
     }
-    
+
     public CompletableFuture<Boolean> addKeyAsync(ObjectId upper, K key) {
-    		this.checkActive();
-    		boolean exists = false;
-    		CompletableFuture<Boolean> ret = CompletableFuture.completedFuture(true);
+        this.checkActive();
+        boolean exists = false;
+        CompletableFuture<Boolean> ret = CompletableFuture.completedFuture(true);
         synchronized (keyRegister) {
             // if this key not exists, add to overlay
             exists = keyRegister.containsKey(key);
@@ -326,25 +326,25 @@ public abstract class OverlayImpl<D extends Destination, K extends Key> extends
         if (!exists) {
             ret = lowerAddKeyAsync(key);
             ret = ret.whenComplete((result, ex) -> {
-            		if (ex != null) {
-            			logger.warn("addKeyAsync: {}", ex);
-            		}
-            		if (result) {
-                		synchronized (keyRegister) {
-                			registerKey(upper, key);
-                		}
-            		}
+                if (ex != null) {
+                    logger.warn("addKeyAsync: {}", ex);
+                }
+                if (result) {
+                    synchronized (keyRegister) {
+                        registerKey(upper, key);
+                    }
+                }
             });
         } else {
-        		synchronized (keyRegister) {
-        			registerKey(upper, key);
-        		}
+            synchronized (keyRegister) {
+                registerKey(upper, key);
+            }
         }
         return ret;
     }
-    
+
     public CompletableFuture<Boolean> addKeyAsync(K key) {
-		return addKeyAsync(getDefaultAppId(), key);
+        return addKeyAsync(getDefaultAppId(), key);
     }
 
 //    public boolean addKey(ObjectId upper, String key) throws IOException {
@@ -380,14 +380,14 @@ public abstract class OverlayImpl<D extends Destination, K extends Key> extends
     }
 
     protected CompletableFuture<Boolean> lowerRemoveKeyAsync(K key) {
-		return CompletableFuture.completedFuture(true);
+        return CompletableFuture.completedFuture(true);
     }
 
     public CompletableFuture<Boolean> removeKeyAsync(ObjectId upper, K key) {
         this.checkActive();
-		int num;
-		CompletableFuture<Boolean> ret = CompletableFuture.completedFuture(false);
-		if (key instanceof PrimaryKey || key instanceof PeerId) {
+        int num;
+        CompletableFuture<Boolean> ret = CompletableFuture.completedFuture(false);
+        if (key instanceof PrimaryKey || key instanceof PeerId) {
             throw new IllegalArgumentException("Primary key or Peer Id cannot be removed (leave instead)");
         }
         synchronized (keyRegister) {
@@ -398,27 +398,27 @@ public abstract class OverlayImpl<D extends Destination, K extends Key> extends
         }
         // if this key is single, do remove from overlay
         if (num == 1) {
-        		ret = lowerRemoveKeyAsync(key);
-        		ret = ret.whenComplete((result, ex) -> {
-        			if (ex != null) {
-        				logger.warn("removeKeyAsync: {}, {}", key, ex);
-        			}
-        			if (result) {
-        				synchronized (keyRegister) {
-        					unregisterKey(upper, key);
-        				}
-        			}
-        		});
+            ret = lowerRemoveKeyAsync(key);
+            ret = ret.whenComplete((result, ex) -> {
+                if (ex != null) {
+                    logger.warn("removeKeyAsync: {}, {}", key, ex);
+                }
+                if (result) {
+                    synchronized (keyRegister) {
+                        unregisterKey(upper, key);
+                    }
+                }
+            });
         } else {
             synchronized (keyRegister) {
-        			unregisterKey(upper, key);
+                unregisterKey(upper, key);
             }
         }
         return ret;
     }
 
     public CompletableFuture<Boolean> removeKeyAsync(K key) {
-    		return removeKeyAsync(getDefaultAppId(), key);
+        return removeKeyAsync(getDefaultAppId(), key);
     }
 
 //    public boolean removeKey(ObjectId upper, String key) throws IOException {
