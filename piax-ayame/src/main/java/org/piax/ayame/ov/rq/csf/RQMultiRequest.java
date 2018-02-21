@@ -1,3 +1,14 @@
+/*
+ * RQMultiRequest.java - A class inherits RQRequest and carrier
+ * of the multiple RQRequest in Collective Store and Forward in Ayame
+ * 
+ * Copyright (c) 2017-2018 National Institute of Information and 
+ * Communications Technology
+ *
+ * You can redistribute it and/or modify it under either the terms of
+ * the AGPLv3 or PIAX binary code license. See the file COPYING
+ * included in the PIAX package for more in detail.
+ */
 package org.piax.ayame.ov.rq.csf;
 
 import java.util.Collection;
@@ -21,79 +32,94 @@ import com.esotericsoftware.minlog.Log;
 
 public class RQMultiRequest<T> extends RQRequest<T> {
     /*--- logger ---*/
-    private static final Logger logger =
-            LoggerFactory.getLogger(RQMultiRequest.class);
-	private static final long serialVersionUID = 1L;
-	Set<RQRequest<T>> set = new HashSet<RQRequest<T>>();
+    private static final Logger logger = LoggerFactory.getLogger(RQMultiRequest.class);
+    private static final long serialVersionUID = 1L;
+    Set<RQRequest<T>> set = new HashSet<RQRequest<T>>();
 
-	/*
-	 * Create root RQMultirequest
-	 */
-	RQMultiRequest(RQRequest<T> req, Collection<RQRange> dest, RQAdapter<T> adapter) {
-		super(req, dest, adapter);
-		// RQMultiRequest shoud not have extraTime
-		opts(req.getOpts().extraTime(null));
-	}
-
-	/*
-	 * Create sender-half of the RQMultiRequest argument
-	 */
-	RQMultiRequest(RQMultiRequest<T> req, Consumer<Throwable> errorHandler) {
-		super(req, req.receiver, req.targetRanges, errorHandler);
-		this.set = req.set;
-	}
-	
-	RQMultiRequest<T> spawnSenderHalf() {
-		return new RQMultiRequest<>(this,
-                (Throwable th) -> {
-                    logger.debug("{} for {}", th, this);
-                    getLocalNode().addPossiblyFailedNode(receiver);
-                    RetransMode mode = getOpts().getRetransMode();
-                    if (mode == RetransMode.FAST || mode == RetransMode.RELIABLE) {
-                        if (receiver == getLocalNode().succ) {
-                            logger.debug("start fast retransmission! (delayed) {}", getTargetRanges());
-                            EventExecutor.sched(
-                                    "rq-retry-successor-failure",
-                                    RQ_RETRY_SUCCESSOR_FAILURE_DELAY,
-                                    () -> catcher.rqDisseminate(getTargetRanges().stream().collect(Collectors.toList())));
-                        } else {
-                            logger.debug("start fast retransmission! {}", getTargetRanges());
-                            catcher.rqDisseminate(getTargetRanges().stream().collect(Collectors.toList()));
-                        }
-                    }
-                });
-	}
-	
-	public void addRQRequest(RQRequest<T> storedreq) {
-		set.add(storedreq);
-	}
-
-    public void postRQMultiRequest(LocalNode node) {
-		beforeRunHook(node);
-		catcher = new RQCatcher(targetRanges);
-		RQMultiRequest<T> send = this.spawnSenderHalf();
-		this.catcher.childMsgs.add(send);
-		send.cleanup.add(() -> {
-			boolean rc = this.catcher.childMsgs.remove(send);
-			assert rc;
-		});
-		node.post(send);
-		this.cleanup.add(() -> send.cleanup());
+    /*
+     * Create root RQMultirequest
+     */
+    RQMultiRequest(RQRequest<T> req, Collection<RQRange> dest, RQAdapter<T> adapter) {
+        super(req, dest, adapter);
+        // RQMultiRequest shoud not have extraTime
+        opts(req.getOpts().extraTime(null));
     }
 
-	@Override
+    /*
+     * Create sender-half of the RQMultiRequest argument
+     */
+    RQMultiRequest(RQMultiRequest<T> req, Consumer<Throwable> errorHandler) {
+        super(req, req.receiver, req.targetRanges, errorHandler);
+        this.set = req.set;
+    }
+
+    /**
+     * Spawn sender half of the RQMultiRequest
+     * 
+     * @return sender half of the this
+     */
+    RQMultiRequest<T> spawnSenderHalf() {
+        return new RQMultiRequest<>(this, (Throwable th) -> {
+            logger.debug("{} for {}", th, this);
+            getLocalNode().addPossiblyFailedNode(receiver);
+            RetransMode mode = getOpts().getRetransMode();
+            if (mode == RetransMode.FAST || mode == RetransMode.RELIABLE) {
+                if (receiver == getLocalNode().succ) {
+                    logger.debug("start fast retransmission! (delayed) {}", getTargetRanges());
+                    EventExecutor.sched("rq-retry-successor-failure", RQ_RETRY_SUCCESSOR_FAILURE_DELAY,
+                            () -> catcher.rqDisseminate(getTargetRanges().stream().collect(Collectors.toList())));
+                } else {
+                    logger.debug("start fast retransmission! {}", getTargetRanges());
+                    catcher.rqDisseminate(getTargetRanges().stream().collect(Collectors.toList()));
+                }
+            }
+        });
+    }
+
+    /**
+     * Add given RQRequest in the multi request
+     * 
+     * @param storedreq
+     */
+    public void addRQRequest(RQRequest<T> storedreq) {
+        set.add(storedreq);
+    }
+
+    /**
+     * Post RQMultiRequest using given node
+     * 
+     * @param node
+     *            node to be used to send request
+     */
+    public void postRQMultiRequest(LocalNode node) {
+        beforeRunHook(node);
+        catcher = new RQCatcher(targetRanges);
+        RQMultiRequest<T> send = this.spawnSenderHalf();
+        this.catcher.childMsgs.add(send);
+        send.cleanup.add(() -> {
+            boolean rc = this.catcher.childMsgs.remove(send);
+            assert rc;
+        });
+        node.post(send);
+        this.cleanup.add(() -> send.cleanup());
+    }
+
+    /**
+     * Run this and content RQRequest
+     */
+    @Override
     public void run() {
-		if (beforeRunHook(getLocalNode())) {
-			logger.debug("run {}", this);
-			super.run();
-			
-		}
-		for (RQRequest<T> req: set) {
-			logger.debug("run {}", this);
-			// reset catcher
-			RQRequest<T> receiver = (RQRequest<T>)req.clone();
-			if (receiver.beforeRunHook(getLocalNode()))
-				receiver.run();
-		}
-    	}
+        if (beforeRunHook(getLocalNode())) {
+            logger.debug("run {}", this);
+            super.run();
+
+        }
+        for (RQRequest<T> req : set) {
+            logger.debug("run {}", this);
+            // reset catcher
+            RQRequest<T> receiver = (RQRequest<T>) req.clone();
+            if (receiver.beforeRunHook(getLocalNode()))
+                receiver.run();
+        }
+    }
 }

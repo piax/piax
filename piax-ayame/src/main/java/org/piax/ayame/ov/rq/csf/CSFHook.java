@@ -1,3 +1,14 @@
+/*
+ * CSFHook.java - A class implement Collective Store and
+ * Forward in Ayame.
+ * 
+ * Copyright (c) 2017-2018 National Institute of Information and 
+ * Communications Technology
+ *
+ * You can redistribute it and/or modify it under either the terms of
+ * the AGPLv3 or PIAX binary code license. See the file COPYING
+ * included in the PIAX package for more in detail.
+ */
 package org.piax.ayame.ov.rq.csf;
 
 import java.util.ArrayList;
