@@ -109,13 +109,11 @@ public class RQMultiRequest<T> extends RQRequest<T> {
      */
     @Override
     public void run() {
-        if (beforeRunHook(getLocalNode())) {
-            logger.debug("run {}", this);
-            super.run();
+        logger.debug("run {}", this);
+        super.run();
 
-        }
         for (RQRequest<T> req : set) {
-            logger.debug("run {}", this);
+            logger.debug("run bundled RQRequest {}", this);
             // reset catcher
             RQRequest<T> receiver = (RQRequest<T>) req.clone();
             if (receiver.beforeRunHook(getLocalNode()))
