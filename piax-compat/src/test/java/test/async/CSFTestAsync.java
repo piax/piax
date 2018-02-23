@@ -96,7 +96,7 @@ public class CSFTestAsync extends AsyncTestBase {
                 (receiver) -> new SlowValueProvider(receiver, 20000),
                 new Range<Integer>(200, true, 400, false));
     }
-    
+
     @Test
     public void testCSFAggregateSuzaku() {
         TransOptions opts = new TransOptions(ResponseType.AGGREGATE);
@@ -112,17 +112,17 @@ public class CSFTestAsync extends AsyncTestBase {
                 (receiver) -> new FastValueProvider(receiver),
                 new Range<Integer>(200, true, 300, false));
     }
-    
+
     private void testCSFPatterns(NodeFactory base, 
             TransOptions opts,
             Function<Consumer<RemoteValue<Integer>>, RQAdapter<Integer>> providerFactory,
             Range<Integer> range) {
-    		// store and forward
-		testCSF(base, new TransOptions(opts).extraTime(30L), new TransOptions(opts).period(10L), providerFactory, range);
-		// immediately forward
-		testCSF(base, new TransOptions(opts).extraTime(10L), new TransOptions(opts).period(20L), providerFactory, range);
-		// timeout
-		testCSF(base, new TransOptions(opts).extraTime(10L), opts, providerFactory, range);
+        // store and forward
+        testCSF(base, new TransOptions(opts).extraTime(30L), new TransOptions(opts).period(10L), providerFactory, range);
+        // immediately forward
+        testCSF(base, new TransOptions(opts).extraTime(10L), new TransOptions(opts).period(20L), providerFactory, range);
+        // timeout
+        testCSF(base, new TransOptions(opts).extraTime(10L), opts, providerFactory, range);
     }
 
     private void testCSF(NodeFactory base, 
@@ -142,7 +142,7 @@ public class CSFTestAsync extends AsyncTestBase {
         Collection<Range<Integer>> ranges = Collections.singleton(range);
         List<RemoteValue<Integer>> results = new ArrayList<>();
         for (int i = 0; i < nodes.length; i++) {
-    			nodes[i].setCSFHook(new CSFHook<Integer>("H" + i * 100, nodes[i]));
+            nodes[i].setCSFHook(new CSFHook<Integer>("H" + i * 100, nodes[i]));
         }
         RQAdapter<Integer> providerDeadline = providerFactory.apply((ret) -> {
             logger.debug("GOT RESULT: " + ret);
@@ -153,11 +153,11 @@ public class CSFTestAsync extends AsyncTestBase {
         nodes[0].rangeQueryAsync(ranges, providerDeadline, opts1); 
         EventExecutor.startSimulation(3000);
         if (opts2.getPeriod() != null) {
-        		RQAdapter<Integer> providerPeriod = providerFactory.apply((ret) -> {
-        			logger.debug("GOT RESULT: " + ret);
-        			results.add(ret);
-        		});
-        		nodes[1].rangeQueryAsync(ranges,  providerPeriod, opts2);
+            RQAdapter<Integer> providerPeriod = providerFactory.apply((ret) -> {
+                logger.debug("GOT RESULT: " + ret);
+                results.add(ret);
+            });
+            nodes[1].rangeQueryAsync(ranges,  providerPeriod, opts2);
         }
         EventExecutor.startSimulation(50000);
     }
