@@ -141,7 +141,7 @@ public class CSFHook<T> implements CSFHookIf<T> {
                 if (ret == null) {
                     ArrayList<RQRange> range = new ArrayList<RQRange>();
                     range.add(new RQRange(req.receiver, req.receiver.key).assignId());
-                    ret = new RQMultiRequest<T>(req, range, new CSFHookAdapter<T>());
+                    ret = new RQMultiRequest<T>(strategy.getLocalNode(), range, new CSFHookAdapter<T>(), req.getOpts());;
                     logger.debug("| merged {}", req);
                     req.prepareForMerge(strategy.getLocalNode());
                     req.subExtraTime();
@@ -153,7 +153,7 @@ public class CSFHook<T> implements CSFHookIf<T> {
                 it.remove();
             }
             if (ret != null) {
-                ret.postRQMultiRequest(strategy.getLocalNode());
+                ret.postRQMultiRequest(strategy.getLocalNode(), req.receiver);
                 return true;
             }
             return false;
@@ -250,7 +250,7 @@ public class CSFHook<T> implements CSFHookIf<T> {
                         if (send == null) {
                             ArrayList<RQRange> range = new ArrayList<RQRange>();
                             range.add(new RQRange(storedreq.receiver, storedreq.receiver.key).assignId());
-                            send = new RQMultiRequest<T>(storedreq, range, new CSFHookAdapter<T>());
+                            send = new RQMultiRequest<T>(strategy.getLocalNode(), range, new CSFHookAdapter<T>(), storedreq.getOpts());
                             logger.debug("TIMER[{}]: RQMultiRequest={}", name, send);
                         }
                         logger.debug("| merged qid={}, targetRanges={}", storedreq.qid, storedreq.getTargetRanges());
@@ -259,11 +259,12 @@ public class CSFHook<T> implements CSFHookIf<T> {
                         it.remove();
                     }
                     if (send != null) {
-                        send.postRQMultiRequest(strategy.getLocalNode());
+                        send.postRQMultiRequest(strategy.getLocalNode(), receiver);
                     }
                 }
             } catch (Exception e) {
                 logger.error("error in hook timer. " + e);
+                logger.debug("{}", e.getStackTrace());
             }
         });
     }

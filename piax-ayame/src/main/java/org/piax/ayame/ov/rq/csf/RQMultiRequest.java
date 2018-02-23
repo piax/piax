@@ -20,6 +20,7 @@ import java.util.stream.Collectors;
 
 import org.piax.ayame.EventExecutor;
 import org.piax.ayame.LocalNode;
+import org.piax.ayame.Node;
 import org.piax.ayame.ov.rq.RQAdapter;
 import org.piax.ayame.ov.rq.RQRange;
 import org.piax.ayame.ov.rq.RQRequest;
@@ -39,17 +40,17 @@ public class RQMultiRequest<T> extends RQRequest<T> {
     /*
      * Create root RQMultirequest
      */
-    RQMultiRequest(RQRequest<T> req, Collection<RQRange> dest, RQAdapter<T> adapter) {
-        super(req, dest, adapter);
+    RQMultiRequest(Node receiver, Collection<RQRange> dest, RQAdapter<T> adapter, TransOptions opts) {
+        super(receiver, dest, adapter, opts);
         // RQMultiRequest shoud not have extraTime
-        opts(req.getOpts().extraTime(null));
+        opts(opts.extraTime(null));
     }
 
     /*
      * Create sender-half of the RQMultiRequest argument
      */
-    RQMultiRequest(RQMultiRequest<T> req, Consumer<Throwable> errorHandler) {
-        super(req, req.receiver, req.targetRanges, errorHandler);
+    RQMultiRequest(RQMultiRequest<T> req, Node receiver, Consumer<Throwable> errorHandler) {
+        super(req, receiver, req.targetRanges, errorHandler);
         this.set = req.set;
     }
 
@@ -58,8 +59,8 @@ public class RQMultiRequest<T> extends RQRequest<T> {
      * 
      * @return sender half of the this
      */
-    RQMultiRequest<T> spawnSenderHalf() {
-        return new RQMultiRequest<>(this, (Throwable th) -> {
+    RQMultiRequest<T> spawnSenderHalf(Node receiver) {
+        return new RQMultiRequest<>(this, receiver, (Throwable th) -> {
             logger.debug("{} for {}", th, this);
             getLocalNode().addPossiblyFailedNode(receiver);
             RetransMode mode = getOpts().getRetransMode();
@@ -79,7 +80,7 @@ public class RQMultiRequest<T> extends RQRequest<T> {
     /**
      * Add given RQRequest in the multi request
      * 
-     * @param storedreq
+     * @param storedreq request to be included in this multi request
      */
     public void addRQRequest(RQRequest<T> storedreq) {
         set.add(storedreq);
@@ -91,10 +92,10 @@ public class RQMultiRequest<T> extends RQRequest<T> {
      * @param node
      *            node to be used to send request
      */
-    public void postRQMultiRequest(LocalNode node) {
+    public void postRQMultiRequest(LocalNode node, Node receiver) {
         beforeRunHook(node);
         catcher = new RQCatcher(targetRanges);
-        RQMultiRequest<T> send = this.spawnSenderHalf();
+        RQMultiRequest<T> send = this.spawnSenderHalf(receiver);
         this.catcher.childMsgs.add(send);
         send.cleanup.add(() -> {
             boolean rc = this.catcher.childMsgs.remove(send);
@@ -113,11 +114,14 @@ public class RQMultiRequest<T> extends RQRequest<T> {
         super.run();
 
         for (RQRequest<T> req : set) {
-            logger.debug("run bundled RQRequest {}", this);
+            logger.debug("run bundled RQRequest {}", req);
             // reset catcher
             RQRequest<T> receiver = (RQRequest<T>) req.clone();
-            if (receiver.beforeRunHook(getLocalNode()))
+            if (receiver.beforeRunHook(getLocalNode())) {
+                /* receiver should be localnode to be run */
+                receiver.receiver = getLocalNode();
                 receiver.run();
+            }
         }
     }
 }

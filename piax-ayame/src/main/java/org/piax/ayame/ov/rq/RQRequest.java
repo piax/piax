@@ -87,8 +87,9 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
     /**
      * create a root RQRequest.
      * 
+     * @param receiver receiver of the request
      * @param ranges set of query ranges
-     * @param query an object sent to all the nodes within the query ranges
+     * @param adapter range query adapter
      * @param opts the transport options.
      */
     /*
@@ -124,9 +125,10 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
      * <p>
      * this method is used both at intermediate nodes and at root node.
      * 
-     * @param parent
-     * @param receiver
-     * @param newRQRange new RQRange for the child RQMessage
+     * @param parent receiver-half of the request
+     * @param receiver receiver of the request
+     * @param newRanges new RQRange for the child RQMessage
+     * @param errorHandler error handler
      */
     protected RQRequest(RQRequest<T> parent, Node receiver,
             Collection<RQRange> newRanges, Consumer<Throwable> errorHandler) {
@@ -147,14 +149,6 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         this.receivedTime = parent.receivedTime;
     }
 
-    /*
-     *  Used to create RQMultiRequest
-     */
-    protected RQRequest(RQRequest<T> req, Collection<RQRange> ranges,
-            RQAdapter<T> adapter) {
-        this(req.receiver, ranges, adapter, req.opts);
-    }
-
     @Override
     public String toStringMessage() {
         return "RQRequest["
@@ -172,7 +166,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
     protected long getAckTimeoutValue() {
     		long timeout = 0;
         if (isUseAck(opts)) {
-    			if (getLocalNode().getCSFHook() != null && opts.getExtraTime() != null) {
+    			if (opts.getExtraTime() != null) {
     				timeout += NetworkParams.toVTime(opts.getExtraTime() * 1000);
     			}
         		timeout += NetworkParams.ACK_TIMEOUT;
@@ -189,7 +183,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             opts.getResponseType() == ResponseType.DIRECT && !isRoot) {
         		// nothing to add
         } else {
-    			if (getLocalNode().getCSFHook() != null && opts.getExtraTime() != null) {
+    			if (opts.getExtraTime() != null) {
     				timeout += NetworkParams.toVTime(opts.getExtraTime() * 1000);
     			}
             // XXX: 再送時には短いタイムアウトで!
@@ -268,7 +262,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
 		Long extraTime = opts.getExtraTime();
     		if (extraTime != null) {
     			long newExtraTime = extraTime - (EventExecutor.getVTime() - receivedTime) / 1000;
-    			logger.debug("[{}]: newExtraTime={} receivedTime={}, extraTime={}", getLocalNode().getPeerId(), newExtraTime, receivedTime, extraTime);
+    			logger.debug("[{}]: newExtraTime={} receivedTime={}, extraTime={}", receiver, newExtraTime, receivedTime, extraTime);
     			opts = opts.extraTime((newExtraTime > 0)? newExtraTime: 0);
     		}
     }
