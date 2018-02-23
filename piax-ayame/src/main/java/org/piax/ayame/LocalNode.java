@@ -128,7 +128,7 @@ public class LocalNode extends Node {
     /**
      * replace this instance with corresponding Node object on serialization.
      * 
-     * @return
+     * @return new node
      */
     private Object writeReplace() {
         Node repl = new Node(this.key, this.addr);
