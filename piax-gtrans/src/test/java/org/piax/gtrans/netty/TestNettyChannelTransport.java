@@ -5,11 +5,13 @@ import static org.junit.jupiter.api.Assertions.*;
 import java.net.InetSocketAddress;
 
 import org.junit.jupiter.api.Test;
+import org.piax.common.Endpoint;
 import org.piax.common.PeerId;
 import org.piax.common.wrapper.StringKey;
 import org.piax.gtrans.Peer;
 import org.piax.gtrans.Transport;
 import org.piax.gtrans.netty.idtrans.PrimaryKey;
+import org.piax.gtrans.netty.udp.UdpPrimaryKey;
 
 class TestNettyChannelTransport {
     boolean received1, received2;
@@ -53,6 +55,56 @@ class TestNettyChannelTransport {
         p1.fin();
         p2.fin();
         assertTrue(received1 && received2);
+    }
+    
+    @Test
+    public void testUdpChannel() throws Exception {
+     // get peers
+        Peer p1 = Peer.getInstance(new PeerId("p1"));
+        Peer p2 = Peer.getInstance(new PeerId("p2"));
+
+        received2 = false;
+        Transport<UdpPrimaryKey> tr1 = p1.newBaseTransport((UdpPrimaryKey)Endpoint.newEndpoint("udp:tr1")); // default port: 12367
+        Transport<UdpPrimaryKey> tr2 = p2.newBaseTransport((UdpPrimaryKey)Endpoint.newEndpoint("udp:tr2:localhost:12368"));
+
+        tr2.setListener((trans, msg) -> {
+                received2 = "654321".equals(msg.getMessage());
+        });
+
+        tr1.send((UdpPrimaryKey)Endpoint.newEndpoint("udp:tr2:localhost:12368"), "654321");
+        Thread.sleep(1000);
+        assertTrue(received2);
+        
+        p1.fin();
+        p2.fin();
+        
+    }
+    
+    @Test
+    public void testUdpChannel2() throws Exception {
+     // get peers
+        Peer p1 = Peer.getInstance(new PeerId("p1"));
+        Peer p2 = Peer.getInstance(new PeerId("p2"));
+
+        Transport<UdpPrimaryKey> tr1 = p1.newBaseTransport((UdpPrimaryKey)Endpoint.newEndpoint("udp")); // default port: 12367
+        Transport<UdpPrimaryKey> tr2 = p2.newBaseTransport((UdpPrimaryKey)Endpoint.newEndpoint("udp:*:12368"));
+
+        tr2.setListener((trans, msg) -> {
+                received2 = "654321".equals(msg.getMessage());
+        });
+
+        received2 = false;
+        tr1.send((UdpPrimaryKey)Endpoint.newEndpoint("udp:*:localhost:12368"), "654321");
+        Thread.sleep(100);
+        assertTrue(received2);
+        received2 = false;
+        tr1.send(new UdpPrimaryKey(new PeerId("p2"), 12368), "654321");
+        Thread.sleep(100);
+        assertTrue(received2);
+        
+        p1.fin();
+        p2.fin();
+        
     }
 
     @Test

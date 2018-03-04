@@ -34,4 +34,11 @@ class TestEndpointParser {
         , "a message");
     }
     
+    @Test
+    void nettyLocatorTest() {
+        assertFalse(new NettyLocator((String)null, 12345).equals(new NettyLocator((String)null, 12346)));
+        assertTrue(new NettyLocator((String)null, 12345).equals(new NettyLocator((String)null, 12345)));
+        assertTrue(new NettyLocator("localhost", 12345).equals(new NettyLocator("localhost", 12345)));
+    }
+    
 }
