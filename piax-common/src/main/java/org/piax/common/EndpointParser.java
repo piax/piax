@@ -15,6 +15,7 @@ public class EndpointParser {
         EndpointParser.registerParser("-emu", "org.piax.gtrans.raw.emu.EmuLocator");
         EndpointParser.registerParser("id", "org.piax.gtrans.netty.idtrans.PrimaryKey");
         EndpointParser.registerParser("tcp", "org.piax.gtrans.netty.NettyLocator");
+        EndpointParser.registerParser("udp", "org.piax.gtrans.netty.udp.UdpPrimaryKey");
         EndpointParser.registerParser("udt", "org.piax.gtrans.netty.NettyLocator");
         EndpointParser.registerParser("ssl", "org.piax.gtrans.netty.NettyLocator");
     }
