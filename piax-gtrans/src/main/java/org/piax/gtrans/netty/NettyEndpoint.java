@@ -58,11 +58,11 @@ public interface NettyEndpoint extends Endpoint {
 
     static public NettyEndpoint parsePrimaryKey(String spec) {
         List<String> specs = NettyEndpoint.parse(spec);
-        return new PrimaryKey(parseKey(specs.get(1)), new NettyLocator(specs.get(2), specs.get(3), Integer.parseInt(specs.get(4))));
+        return new PrimaryKey(parseKey(specs.get(1)), new NettyLocator(NettyLocator.parseType(specs.get(2)), specs.get(3), Integer.parseInt(specs.get(4))));
     }
 
     static public NettyEndpoint parseLocator(String spec) {
         List<String> specs = NettyEndpoint.parse(spec);
-        return new NettyLocator(specs.get(0), specs.get(1), Integer.parseInt(specs.get(2)));
+        return new NettyLocator(NettyLocator.parseType(specs.get(0)), specs.get(1), Integer.parseInt(specs.get(2)));
     }
 }
