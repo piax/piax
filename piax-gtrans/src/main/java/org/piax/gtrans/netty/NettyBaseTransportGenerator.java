@@ -14,6 +14,8 @@ import org.piax.gtrans.impl.TransportImpl;
 import org.piax.gtrans.netty.idtrans.IdChannelTransport;
 import org.piax.gtrans.netty.idtrans.PrimaryKey;
 import org.piax.gtrans.netty.loctrans.LocatorChannelTransport;
+import org.piax.gtrans.netty.udp.UdpChannelTransport;
+import org.piax.gtrans.netty.udp.UdpPrimaryKey;
 
 public class NettyBaseTransportGenerator extends BaseTransportGenerator {
 
@@ -36,6 +38,8 @@ public class NettyBaseTransportGenerator extends BaseTransportGenerator {
         ChannelTransport<E> trans = null;
         if (loc instanceof NettyLocator){
             trans = (ChannelTransport<E>)new LocatorChannelTransport(peer, transId, peer.getPeerId(), (NettyLocator)loc);
+        } else if (loc instanceof UdpPrimaryKey) {
+            trans = (ChannelTransport<E>)new UdpChannelTransport(peer, transId, peer.getPeerId(), (UdpPrimaryKey)loc);
         } else if (loc instanceof PrimaryKey){ 
             trans = (ChannelTransport<E>)new IdChannelTransport(peer, transId, peer.getPeerId(), (PrimaryKey)loc);
         } else {
