@@ -1,5 +1,6 @@
 package test.async;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -8,12 +9,14 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 import org.junit.jupiter.api.Test;
+import org.piax.ayame.Event;
 import org.piax.ayame.EventExecutor;
 import org.piax.ayame.NodeFactory;
 import org.piax.ayame.ov.ddll.DdllStrategy.DdllNodeFactory;
 import org.piax.ayame.ov.rq.RQAdapter;
 import org.piax.ayame.ov.rq.RQStrategy.RQNodeFactory;
 import org.piax.ayame.ov.rq.csf.CSFHook;
+import org.piax.ayame.ov.rq.csf.RQMultiRequest;
 import org.piax.ayame.ov.suzaku.SuzakuStrategy.SuzakuNodeFactory;
 import org.piax.common.subspace.Range;
 import org.piax.gtrans.RemoteValue;
@@ -23,9 +26,15 @@ import org.piax.gtrans.TransOptions.RetransMode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class CSFTestAsync extends AsyncTestBase {
+import uk.org.lidalia.slf4jext.Level;
+import uk.org.lidalia.slf4jtest.LoggingEvent;
+import uk.org.lidalia.slf4jtest.TestLogger;
+import uk.org.lidalia.slf4jtest.TestLoggerFactory;
+
+public class TestAsyncCSF extends AsyncTestBase {
     private static final Logger logger = LoggerFactory
-            .getLogger(CSFTestAsync.class);
+            .getLogger(TestAsyncCSF.class);
+    
     @Test
     public void testCSFAggregateNone() {
         testCSFWith(ResponseType.AGGREGATE, RetransMode.NONE);
@@ -130,36 +139,66 @@ public class CSFTestAsync extends AsyncTestBase {
             TransOptions opts2,
             Function<Consumer<RemoteValue<Integer>>, RQAdapter<Integer>> providerFactory,
             Range<Integer> range) {
+        //TestLoggerFactory.getInstance().setPrintLevel(Level.DEBUG);
+        TestLogger loggerCSFHook = TestLoggerFactory.getTestLogger(CSFHook.class);
+        TestLogger loggerRQMultiRequest = TestLoggerFactory.getTestLogger(RQMultiRequest.class);
+        TestLogger loggerEvent = TestLoggerFactory.getTestLogger(Event.class);
+
         NodeFactory factory = new RQNodeFactory(base);
         logger.debug("** testCSF");
         logger.debug("ResponseType: {}", opts1.getResponseType());
         logger.debug("RetransMode: {}", opts1.getRetransMode());
         logger.debug("Deadline of stored message: {}", opts1.getExtraTime());
         logger.debug("Period of relay message: {}", opts2.getPeriod());
-        init();
-        RQAdapter<Integer> nodeProvider = providerFactory.apply(null);
-        createAndInsert(factory, 4, nodeProvider);
-        Collection<Range<Integer>> ranges = Collections.singleton(range);
-        List<RemoteValue<Integer>> results = new ArrayList<>();
-        for (int i = 0; i < nodes.length; i++) {
-            nodes[i].setCSFHook(new CSFHook<Integer>("H" + i * 100, nodes[i]));
-        }
-        RQAdapter<Integer> providerDeadline = providerFactory.apply((ret) -> {
-            logger.debug("GOT RESULT: " + ret);
-            results.add(ret);
-        });
-        nodes[0].rangeQueryAsync(ranges, providerDeadline, opts1); 
-        EventExecutor.startSimulation(3000);
-        nodes[0].rangeQueryAsync(ranges, providerDeadline, opts1); 
-        EventExecutor.startSimulation(3000);
-        if (opts2.getPeriod() != null) {
-            RQAdapter<Integer> providerPeriod = providerFactory.apply((ret) -> {
+        try {
+            init();
+            RQAdapter<Integer> nodeProvider = providerFactory.apply(null);
+            createAndInsert(factory, 4, nodeProvider);
+            Collection<Range<Integer>> ranges = Collections.singleton(range);
+            List<RemoteValue<Integer>> results = new ArrayList<>();
+            for (int i = 0; i < nodes.length; i++) {
+                nodes[i].setCSFHook(new CSFHook<Integer>("H" + i * 100, nodes[i]));
+            }
+            RQAdapter<Integer> providerDeadline = providerFactory.apply((ret) -> {
                 logger.debug("GOT RESULT: " + ret);
                 results.add(ret);
             });
-            nodes[1].rangeQueryAsync(ranges,  providerPeriod, opts2);
+            nodes[0].rangeQueryAsync(ranges, providerDeadline, opts1); 
+            EventExecutor.startSimulation(3000);
+            nodes[0].rangeQueryAsync(ranges, providerDeadline, opts1); 
+            EventExecutor.startSimulation(3000);
+            if (opts2.getPeriod() != null) {
+                RQAdapter<Integer> providerPeriod = providerFactory.apply((ret) -> {
+                    logger.debug("GOT RESULT: " + ret);
+                    results.add(ret);
+                });
+                nodes[1].rangeQueryAsync(ranges,  providerPeriod, opts2);
+            }
+            EventExecutor.startSimulation(50000);
+            int mergeCount = 0;
+            int runCount = 0;
+            int ackTimeoutCount = 0;
+            for (LoggingEvent loge: loggerCSFHook.getLoggingEvents()) {
+                if (loge.getMessage().toLowerCase().contains("merged".toLowerCase())) {
+                    mergeCount++;
+                }
+            }
+            for (LoggingEvent loge: loggerRQMultiRequest.getLoggingEvents()) {
+                if (loge.getMessage().toLowerCase().contains("run bundled".toLowerCase())) {
+                    runCount++;
+                }
+            }
+            for (LoggingEvent loge: loggerEvent.getLoggingEvents()) {
+                if (loge.getMessage().toLowerCase().contains("AckTimeoutExceptionrun".toLowerCase())) {
+                    ackTimeoutCount++;
+                }
+            }
+            assertEquals(mergeCount, runCount);
+            assertEquals(ackTimeoutCount, 0);
+            System.out.println(mergeCount + " messages merged.");
+        } finally {
+            TestLoggerFactory.clear();
         }
-        EventExecutor.startSimulation(50000);
     }
 }
 
