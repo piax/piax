@@ -175,24 +175,15 @@ public class TestAsyncCSF extends AsyncTestBase {
                 nodes[1].rangeQueryAsync(ranges,  providerPeriod, opts2);
             }
             EventExecutor.startSimulation(50000);
-            int mergeCount = 0;
-            int runCount = 0;
-            int ackTimeoutCount = 0;
-            for (LoggingEvent loge: loggerCSFHook.getLoggingEvents()) {
-                if (loge.getMessage().toLowerCase().contains("merged".toLowerCase())) {
-                    mergeCount++;
-                }
-            }
-            for (LoggingEvent loge: loggerRQMultiRequest.getLoggingEvents()) {
-                if (loge.getMessage().toLowerCase().contains("run bundled".toLowerCase())) {
-                    runCount++;
-                }
-            }
-            for (LoggingEvent loge: loggerEvent.getLoggingEvents()) {
-                if (loge.getMessage().toLowerCase().contains("AckTimeoutExceptionrun".toLowerCase())) {
-                    ackTimeoutCount++;
-                }
-            }
+            long mergeCount = loggerCSFHook.getLoggingEvents().stream()
+                    .filter(e -> e.getMessage().toLowerCase().contains("merged"))
+                    .count();
+            long runCount =  loggerRQMultiRequest.getLoggingEvents().stream()
+                    .filter(e -> e.getMessage().toLowerCase().contains("run bundled"))
+                    .count();
+            long ackTimeoutCount = loggerEvent.getLoggingEvents().stream()
+                    .filter(e -> e.getMessage().toLowerCase().contains("AckTimeoutExceptionrun".toLowerCase()))
+                    .count();
             assertEquals(mergeCount, runCount);
             assertEquals(ackTimeoutCount, 0);
             System.out.println(mergeCount + " messages merged.");
