@@ -1,6 +1,5 @@
 package org.piax.ayame;
 
-import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Random;
@@ -9,12 +8,7 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 
-import org.piax.ayame.Event.ErrorEvent;
-import org.piax.ayame.Event.Lookup;
-import org.piax.ayame.Event.RequestEvent;
 import org.piax.ayame.Event.TimerEvent;
-import org.piax.ayame.EventException.GraceStateException;
-import org.piax.ayame.Node.NodeMode;
 import org.piax.common.Option.BooleanOption;
 import org.piax.util.RandomUtil;
 import org.slf4j.Logger;
@@ -243,8 +237,8 @@ public class EventExecutor {
         }
         while (true) {
             if (terminateExecutor) {
-                logger.debug("*** event executor terminated: {}",
-                		getVTime());
+                logger.debug("event executor terminated: time={}, {} messages",
+                        getVTime(), nmsgs);
                 return;
             }
             if (limit != 0 && getVTime() > limit) {
@@ -287,10 +281,9 @@ public class EventExecutor {
                 if (ev.receiver != null) {
                     logger.trace("{}", ev.receiver.toStringDetail());
                 }
-                //System.out.println("so far:" + ev.route);
             }
-            LocalNode receiver = null;
             if (ev.receiver != null) {
+                LocalNode receiver = null;
                 if (ev.receiver instanceof LocalNode) {
                     receiver = (LocalNode) ev.receiver;
                 } else {
@@ -303,37 +296,10 @@ public class EventExecutor {
                     }
                     ev.receiver = receiver;
                 }
+                receiver.receive(ev);
+            } else if (ev.beforeRunHook(null)) {
+                ev.run();
             }
-            if (receiver != null) {
-                addToRoute(ev.routeWithFailed, receiver);
-            }
-            if (receiver != null && receiver.mode == NodeMode.GRACE) {
-                logger.debug(
-                        "{}: received in grace period: {}", receiver, ev);
-                if (ev instanceof Lookup) {
-                    addToRoute(ev.route, receiver);
-                    if (ev.beforeRunHook(receiver)) {
-                        ev.run();
-                    }
-                } else if (ev instanceof RequestEvent) {
-                    receiver.post(new ErrorEvent((RequestEvent<?, ?>)ev, 
-                            new GraceStateException()));
-                }
-            } else if (receiver != null && (receiver.isFailed()
-                    || receiver.mode == NodeMode.DELETED)) {
-                logger.trace("message received by not inserted or failed node: {}", ev);
-            } else {
-                addToRoute(ev.route, receiver);
-                if (ev.beforeRunHook(receiver)) {
-                    ev.run();
-                }
-            }
-        }
-    }
-
-    private static void addToRoute(List<Node> route, Node next) {
-        if (route.isEmpty() || route.get(route.size() - 1) != next) {
-            route.add(next);
         }
     }
 }

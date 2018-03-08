@@ -19,12 +19,15 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.piax.ayame.Event.ErrorEvent;
 import org.piax.ayame.Event.Lookup;
 import org.piax.ayame.Event.RequestEvent;
+import org.piax.ayame.EventException.GraceStateException;
 import org.piax.ayame.EventException.NetEventException;
 import org.piax.ayame.EventException.RetriableException;
 import org.piax.ayame.EventException.TimeoutException;
 import org.piax.ayame.EventSender.EventSenderSim;
+import org.piax.ayame.Node.NodeMode;
 import org.piax.ayame.ov.rq.RQAdapter;
 import org.piax.common.DdllKey;
 import org.piax.common.Endpoint;
@@ -174,6 +177,33 @@ public class LocalNode extends Node {
         // GRACE状態のノードもルーティング可能とするために，GRACEも挿入状態とみなす．
         return mode == NodeMode.INSERTED || mode == NodeMode.DELETING
                 || mode == NodeMode.GRACE;
+    }
+
+    void receive(Event ev) {
+        addToRoute(ev.routeWithFailed);
+        if ((isFailed() || this.mode == NodeMode.DELETED)) {
+            logger.trace("message received by not inserted or failed node: {}",
+                    ev);
+            return;
+        }
+        if (this.mode == NodeMode.GRACE) {
+            logger.debug("{}: received in grace period: {}", this, ev);
+            if (ev instanceof RequestEvent && !(ev instanceof Lookup)) {
+                post(new ErrorEvent((RequestEvent<?, ?>)ev, 
+                        new GraceStateException()));
+            }
+            return;
+        }
+        addToRoute(ev.route);
+        if (ev.beforeRunHook(this)) {
+            ev.run();
+        }
+    }
+
+    private void addToRoute(List<Node> route) {
+        if (route.isEmpty() || route.get(route.size() - 1) != this) {
+            route.add(this);
+        }
     }
 
     /**
