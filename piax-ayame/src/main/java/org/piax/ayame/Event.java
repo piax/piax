@@ -7,6 +7,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 
 import org.piax.ayame.EventException.AckTimeoutException;
@@ -331,6 +332,49 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
                 System.err.println("exit");
                 System.exit(1);
                 return null;
+            });
+        }
+
+        /**
+         * assign a reply handler that returns a CompletableFuture (CF1)
+         * to this request.  this method returns a CompletableFuture (CF2)
+         * that completes when CF1 completes.
+         *
+         * @param <V> type that reply handler returns
+         * @param handler reply handler that returns CompletableFuture<V>
+         * @return CompletableFuture<V>
+         */
+        @SuppressWarnings("unchecked")
+        public <V> CompletableFuture<V> onReply(
+                BiFunction<U, Throwable, CompletableFuture<V>> handler
+                ) {
+            CompletableFuture<?> tmp = this.future.handle((rep, exc) -> {
+                // convert an error to a normal value so that we can use
+                // CompletableFurure.thencompose().
+                if (exc != null) {
+                    return exc;
+                }
+                return rep;
+            });
+            return tmp.thenCompose(rep -> {
+                try {
+                    if (rep instanceof Throwable) {
+                        return handler.apply(null, (Throwable)rep);
+                    }
+                    return handler.apply((U)rep, null);
+                } catch (Throwable exc) {
+                    // catch exceptions thrown by handlers so that 
+                    // such exceptions are not handled by CompletableFuture.
+                    if (exc instanceof CompletionException) {
+                        exc = exc.getCause();
+                    }
+                    System.err.println("got exception in onReply handler: " + exc
+                            + ", req=" + this);
+                    exc.printStackTrace();
+                    System.err.println("exit");
+                    System.exit(1);
+                    return null;
+                }
             });
         }
 

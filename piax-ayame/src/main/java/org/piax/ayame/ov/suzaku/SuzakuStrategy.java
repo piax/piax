@@ -258,9 +258,7 @@ public class SuzakuStrategy extends NodeStrategy {
             job = null;
         }
         logger.debug("{}: start DDLL deletion", n);
-        CompletableFuture<Void> future = new CompletableFuture<>();
-        ddll.leave(future, job);
-        future.thenCompose(dummy -> {
+        return ddll.leave(job).thenCompose(dummy -> {
             // 以下，SetRAckを受信した場合の処理
             n.mode = NodeMode.GRACE;
             logger.debug("{}: mode=grace", n);
@@ -276,7 +274,6 @@ public class SuzakuStrategy extends NodeStrategy {
             n.mode = NodeMode.DELETED;
             logger.debug("{}: mode=deleted", n);
         });
-        return future;
     }
 
     /**
