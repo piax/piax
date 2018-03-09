@@ -47,13 +47,12 @@ public abstract class NodeStrategy {
         getLower().initInitialNode();
     }
 
-    public void join(LookupDone lookupDone,
-            CompletableFuture<Void> joinFuture) {
-        getLower().join(lookupDone, joinFuture);
+    public CompletableFuture<Void> join(LookupDone lookupDone) {
+        return getLower().join(lookupDone);
     }
 
-    public void leave(CompletableFuture<Void> leaveComplete) {
-        getLower().leave(leaveComplete);
+    public CompletableFuture<Void> leave() {
+        return getLower().leave();
     }
 
     public <T> void rangeQuery(Collection<? extends Range<?>> ranges,

@@ -13,6 +13,7 @@ import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
@@ -27,7 +28,6 @@ import org.piax.ayame.EventException.NetEventException;
 import org.piax.ayame.EventException.RetriableException;
 import org.piax.ayame.EventException.TimeoutException;
 import org.piax.ayame.EventSender.EventSenderSim;
-import org.piax.ayame.Node.NodeMode;
 import org.piax.ayame.ov.rq.RQAdapter;
 import org.piax.common.DdllKey;
 import org.piax.common.Endpoint;
@@ -402,6 +402,9 @@ public class LocalNode extends Node {
         this.mode = NodeMode.INSERTING;
         this.introducer = introducer;
         Consumer<Throwable> retry = (exc) -> {
+            if (exc instanceof CompletionException) {
+                exc = exc.getCause();
+            }
             logger.trace("{}: joinAsync failed: {}, count={}", this, exc, count);
             // reset insertionStartTime ?
             if (((exc instanceof RetriableException) 
@@ -416,16 +419,17 @@ public class LocalNode extends Node {
         ev.onReply((results, exc) -> {
             if (exc != null) {
                 retry.accept(exc);
-            } else {
-                if (results.succ == null) {
-                    // Lookup failure
-                    assert results.pred == null;
-                    retry.accept(new TimeoutException());
-                    return;
-                }
-                CompletableFuture<Void> future = new CompletableFuture<>();
-                getTopStrategy().join(results, future);
-                future.whenComplete((rc, exc2) -> {
+                return;
+            }
+            if (results.succ == null) {
+                // Lookup failure
+                assert results.pred == null;
+                retry.accept(new TimeoutException());
+                return;
+            }
+            getTopStrategy()
+                .join(results)
+                .whenComplete((rc, exc2) -> {
                     if (exc2 != null) {
                         mode = NodeMode.OUT;
                         retry.accept(exc2);
@@ -435,7 +439,6 @@ public class LocalNode extends Node {
                     mode = NodeMode.INSERTED;
                     joinFuture.complete(null);
                 });
-            }
         });
         post(ev);
     }
@@ -448,13 +451,12 @@ public class LocalNode extends Node {
             return f;
         }
         mode = NodeMode.DELETING;
-        CompletableFuture<Void> future = new CompletableFuture<>();
-        EventExecutor.runNow("leaveAsync", () -> {
-            getTopStrategy().leave(future);
-        });
-        return future.thenRun(() -> {
-            cleanup();
-        });
+        return EventExecutor.runNow("leaveAsync")
+            .thenCompose((success) -> {
+                return getTopStrategy().leave();
+            }).thenRun(() -> {
+                cleanup();
+            });
     }
     
     public <T> void rangeQueryAsync(Collection<? extends Range<?>> ranges,

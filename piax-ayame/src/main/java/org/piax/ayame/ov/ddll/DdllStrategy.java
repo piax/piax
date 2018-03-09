@@ -145,12 +145,13 @@ public class DdllStrategy extends NodeStrategy {
     }
 
     @Override
-    public void join(LookupDone l, 
-            CompletableFuture<Void> joinFuture) {
-        join(l.pred, l.succ, joinFuture, null);
+    public CompletableFuture<Void> join(LookupDone l) {
+        CompletableFuture<Void> joinComplete = new CompletableFuture<>();
+        join(l.pred, l.succ, joinComplete, null);
+        return joinComplete;
     }
 
-    public void join(Node pred, Node succ,
+    private void join(Node pred, Node succ,
             CompletableFuture<Void> joinComplete, SetRJob setRjob) {
         n.pred = pred;
         n.succ = succ;
@@ -181,8 +182,8 @@ public class DdllStrategy extends NodeStrategy {
                 n.counters.add("join.ddll", 2); // SetR and SetRNak
                 setStatus(DdllStatus.OUT);
                 // retry!
-                logger.trace("receive SetRNak: join retry, pred={}, succ={}", msg.pred
-                		, msg.succ);
+                logger.trace("receive SetRNak: join retry, pred={}, succ={}",
+                        msg.pred, msg.succ);
                 if (setrnakmode.value() == SetRNakMode.SETRNAK_OPT2) {
                     // DDLLopt2
                     if (msg.pred == n.pred) {
@@ -226,8 +227,10 @@ public class DdllStrategy extends NodeStrategy {
     }
 
     @Override
-    public void leave(CompletableFuture<Void> leaveComplete) {
+    public CompletableFuture<Void> leave() {
+        CompletableFuture<Void> leaveComplete = new CompletableFuture<>();
         leave(leaveComplete, null);
+        return leaveComplete;
     }
 
     public void leave(CompletableFuture<Void> leaveComplete,

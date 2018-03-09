@@ -188,28 +188,23 @@ public class SuzakuStrategy extends NodeStrategy {
     }
 
     @Override
-    public void join(LookupDone lookupDone, 
-            CompletableFuture<Void> joinFuture) {
+    public CompletableFuture<Void> join(LookupDone lookupDone) {
         logger.trace("Suzaku#join: {}, {} hops", lookupDone.route,
                 lookupDone.hops()); 
         logger.trace("Suzaku#join: {} joins between {} and {}", n.key
                 , lookupDone.pred, lookupDone.succ);
         assert Node.isOrdered(lookupDone.pred.key, n.key, lookupDone.succ.key);
         n.counters.add("join.lookup", lookupDone.hops());
-        CompletableFuture<Void> future = new CompletableFuture<>();
-        ddll.join(lookupDone, future);
-        future.whenComplete((rc, exc) -> {
-            if (exc != null) {
-                joinFuture.completeExceptionally(exc);
-            } else {
-                // 右ノードが変更された契機でリバースポインタの不要なエントリを削除
-                SuzakuStrategy szk = SuzakuStrategy.getSuzakuStrategy(n);
-                szk.table.sanitizeRevPtrs();
-                nodeInserted();
-                joinFuture.complete(rc);
-            }
-        });
+        return ddll
+                .join(lookupDone)
+                .thenRun(() -> {
+                    // 右ノードが変更された契機でリバースポインタの不要なエントリを削除
+                    SuzakuStrategy szk = SuzakuStrategy.getSuzakuStrategy(n);
+                    szk.table.sanitizeRevPtrs();
+                    nodeInserted();
+                });
     }
+
 
     public static class SuzakuSetRJob implements SetRJob {
         private final Set<Node> reversePointers;
@@ -253,7 +248,7 @@ public class SuzakuStrategy extends NodeStrategy {
     }
 
     @Override
-    public void leave(CompletableFuture<Void> leaveComplete) {
+    public CompletableFuture<Void> leave() {
         logger.trace("leave {}", n);
         // jobはSetRが成功した場合に左ノード上で実行される
         SetRJob job;
@@ -265,22 +260,23 @@ public class SuzakuStrategy extends NodeStrategy {
         logger.debug("{}: start DDLL deletion", n);
         CompletableFuture<Void> future = new CompletableFuture<>();
         ddll.leave(future, job);
-        future.whenComplete((rc, exc) -> {
-            // SetRAckを受信した場合の処理
+        future.thenCompose(dummy -> {
+            // 以下，SetRAckを受信した場合の処理
             n.mode = NodeMode.GRACE;
             logger.debug("{}: mode=grace", n);
             if (updateSchedEvent != null) {
-                logger.debug("{}: remove schedEvent: {}", n, updateSchedEvent.getEventId());
+                logger.debug("{}: remove schedEvent: {}", n,
+                        updateSchedEvent.getEventId());
                 EventExecutor.cancelEvent(updateSchedEvent);
                 updateSchedEvent = null;
             }
-            EventExecutor.sched("suzaku.leave.grace",
-                    NetworkParams.ONEWAY_DELAY, () -> {
-                    n.mode = NodeMode.DELETED;
-                    logger.debug("{}: mode=deleted", n);
-                    leaveComplete.complete(null);
-                });
+            return EventExecutor.delay("suzaku.leave.grace",
+                    NetworkParams.ONEWAY_DELAY);
+        }).thenRun(() -> {
+            n.mode = NodeMode.DELETED;
+            logger.debug("{}: mode=deleted", n);
         });
+        return future;
     }
 
     /**

@@ -3,6 +3,7 @@ package org.piax.ayame;
 import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Random;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
@@ -136,6 +137,20 @@ public class EventExecutor {
         TimerEvent ev = new TimerEvent(name, 0, 0, (dummy) -> job.run());
         ev.vtime = getVTime();
         enqueue(ev);
+    }
+
+    public static CompletableFuture<Void> delay(String name, long delay) {
+        CompletableFuture<Void> future = new CompletableFuture<>();
+        TimerEvent ev = new TimerEvent(name, delay, 0, (dummy) -> {
+            future.complete(null);
+        });
+        ev.vtime = getVTime();
+        enqueue(ev);
+        return future;
+    }
+
+    public static CompletableFuture<Void> runNow(String name) {
+        return delay(name, 0);
     }
 
     public static long getVTime() {

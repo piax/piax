@@ -76,9 +76,10 @@ public class CmrStrategy extends NodeStrategy {
     }
 
     @Override
-    public void join(LookupDone l, CompletableFuture<Void> joinFuture) {
-        this.joinFuture = joinFuture;
+    public CompletableFuture<Void> join(LookupDone l) {
+        this.joinFuture = new CompletableFuture<>();
         join(l.pred, l.succ);
+        return this.joinFuture;
     }
 
     // T_1^j

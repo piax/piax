@@ -91,10 +91,10 @@ public class AtomicRingStrategy extends NodeStrategy {
     }
 
     @Override
-    public void join(LookupDone l, 
-            CompletableFuture<Void> joinFuture) {
+    public CompletableFuture<Void> join(LookupDone l) {
+        this.joinFuture = new CompletableFuture<Void>();
         join(l.succ);
-        this.joinFuture = joinFuture;
+        return this.joinFuture;
     }
 
     public void join(Node succ) {
