@@ -31,16 +31,16 @@ import org.slf4j.LoggerFactory;
 
 import com.esotericsoftware.minlog.Log;
 
-public class RQMultiRequest<T> extends RQRequest<T> {
+public class RQBundledRequest<T> extends RQRequest<T> {
     /*--- logger ---*/
-    private static final Logger logger = LoggerFactory.getLogger(RQMultiRequest.class);
+    private static final Logger logger = LoggerFactory.getLogger(RQBundledRequest.class);
     private static final long serialVersionUID = 1L;
     Set<RQRequest<T>> set = new HashSet<RQRequest<T>>();
 
     /*
      * Create root RQMultirequest
      */
-    RQMultiRequest(Node receiver, Collection<RQRange> dest, RQAdapter<T> adapter, TransOptions opts) {
+    RQBundledRequest(Node receiver, Collection<RQRange> dest, RQAdapter<T> adapter, TransOptions opts) {
         super(receiver, dest, adapter, opts);
         // RQMultiRequest shoud not have extraTime
         opts(opts.extraTime(null));
@@ -49,7 +49,7 @@ public class RQMultiRequest<T> extends RQRequest<T> {
     /*
      * Create sender-half of the RQMultiRequest argument
      */
-    RQMultiRequest(RQMultiRequest<T> req, Node receiver, Consumer<Throwable> errorHandler) {
+    RQBundledRequest(RQBundledRequest<T> req, Node receiver, Consumer<Throwable> errorHandler) {
         super(req, receiver, req.targetRanges, errorHandler);
         this.set = req.set;
     }
@@ -59,8 +59,8 @@ public class RQMultiRequest<T> extends RQRequest<T> {
      * 
      * @return sender half of the this
      */
-    RQMultiRequest<T> spawnSenderHalf(Node receiver) {
-        return new RQMultiRequest<>(this, receiver, (Throwable th) -> {
+    RQBundledRequest<T> spawnSenderHalf(Node receiver) {
+        return new RQBundledRequest<>(this, receiver, (Throwable th) -> {
             logger.debug("{} for {}", th, this);
             getLocalNode().addPossiblyFailedNode(receiver);
             RetransMode mode = getOpts().getRetransMode();
@@ -95,7 +95,7 @@ public class RQMultiRequest<T> extends RQRequest<T> {
     public void postRQMultiRequest(LocalNode node, Node receiver) {
         beforeRunHook(node);
         catcher = new RQCatcher(targetRanges);
-        RQMultiRequest<T> send = this.spawnSenderHalf(receiver);
+        RQBundledRequest<T> send = this.spawnSenderHalf(receiver);
         this.catcher.childMsgs.add(send);
         send.cleanup.add(() -> {
             boolean rc = this.catcher.childMsgs.remove(send);

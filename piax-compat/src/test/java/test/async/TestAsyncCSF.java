@@ -16,7 +16,7 @@ import org.piax.ayame.ov.ddll.DdllStrategy.DdllNodeFactory;
 import org.piax.ayame.ov.rq.RQAdapter;
 import org.piax.ayame.ov.rq.RQStrategy.RQNodeFactory;
 import org.piax.ayame.ov.rq.csf.CSFHook;
-import org.piax.ayame.ov.rq.csf.RQMultiRequest;
+import org.piax.ayame.ov.rq.csf.RQBundledRequest;
 import org.piax.ayame.ov.suzaku.SuzakuStrategy.SuzakuNodeFactory;
 import org.piax.common.subspace.Range;
 import org.piax.gtrans.RemoteValue;
@@ -141,7 +141,7 @@ public class TestAsyncCSF extends AsyncTestBase {
             Range<Integer> range) {
         //TestLoggerFactory.getInstance().setPrintLevel(Level.DEBUG);
         TestLogger loggerCSFHook = TestLoggerFactory.getTestLogger(CSFHook.class);
-        TestLogger loggerRQMultiRequest = TestLoggerFactory.getTestLogger(RQMultiRequest.class);
+        TestLogger loggerRQMultiRequest = TestLoggerFactory.getTestLogger(RQBundledRequest.class);
         TestLogger loggerEvent = TestLoggerFactory.getTestLogger(Event.class);
 
         NodeFactory factory = new RQNodeFactory(base);

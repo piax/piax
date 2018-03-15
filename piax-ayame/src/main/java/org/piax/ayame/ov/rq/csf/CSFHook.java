@@ -135,13 +135,13 @@ public class CSFHook<T> implements CSFHookIf<T> {
                 return false;
             }
             logger.debug("MERGE[{}] {}", name, req);
-            RQMultiRequest<T> ret = null;
+            RQBundledRequest<T> ret = null;
             for (Iterator<RQRequest<T>> it = reqSet.iterator(); it.hasNext();) {
                 RQRequest<T> storedreq = it.next();
                 if (ret == null) {
                     ArrayList<RQRange> range = new ArrayList<RQRange>();
                     range.add(new RQRange(req.receiver, req.receiver.key).assignId());
-                    ret = new RQMultiRequest<T>(strategy.getLocalNode(), range, new CSFHookAdapter<T>(), req.getOpts());;
+                    ret = new RQBundledRequest<T>(strategy.getLocalNode(), range, new CSFHookAdapter<T>(), req.getOpts());;
                     logger.debug("| merged {}", req);
                     req.prepareForMerge(strategy.getLocalNode());
                     req.subExtraTime();
@@ -244,13 +244,13 @@ public class CSFHook<T> implements CSFHookIf<T> {
                 Set<RQRequest<T>> reqSet = storedMessages.get(receiver);
                 if (reqSet != null && !reqSet.isEmpty()) {
                     // 特定receiverあてのものを全部まとめる
-                    RQMultiRequest<T> send = null;
+                    RQBundledRequest<T> send = null;
                     for (Iterator<RQRequest<T>> it = reqSet.iterator(); it.hasNext();) {
                         RQRequest<T> storedreq = it.next();
                         if (send == null) {
                             ArrayList<RQRange> range = new ArrayList<RQRange>();
                             range.add(new RQRange(storedreq.receiver, storedreq.receiver.key).assignId());
-                            send = new RQMultiRequest<T>(strategy.getLocalNode(), range, new CSFHookAdapter<T>(), storedreq.getOpts());
+                            send = new RQBundledRequest<T>(strategy.getLocalNode(), range, new CSFHookAdapter<T>(), storedreq.getOpts());
                             logger.debug("TIMER[{}]: RQMultiRequest={}", name, send);
                         }
                         logger.debug("| merged qid={}, targetRanges={}", storedreq.qid, storedreq.getTargetRanges());
