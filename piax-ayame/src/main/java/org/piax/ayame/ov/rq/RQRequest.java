@@ -251,24 +251,25 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
     }
 
     public TransOptions getOpts() {
-    		return opts;
+        return opts;
     }
     
     public void opts(TransOptions opts) {
-    		this.opts = opts;
+        this.opts = opts;
     }
 
     public void subExtraTime() {
-		Long extraTime = opts.getExtraTime();
-    		if (extraTime != null) {
-    			long newExtraTime = extraTime - (EventExecutor.getVTime() - receivedTime) / 1000;
-    			logger.debug("[{}]: newExtraTime={} receivedTime={}, extraTime={}", receiver, newExtraTime, receivedTime, extraTime);
-    			opts = opts.extraTime((newExtraTime > 0)? newExtraTime: 0);
-    		}
+        Long extraTime = opts.getExtraTime();
+        if (extraTime != null) {
+            long newExtraTime = extraTime - (EventExecutor.getVTime() - receivedTime) / 1000;
+            logger.debug("[{}]: newExtraTime={} receivedTime={}, extraTime={}", receiver, newExtraTime, receivedTime, extraTime);
+            opts = opts.extraTime((newExtraTime > 0)? newExtraTime: 0);
+        }
     }
 
-    public void prepareForMerge(LocalNode node) {
-		FailureCallback failure = exc -> {
+    public void prepareForMerge() {
+        LocalNode node = getLocalNode();
+        FailureCallback failure = exc -> {
             logger.trace("post: got exception: {}. {}", exc, this);
             cleanup();
             future.completeExceptionally(exc);
@@ -277,9 +278,9 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         failureCallback = failure;
         route.add(sender);
         if (routeWithFailed.size() == 0) {
-        		routeWithFailed.add(node);
+            routeWithFailed.add(node);
         }
-		beforeSendHook(node);
+        beforeSendHook(node);
     }
 
     /**

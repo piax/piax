@@ -84,12 +84,13 @@ public class RQBundledRequest extends RQRequest<Object> {
     }
 
     /**
-     * Post RQMultiRequest using given node
+     * Post RQBundledRequest to the receiver node
      * 
-     * @param node
-     *            node to be used to send request
+     * @param receiver
+     *            destination of the post
      */
-    public void postRQMultiRequest(LocalNode node, Node receiver) {
+    public void post(Node receiver) {
+        LocalNode node = getLocalNode();
         beforeRunHook(node);
         catcher = new RQCatcher(targetRanges);
         RQBundledRequest send = this.spawnSenderHalf(receiver);

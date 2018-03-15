@@ -27,7 +27,6 @@ import org.piax.ayame.Node;
 import org.piax.ayame.ov.rq.RQAdapter;
 import org.piax.ayame.ov.rq.RQRange;
 import org.piax.ayame.ov.rq.RQRequest;
-import org.piax.ayame.ov.rq.RQStrategy;
 import org.piax.common.DdllKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,7 +39,7 @@ public class CSFHook<T> implements AutoCloseable, CSFHookIf<T> {
     private static final long DEFAULT_TIMER_OFFSET = NetworkParams.toVTime(1 * 1000);
 
     protected String name;
-    protected RQStrategy strategy;
+    protected LocalNode node;
 
     // stored message
     Map<Node, Set<RQRequest<T>>> storedMessages;
@@ -65,7 +64,7 @@ public class CSFHook<T> implements AutoCloseable, CSFHookIf<T> {
 
     public CSFHook(String name, LocalNode node) {
         this.name = name;
-        this.strategy = RQStrategy.getRQStrategy(node);
+        this.node = node;
         unsentTimerList = new HashMap<>();
         timerPeriods = new HashMap<>();
         storedMessages = new HashMap<>();
@@ -106,7 +105,7 @@ public class CSFHook<T> implements AutoCloseable, CSFHookIf<T> {
             Set<RQRequest<T>> reqSet = storedMessages.get(req.receiver);
             logger.debug("STORE[{}] receiver={} qid={} targetRanges={}", name, req.receiver, req.qid,
                     req.getTargetRanges());
-            req.prepareForMerge(strategy.getLocalNode());
+            req.prepareForMerge();
             reqSet.add(req);
             if (!isUnsentTimerStarted(req.receiver)) {
                 startDefaultTimer(req.receiver, last);
@@ -139,9 +138,9 @@ public class CSFHook<T> implements AutoCloseable, CSFHookIf<T> {
                 if (ret == null) {
                     ArrayList<RQRange> range = new ArrayList<RQRange>();
                     range.add(new RQRange(req.receiver, req.receiver.key).assignId());
-                    ret = new RQBundledRequest(strategy.getLocalNode(), range, new CSFHookAdapter(), req.getOpts());;
+                    ret = new RQBundledRequest(node, range, new CSFHookAdapter(), req.getOpts());;
                     logger.debug("| merged {}", req);
-                    req.prepareForMerge(strategy.getLocalNode());
+                    req.prepareForMerge();
                     req.subExtraTime();
                     ret.addRQRequest(req);
                 }
@@ -151,7 +150,7 @@ public class CSFHook<T> implements AutoCloseable, CSFHookIf<T> {
                 it.remove();
             }
             if (ret != null) {
-                ret.postRQMultiRequest(strategy.getLocalNode(), req.receiver);
+                ret.post(req.receiver);
                 return true;
             }
             return false;
@@ -248,7 +247,7 @@ public class CSFHook<T> implements AutoCloseable, CSFHookIf<T> {
                         if (send == null) {
                             ArrayList<RQRange> range = new ArrayList<RQRange>();
                             range.add(new RQRange(storedreq.receiver, storedreq.receiver.key).assignId());
-                            send = new RQBundledRequest(strategy.getLocalNode(), range, new CSFHookAdapter(), storedreq.getOpts());
+                            send = new RQBundledRequest(node, range, new CSFHookAdapter(), storedreq.getOpts());
                             logger.debug("TIMER[{}]: RQMultiRequest={}", name, send);
                         }
                         logger.debug("| merged qid={}, targetRanges={}", storedreq.qid, storedreq.getTargetRanges());
@@ -257,7 +256,7 @@ public class CSFHook<T> implements AutoCloseable, CSFHookIf<T> {
                         it.remove();
                     }
                     if (send != null) {
-                        send.postRQMultiRequest(strategy.getLocalNode(), receiver);
+                        send.post(receiver);
                     }
                 }
             } catch (Exception e) {
