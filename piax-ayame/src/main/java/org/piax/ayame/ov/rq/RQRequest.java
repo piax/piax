@@ -416,22 +416,19 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                                     }
                                 }
                             });
-                    boolean handled = false;
-            			this.childMsgs.add(m);
-            			m.cleanup.add(() -> {
-            				boolean rc = this.childMsgs.remove(m);
-            				assert rc;
-            			});
-                    if (strategy.getCSFHook() != null) {
-                        handled = strategy.getCSFHook().storeOrForward((RQRequest)m, RQRequest.this.sender == null);
-                    }
+                    this.childMsgs.add(m);
+                    m.cleanup.add(() -> {
+                        boolean rc = this.childMsgs.remove(m);
+                        assert rc;
+                    });
+                    boolean handled = adapter.storeOrForward(getLocalNode(), m, RQRequest.this.sender == null);
                     logger.debug("handled={}: {}", handled, m);
-                		if (!handled) {
-            				m.subExtraTime();
-                			getLocalNode().post(m);
-                		}
-                		cleanup.add(() -> m.cleanup());
-                		logger.debug("[{}]: cleanups {}", getLocalNode().getPeerId(), cleanup);
+                    if (!handled) {
+                        m.subExtraTime();
+                        getLocalNode().post(m);
+                	    }
+                    cleanup.add(() -> m.cleanup());
+                    logger.debug("[{}]: cleanups {}", getLocalNode().getPeerId(), cleanup);
                 });
 
             // obtain values for local ranges

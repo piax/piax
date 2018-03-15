@@ -32,7 +32,7 @@ import org.piax.common.DdllKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class CSFHook<T> implements CSFHookIf<T> {
+public class CSFHook<T> implements AutoCloseable, CSFHookIf<T> {
 
     private static final Logger logger = LoggerFactory.getLogger(CSFHook.class);
 
@@ -75,7 +75,6 @@ public class CSFHook<T> implements CSFHookIf<T> {
         this.timer_offset = offset;
     }
 
-    @Override
     public String getName() {
         return name;
     }
@@ -160,7 +159,7 @@ public class CSFHook<T> implements CSFHookIf<T> {
     }
 
     @Override
-    public void fin() {
+    public void close() {
         stopAllTimer();
     }
 

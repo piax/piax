@@ -33,9 +33,4 @@ public interface CSFHookIf<T> {
      *         the request by itself
      */
     abstract boolean storeOrForward(RQRequest<T> req, boolean isRoot);
-
-    /**
-     * Stop hook
-     */
-    abstract void fin();
 }

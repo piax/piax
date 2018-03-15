@@ -26,7 +26,6 @@ import org.piax.ayame.EventException.RetriableException;
 import org.piax.ayame.EventException.TimeoutException;
 import org.piax.ayame.EventSender.EventSenderSim;
 import org.piax.ayame.ov.rq.RQAdapter;
-import org.piax.ayame.ov.rq.csf.CSFHookIf;
 import org.piax.common.DdllKey;
 import org.piax.common.Endpoint;
 import org.piax.common.PeerId;
