@@ -50,7 +50,7 @@ public class CSFHook<T> implements CSFHookIf<T> {
     private Map<Node, Long> timerPeriods;
     private Map<Node, TimerEvent> unsentTimerList;
 
-    static class CSFHookAdapter<T> extends RQAdapter<T> {
+    public static class CSFHookAdapter extends RQAdapter<Object> {
         public CSFHookAdapter() {
             super((ret) -> {
                 logger.debug("GOT RESULT: " + ret);
@@ -58,7 +58,7 @@ public class CSFHook<T> implements CSFHookIf<T> {
         }
 
         @Override
-        public CompletableFuture<T> get(RQAdapter<T> received, DdllKey key) {
+        public CompletableFuture<Object> get(RQAdapter<Object> received, DdllKey key) {
             return CompletableFuture.completedFuture(null);
         }
     }
@@ -66,7 +66,6 @@ public class CSFHook<T> implements CSFHookIf<T> {
     public CSFHook(String name, LocalNode node) {
         this.name = name;
         this.strategy = RQStrategy.getRQStrategy(node);
-        strategy.registerAdapter(new CSFHookAdapter<T>());
         unsentTimerList = new HashMap<>();
         timerPeriods = new HashMap<>();
         storedMessages = new HashMap<>();
@@ -135,13 +134,13 @@ public class CSFHook<T> implements CSFHookIf<T> {
                 return false;
             }
             logger.debug("MERGE[{}] {}", name, req);
-            RQBundledRequest<T> ret = null;
+            RQBundledRequest ret = null;
             for (Iterator<RQRequest<T>> it = reqSet.iterator(); it.hasNext();) {
                 RQRequest<T> storedreq = it.next();
                 if (ret == null) {
                     ArrayList<RQRange> range = new ArrayList<RQRange>();
                     range.add(new RQRange(req.receiver, req.receiver.key).assignId());
-                    ret = new RQBundledRequest<T>(strategy.getLocalNode(), range, new CSFHookAdapter<T>(), req.getOpts());;
+                    ret = new RQBundledRequest(strategy.getLocalNode(), range, new CSFHookAdapter(), req.getOpts());;
                     logger.debug("| merged {}", req);
                     req.prepareForMerge(strategy.getLocalNode());
                     req.subExtraTime();
@@ -244,13 +243,13 @@ public class CSFHook<T> implements CSFHookIf<T> {
                 Set<RQRequest<T>> reqSet = storedMessages.get(receiver);
                 if (reqSet != null && !reqSet.isEmpty()) {
                     // 特定receiverあてのものを全部まとめる
-                    RQBundledRequest<T> send = null;
+                    RQBundledRequest send = null;
                     for (Iterator<RQRequest<T>> it = reqSet.iterator(); it.hasNext();) {
                         RQRequest<T> storedreq = it.next();
                         if (send == null) {
                             ArrayList<RQRange> range = new ArrayList<RQRange>();
                             range.add(new RQRange(storedreq.receiver, storedreq.receiver.key).assignId());
-                            send = new RQBundledRequest<T>(strategy.getLocalNode(), range, new CSFHookAdapter<T>(), storedreq.getOpts());
+                            send = new RQBundledRequest(strategy.getLocalNode(), range, new CSFHookAdapter(), storedreq.getOpts());
                             logger.debug("TIMER[{}]: RQMultiRequest={}", name, send);
                         }
                         logger.debug("| merged qid={}, targetRanges={}", storedreq.qid, storedreq.getTargetRanges());

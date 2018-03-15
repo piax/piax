@@ -27,6 +27,7 @@ import org.piax.ayame.ov.ddll.DdllKeyRange;
 import org.piax.ayame.ov.rq.RQAdapter.InsertionPointAdapter;
 import org.piax.ayame.ov.rq.RQAdapter.KeyAdapter;
 import org.piax.ayame.ov.rq.RQEvent.GetLocalValueRequest;
+import org.piax.ayame.ov.rq.csf.CSFHook;
 import org.piax.ayame.ov.rq.csf.CSFHookIf;
 import org.piax.ayame.ov.suzaku.FingerTable;
 import org.piax.common.DdllKey;
@@ -43,6 +44,8 @@ import org.slf4j.LoggerFactory;
 public class RQStrategy extends NodeStrategy {
     static final Logger logger = LoggerFactory.getLogger(RQStrategy.class);
 
+    protected CSFHookIf<?> hook = null;
+
     public static class RQNodeFactory extends NodeFactory {
         final NodeFactory base;
         public RQNodeFactory(NodeFactory base) {
@@ -55,6 +58,7 @@ public class RQStrategy extends NodeStrategy {
             node.pushStrategy(s);
             s.registerAdapter(new KeyAdapter(null));
             s.registerAdapter(new InsertionPointAdapter(null));
+            s.registerAdapter(new CSFHook.CSFHookAdapter());
         }
         @Override
         public String toString() {
@@ -403,5 +407,13 @@ public class RQStrategy extends NodeStrategy {
             });
         });
         return ret;
+    }
+
+    public void setCSFHook(CSFHookIf<?> hook) {
+        this.hook = hook;
+    }
+
+    public CSFHookIf<?> getCSFHook() {
+        return hook;
     }
 }

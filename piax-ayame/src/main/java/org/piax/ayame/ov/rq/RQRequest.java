@@ -422,9 +422,9 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             				boolean rc = this.childMsgs.remove(m);
             				assert rc;
             			});
-                    if (getLocalNode().getCSFHook() != null) {
-                    		handled = getLocalNode().getCSFHook().storeOrForward((RQRequest)m, RQRequest.this.sender == null);
-        				}
+                    if (strategy.getCSFHook() != null) {
+                        handled = strategy.getCSFHook().storeOrForward((RQRequest)m, RQRequest.this.sender == null);
+                    }
                     logger.debug("handled={}: {}", handled, m);
                 		if (!handled) {
             				m.subExtraTime();

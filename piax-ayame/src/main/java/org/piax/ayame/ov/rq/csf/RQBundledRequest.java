@@ -13,7 +13,6 @@ package org.piax.ayame.ov.rq.csf;
 
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -21,35 +20,33 @@ import java.util.stream.Collectors;
 import org.piax.ayame.EventExecutor;
 import org.piax.ayame.LocalNode;
 import org.piax.ayame.Node;
-import org.piax.ayame.ov.rq.RQAdapter;
 import org.piax.ayame.ov.rq.RQRange;
 import org.piax.ayame.ov.rq.RQRequest;
+import org.piax.ayame.ov.rq.csf.CSFHook.CSFHookAdapter;
 import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.TransOptions.RetransMode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.esotericsoftware.minlog.Log;
-
-public class RQBundledRequest<T> extends RQRequest<T> {
+public class RQBundledRequest extends RQRequest<Object> {
     /*--- logger ---*/
     private static final Logger logger = LoggerFactory.getLogger(RQBundledRequest.class);
     private static final long serialVersionUID = 1L;
-    Set<RQRequest<T>> set = new HashSet<RQRequest<T>>();
+    Set<RQRequest<?>> set = new HashSet<RQRequest<?>>();
 
     /*
      * Create root RQMultirequest
      */
-    RQBundledRequest(Node receiver, Collection<RQRange> dest, RQAdapter<T> adapter, TransOptions opts) {
+    RQBundledRequest(Node receiver, Collection<RQRange> dest, CSFHookAdapter adapter, TransOptions opts) {
         super(receiver, dest, adapter, opts);
-        // RQMultiRequest shoud not have extraTime
+        // RQMultiRequest should not have extraTime
         opts(opts.extraTime(null));
     }
 
     /*
      * Create sender-half of the RQMultiRequest argument
      */
-    RQBundledRequest(RQBundledRequest<T> req, Node receiver, Consumer<Throwable> errorHandler) {
+    RQBundledRequest(RQBundledRequest req, Node receiver, Consumer<Throwable> errorHandler) {
         super(req, receiver, req.targetRanges, errorHandler);
         this.set = req.set;
     }
@@ -59,8 +56,8 @@ public class RQBundledRequest<T> extends RQRequest<T> {
      * 
      * @return sender half of the this
      */
-    RQBundledRequest<T> spawnSenderHalf(Node receiver) {
-        return new RQBundledRequest<>(this, receiver, (Throwable th) -> {
+    RQBundledRequest spawnSenderHalf(Node receiver) {
+        return new RQBundledRequest(this, receiver, (Throwable th) -> {
             logger.debug("{} for {}", th, this);
             getLocalNode().addPossiblyFailedNode(receiver);
             RetransMode mode = getOpts().getRetransMode();
@@ -78,11 +75,11 @@ public class RQBundledRequest<T> extends RQRequest<T> {
     }
 
     /**
-     * Add given RQRequest in the multi request
+     * Add given RQRequest in the bundled request
      * 
-     * @param storedreq request to be included in this multi request
+     * @param storedreq request to be included in this bundled request
      */
-    public void addRQRequest(RQRequest<T> storedreq) {
+    public void addRQRequest(RQRequest<?> storedreq) {
         set.add(storedreq);
     }
 
@@ -95,7 +92,7 @@ public class RQBundledRequest<T> extends RQRequest<T> {
     public void postRQMultiRequest(LocalNode node, Node receiver) {
         beforeRunHook(node);
         catcher = new RQCatcher(targetRanges);
-        RQBundledRequest<T> send = this.spawnSenderHalf(receiver);
+        RQBundledRequest send = this.spawnSenderHalf(receiver);
         this.catcher.childMsgs.add(send);
         send.cleanup.add(() -> {
             boolean rc = this.catcher.childMsgs.remove(send);
@@ -113,10 +110,10 @@ public class RQBundledRequest<T> extends RQRequest<T> {
         logger.debug("run {}", this);
         super.run();
 
-        for (RQRequest<T> req : set) {
+        for (RQRequest<?> req : set) {
             logger.debug("run bundled RQRequest {}", req);
             // reset catcher
-            RQRequest<T> receiver = (RQRequest<T>) req.clone();
+            RQRequest<?> receiver = (RQRequest<?>) req.clone();
             if (receiver.beforeRunHook(getLocalNode())) {
                 /* receiver should be localnode to be run */
                 receiver.receiver = getLocalNode();

@@ -71,8 +71,6 @@ public class LocalNode extends Node {
     public final static int PURGE_FAILED_NODE_TIME = 2*60*1000; 
     private Set<Node> possiblyFailedNodes = new HashSet<>();
 
-    	transient protected CSFHookIf hook = null;
-    	
     public LocalNode(DdllKey ddllkey, Endpoint e) {
         this(EventSenderSim.getInstance(), ddllkey);
     }
@@ -543,13 +541,5 @@ public class LocalNode extends Node {
     // called from EventExecutor.reset()
     public static void resetLocalNodeMap() {
         localNodeMap.clear();
-    }
-    
-    public void setCSFHook(CSFHookIf<?> hook) {
-    		this.hook = hook;
-    }
-    
-    public CSFHookIf<?> getCSFHook() {
-    		return hook;
     }
 }

@@ -584,7 +584,7 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
             RQStrategy s = (RQStrategy)node.getTopStrategy();
             s.registerAdapter(new ExecQueryAdapter(this));
             if (hook != null)
-            		node.setCSFHook(hook.apply(node));
+                s.setCSFHook(hook.apply(node));
 
             if (initial) {
                 logger.debug("initial=" + node.key + "self=" + node.addr);

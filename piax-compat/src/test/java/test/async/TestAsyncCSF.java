@@ -14,6 +14,7 @@ import org.piax.ayame.EventExecutor;
 import org.piax.ayame.NodeFactory;
 import org.piax.ayame.ov.ddll.DdllStrategy.DdllNodeFactory;
 import org.piax.ayame.ov.rq.RQAdapter;
+import org.piax.ayame.ov.rq.RQStrategy;
 import org.piax.ayame.ov.rq.RQStrategy.RQNodeFactory;
 import org.piax.ayame.ov.rq.csf.CSFHook;
 import org.piax.ayame.ov.rq.csf.RQBundledRequest;
@@ -157,7 +158,7 @@ public class TestAsyncCSF extends AsyncTestBase {
             Collection<Range<Integer>> ranges = Collections.singleton(range);
             List<RemoteValue<Integer>> results = new ArrayList<>();
             for (int i = 0; i < nodes.length; i++) {
-                nodes[i].setCSFHook(new CSFHook<Integer>("H" + i * 100, nodes[i]));
+                ((RQStrategy)nodes[i].getStrategy(RQStrategy.class)).setCSFHook(new CSFHook<Integer>("H" + i * 100, nodes[i]));
             }
             RQAdapter<Integer> providerDeadline = providerFactory.apply((ret) -> {
                 logger.debug("GOT RESULT: " + ret);
