@@ -100,6 +100,10 @@ public abstract class RQAdapter<T> implements Serializable {
         return null;
     }
 
+    public boolean storeOrForward(LocalNode localNode, RQRequest<T> req, boolean isRoot) {
+        return false;
+    }
+
     public static class KeyAdapter extends RQAdapter<DdllKey> {
         public KeyAdapter(Consumer<RemoteValue<DdllKey>> resultsReceiver) {
             super(resultsReceiver);
