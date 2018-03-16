@@ -101,10 +101,6 @@ public abstract class RQAdapter<T> implements Serializable {
     }
 
     public boolean storeOrForward(LocalNode localNode, RQRequest<T> req, boolean isRoot) {
-        RQStrategy s = RQStrategy.getRQStrategy(localNode);
-        if (s.getCSFHook() != null) {
-            return s.getCSFHook().storeOrForward((RQRequest)req, isRoot);
-        }
         return false;
     }
 

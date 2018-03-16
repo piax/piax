@@ -9,7 +9,7 @@
  * the AGPLv3 or PIAX binary code license. See the file COPYING
  * included in the PIAX package for more in detail.
  */
-package org.piax.ayame.ov.rq.csf;
+package org.piax.ayame.ov.rq;
 
 import java.util.Collection;
 import java.util.HashSet;
@@ -20,9 +20,7 @@ import java.util.stream.Collectors;
 import org.piax.ayame.EventExecutor;
 import org.piax.ayame.LocalNode;
 import org.piax.ayame.Node;
-import org.piax.ayame.ov.rq.RQRange;
-import org.piax.ayame.ov.rq.RQRequest;
-import org.piax.ayame.ov.rq.csf.CSFHook.CSFHookAdapter;
+import org.piax.ayame.ov.rq.RQCSFAdapter.CSFBundledRequestAdapter;
 import org.piax.gtrans.TransOptions;
 import org.piax.gtrans.TransOptions.RetransMode;
 import org.slf4j.Logger;
@@ -37,7 +35,7 @@ public class RQBundledRequest extends RQRequest<Object> {
     /*
      * Create root RQMultirequest
      */
-    RQBundledRequest(Node receiver, Collection<RQRange> dest, CSFHookAdapter adapter, TransOptions opts) {
+    RQBundledRequest(Node receiver, Collection<RQRange> dest, CSFBundledRequestAdapter adapter, TransOptions opts) {
         super(receiver, dest, adapter, opts);
         // RQMultiRequest should not have extraTime
         opts(opts.extraTime(null));

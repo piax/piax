@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -14,11 +15,11 @@ import org.piax.ayame.EventExecutor;
 import org.piax.ayame.NodeFactory;
 import org.piax.ayame.ov.ddll.DdllStrategy.DdllNodeFactory;
 import org.piax.ayame.ov.rq.RQAdapter;
-import org.piax.ayame.ov.rq.RQStrategy;
+import org.piax.ayame.ov.rq.RQBundledRequest;
+import org.piax.ayame.ov.rq.RQCSFAdapter;
 import org.piax.ayame.ov.rq.RQStrategy.RQNodeFactory;
-import org.piax.ayame.ov.rq.csf.CSFHook;
-import org.piax.ayame.ov.rq.csf.RQBundledRequest;
 import org.piax.ayame.ov.suzaku.SuzakuStrategy.SuzakuNodeFactory;
+import org.piax.common.DdllKey;
 import org.piax.common.subspace.Range;
 import org.piax.gtrans.RemoteValue;
 import org.piax.gtrans.TransOptions;
@@ -36,6 +37,48 @@ public class TestAsyncCSF extends AsyncTestBase {
     private static final Logger logger = LoggerFactory
             .getLogger(TestAsyncCSF.class);
     
+    public static class FastValueProvider extends RQCSFAdapter<Integer> {
+        public FastValueProvider(Consumer<RemoteValue<Integer>> resultsReceiver) {
+            super(resultsReceiver);
+        }
+        @Override
+        public CompletableFuture<Integer> get(RQAdapter<Integer> received,
+                DdllKey key) {
+            return CompletableFuture.completedFuture(result(key));
+        }
+
+        int result(DdllKey key) {
+            int pkey = (Integer) key.getRawKey();
+            return pkey;
+        }
+    }
+
+    public static class SlowValueProvider extends RQCSFAdapter<Integer> {
+        final int delay;
+
+        public SlowValueProvider(Consumer<RemoteValue<Integer>> resultsReceiver, int delay) {
+            super(resultsReceiver);
+            this.delay = delay;
+        }
+
+        @Override
+        public CompletableFuture<Integer> get(RQAdapter<Integer> received,
+                DdllKey key) {
+            SlowValueProvider r = (SlowValueProvider) received;
+            CompletableFuture<Integer> f = new CompletableFuture<>();
+            EventExecutor.sched("slowvalueprovider", r.delay, () -> {
+                logger.debug("provider finished: " + key);
+                f.complete(result(key));
+            });
+            return f;
+        }
+
+        int result(DdllKey key) {
+            int pkey = (Integer) key.getRawKey();
+            return pkey;
+        }
+    }
+
     @Test
     public void testCSFAggregateNone() {
         testCSFWith(ResponseType.AGGREGATE, RetransMode.NONE);
@@ -141,7 +184,7 @@ public class TestAsyncCSF extends AsyncTestBase {
             Function<Consumer<RemoteValue<Integer>>, RQAdapter<Integer>> providerFactory,
             Range<Integer> range) {
         //TestLoggerFactory.getInstance().setPrintLevel(Level.DEBUG);
-        TestLogger loggerCSFHook = TestLoggerFactory.getTestLogger(CSFHook.class);
+        TestLogger loggerCSFHook = TestLoggerFactory.getTestLogger(RQCSFAdapter.class);
         TestLogger loggerRQMultiRequest = TestLoggerFactory.getTestLogger(RQBundledRequest.class);
         TestLogger loggerEvent = TestLoggerFactory.getTestLogger(Event.class);
 
@@ -157,9 +200,6 @@ public class TestAsyncCSF extends AsyncTestBase {
             createAndInsert(factory, 4, nodeProvider);
             Collection<Range<Integer>> ranges = Collections.singleton(range);
             List<RemoteValue<Integer>> results = new ArrayList<>();
-            for (int i = 0; i < nodes.length; i++) {
-                ((RQStrategy)nodes[i].getStrategy(RQStrategy.class)).setCSFHook(new CSFHook<Integer>("H" + i * 100, nodes[i]));
-            }
             RQAdapter<Integer> providerDeadline = providerFactory.apply((ret) -> {
                 logger.debug("GOT RESULT: " + ret);
                 results.add(ret);

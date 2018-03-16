@@ -16,6 +16,7 @@ import java.util.stream.IntStream;
 import org.piax.ayame.Event;
 import org.piax.ayame.Event.Lookup;
 import org.piax.ayame.Event.LookupDone;
+import org.piax.ayame.Event.TimerEvent;
 import org.piax.ayame.EventExecutor;
 import org.piax.ayame.FTEntry;
 import org.piax.ayame.Indirect;
@@ -27,8 +28,6 @@ import org.piax.ayame.ov.ddll.DdllKeyRange;
 import org.piax.ayame.ov.rq.RQAdapter.InsertionPointAdapter;
 import org.piax.ayame.ov.rq.RQAdapter.KeyAdapter;
 import org.piax.ayame.ov.rq.RQEvent.GetLocalValueRequest;
-import org.piax.ayame.ov.rq.csf.CSFHook;
-import org.piax.ayame.ov.rq.csf.CSFHookIf;
 import org.piax.ayame.ov.suzaku.FingerTable;
 import org.piax.common.DdllKey;
 import org.piax.common.PeerId;
@@ -44,8 +43,6 @@ import org.slf4j.LoggerFactory;
 public class RQStrategy extends NodeStrategy {
     static final Logger logger = LoggerFactory.getLogger(RQStrategy.class);
 
-    protected CSFHookIf<?> hook = null;
-
     public static class RQNodeFactory extends NodeFactory {
         final NodeFactory base;
         public RQNodeFactory(NodeFactory base) {
@@ -58,7 +55,7 @@ public class RQStrategy extends NodeStrategy {
             node.pushStrategy(s);
             s.registerAdapter(new KeyAdapter(null));
             s.registerAdapter(new InsertionPointAdapter(null));
-            s.registerAdapter(new CSFHook.CSFHookAdapter());
+            s.registerAdapter(new RQCSFAdapter.CSFBundledRequestAdapter());
         }
         @Override
         public String toString() {
@@ -82,6 +79,14 @@ public class RQStrategy extends NodeStrategy {
      * {@link org.piax.ayame.ov.rq.RQAdapter.CacheAdapter}
      *  */ 
     Map<PeerId, Map<Long, CompletableFuture<?>>> resultCache = new HashMap<>();
+
+    /**
+     * collected request storage used by
+     * {@link org.piax.ayame.ov.rq.RQCSFAdapter}
+     */
+    Map<Node, Set<RQRequest<?>>> storedMessages = new HashMap<>();
+    Map<Node, Long> timerPeriods = new HashMap<>();
+    Map<Node, TimerEvent> unsentTimerList = new HashMap<>();
 
     @Override
     public void handleLookup(Lookup l) {
@@ -407,13 +412,5 @@ public class RQStrategy extends NodeStrategy {
             });
         });
         return ret;
-    }
-
-    public void setCSFHook(CSFHookIf<?> hook) {
-        this.hook = hook;
-    }
-
-    public CSFHookIf<?> getCSFHook() {
-        return hook;
     }
 }

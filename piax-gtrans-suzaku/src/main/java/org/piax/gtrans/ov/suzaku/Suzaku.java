@@ -25,7 +25,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.stream.Stream;
 
 import org.piax.ayame.EventSender;
@@ -35,7 +34,6 @@ import org.piax.ayame.Node;
 import org.piax.ayame.ov.rq.RQAdapter;
 import org.piax.ayame.ov.rq.RQStrategy;
 import org.piax.ayame.ov.rq.RQStrategy.RQNodeFactory;
-import org.piax.ayame.ov.rq.csf.CSFHookIf;
 import org.piax.ayame.ov.suzaku.SuzakuStrategy;
 import org.piax.ayame.ov.suzaku.SuzakuStrategy.SuzakuNodeFactory;
 import org.piax.common.ComparableKey;
@@ -86,8 +84,6 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
     EventSender sender;
     Map<K,LocalNode> nodes;
     
-    Function<LocalNode, CSFHookIf<Object>> hook = null;
-
     static {
         // ayame related classes
         // XXX need to think where these registration should be located
@@ -583,8 +579,6 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
             factory.setupNode(node);
             RQStrategy s = (RQStrategy)node.getTopStrategy();
             s.registerAdapter(new ExecQueryAdapter(this));
-            if (hook != null)
-                s.setCSFHook(hook.apply(node));
 
             if (initial) {
                 logger.debug("initial=" + node.key + "self=" + node.addr);
@@ -902,13 +896,5 @@ public class Suzaku<D extends Destination, K extends ComparableKey<?>>
     public int getHeight(Comparable<?> key) {
         SuzakuStrategy szk = SuzakuStrategy.getSuzakuStrategy(nodes.get(key));
         return szk.getFingerTableSize();
-    }
-    
-    public void setHook(Function<LocalNode, CSFHookIf<Object>> hook) {
-    		this.hook = hook;
-    }
-    
-    public Function<LocalNode, CSFHookIf<Object>> getHook() {
-        return hook;
     }
 }
