@@ -406,12 +406,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                         boolean rc = this.childMsgs.remove(m);
                         assert rc;
                     });
-                    boolean handled = adapter.storeOrForward(getLocalNode(), m, RQRequest.this.sender == null);
-                    logger.debug("handled={}: {}", handled, m);
-                    if (!handled) {
-                        m.subExtraTime();
-                        getLocalNode().post(m);
-                    }
+                    adapter.forward(getLocalNode(), m, RQRequest.this.sender == null);
                     cleanup.add(() -> m.cleanup());
                     logger.debug("[{}]: cleanups {}", getLocalNode().getPeerId(), cleanup);
                 });

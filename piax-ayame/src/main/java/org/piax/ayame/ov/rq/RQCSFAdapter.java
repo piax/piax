@@ -62,7 +62,7 @@ public abstract class RQCSFAdapter<T> extends RQAdapter<T> {
     }
 
     @Override
-    public boolean storeOrForward(LocalNode localNode, RQRequest<T> req, boolean isRoot) {
+    public void forward(LocalNode localNode, RQRequest<T> req, boolean isRoot) {
         // logger.error("csf", (new Throwable()));
         RQStrategy s = RQStrategy.getRQStrategy(localNode);
         this.storedMessages = s.storedMessages;
@@ -70,8 +70,10 @@ public abstract class RQCSFAdapter<T> extends RQAdapter<T> {
             // 受信側
             // check deadline
             Long extraTime = req.getOpts().getExtraTime();
-            if (extraTime == null)
-                return false;
+            if (extraTime == null) {
+                super.forward(localNode, req, isRoot);
+                return;
+            }
             logger.debug("[{}]: receiver={}, qid={}", localNode.getPeerId(), req.receiver, req.qid);
             Long period = s.timerPeriods.get(req.receiver);
             Long nextRequestTime = getNextRequestTime(period);
@@ -82,7 +84,8 @@ public abstract class RQCSFAdapter<T> extends RQAdapter<T> {
             if ((period != null) && (nextRequestTime != null) && nextRequestTime > last) {
                 logger.debug("FWRD [{}] period={}, extraTime={}, deadline={}, nextReq={}, receiver={}", localNode.getPeerId(), period,
                         extraTime != null ? extraTime : "null", last, nextRequestTime, req.receiver);
-                return false;
+                super.forward(localNode, req, isRoot);
+                return;
             }
             if (!storedMessages.containsKey(req.receiver)) {
                 storedMessages.put(req.receiver, new HashSet<RQRequest<?>>());
@@ -95,7 +98,7 @@ public abstract class RQCSFAdapter<T> extends RQAdapter<T> {
             if (!isUnsentTimerStarted(s.unsentTimerList, req.receiver)) {
                 startDefaultTimer(s.unsentTimerList, localNode, req.receiver, last);
             }
-            return true;
+            return;
         } else {
             // Root
             // timer start
@@ -114,7 +117,8 @@ public abstract class RQCSFAdapter<T> extends RQAdapter<T> {
             Set<RQRequest<?>> reqSet = storedMessages.get(req.receiver);
             if (reqSet == null) {
                 logger.debug("There is no stored message for receiver={}", req.receiver);
-                return false;
+                super.forward(localNode, req, isRoot);
+                return;
             }
             logger.debug("MERGE[{}] {}", localNode.getPeerId(), req);
             RQBundledRequest ret = null;
@@ -136,9 +140,10 @@ public abstract class RQCSFAdapter<T> extends RQAdapter<T> {
             }
             if (ret != null) {
                 ret.post(req.receiver);
-                return true;
+                return;
             }
-            return false;
+            super.forward(localNode, req, isRoot);
+            return;
         }
     }
 
