@@ -90,7 +90,7 @@ public abstract class RQCSFAdapter<T> extends RQAdapter<T> {
             Set<RQRequest<?>> reqSet = storedMessages.get(req.receiver);
             logger.debug("STORE[{}] receiver={} qid={} targetRanges={}", localNode.getPeerId(), req.receiver, req.qid,
                     req.getTargetRanges());
-            req.prepareForMerge();
+            localNode.prepareForPost(req, null);
             reqSet.add(req);
             if (!isUnsentTimerStarted(s.unsentTimerList, req.receiver)) {
                 startDefaultTimer(s.unsentTimerList, localNode, req.receiver, last);
@@ -125,7 +125,7 @@ public abstract class RQCSFAdapter<T> extends RQAdapter<T> {
                     range.add(new RQRange(req.receiver, req.receiver.key).assignId());
                     ret = new RQBundledRequest(localNode, range, new CSFBundledRequestAdapter(), req.getOpts());;
                     logger.debug("| merged {}", req);
-                    req.prepareForMerge();
+                    localNode.prepareForPost(req, null);
                     req.subExtraTime();
                     ret.addRQRequest(req);
                 }

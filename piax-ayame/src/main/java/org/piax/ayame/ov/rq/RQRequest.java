@@ -267,22 +267,6 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         }
     }
 
-    public void prepareForMerge() {
-        LocalNode node = getLocalNode();
-        FailureCallback failure = exc -> {
-            logger.trace("post: got exception: {}. {}", exc, this);
-            cleanup();
-            future.completeExceptionally(exc);
-        };
-        sender = origin = node;
-        failureCallback = failure;
-        route.add(sender);
-        if (routeWithFailed.size() == 0) {
-            routeWithFailed.add(node);
-        }
-        beforeSendHook(node);
-    }
-
     /**
      * A class for storing results of a range query used by parent nodes.
      */
@@ -427,7 +411,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                     if (!handled) {
                         m.subExtraTime();
                         getLocalNode().post(m);
-                	    }
+                    }
                     cleanup.add(() -> m.cleanup());
                     logger.debug("[{}]: cleanups {}", getLocalNode().getPeerId(), cleanup);
                 });
