@@ -111,7 +111,7 @@ public abstract class RQCSFAdapter<T> extends RQAdapter<T> {
                 Long extraTime = req.getOpts().getExtraTime();
                 if (extraTime != null) {
                     long last = getDeadline(extraTime);
-                    restartTimer(s.unsentTimerList, localNode, NetworkParams.toVTime(new_period * 1000), req.receiver, last);
+                    restartTimer(s.unsentTimerList, localNode, NetworkParams.toVTime(new_period), req.receiver, last);
                 }
             }
             Set<RQRequest<?>> reqSet = storedMessages.get(req.receiver);
@@ -151,11 +151,11 @@ public abstract class RQCSFAdapter<T> extends RQAdapter<T> {
         if (period == null)
             return null;
 
-        return EventExecutor.getVTime() + NetworkParams.toVTime(period * 1000);
+        return EventExecutor.getVTime() + NetworkParams.toVTime(period);
     }
 
     private long getDeadline(Long extraTime) {
-        return EventExecutor.getVTime() + NetworkParams.toVTime(extraTime * 1000);
+        return EventExecutor.getVTime() + NetworkParams.toVTime(extraTime);
     }
 
     // timer

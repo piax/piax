@@ -182,8 +182,8 @@ public final class TransOptions implements Serializable {
 	 * @param retransMode the retrans mode.
 	 * @param deliveryMode the delivery mode.
 	 * @param inspect true if the inspection is needed.
-	 * @param extraTime time to wait for leave in sec
-	 * @param period sending cycle in sec
+	 * @param extraTime time to wait for leave in milli sec
+	 * @param period sending cycle in milli sec
 	 */
 	public TransOptions(long timeout, ResponseType responseType, RetransMode retransMode, DeliveryMode deliveryMode, boolean inspect, Long extraTime, Long period) {
 		this.timeout = timeout;

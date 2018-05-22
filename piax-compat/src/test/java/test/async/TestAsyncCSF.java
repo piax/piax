@@ -171,11 +171,11 @@ public class TestAsyncCSF extends AsyncTestBase {
             Function<Consumer<RemoteValue<Integer>>, RQAdapter<Integer>> providerFactory,
             Range<Integer> range) {
         // store and forward
-        testCSF(base, new TransOptions(opts).extraTime(30L), new TransOptions(opts).period(10L), providerFactory, range);
+        testCSF(base, new TransOptions(opts).extraTime(30L * 1000), new TransOptions(opts).period(10L * 1000), providerFactory, range);
         // immediately forward
-        testCSF(base, new TransOptions(opts).extraTime(10L), new TransOptions(opts).period(20L), providerFactory, range);
+        testCSF(base, new TransOptions(opts).extraTime(10L * 1000), new TransOptions(opts).period(20L * 1000), providerFactory, range);
         // timeout
-        testCSF(base, new TransOptions(opts).extraTime(10L), opts, providerFactory, range);
+        testCSF(base, new TransOptions(opts).extraTime(10L * 1000), opts, providerFactory, range);
     }
 
     private void testCSF(NodeFactory base, 
