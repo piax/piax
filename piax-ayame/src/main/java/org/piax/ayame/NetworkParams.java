@@ -1,20 +1,15 @@
 package org.piax.ayame;
 
 public class NetworkParams {
-    /**
-     * 仮想時間 * LATENCY_FACTOR = 実時間
-     */
-    public final static long TIME_FACTOR = 1;
-
     /** default ack timeout */
-    public final static long ACK_TIMEOUT = toVTime(4*1000);
+    public final static long ACK_TIMEOUT = 4 * 1000;
 
     /** default reply timeout */
-    public final static long REPLY_TIMEOUT = toVTime(8*1000);
+    public final static long REPLY_TIMEOUT = 8 * 1000;
 
     /** max wait time before sending ACK message */
-    public final static long SEND_ACK_TIME = toVTime(2*1000);
-    
+    public final static long SEND_ACK_TIME = 2 * 1000;
+
     static {
         assert SEND_ACK_TIME < ACK_TIMEOUT;
         assert ACK_TIMEOUT < REPLY_TIMEOUT;
@@ -25,14 +20,6 @@ public class NetworkParams {
      * 実際の片方向遅延はこの値の2倍（star topologyを想定）．
      * 実ネットワーク上での片方向遅延が 20msec を仮定
      */
-    public static long HALFWAY_DELAY = toVTime(20/2);
+    public static long HALFWAY_DELAY = 20 / 2;
     public static long ONEWAY_DELAY = HALFWAY_DELAY * 2;
-
-    public static double toRealTime(long vtime) {
-        return vtime * TIME_FACTOR;
-    }
-
-    public static long toVTime(long rtime) {
-        return (long)(rtime / TIME_FACTOR);
-    }
 }
