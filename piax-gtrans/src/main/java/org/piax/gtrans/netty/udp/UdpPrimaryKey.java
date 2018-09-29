@@ -56,6 +56,14 @@ public class UdpPrimaryKey extends PrimaryKey {
     public void setLocatorManager(UdpLocatorManager mgr) {
         this.mgr = mgr;
     }
+    
+    public UdpPrimaryKey(ComparableKey<?> key) { // key only
+        this(DEFAULT_SIG_TYPE.value(), key, null);
+    }
+
+    public UdpPrimaryKey(NettyLocator locator) { // locator only
+        this(DEFAULT_SIG_TYPE.value(), null, locator);
+    }
 
     public UdpPrimaryKey(ComparableKey<?> key, NettyLocator locator) { // represents myself
         this(DEFAULT_SIG_TYPE.value(), key, locator);

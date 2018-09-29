@@ -10,6 +10,7 @@ import org.piax.common.PeerId;
 import org.piax.common.wrapper.StringKey;
 import org.piax.gtrans.Peer;
 import org.piax.gtrans.Transport;
+import org.piax.gtrans.netty.NettyLocator.TYPE;
 import org.piax.gtrans.netty.idtrans.PrimaryKey;
 import org.piax.gtrans.netty.udp.UdpPrimaryKey;
 
@@ -86,20 +87,33 @@ class TestNettyChannelTransport {
         Peer p1 = Peer.getInstance(new PeerId("p1"));
         Peer p2 = Peer.getInstance(new PeerId("p2"));
 
-        Transport<UdpPrimaryKey> tr1 = p1.newBaseTransport((UdpPrimaryKey)Endpoint.newEndpoint("udp")); // default port: 12367
-        Transport<UdpPrimaryKey> tr2 = p2.newBaseTransport((UdpPrimaryKey)Endpoint.newEndpoint("udp:*:12368"));
+        Transport<Endpoint> tr1 = p1.newBaseTransport(Endpoint.newEndpoint("udp")); // default port: 12367
+        Transport<Endpoint> tr2 = p2.newBaseTransport(Endpoint.newEndpoint("udp:*:12368"));
 
+        tr1.setListener((trans, msg) -> {
+            received1 = "123456".equals(msg.getMessage());
+        });
         tr2.setListener((trans, msg) -> {
-                received2 = "654321".equals(msg.getMessage());
+            received2 = "654321".equals(msg.getMessage());
         });
 
         received2 = false;
-        tr1.send((UdpPrimaryKey)Endpoint.newEndpoint("udp:*:localhost:12368"), "654321");
+        //tr1.send(Endpoint.newEndpoint("udp:*:localhost:12368"), "654321");
+        tr1.send(new UdpPrimaryKey(new NettyLocator(TYPE.UDP, "localhost", 12368)), "654321");
+        
+        /*Channel c = tr1.newChannel(new NettyLocator(TYPE.UDP, "localhost", 12368));
+        c.send("654321");
+        c.getRemote()*/
+        
         Thread.sleep(100);
         assertTrue(received2);
         received2 = false;
-        tr1.send(new UdpPrimaryKey(new PeerId("p2"), 12368), "654321");
+        tr1.send(new UdpPrimaryKey(new PeerId("p2")), "654321");
+        received1 = false;
+        tr2.send(new UdpPrimaryKey(new PeerId("p1")), "123456");
+        
         Thread.sleep(100);
+        assertTrue(received1);
         assertTrue(received2);
         
         p1.fin();
