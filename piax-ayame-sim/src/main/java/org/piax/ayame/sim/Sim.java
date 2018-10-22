@@ -282,13 +282,9 @@ public class Sim {
         }
         System.out.println("# of inserted node: " + c);
     }
-    
+
     public static long convertSecondsToVTime(int sec) {
-        if (EventExecutor.realtime.value()) {
-            return (long)(sec * 1000);
-        } else {
-            return (long)(sec * 1000 / NetworkParams.TIME_FACTOR);
-        }
+        return (long)(sec * 1000);
     }
 
     private LocalNode createNode(NodeFactory factory, int key, long latency) {
@@ -485,9 +481,7 @@ public class Sim {
                         after, insertCallback);
             } else {
                 System.out.println("** insertion finished: vtime="
-                        + EventExecutor.getVTime() + ", rtime="
-                        + NetworkParams.toRealTime(EventExecutor.getVTime())
-                    );
+                        + EventExecutor.getVTime());
                 if (after != null) {
                     after.run();
                 }
@@ -616,8 +610,7 @@ public class Sim {
                             + ", T=" + EventExecutor.getVTime());
                     collectMessageCounts(nodes, ms);
                     ns.addSample(cNode);
-                    System.out.println("T = " + t
-                            + " (real=" + NetworkParams.toRealTime(t) +")");
+                    System.out.println("T = " + t + ")");
                     dump(nodes);
                 });
             }
