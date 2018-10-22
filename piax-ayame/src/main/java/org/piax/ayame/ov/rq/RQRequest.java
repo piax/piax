@@ -167,7 +167,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
     		long timeout = 0;
         if (isUseAck(opts)) {
     			if (opts.getExtraTime() != null) {
-    				timeout += NetworkParams.toVTime(opts.getExtraTime());
+				timeout += opts.getExtraTime();
     			}
         		timeout += NetworkParams.ACK_TIMEOUT;
         }
@@ -184,7 +184,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         		// nothing to add
         } else {
     			if (opts.getExtraTime() != null) {
-    				timeout += NetworkParams.toVTime(opts.getExtraTime());
+			    timeout += opts.getExtraTime();
     			}
             // XXX: 再送時には短いタイムアウトで!
             timeout += opts.getTimeout();

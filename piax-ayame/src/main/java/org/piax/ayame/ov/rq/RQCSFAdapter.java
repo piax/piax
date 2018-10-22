@@ -33,8 +33,8 @@ import org.slf4j.LoggerFactory;
 public abstract class RQCSFAdapter<T> extends RQAdapter<T> {
     private static final Logger logger = LoggerFactory.getLogger(RQCSFAdapter.class);
 
-    private static final long DEFAULT_PERIOD = NetworkParams.toVTime(60 * 1000);
-    private static final long DEFAULT_TIMER_OFFSET = NetworkParams.toVTime(1 * 1000);
+    private static final long DEFAULT_PERIOD = 60 * 1000;
+    private static final long DEFAULT_TIMER_OFFSET = 1 * 1000;
 
     private long timer_offset = DEFAULT_TIMER_OFFSET;
 
@@ -111,7 +111,7 @@ public abstract class RQCSFAdapter<T> extends RQAdapter<T> {
                 Long extraTime = req.getOpts().getExtraTime();
                 if (extraTime != null) {
                     long last = getDeadline(extraTime);
-                    restartTimer(s.unsentTimerList, localNode, NetworkParams.toVTime(new_period), req.receiver, last);
+                    restartTimer(s.unsentTimerList, localNode, new_period, req.receiver, last);
                 }
             }
             Set<RQRequest<?>> reqSet = storedMessages.get(req.receiver);
@@ -151,11 +151,11 @@ public abstract class RQCSFAdapter<T> extends RQAdapter<T> {
         if (period == null)
             return null;
 
-        return EventExecutor.getVTime() + NetworkParams.toVTime(period);
+        return EventExecutor.getVTime() + period;
     }
 
     private long getDeadline(Long extraTime) {
-        return EventExecutor.getVTime() + NetworkParams.toVTime(extraTime);
+        return EventExecutor.getVTime() + extraTime;
     }
 
     // timer
