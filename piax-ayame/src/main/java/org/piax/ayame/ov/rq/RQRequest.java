@@ -19,6 +19,7 @@ import org.piax.ayame.Event;
 import org.piax.ayame.Event.StreamingRequestEvent;
 import org.piax.ayame.EventExecutor;
 import org.piax.ayame.FTEntry;
+import org.piax.ayame.FailureCallback;
 import org.piax.ayame.LocalNode;
 import org.piax.ayame.NetworkParams;
 import org.piax.ayame.Node;
@@ -59,14 +60,14 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
     /** range query retransmission period */
     public static int RQ_RETRANS_PERIOD = 10 * 1000;
 
-    final long qid;
+    public final long qid;
     Node root;       // DIRECT only
     int rootEventId; // DIRECT only
     // XXX: note that wrap-around query ranges such as [10, 5) do not work
     // for now (k-abe)
     protected final Collection<RQRange> targetRanges;
-    final RQAdapter<T> adapter;
-    final TransOptions opts;
+    public final RQAdapter<T> adapter;
+    TransOptions opts;
     final boolean isRoot;
 
     /**
@@ -75,17 +76,20 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
      */
     final Set<Node> obstacles;
 
-    transient RQCatcher catcher; // receiver half only
+    protected transient RQCatcher catcher; // receiver half only
 
     enum SPECIAL {
         PADDING;
     }
+    
+    long receivedTime = 0;
 
     /**
      * create a root RQRequest.
      * 
+     * @param receiver receiver of the request
      * @param ranges set of query ranges
-     * @param query an object sent to all the nodes within the query ranges
+     * @param adapter range query adapter
      * @param opts the transport options.
      */
     /*
@@ -93,7 +97,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
      * isRoot <-> resultReceiver != null
      * !isReceiverHalf -> resultReceiver == null
      */
-    RQRequest(Node receiver, Collection<RQRange> ranges,
+    protected RQRequest(Node receiver, Collection<RQRange> ranges,
             RQAdapter<T> adapter, TransOptions opts) {
         super(receiver, true);
         this.isRoot = true;
@@ -121,11 +125,12 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
      * <p>
      * this method is used both at intermediate nodes and at root node.
      * 
-     * @param parent
-     * @param receiver
-     * @param newRQRange new RQRange for the child RQMessage
+     * @param parent receiver-half of the request
+     * @param receiver receiver of the request
+     * @param newRanges new RQRange for the child RQMessage
+     * @param errorHandler error handler
      */
-    private RQRequest(RQRequest<T> parent, Node receiver,
+    protected RQRequest(RQRequest<T> parent, Node receiver,
             Collection<RQRange> newRanges, Consumer<Throwable> errorHandler) {
         super(receiver, false);
         this.isRoot = false;
@@ -141,6 +146,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         this.opts = parent.opts;
         this.obstacles = parent.obstacles;
         this.catcher = parent.catcher;
+        this.receivedTime = parent.receivedTime;
     }
 
     @Override
@@ -158,23 +164,32 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
 
     @Override
     protected long getAckTimeoutValue() {
+    		long timeout = 0;
         if (isUseAck(opts)) {
-            return NetworkParams.ACK_TIMEOUT;
+    			if (opts.getExtraTime() != null) {
+				timeout += opts.getExtraTime();
+    			}
+        		timeout += NetworkParams.ACK_TIMEOUT;
         }
-        return 0;
+        return timeout;
     }
 
     @Override
     protected long getReplyTimeoutValue() {
+    		long timeout = 0;
         if (opts.getResponseType() == ResponseType.NO_RESPONSE
                 ||
             // in DIRECT mode, non root node does not receive RQDirectReply
             opts.getResponseType() == ResponseType.DIRECT && !isRoot) {
-            return 0;
+        		// nothing to add
         } else {
+    			if (opts.getExtraTime() != null) {
+			    timeout += opts.getExtraTime();
+    			}
             // XXX: 再送時には短いタイムアウトで!
-            return opts.getTimeout();
+            timeout += opts.getTimeout();
         }
+        return timeout;
     }
 
     public void addObstacles(Collection<Node> links) {
@@ -190,6 +205,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         // check if we've received the same query
         // targetRanges に含まれる各部分範囲について，受信済みかどうかを個別に判定しているが，
         // 現在の実装では，1つのRQRequestで受信済みと非受信済みの範囲が混在することはない．
+    		receivedTime = EventExecutor.getVTime();
         RQStrategy strategy = RQStrategy.getRQStrategy(getLocalNode());
         Set<Integer> history = strategy.queryHistory.computeIfAbsent(qid,
                 q -> {
@@ -216,12 +232,12 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
     }
  
     public void receiveReply(RQReplyDirect<T> rep) {
-        logger.debug("RQRequest: direct reply received: {}", rep);
+        logger.debug("RQRequest[{}]: direct reply received: {}", getLocalNode().getPeerId(), rep);
         catcher.replyReceived(rep);
     }
 
     @Override
-    protected Event clone() {
+	public Event clone() {
         RQRequest<?> ev = (RQRequest<?>)super.clone();
         ev.catcher = null;
         return ev;
@@ -234,10 +250,27 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                 || mode == RetransMode.RELIABLE;
     }
 
+    public TransOptions getOpts() {
+        return opts;
+    }
+    
+    public void opts(TransOptions opts) {
+        this.opts = opts;
+    }
+
+    public void subExtraTime() {
+        Long extraTime = opts.getExtraTime();
+        if (extraTime != null) {
+            long newExtraTime = extraTime - (EventExecutor.getVTime() - receivedTime);
+            logger.debug("[{}]: newExtraTime={} receivedTime={}, extraTime={}", receiver, newExtraTime, receivedTime, extraTime);
+            opts = opts.extraTime((newExtraTime > 0)? newExtraTime: 0);
+        }
+    }
+
     /**
      * A class for storing results of a range query used by parent nodes.
      */
-    class RQCatcher {
+    protected class RQCatcher {
         
         /*
          * range [--------------------) 
@@ -251,7 +284,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
         final NavigableMap<DdllKey, DKRangeRValue<T>> rvals;
 
         /** messages sent to children */
-        final Set<RQRequest<T>> childMsgs = new HashSet<>();
+        public final Set<RQRequest<T>> childMsgs = new HashSet<>();
 
         /** subranges that have not yet received any return values */
         final List<RQRange> gaps;
@@ -298,7 +331,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             + ", retrans=" + retransCount + "]";
         }
 
-        private void rqDisseminate(List<RQRange> ranges) {
+        public void rqDisseminate(List<RQRange> ranges) {
             if (logger.isTraceEnabled()) {
                 logger.trace("rqDisseminate start: {}", this);
                 logger.trace("                     {}", RQRequest.this);
@@ -307,6 +340,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             Set<Integer> history = strategy.queryHistory.get(qid);
             if (history == null) {
                 // retransmission too late! 
+            		logger.debug("rqDisseminate: too late: qid={}", qid);
                 return;
             }
             ranges.stream().forEach(r -> history.addAll(Arrays.asList(r.ids)));
@@ -336,6 +370,9 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
             if (logger.isTraceEnabled()) {
                 logger.trace("aggregated: {}", map);
             }
+            for (Id del: map.keySet()) {
+            		logger.debug("delegators {}: {}", del, map.get(del));
+            }
             PeerId peerId = getLocalNode().getPeerId();
 
             /*
@@ -364,14 +401,14 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
                                     }
                                 }
                             });
-                    logger.debug("send to child: {}", m);
                     this.childMsgs.add(m);
                     m.cleanup.add(() -> {
                         boolean rc = this.childMsgs.remove(m);
                         assert rc;
                     });
-                    getLocalNode().post(m);
+                    adapter.forward(getLocalNode(), m, RQRequest.this.sender == null);
                     cleanup.add(() -> m.cleanup());
+                    logger.debug("[{}]: cleanups {}", getLocalNode().getPeerId(), cleanup);
                 });
 
             // obtain values for local ranges
@@ -392,6 +429,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
          * gapの各範囲を部分範囲に分割し，それぞれ担当ノードを割り当てる．
          * 各ノード毎に割り当てたRQRangeのリストのMapを返す．
          * 
+         * @param ranges ranges to be assigned to delegates
          * @return a map of id and RQRanges
          */
         protected Map<Id, List<RQRange>> assignDelegates(List<RQRange> ranges) {
@@ -484,7 +522,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
          * @param reply the reply message.
          */
         void replyReceived(RQReply<T> reply) {
-            logger.debug("RQRequest: reply received: {}", reply);
+            logger.debug("RQRequest[{}]: reply received: {}", getLocalNode().getPeerId(), reply);
             if (reply.isFinal) {
                 // cleanup sender half of the corresponding request
                 reply.req.cleanup();
@@ -583,7 +621,7 @@ public class RQRequest<T> extends StreamingRequestEvent<RQRequest<T>, RQReply<T>
          * obtain a result value from local node.
          *  
          * @param ranges このノードが担当する範囲のリスト．各範囲はtargetRangeに含まれる
-         * @returns CompletableFuture
+         * @return CompletableFuture
          */
         private CompletableFuture<List<DKRangeRValue<T>>>
         rqExecuteLocal(List<RQRange> ranges) {

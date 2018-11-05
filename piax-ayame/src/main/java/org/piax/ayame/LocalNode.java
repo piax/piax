@@ -128,7 +128,7 @@ public class LocalNode extends Node {
     /**
      * replace this instance with corresponding Node object on serialization.
      * 
-     * @return
+     * @return new node
      */
     private Object writeReplace() {
         Node repl = new Node(this.key, this.addr);
@@ -216,6 +216,21 @@ public class LocalNode extends Node {
     }
 
     public void post(Event ev, FailureCallback failure) {
+        prepareForPost(ev, failure);
+        if (!isFailed) {
+            sender.send(ev).whenComplete((result, e) ->{
+                if (e != null && ev.failureCallback != null) {
+                    // It might be completed on the receiver transport thread.
+                    // Ensure to run on the execution thread.
+                    EventExecutor.runNow("post: failureCallback", () -> {
+                        ev.failureCallback.run(new NetEventException(e));
+                    });
+                }
+            });
+        }
+    }
+
+    public void prepareForPost(Event ev, FailureCallback failure) {
         if (ev instanceof RequestEvent && failure == null) {
             RequestEvent<?, ?> req = (RequestEvent<?, ?>)ev;
             failure = exc -> {
@@ -231,17 +246,6 @@ public class LocalNode extends Node {
             ev.routeWithFailed.add(this);
         }
         ev.beforeSendHook(this);
-        if (!isFailed) {
-            sender.send(ev).whenComplete((result, e) ->{
-                if (e != null && ev.failureCallback != null) {
-                    // It might be completed on the receiver transport thread.
-                    // Ensure to run on the execution thread.
-                    EventExecutor.runNow("post: failureCallback", () -> {
-                        ev.failureCallback.run(new NetEventException(e));
-                    });
-                }
-            });
-        }
     }
 
     /**

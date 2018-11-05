@@ -107,7 +107,7 @@ public class Node implements Comparable<Node>, Serializable {
      * replace this instance with corresponding Node object on deserialization.
      * 
      * @return Node instance
-     * @throws ObjectStreamException
+     * @throws ObjectStreamException deserialization exception
      */
     private Object readResolve() throws ObjectStreamException {
         Node repl = Node.getInstance(this.key, this.addr);

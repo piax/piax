@@ -66,6 +66,10 @@ public final class TransOptions implements Serializable {
 	private final RetransMode retransMode;
 	private final DeliveryMode deliveryMode;
 	
+	// Options for Collective Store and Forward
+	private final Long extraTime;
+	private final Long period;
+
 	/**
 	 */
 	public TransOptions() {
@@ -81,6 +85,8 @@ public final class TransOptions implements Serializable {
 		this.retransMode = opts.retransMode;
 		this.deliveryMode = opts.deliveryMode;
 		this.inspect = opts.inspect;
+		this.extraTime = opts.extraTime;
+		this.period = opts.period;
 	}
 	
 	/**
@@ -167,11 +173,26 @@ public final class TransOptions implements Serializable {
 	 * @param inspect true if the inspection is needed.
 	 */
 	public TransOptions(long timeout, ResponseType responseType, RetransMode retransMode, DeliveryMode deliveryMode, boolean inspect) {
+		this(timeout, responseType, retransMode, deliveryMode, false, null, null);
+	}
+
+	/**
+	 * @param timeout the timeout.
+	 * @param responseType the response type.
+	 * @param retransMode the retrans mode.
+	 * @param deliveryMode the delivery mode.
+	 * @param inspect true if the inspection is needed.
+	 * @param extraTime time to wait for leave in milli sec
+	 * @param period sending cycle in milli sec
+	 */
+	public TransOptions(long timeout, ResponseType responseType, RetransMode retransMode, DeliveryMode deliveryMode, boolean inspect, Long extraTime, Long period) {
 		this.timeout = timeout;
 		this.responseType = responseType;
 		this.retransMode = retransMode;
 		this.deliveryMode = deliveryMode;
 		this.inspect = inspect;
+		this.extraTime = extraTime;
+		this.period = period;
 	}
 
 	/**
@@ -224,7 +245,7 @@ public final class TransOptions implements Serializable {
 	 */
 	@Override
     public String toString() {
-		return "{responseType=" + responseType + ", retransMode=" + retransMode + ", timeout=" + timeout + ", inspect=" + inspect + "}";
+		return "{responseType=" + responseType + ", retransMode=" + retransMode + ", timeout=" + timeout + ", inspect=" + inspect + ", extraTime=" + extraTime + ", period=" + period + "}";
 	}
 
 	public long getTimeout() {
@@ -242,6 +263,14 @@ public final class TransOptions implements Serializable {
 	public boolean isInspect() {
         return inspect;
     }
+	
+	public Long getExtraTime() {
+		return extraTime;
+	}
+	
+	public Long getPeriod() {
+		return period;
+	}
 
 	public TransOptions timeout(long timeout) {
 	    return new TransOptions(timeout, this.responseType, this.retransMode, this.deliveryMode, this.inspect);
@@ -257,5 +286,13 @@ public final class TransOptions implements Serializable {
 
 	public TransOptions retransMode(RetransMode retransMode) {
 	    return new TransOptions(this.timeout, this.responseType, retransMode, this.deliveryMode, this.inspect);
+	}
+	
+	public TransOptions extraTime(Long time) {
+		return new TransOptions(this.timeout, this.responseType, this.retransMode, this.deliveryMode, this.inspect, time, null);
+	}
+
+	public TransOptions period(Long time) {
+		return new TransOptions(this.timeout, this.responseType, this.retransMode, this.deliveryMode, this.inspect, null, time);
 	}
 }
