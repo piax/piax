@@ -49,11 +49,11 @@ public class PrimaryKey implements ComparableKey<PrimaryKey>, NettyEndpoint {
         return ret;
     }
 
-    ComparableKey<?> rawKey;
+    protected ComparableKey<?> rawKey;
     private static final KeyComparator keyComp = KeyComparator.getInstance();
 
     // self locator;
-    private NettyLocator locator;
+    protected NettyLocator locator;
 
     // neighbors;
     private List<NeighborEntry> neighbors;
@@ -185,9 +185,14 @@ public class PrimaryKey implements ComparableKey<PrimaryKey>, NettyEndpoint {
 
     @Override
     public String toString() {
+        String ret = "";
         if (rawKey == null) // wildcard
-            return "WILDCARD";
-        return rawKey.toString() + "," + locator;
+            ret += "WILDCARD";
+        else {
+            ret +=rawKey.toString();
+        }
+        ret += ("," + locator);
+        return ret;
     }
 
     @Override

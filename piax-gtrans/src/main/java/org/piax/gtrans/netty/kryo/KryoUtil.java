@@ -5,6 +5,7 @@ import java.util.ArrayList;
 
 import org.objenesis.strategy.StdInstantiatorStrategy;
 import org.piax.gtrans.GTransConfigValues;
+import org.piax.gtrans.netty.udp.UdpPrimaryKeySerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,7 +35,7 @@ public class KryoUtil {
         if (!registrations.contains(clazz)) {
             registrations.add(new RegistrationPair(clazz, null));
             lastRegistered = System.nanoTime();
-            logger.debug("last registered={}", lastRegistered);
+            logger.trace("last registered={}", lastRegistered);
         }
     }
     
@@ -42,13 +43,13 @@ public class KryoUtil {
         if (!registrations.contains(clazz)) {
             registrations.add(new RegistrationPair(clazz, serializer));
             lastRegistered = System.nanoTime();
-            logger.debug("last registered={}", lastRegistered);
+            logger.trace("last registered={}", lastRegistered);
         }
     }
     
     public synchronized static void reRegisterIfModified() {
         if (lasts.get() < lastRegistered) {
-            logger.debug("re-register because the registration is modified on thread {}", Thread.currentThread());
+            logger.trace("re-register because the registration is modified on thread {}", Thread.currentThread());
             Kryo kryo = kryos.get();
             for (RegistrationPair p : registrations) {
                 if (p.serializer == null) {
@@ -61,7 +62,7 @@ public class KryoUtil {
             lasts.set(lastRegistered);
         }
         else {
-            logger.debug("Not registered because the registration is not modified on thread {}", Thread.currentThread());
+            logger.trace("Not registered because the registration is not modified on thread {}", Thread.currentThread());
         }
     }
     
@@ -78,7 +79,7 @@ public class KryoUtil {
     
     private static final ThreadLocal<Long> lasts = new ThreadLocal<Long>() {
         protected Long initialValue() {
-            logger.debug("initial last registered={} on thread {}", lastRegistered, Thread.currentThread());
+            logger.trace("initial last registered={} on thread {}", lastRegistered, Thread.currentThread());
             return initialLastRegistered;
         }
     };
@@ -122,6 +123,9 @@ public class KryoUtil {
             kryo.register(org.piax.gtrans.netty.NettyLocator.TYPE.class);
             kryo.register(org.piax.gtrans.netty.ControlMessage.ControlType.class);
             kryo.register(org.piax.gtrans.netty.idtrans.PrimaryKey.class);
+            kryo.register(org.piax.gtrans.netty.udp.direct.DirectSignaling.AddressNotification.class);
+            kryo.register(org.piax.gtrans.netty.NettyLocator[].class);
+            kryo.register(org.piax.gtrans.netty.udp.UdpPrimaryKey.class, new UdpPrimaryKeySerializer());
             logger.debug("registered basic classes on thread {}", Thread.currentThread());
 
             /*

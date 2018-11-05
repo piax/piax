@@ -1,6 +1,7 @@
 package org.piax.gtrans.netty;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 
@@ -11,13 +12,14 @@ import org.piax.gtrans.Transport;
 public class NettyLocator extends PeerLocator implements NettyEndpoint {
     
     public enum TYPE {
-        TCP, SSL, WS, WSS, UDT
+        TCP, SSL, WS, WSS, UDT, UDP, UNKNOWN
     };
     TYPE type;
+    //InetAddress addr;
     String host;
     int port;
     
-    static public String DEFAULT_TYPE="tcp";
+    static public TYPE DEFAULT_TYPE=TYPE.TCP;
 
     public NettyLocator() {
         // XXX should define default value;
@@ -27,21 +29,45 @@ public class NettyLocator extends PeerLocator implements NettyEndpoint {
         return (NettyLocator)NettyEndpoint.parseLocator(spec);
     }
     
+    public NettyLocator(String type, InetAddress addr, int port) {
+        this(parseType(type), addr, port);
+    }
+
+    public NettyLocator(InetAddress addr, int port) {
+        this(TYPE.UNKNOWN, addr, port);
+    }
+
     public NettyLocator(InetSocketAddress addr) {
-        this(DEFAULT_TYPE, addr.getHostName(), addr.getPort()); 
+        this(DEFAULT_TYPE, addr.getHostName(), addr.getPort());
+    }
+
+    public NettyLocator(TYPE type, InetAddress addr, int port) {
+        this.type = type;
+        this.host = addr.getHostAddress();
+        this.port = port;
+    }
+    
+    public NettyLocator(TYPE type, int port) {
+        this.type = type;
+        this.host = null;
+        this.port = port;
+    }
+    
+    public NettyLocator(TYPE type, InetSocketAddress saddr) {
+        this(type, saddr.getHostName(), saddr.getPort());
     }
 
     public NettyLocator(String host, int port) {
         this(DEFAULT_TYPE, host, port);
     }
     
-    public NettyLocator(String type, String host, int port) {
-        this.type = parseType(type);
+    public NettyLocator(TYPE type, String host, int port) {
+        this.type = type;
         this.host = host;
         this.port = port;
     }
 
-    public TYPE parseType(String str) {
+    static public TYPE parseType(String str) {
         TYPE t;
         if (str.equals("tcp")) {
             t=TYPE.TCP;
@@ -58,6 +84,9 @@ public class NettyLocator extends PeerLocator implements NettyEndpoint {
         else if (str.equals("udt")) {
             t = TYPE.UDT;
         }
+        else if (str.equals("udp")) {
+            t = TYPE.UDP;
+        }
         else {
             t = TYPE.TCP; // fallback.
         }
@@ -72,7 +101,8 @@ public class NettyLocator extends PeerLocator implements NettyEndpoint {
     public boolean equals(Object o) {
         if (o instanceof NettyLocator) {
             NettyLocator l = (NettyLocator)o;
-            return host.equals(l.host) && port == l.port;
+            // null means wildcard.
+            return (host == null || l.host == null || (host != null && host.equals(l.host))) && port == l.port;
         }
         return false;
     }
@@ -83,6 +113,10 @@ public class NettyLocator extends PeerLocator implements NettyEndpoint {
 
     public int getPort() {
         return port;
+    }
+    
+    public InetSocketAddress getSocketAddress() {
+        return new InetSocketAddress(host, port);
     }
 
     // This class does not create raw transport.
@@ -98,7 +132,7 @@ public class NettyLocator extends PeerLocator implements NettyEndpoint {
     }
 
     public String getKeyString() {
-        return type + ":" + toString();
+        return toString();
     }
 
     @Override
@@ -108,7 +142,7 @@ public class NettyLocator extends PeerLocator implements NettyEndpoint {
 
     @Override
     public String toString() {
-        return type + ":" + host +":"+ port;
+        return type + ":" + (host == null ? "NONE" : host) +":"+ port;
     }
 
 }

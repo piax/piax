@@ -191,6 +191,84 @@ class TestSuzaku {
             s2.close();
         }
     }
+    
+    @Test
+    public void udpJoinTest() throws Exception {
+        try (
+                Suzaku<StringKey, StringKey> s1 = new Suzaku<>("udp:p1");
+                Suzaku<StringKey, StringKey> s2 = new Suzaku<>("udp:p2:12368");
+                ){
+            s1.join("udp:*:localhost:12367");
+            s2.join("udp:*:localhost:12367");
+            s2.setRequestListener((szk, msg) -> { // make a response
+                return msg.getMessage() + "2";
+            });
+            AtomicBoolean received = new AtomicBoolean(false);
+            s1.requestAsync(new StringKey("p2"), "world",
+                    (ret, e)-> { // receive response
+                        if (ret != Response.EOR) {
+                            received.set(true);
+                            assertTrue(ret.equals("world2"));
+                        }
+                    });
+            Thread.sleep(1000); // unless this line, finishes immediately.
+            assertTrue(received.get());
+        }
+    }
+    
+    @Test
+    public void udpJoinTest2() throws Exception {
+        try (
+                Suzaku<StringKey, StringKey> s1 = new Suzaku<>("udp:p1");
+                Suzaku<StringKey, StringKey> s2 = new Suzaku<>("udp:p2:12368");
+                Suzaku<StringKey, StringKey> s3 = new Suzaku<>("udp:p3:12369");
+                Suzaku<StringKey, StringKey> s4 = new Suzaku<>("udp:p4:12370");
+                ){
+            s1.join("udp:*:localhost:12367");
+            s2.join("udp:*:localhost:12367");
+            s3.join("udp:*:localhost:12367");
+            s4.join("udp:*:localhost:12367");
+            s2.setRequestListener((szk, msg) -> { // make a response
+                return msg.getMessage() + "2";
+            });
+            AtomicBoolean received = new AtomicBoolean(false);
+            s1.requestAsync(new StringKey("p2"), "world",
+                    (ret, e)-> { // receive response
+                        if (ret != Response.EOR) {
+                            received.set(true);
+                            assertTrue(ret.equals("world2"));
+                        }
+                    });
+            Thread.sleep(1000); // unless this line, finishes immediately.
+            assertTrue(received.get());
+        }
+    }
+
+    @Test
+    public void udpJoinTest3() throws Exception {
+        try (
+                Suzaku<Destination, StringKey> s1 = new Suzaku<>("udp");
+                Suzaku<Destination, StringKey> s2 = new Suzaku<>("udp:*:12368");
+                Suzaku<Destination, StringKey> s3 = new Suzaku<>("udp:*:12369");
+                ){
+            s1.join("udp:*:localhost:12367");
+            s2.join("udp:*:localhost:12367");
+            s3.join("udp:*:localhost:12367");
+            s2.setRequestListener((szk, msg) -> { // make a response
+                return msg.getMessage() + "2";
+            });
+            AtomicBoolean received = new AtomicBoolean(false);
+            s1.requestAsync(s2.getPeerId(), "world",
+                    (ret, e)-> { // receive response
+                        if (ret != Response.EOR) {
+                            received.set(true);
+                            assertTrue(ret.equals("world2"));
+                        }
+                    });
+            Thread.sleep(1000); // unless this line, finishes immediately.
+            assertTrue(received.get());
+        }
+    }
 
     @Test
     public void peerIdRequestTest() throws Exception {
