@@ -1,3 +1,5 @@
+# PIAX - A Distributed Computing Framework
+
 # What is PIAX?
 
 PIAX is a middleware for P2P distributed computing.
