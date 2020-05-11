@@ -1,12 +1,12 @@
 # PIAX - A Distributed Computing Framework
 
-# What is PIAX?
+## What is PIAX?
 
 PIAX is a middleware for P2P distributed computing.
 By using PIAX core transport mechanism, you can write programs that utilize discovery features of overlays.
 PIAX also provides a mobile agent-based programming framework. You can write distributed programs that interact each other by using remote procedure calls among mobile agents.
 
-# Structure of the software
+## Structure of the software
 
 The structure of PIAX is as follows:
 
@@ -17,12 +17,12 @@ The structure of PIAX is as follows:
 * 'piax-samples' - Some simple samples of GTrans and PIAX Agents.
 * 'piax-shell' - A command-line application to demonstrate PIAX Agents.
 
-# Build from sources
+## Build from sources
 
 cd into cloned source directory and `mvn -Dmaven.test.skip=true clean package`. 
 Of course you can do tests by eliminating `-Dmaven.test.skip=true` (it takes a while).
 
-# Maven build settings
+## Maven build settings
 
 PIAX artifacts are available on Maven Central Repository. You can build your program using maven by following settings.
 
