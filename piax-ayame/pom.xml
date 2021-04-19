@@ -6,11 +6,11 @@
   <parent>
     <groupId>org.piax</groupId>
     <artifactId>piax-parent</artifactId>
-    <version>4.0-SNAPSHOT</version>
+    <version>4.0</version>
   </parent>
   <groupId>org.piax</groupId>
   <artifactId>piax-ayame</artifactId>
-  <version>4.0-SNAPSHOT</version>
+  <version>4.0</version>
   <name>Ayame Framework</name>
   <description>Ayame - A framework for event-driven distributed computing</description>
   <url>http://www.piax.org/</url>
@@ -199,6 +199,7 @@
         <artifactId>maven-javadoc-plugin</artifactId>
         <version>2.10.4</version>
         <configuration>
+          <source>8</source>
           <sourceFileExcludes>
             <sourceFileExclude>**/parser/*</sourceFileExclude>
           </sourceFileExcludes>

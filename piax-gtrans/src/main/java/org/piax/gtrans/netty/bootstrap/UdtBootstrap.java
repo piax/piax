@@ -1,5 +1,10 @@
 package org.piax.gtrans.netty.bootstrap;
 
+import java.util.concurrent.ThreadFactory;
+
+import org.piax.gtrans.netty.NettyEndpoint;
+import org.piax.gtrans.netty.NettyLocator;
+
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelHandler;
@@ -11,21 +16,9 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.udt.UdtChannel;
 import io.netty.channel.udt.nio.NioUdtProvider;
-import io.netty.handler.codec.serialization.ClassResolvers;
-import io.netty.handler.codec.serialization.ObjectDecoder;
-import io.netty.handler.codec.serialization.ObjectEncoder;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.util.concurrent.DefaultThreadFactory;
-
-import java.util.concurrent.ThreadFactory;
-
-import org.piax.gtrans.netty.NettyEndpoint;
-import org.piax.gtrans.netty.NettyLocator;
-import org.piax.gtrans.netty.loctrans.NettyChannelTransport;
-import org.piax.gtrans.netty.loctrans.NettyInboundHandler;
-import org.piax.gtrans.netty.loctrans.NettyOutboundHandler;
-import org.piax.gtrans.netty.loctrans.NettyRawChannel;
 
 public class UdtBootstrap<E extends NettyEndpoint> extends NettyBootstrap<E> {
     EventLoopGroup parentGroup;

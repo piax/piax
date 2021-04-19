@@ -3,6 +3,7 @@ package org.piax.gtrans.ov.suzaku;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -509,7 +510,7 @@ class TestSuzaku {
         }
     }
     
-    @Test
+//    @Test
     public void lowerIdTest() throws Exception {
         AtomicBoolean received1 = new AtomicBoolean(false);
         AtomicBoolean received2 = new AtomicBoolean(false);
@@ -573,6 +574,71 @@ class TestSuzaku {
             assertTrue(received1.get(), "ov1 receive failed");
         }
     }
+    
+        //private static final Logger logger = LoggerFactory
+        //        .getLogger(TestAddRemoveKey.class);
+        int k = 3;
+        String host = "localhost";
+        int port_base = 12367;
+
+        public void prepareNodes(ArrayList<Suzaku<Destination,ComparableKey<?>>> s, int nodes, String services[]) {
+            try {
+                String seed = "tcp:" + host + ":" + port_base;
+                String netIdBase = "net";
+                for (int i = 0; i < nodes; i++) {
+                    s.add(new Suzaku<>("id:" + netIdBase + (i / 2)  + ".subnet" + (i % 2) + ".host" + i + ":tcp:" + host + ":" + (port_base + i * 10)));
+                    s.get(i).join(seed);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        
+        public void cleanNodes(ArrayList<Suzaku<Destination,ComparableKey<?>>> s) {
+            try {
+                for (int i = s.size() - 1; i >= 0; i--) {
+                    s.get(i).leave();
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        
+        //@Test
+        public void AddRemoveKeyTest() {
+            AddRemoveKeyTest(3);
+        }
+
+        public void AddRemoveKeyTest(int nodes) {
+            String keyname = "sport";
+            ArrayList<Suzaku<Destination,ComparableKey<?>>> s = new ArrayList<Suzaku<Destination,ComparableKey<?>>>();
+            prepareNodes(s, nodes, new String[] { keyname });
+            try {
+                for (int j = 0; j < 1000;j++) {
+                    //System.out.println("loop " + j);
+                    for (int i = 0; i < nodes; i++) {
+                        //System.out.println("kns" + i + ": trying to discover " + k + " services");
+                        //System.out.println("kns" + i + ": trying to unregister service");
+                        s.get(i).removeKey(new StringKey(keyname));
+                        //kns.get(i).discover(tofind, k, 0, kns.get(i).getEndpoint());
+                        //System.out.println("kns" + i + ": trying to reregister service");
+                        s.get(i).addKey(new StringKey(keyname));
+                        //System.out.println("sleeping 1 sec");
+                        //Thread.sleep(1000);
+                    }
+                }
+                logger.info("test completed.");
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                cleanNodes(s);
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                }
+            }
+        }
+
 
 
 }

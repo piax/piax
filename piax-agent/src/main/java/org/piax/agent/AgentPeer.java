@@ -91,13 +91,13 @@ import org.piax.gtrans.ov.Overlay;
  * テストベッドのMainAgentでは、 TestbedAgentTransportManagerクラスを定義して自身のjar内に
  * 入れることによりAgentTransportManagerを自身のものに設定可能である。 
  * 
- * <h3>リスナー</h3>
+ * リスナー
  * <p>
  * リスナーを設定することによりエージェントの状態の変更や
  * 支配下のオーバレイのjoinの通知を受けることができる。
  * 詳細は、AgentPeerListenerの説明を参照のこと。
  * </p>
- * <h3>エクゼキュータ</h3>
+ * エクゼキュータ
  * <p>
  * 非同期型RPCがなくなったため、同様のことを行うには別スレッドでRPCを実行する必要がある。
  * AgentPeerには、それを助けるためのThredPoolExecutorを用意した。以下のように使用する。

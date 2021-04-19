@@ -126,6 +126,7 @@ public class KryoUtil {
             kryo.register(org.piax.gtrans.netty.udp.direct.DirectSignaling.AddressNotification.class);
             kryo.register(org.piax.gtrans.netty.NettyLocator[].class);
             kryo.register(org.piax.gtrans.netty.udp.UdpPrimaryKey.class, new UdpPrimaryKeySerializer());
+            
             logger.debug("registered basic classes on thread {}", Thread.currentThread());
 
             /*

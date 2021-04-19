@@ -341,8 +341,8 @@ public abstract class Event implements Comparable<Event>, Serializable, Cloneabl
          * that completes when CF1 completes.
          *
          * @param <V> type that reply handler returns
-         * @param handler reply handler that returns CompletableFuture<V>
-         * @return CompletableFuture<V>
+         * @param handler reply handler that returns CompletableFuture&lt;V&gt;
+         * @return CompletableFuture&lt;V&gt;
          */
         @SuppressWarnings("unchecked")
         public <V> CompletableFuture<V> onReply(
