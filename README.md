@@ -37,7 +37,7 @@ PIAX GTrans:
      <dependency>
         <groupId>org.piax</groupId>
         <artifactId>piax-gtrans</artifactId>
-        <version>3.1.0</version>
+        <version>4.0</version>
      </dependency>
 
 PIAX Agent:
@@ -46,5 +46,15 @@ PIAX Agent:
      <dependency>
         <groupId>org.piax</groupId>
         <artifactId>piax-agent</artifactId>
-        <version>3.1.0</version>
+        <version>4.0</version>
      </dependency>
+
+Suzaku:
+
+     <!-- https://mvnrepository.com/artifact/org.piax/piax-gtrans-suzaku -->
+     <dependency>
+        <groupId>org.piax</groupId>
+        <artifactId>piax-gtrans-suzaku</artifactId>
+        <version>4.0</version>
+     </dependency>
+
