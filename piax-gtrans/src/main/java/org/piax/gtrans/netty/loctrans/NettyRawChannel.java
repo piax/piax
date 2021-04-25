@@ -1,7 +1,5 @@
 package org.piax.gtrans.netty.loctrans;
 
-import io.netty.channel.ChannelHandlerContext;
-
 import java.io.IOException;
 
 import org.piax.common.ObjectId;
@@ -13,6 +11,8 @@ import org.piax.gtrans.netty.NettyEndpoint;
 import org.piax.gtrans.netty.NettyMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import io.netty.channel.ChannelHandlerContext;
 
 public class NettyRawChannel<E extends NettyEndpoint> implements Channel<E> {
 

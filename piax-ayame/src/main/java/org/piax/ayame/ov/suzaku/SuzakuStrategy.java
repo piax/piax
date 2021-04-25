@@ -4,6 +4,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -253,7 +254,7 @@ public class SuzakuStrategy extends NodeStrategy {
         // jobはSetRが成功した場合に左ノード上で実行される
         SetRJob job;
         if (NOTIFY_WITH_REVERSE_POINTER.value()) {
-            job = new SuzakuSetRJob(n, table.reversePointers);
+            job = new SuzakuSetRJob(n, new HashSet(table.reversePointers));
         } else {
             job = null;
         }

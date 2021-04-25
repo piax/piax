@@ -77,7 +77,7 @@ public class Sim {
         DELETELOOKUP((sim, factory) -> sim.expDeleteLookupTest(factory)),
         INSERTFAILREPEAT((sim, factory) -> sim.expInsertFailRepeat(factory, true)),
         LOOKUPVARYN((sim, factory) -> sim.expLookupVaryingN(factory)),
-        PERMUTATIONS((sim, factory) -> sim.expPermutation(factory)),
+//        PERMUTATIONS((sim, factory) -> sim.expPermutation(factory)),
         SPECIFICORDER((sim, factory) -> sim.expSpecificOrder(factory)),
         INSERTDELETE((sim, factory) -> sim.expInsertDelete(factory)),
         HOPSBYDIST((sim, factory) -> sim.expHopsByDistance(factory)),
@@ -1268,7 +1268,8 @@ public class Sim {
      * @param insOrder
      * @param doFail
      */
-    private void expPermutation(NodeFactory factory) {
+    // eliminated because of the License of Permutations code.
+    /*private void expPermutation(NodeFactory factory) {
         // 全ノード数
         int num = 9;//100;
         // 順列を生成するノード数
@@ -1292,7 +1293,8 @@ public class Sim {
         all.hopSet.printBasicStat("hops");
         merged.hops.printBasicStat("mergedHops", 0);
         merged.hops.outputFreqDist("mergedDist", 1);
-    }
+    } 
+    */
 
     /**
      * 順列pで指定された順序でノードを挿入する．

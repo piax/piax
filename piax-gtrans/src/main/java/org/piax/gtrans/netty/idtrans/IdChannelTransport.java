@@ -671,12 +671,18 @@ public class IdChannelTransport extends ChannelTransportImpl<PrimaryKey> impleme
                 // in order of most recently unused. 
                obsoletes.add(ent);
             });
-            // XXX this may takes a while.
+            // XXX this may take a while.
             obsoletes.stream().forEach((ent) -> {
                 try {
+                    // deadline problem solution by sho
+                    NettyLocator nl = ent.channel.getRemote();
+                    ent.channel.closeAsync(true);
+                    raws.remove(nl);
+                    /* causes deadeline at 'get'.
                     if (ent.channel.closeAsync(true).get()) {
                         raws.remove(ent.channel.getRemote());
                     }
+                    */
                 } catch (Exception e) {
                     // remove anyway.
                     raws.remove(ent.channel.getRemote());

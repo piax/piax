@@ -11,10 +11,10 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.SortedSet;
-import java.util.TreeSet;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -81,7 +81,7 @@ public class LocalNode extends Node {
         super(ddllkey, sender.getEndpoint());
         assert getInstance(ddllkey) == this; 
         // to support multi-keys
-        localNodeMap.computeIfAbsent(peerId, k -> new TreeSet<>())
+        localNodeMap.computeIfAbsent(peerId, k -> new ConcurrentSkipListSet<>())
             .add(this);
         cleanup.add(() -> localNodeMap.get(peerId).remove(this));
         cleanup.add(() -> possiblyFailedNodes.clear());

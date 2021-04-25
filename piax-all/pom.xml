@@ -6,12 +6,12 @@
   <parent>
     <groupId>org.piax</groupId>
     <artifactId>piax-parent</artifactId>
-    <version>4.0-SNAPSHOT</version>
+    <version>4.0</version>
   </parent>
   <groupId>org.piax</groupId>
   <artifactId>piax-all</artifactId>
   <packaging>jar</packaging>
-  <version>4.0-SNAPSHOT</version>
+  <version>4.0</version>
   <name>PIAX All</name>
   <description>All-in-one package of PIAX</description>
   <url>http://www.piax.org/</url>
@@ -145,6 +145,7 @@
     </dependency>
   </dependencies>
   <build>
+  <pluginManagement>
     <plugins>
       <plugin>
         <artifactId>maven-clean-plugin</artifactId>
@@ -368,7 +369,37 @@
           </execution>
         </executions>
       </plugin>
+      <!--This plugin's configuration is used to store Eclipse m2e settings only. It has no influence on the Maven build itself.-->
+      <plugin>
+      	<groupId>org.eclipse.m2e</groupId>
+      	<artifactId>lifecycle-mapping</artifactId>
+      	<version>1.0.0</version>
+      	<configuration>
+      		<lifecycleMappingMetadata>
+      			<pluginExecutions>
+      				<pluginExecution>
+      					<pluginExecutionFilter>
+      						<groupId>
+      							org.apache.maven.plugins
+      						</groupId>
+      						<artifactId>
+      							maven-clean-plugin
+      						</artifactId>
+      						<versionRange>[2.5,)</versionRange>
+      						<goals>
+      							<goal>clean</goal>
+      						</goals>
+      					</pluginExecutionFilter>
+      					<action>
+      						<ignore></ignore>
+      					</action>
+      				</pluginExecution>
+      			</pluginExecutions>
+      		</lifecycleMappingMetadata>
+      	</configuration>
+      </plugin>
     </plugins>
+    </pluginManagement>
   </build>
   <distributionManagement>
     <snapshotRepository>

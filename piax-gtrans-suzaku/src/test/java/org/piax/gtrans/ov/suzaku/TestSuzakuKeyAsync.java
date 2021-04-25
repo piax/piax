@@ -2,38 +2,14 @@ package org.piax.gtrans.ov.suzaku;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.Test;
 import org.piax.ayame.EventExecutor;
-import org.piax.ayame.ov.ddll.DdllStrategy;
-import org.piax.common.ComparableKey;
 import org.piax.common.Destination;
-import org.piax.common.Endpoint;
-import org.piax.common.ObjectId;
-import org.piax.common.PeerId;
-import org.piax.common.subspace.KeyRange;
-import org.piax.common.subspace.Lower;
-import org.piax.common.subspace.LowerUpper;
-import org.piax.common.wrapper.DoubleKey;
 import org.piax.common.wrapper.StringKey;
-import org.piax.gtrans.FutureQueue;
-import org.piax.gtrans.Peer;
-import org.piax.gtrans.RequestTransport.Response;
-import org.piax.gtrans.TransOptions;
-import org.piax.gtrans.TransOptions.ResponseType;
-import org.piax.gtrans.TransOptions.RetransMode;
-import org.piax.gtrans.Transport;
-import org.piax.gtrans.netty.idtrans.PrimaryKey;
-import org.piax.gtrans.ov.Overlay;
-import org.piax.gtrans.ov.OverlayListener;
-import org.piax.gtrans.ov.OverlayReceivedMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,7 +19,7 @@ class TestSuzakuKeyAsync {
     boolean result;
     List<String> results;
 
-    @Test
+    //@Test
     public void addKeyInTimer() throws Exception {
         Suzaku<Destination, StringKey> s1 = new Suzaku<>("tcp:localhost:12367");
         Suzaku<Destination, StringKey> s2 = new Suzaku<>("tcp:localhost:12368");
@@ -77,8 +53,10 @@ class TestSuzakuKeyAsync {
             s2.close();
         }
     }
+    
+    
 
-    @Test
+    //@Test
     public void removeKeyInTimer() throws Exception {
         Suzaku<Destination, StringKey> s1 = new Suzaku<>("tcp:localhost:12367");
         Suzaku<Destination, StringKey> s2 = new Suzaku<>("tcp:localhost:12368");
