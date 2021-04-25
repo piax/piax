@@ -146,7 +146,7 @@
           </systemProperties>
           <excludes>
             <exclude>**/TestJoin.java</exclude> <!-- depend on timing -->
-            <exclude>**/TestSuzaku.java</exclude> <!-- depend on timing -->
+      <!--      <exclude>**/TestSuzaku.java</exclude> depend on timing -->
           </excludes>
 <!--      <includes>
             <include>**/TestAsync.java</include>
