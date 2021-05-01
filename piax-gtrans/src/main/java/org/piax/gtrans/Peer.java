@@ -13,6 +13,7 @@
 
 package org.piax.gtrans;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -25,9 +26,10 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.RejectedExecutionException;
 
+import org.piax.common.Endpoint;
 import org.piax.common.ObjectId;
+import org.piax.common.Option.BooleanOption;
 import org.piax.common.PeerId;
-import org.piax.common.PeerLocator;
 import org.piax.common.StatusRepo;
 import org.piax.common.TransportId;
 import org.piax.common.TransportIdPath;
@@ -36,7 +38,6 @@ import org.piax.gtrans.impl.BaseTransportMgr;
 import org.piax.gtrans.impl.IdResolver;
 import org.piax.gtrans.impl.ReceiverThreadPool;
 import org.piax.gtrans.impl.TransportImpl;
-import org.piax.gtrans.raw.RawTransport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,13 +51,14 @@ import org.slf4j.LoggerFactory;
  * <li> RPCInvokerを含むRPCの対象オブジェクトを管理する。
  * </ul>
  */
-public class Peer {
+public class Peer implements Closeable {
     /*--- logger ---*/
     private static final Logger logger = LoggerFactory.getLogger(Peer.class);
 
     public static final String RAW = "RAW";
     public static final String WITH_FRAGMENTATION = "WITH_FRAGMENTATION";
-
+    public static final BooleanOption RECEIVE_ASYNC = new BooleanOption(false, "-receive-async");
+    
     static final ConcurrentMap<PeerId, Peer> peers = 
             new ConcurrentHashMap<PeerId, Peer>();
     
@@ -97,8 +99,8 @@ public class Peer {
      * RPCの対象となるオブジェクトを管理するためのmap。
      * ObjectIdをkeyとして、対応するオブジェクトを保持する。
      */
-    final ConcurrentMap<ObjectId, RPCIf> rpcObjects = 
-            new ConcurrentHashMap<ObjectId, RPCIf>();
+    final ConcurrentMap<ObjectId, Object> rpcObjects = 
+            new ConcurrentHashMap<>();
     
     final IdResolver idResolver;
     final BaseTransportMgr baseTransMgr;
@@ -195,7 +197,7 @@ public class Peer {
      * @throws IdConflictException 指定したtransIdが他とコンフリクトを起こした場合
      * @param <E> the type of peer locator.
      */
-    public <E extends PeerLocator> Transport<E> newBaseTransport(E locator)
+    public <E extends Endpoint> Transport<E> newBaseTransport(E locator)
             throws IOException, IdConflictException {
         return newBaseTransport(null, null, locator);
     }
@@ -216,7 +218,7 @@ public class Peer {
      * @throws IdConflictException 指定したtransIdが他とコンフリクトを起こした場合
      * @param <E> the type of peer locator.
      */
-    public <E extends PeerLocator> Transport<E> newBaseTransport(
+    public <E extends Endpoint> Transport<E> newBaseTransport(
             String desc, E locator) throws IOException, IdConflictException {
         return newBaseTransport(desc, null, locator);
     }
@@ -238,7 +240,7 @@ public class Peer {
      * @throws IdConflictException 指定したtransIdが他とコンフリクトを起こした場合
      * @param <E> the type of peer locator.
      */
-    public <E extends PeerLocator> Transport<E> newBaseTransport(
+    public <E extends Endpoint> Transport<E> newBaseTransport(
             String desc, TransportId transId, E locator) throws IOException,
             IdConflictException {
         return baseTransMgr.newBaseTransport(desc, transId, locator);
@@ -257,7 +259,7 @@ public class Peer {
      * @throws IdConflictException 指定したtransIdが他とコンフリクトを起こした場合
      * @param <E> the type of peer locator.
      */
-    public <E extends PeerLocator> ChannelTransport<E> newBaseChannelTransport(
+    public <E extends Endpoint> ChannelTransport<E> newBaseChannelTransport(
             E locator) throws IOException, IdConflictException {
         return newBaseChannelTransport(null, null, locator);
     }
@@ -278,7 +280,7 @@ public class Peer {
      * @param <E> the type of peer locator.
      * @return the peer locator.
      */
-    public <E extends PeerLocator> ChannelTransport<E> newBaseChannelTransport(
+    public <E extends Endpoint> ChannelTransport<E> newBaseChannelTransport(
             String desc, E locator) throws IOException, IdConflictException {
         return newBaseChannelTransport(desc, null, locator);
     }
@@ -300,7 +302,7 @@ public class Peer {
      * @throws IdConflictException 指定したtransIdが他とコンフリクトを起こした場合
      * @param <E> the type of peer locator.
      */
-    public <E extends PeerLocator> ChannelTransport<E> newBaseChannelTransport(
+    public <E extends Endpoint> ChannelTransport<E> newBaseChannelTransport(
             String desc, TransportId transId, E locator) throws IOException,
             IdConflictException {
         return baseTransMgr.newBaseChannelTransport(desc, transId, locator);
@@ -404,8 +406,8 @@ public class Peer {
     public List<TransportTreeNode> genTransportTree() {
         List<TransportTreeNode> list = new ArrayList<TransportTreeNode>();
         for (Transport<?> tr : getAllTransports()) {
-            if (tr.getLowerTransport() == null
-                    || tr.getLowerTransport() instanceof RawTransport) {
+            if (tr.getLowerTransport() == null) {
+                    //|| tr.getLowerTransport() instanceof RawTransport) {
                 logger.debug("base tr:{}", tr);
                 if (!(tr instanceof TransportImpl)) {
                     logger.info("{} should be instance of TransportImpl", tr);
@@ -445,7 +447,7 @@ public class Peer {
 
     //-- RPC objects
 
-    public void registerRPCObject(ObjectId objId, RPCIf obj)
+    public void registerRPCObject(ObjectId objId, Object obj)
             throws IdConflictException {
         if (rpcObjects.putIfAbsent(objId, obj) != null) {
             throw new IdConflictException(
@@ -454,17 +456,22 @@ public class Peer {
         logger.trace("EXIT:");
     }
     
-    public boolean unregisterRPCObject(ObjectId objId, RPCIf obj) {
+    public boolean unregisterRPCObject(ObjectId objId, Object obj) {
         logger.trace("EXIT:");
         return rpcObjects.remove(objId, obj);
     }
 
-    public RPCIf getRPCObject(ObjectId objId) {
+    public Object getRPCObject(ObjectId objId) {
         return rpcObjects.get(objId);
     }
 
     public void execute(Runnable receiveTask) throws RejectedExecutionException {
-        threadPool.execute(receiveTask);
+        if (RECEIVE_ASYNC.value()) {
+            threadPool.execute(receiveTask);
+        }
+        else {
+            receiveTask.run();
+        }
     }
     
     public void concatPeerId2ThreadName() {
@@ -483,5 +490,10 @@ public class Peer {
                 + ", \n    baseTransports=" + baseTransMgr.getBaseTransportIdPaths()
                 + ", \n    baseOverlays=" + baseOverlays
                 + ", \n    rpcObjects=" + rpcObjects.keySet() + "}";
+    }
+
+    @Override
+    public void close() throws IOException {
+        fin();
     }
 }

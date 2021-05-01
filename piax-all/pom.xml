@@ -1,0 +1,416 @@
+<?xml version="1.0"?>
+<project
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
+  xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>org.piax</groupId>
+    <artifactId>piax-parent</artifactId>
+    <version>4.0</version>
+  </parent>
+  <groupId>org.piax</groupId>
+  <artifactId>piax-all</artifactId>
+  <packaging>jar</packaging>
+  <version>4.0</version>
+  <name>PIAX All</name>
+  <description>All-in-one package of PIAX</description>
+  <url>http://www.piax.org/</url>
+  <licenses>
+    <license>
+      <name>GNU Affero General Public License (AGPL) version 3.0</name>
+      <url>https://www.gnu.org/licenses/agpl-3.0.html</url>
+    </license>
+    <license>
+      <name>PIAX Binary Code License</name>
+      <url>http://www.piax.org/pbcl.html</url>
+    </license>
+  </licenses>
+  <developers>
+    <developer>
+      <name>Yuuichi Teranishi</name>
+      <email>teranisi@piax.org</email>
+      <organization>PIAX Development Team</organization>
+      <organizationUrl>https://github.com/teranisi</organizationUrl>
+    </developer>
+    <developer>
+      <name>Kota Abe</name>
+      <email>k-abe@media.osaka-cu.ac.jp</email>
+      <organization>PIAX Development Team</organization>
+      <organizationUrl>https://github.com/ktabe</organizationUrl>
+    </developer>
+    <developer>
+      <name>Koji Otani</name>
+      <email>sho@bbr.jp</email>
+      <organization>PIAX Development Team</organization>
+      <organizationUrl>https://github.com/sho-otani</organizationUrl>
+    </developer>
+    <developer>
+      <name>Yoshimasa Ishi</name>
+      <email>ishi@piax.jp</email>
+      <organization>PIAX Development Team</organization>
+      <organizationUrl>https://github.com/yoshishi</organizationUrl>
+    </developer>
+    <developer>
+      <name>Junichi Shiba</name>
+      <email>shibajun@piax.jp</email>
+      <organization>PIAX Development Team</organization>
+      <organizationUrl>https://github.com/shibajun</organizationUrl>
+    </developer>
+  </developers>
+  <scm>
+    <connection>scm:git:git://github.com/piax/piax.git</connection>
+    <developerConnection>scm:git:git://github.com/piax/piax.git</developerConnection>
+    <url>http://github.com/piax/piax/tree/master</url>
+  </scm>
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <maven.deploy.skip>false</maven.deploy.skip>
+    <generatedSourceDir>${project.build.directory}/src</generatedSourceDir>
+  </properties>
+  <dependencies>
+    <!-- https://mvnrepository.com/artifact/org.slf4j/slf4j-api -->
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+      <version>1.7.21</version>
+    </dependency>
+    <!-- https://mvnrepository.com/artifact/com.barchart.udt/barchart-udt-bundle -->
+    <dependency>
+      <groupId>com.barchart.udt</groupId>
+      <artifactId>barchart-udt-bundle</artifactId>
+      <version>2.3.0</version>
+    </dependency>
+    <!-- https://mvnrepository.com/artifact/com.esotericsoftware/kryo -->
+    <dependency>
+      <groupId>com.esotericsoftware</groupId>
+      <artifactId>kryo-shaded</artifactId>
+      <version>4.0.1</version>
+    </dependency>
+    <!-- All release packages-->
+    <dependency>
+      <groupId>org.piax</groupId>
+      <artifactId>piax-common</artifactId>
+      <version>${project.version}</version>
+      <scope>compile</scope>
+      <optional>true</optional>
+    </dependency>
+    <dependency>
+      <groupId>org.piax</groupId>
+      <artifactId>piax-ayame</artifactId>
+      <version>${project.version}</version>
+      <scope>compile</scope>
+      <optional>true</optional>
+    </dependency>
+    <dependency>
+      <groupId>org.piax</groupId>
+      <artifactId>piax-gtrans</artifactId>
+      <version>${project.version}</version>
+      <scope>compile</scope>
+      <optional>true</optional>
+    </dependency>
+    <dependency>
+      <groupId>org.piax</groupId>
+      <artifactId>piax-compat</artifactId>
+      <version>${project.version}</version>
+      <scope>compile</scope>
+      <optional>true</optional>
+    </dependency>
+    <dependency>
+      <groupId>org.piax</groupId>
+      <artifactId>piax-gtrans-suzaku</artifactId>
+      <version>${project.version}</version>
+      <scope>compile</scope>
+      <optional>true</optional>
+    </dependency>
+    <dependency>
+      <groupId>org.piax</groupId>
+      <artifactId>piax-dht</artifactId>
+      <version>${project.version}</version>
+      <scope>compile</scope>
+      <optional>true</optional>
+    </dependency>
+    <dependency>
+      <groupId>org.piax</groupId>
+      <artifactId>piax-agent</artifactId>
+      <version>${project.version}</version>
+      <scope>compile</scope>
+      <optional>true</optional>
+    </dependency>
+    <dependency>
+      <groupId>org.piax</groupId>
+      <artifactId>piax-gtrans-dtn</artifactId>
+      <version>${project.version}</version>
+      <scope>compile</scope>
+      <optional>true</optional>
+    </dependency>
+  </dependencies>
+  <build>
+  <pluginManagement>
+    <plugins>
+      <plugin>
+        <artifactId>maven-clean-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>clean-first</id>
+            <phase>generate-resources</phase>
+            <goals>
+              <goal>clean</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <artifactId>maven-dependency-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>locate-dependencies</id>
+            <phase>initialize</phase>
+            <goals>
+              <goal>properties</goal>
+            </goals>
+          </execution>
+
+          <!-- Unpack all source files -->
+          <execution>
+            <id>unpack-sources</id>
+            <phase>prepare-package</phase>
+            <goals>
+              <goal>unpack-dependencies</goal>
+            </goals>
+            <configuration>
+              <classifier>sources</classifier>
+              <includes>org/piax/**</includes>
+              <includeScope>runtime</includeScope>
+              <includeGroupIds>${project.groupId}</includeGroupIds>
+              <outputDirectory>${generatedSourceDir}</outputDirectory>
+            </configuration>
+          </execution>
+
+          <!-- Unpack all class files -->
+          <execution>
+            <id>unpack-jars</id>
+            <phase>prepare-package</phase>
+            <goals>
+              <goal>unpack-dependencies</goal>
+            </goals>
+            <configuration>
+              <includes>org/piax/**</includes>
+              <includeScope>runtime</includeScope>
+              <includeGroupIds>${project.groupId}</includeGroupIds>
+              <outputDirectory>${project.build.outputDirectory}</outputDirectory>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-source-plugin</artifactId>
+        <version>3.0.1</version>
+        <executions>
+          <execution>
+            <id>attach-sources</id>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <!-- Generate Javadoc -->
+          <plugin>
+            <artifactId>maven-javadoc-plugin</artifactId>
+	    <version>3.0.0</version>
+            <executions>
+              <execution>
+                <id>attach-javadocs</id>
+                <goals>
+                  <goal>jar</goal>
+                </goals>
+              </execution>
+            </executions>
+            <configuration>
+              <skip>${quickbuild}</skip>
+             <!-- <excludePackageNames>*.test</excludePackageNames> -->
+              <docfilessubdirs>true</docfilessubdirs>
+              <outputDirectory>${project.build.directory}/apidocs</outputDirectory>
+              <overview>${project.basedir}/src/javadoc/overview.html</overview>
+              <doctitle>PIAX API Reference (${project.version})</doctitle>
+              <windowtitle>PIAX API Reference (${project.version})</windowtitle>
+              <detectJavaApiLink>true</detectJavaApiLink>
+              <detectLinks>false</detectLinks>
+              <detectOfflineLinks>true</detectOfflineLinks>
+              <additionalparam>
+                -link http://docs.oracle.com/javase/8/docs/api/
+                -link http://www.slf4j.org/apidocs/
+
+                -group "PIAX" org.piax*
+              </additionalparam>
+              <locale>en_US</locale>
+            </configuration>
+          </plugin>
+
+      <plugin>
+        <artifactId>maven-antrun-plugin</artifactId>
+        <executions>
+          <!-- Instead of generating a new version property file, merge others' version property files into one. -->
+          <execution>
+            <id>write-version-properties</id>
+            <phase>none</phase>
+          </execution>
+          <!-- Clean everything once finished so that IDE doesn't find the unpacked files. -->
+          <execution>
+            <id>clean-source-directory</id>
+            <phase>package</phase>
+            <goals>
+              <goal>run</goal>
+            </goals>
+            <configuration>
+              <target>
+                <delete dir="${generatedSourceDir}" quiet="true" />
+                <delete dir="${dependencyVersionsDir}" quiet="true" />
+                <delete dir="${project.build.outputDirectory}" quiet="true" />
+              </target>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+      <!-- Include the directory where the source files were unpacked -->
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>build-helper-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>add-source</id>
+            <phase>prepare-package</phase>
+            <goals>
+              <goal>add-source</goal>
+            </goals>
+            <configuration>
+              <sources>
+                <source>${generatedSourceDir}</source>
+              </sources>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+      <!-- Disable OSGi bundle manifest generation -->
+      <plugin>
+        <groupId>org.apache.felix</groupId>
+        <artifactId>maven-bundle-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>generate-manifest</id>
+            <phase>none</phase>
+          </execution>
+        </executions>
+      </plugin>
+      <!-- Override the default JAR configuration -->
+      <plugin>
+        <artifactId>maven-jar-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>default-jar</id>
+            <phase>none</phase>
+          </execution>
+          <execution>
+            <id>all-in-one-jar</id>
+            <phase>package</phase>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+            <configuration>
+              <archive>
+                <manifest>
+                  <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+                </manifest>
+                <index>true</index>
+              </archive>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+      <!-- Disable all plugin executions configured by jar packaging -->
+      <plugin>
+        <artifactId>maven-resources-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>default-resources</id>
+            <phase>none</phase>
+          </execution>
+          <execution>
+            <id>default-testResources</id>
+            <phase>none</phase>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>default-compile</id>
+            <phase>none</phase>
+          </execution>
+          <execution>
+            <id>default-testCompile</id>
+            <phase>none</phase>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>default-test</id>
+            <phase>none</phase>
+          </execution>
+        </executions>
+      </plugin>
+      <!--This plugin's configuration is used to store Eclipse m2e settings only. It has no influence on the Maven build itself.-->
+      <plugin>
+      	<groupId>org.eclipse.m2e</groupId>
+      	<artifactId>lifecycle-mapping</artifactId>
+      	<version>1.0.0</version>
+      	<configuration>
+      		<lifecycleMappingMetadata>
+      			<pluginExecutions>
+      				<pluginExecution>
+      					<pluginExecutionFilter>
+      						<groupId>
+      							org.apache.maven.plugins
+      						</groupId>
+      						<artifactId>
+      							maven-clean-plugin
+      						</artifactId>
+      						<versionRange>[2.5,)</versionRange>
+      						<goals>
+      							<goal>clean</goal>
+      						</goals>
+      					</pluginExecutionFilter>
+      					<action>
+      						<ignore></ignore>
+      					</action>
+      				</pluginExecution>
+      			</pluginExecutions>
+      		</lifecycleMappingMetadata>
+      	</configuration>
+      </plugin>
+    </plugins>
+    </pluginManagement>
+  </build>
+  <distributionManagement>
+    <snapshotRepository>
+      <id>sonatype-nexus-snapshots</id>
+      <name>Nexus Snapshot Repository</name>
+      <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
+    </snapshotRepository>
+    <repository>
+      <id>sonatype-nexus-staging</id>
+      <name>Nexus Release Repository</name>
+      <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+    </repository>
+  </distributionManagement>
+</project>

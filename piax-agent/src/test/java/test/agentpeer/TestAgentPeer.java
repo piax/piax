@@ -1,10 +1,6 @@
 package test.agentpeer;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.io.File;
 import java.io.IOException;
@@ -14,11 +10,11 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestName;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.piax.agent.Agent;
 import org.piax.agent.AgentAccessDeniedException;
 import org.piax.agent.AgentCapabilityException;
@@ -37,6 +33,7 @@ import org.piax.common.PeerId;
 import org.piax.common.attribs.IncompatibleTypeException;
 import org.piax.gtrans.NoSuchRemoteObjectException;
 import org.piax.gtrans.RPCException;
+import org.piax.gtrans.impl.BaseTransportMgr;
 import org.piax.gtrans.ov.NoSuchOverlayException;
 
 public class TestAgentPeer extends Util {
@@ -51,8 +48,6 @@ public class TestAgentPeer extends Util {
     static private Agent localAgent;
     static private Agent remoteAgent;
     static private ArrayBlockingQueue<String> resultQueue = new ArrayBlockingQueue<String>(15);
-    @Rule
-    public TestName testName = new TestName();
     
     /**
      * リスナー・クラス
@@ -202,8 +197,10 @@ public class TestAgentPeer extends Util {
      * 前準備
      * エージェント・ピア、エージェントの作成
      */
-    @Before
+    @BeforeEach
     public void setup() throws Exception {
+        BaseTransportMgr.BASE_TRANSPORT_MANAGER_CLASS.set("org.piax.gtrans.impl.DefaultBaseTransportGenerator");
+        
         Net ntype = Net.TCP;
 
         File agPath = new File("classes");
@@ -260,24 +257,27 @@ public class TestAgentPeer extends Util {
      * 宣言していない属性をbindする。
      * IllegalArgumentExceptionを発生するはず。
      */
-    @Test(expected=IllegalArgumentException.class)
+    @Test
     public void bindOverlayNotDeclare() throws IllegalArgumentException,
             NoSuchOverlayException, IncompatibleTypeException,
             SetupTransportException {
+        assertThrows(IllegalArgumentException.class,()->{
         localAgentPeer.bindOverlay("NotDeclare", "LLNET");
+        });
     }
 
     /**
      * 登録されていないオーバレイにbindする。
      * NoSuchOverlayExceptionが発生するはず
      */
-    @Test(expected=NoSuchOverlayException.class)
+    @Test
     public void bindOverlayUnknown() throws IllegalArgumentException,
             NoSuchOverlayException, IncompatibleTypeException,
             SetupTransportException {
+        assertThrows(NoSuchOverlayException.class,() -> {
         String locationName = "$location";
         localAgentPeer.declareAttrib(locationName);
-        localAgentPeer.bindOverlay(locationName, "XXX");
+        localAgentPeer.bindOverlay(locationName, "XXX");});
     }
     
     /**
@@ -332,13 +332,14 @@ public class TestAgentPeer extends Util {
      * IncompatibleTypeExceptionが発生するはず。
      * 
      */
-    @Test(expected = IncompatibleTypeException.class)
+    @Test
     public void setAttribTypeIncompatible() throws IllegalArgumentException,
             NoSuchOverlayException, IncompatibleTypeException,
             SetupTransportException {
+        assertThrows(IncompatibleTypeException.class, ()->{
         String locationName = "$location";
         remoteAgentPeer.declareAttrib(locationName,Location.class);
-        remoteAgentPeer.setAttrib(locationName,"XX");
+        remoteAgentPeer.setAttrib(locationName,"XX");});
     }
     
     /**
@@ -346,14 +347,16 @@ public class TestAgentPeer extends Util {
      * IncompatibleTypeExceptionが発生するはず。
      * 
      */
-    @Test(expected = IncompatibleTypeException.class)
+    @Test
     public void setAttribTypeIncompatible2() throws IllegalArgumentException,
             NoSuchOverlayException, IncompatibleTypeException,
             SetupTransportException {
+        assertThrows(IncompatibleTypeException.class, ()->{
         String locationName = "$location";
         remoteAgentPeer.declareAttrib(locationName);
         remoteAgentPeer.bindOverlay(locationName, "LLNET");
         remoteAgentPeer.setAttrib(locationName, "XX");
+        });
     }
     
     /**
@@ -536,9 +539,11 @@ public class TestAgentPeer extends Util {
           IncompatibleTypeException, SetupTransportException {
         String attrName = "number";
         localAgentPeer.declareAttrib(attrName);
-        localAgentPeer.bindOverlay(attrName, "MSG");
+        //localAgentPeer.bindOverlay(attrName, "MSG");
+        localAgentPeer.bindOverlay(attrName, "SZK");
         remoteAgentPeer.declareAttrib(attrName);
-        remoteAgentPeer.bindOverlay(attrName, "MSG");
+        //remoteAgentPeer.bindOverlay(attrName, "MSG");
+        remoteAgentPeer.bindOverlay(attrName, "SZK");
         remoteAgentPeer.setAttrib(attrName, 1);
         List<String> r = localAgent.getList(
                 localAgent.getDCStub(attrName+" eq 1",
@@ -563,9 +568,11 @@ public class TestAgentPeer extends Util {
           IncompatibleTypeException, SetupTransportException {
         String attrName = "number";
         localAgentPeer.declareAttrib(attrName);
-        localAgentPeer.bindOverlay(attrName, "MSG");
+        //localAgentPeer.bindOverlay(attrName, "MSG");
+        localAgentPeer.bindOverlay(attrName, "SZK");
         remoteAgentPeer.declareAttrib(attrName);
-        remoteAgentPeer.bindOverlay(attrName, "MSG");
+        //remoteAgentPeer.bindOverlay(attrName, "MSG");
+        remoteAgentPeer.bindOverlay(attrName, "SZK");
         remoteAgentPeer.setAttrib(attrName, 1);
         List<String> r = localAgent.getList(
                 localAgent.getDCStub(attrName+" eq 1",
@@ -598,9 +605,11 @@ public class TestAgentPeer extends Util {
           IncompatibleTypeException, SetupTransportException {
         String attrName = "number";
         localAgentPeer.declareAttrib(attrName);
-        localAgentPeer.bindOverlay(attrName, "MSG");
+        //localAgentPeer.bindOverlay(attrName, "MSG");
+        localAgentPeer.bindOverlay(attrName, "SZK");
         remoteAgentPeer.declareAttrib(attrName);
-        remoteAgentPeer.bindOverlay(attrName, "MSG");
+        //remoteAgentPeer.bindOverlay(attrName, "MSG");
+        remoteAgentPeer.bindOverlay(attrName, "SZK");
         remoteAgentPeer.setAttrib(attrName, 1);
         List<String> r = localAgent.getList(
                 localAgent.getDCStub(attrName+" eq 1",
@@ -687,10 +696,11 @@ public class TestAgentPeer extends Util {
      * 存在しないAgentを指定してのgetAgentName。
      * NoSuchAgentExceptionが発生するはず
      */
-    @Test(expected = NoSuchAgentException.class)
+    @Test
     public void getAgentNameNotexist() throws AgentException {
+        assertThrows(NoSuchAgentException.class, ()->{
         localAgentPeer.getAgentName(
-                remoteAgentId);
+                remoteAgentId);});
     }
     
     /**
@@ -707,21 +717,23 @@ public class TestAgentPeer extends Util {
      * 存在しないAgentを指定してのgetAgentClass。
      * NoSuchAgentExceptionが発生するはず
      */
-    @Test(expected = NoSuchAgentException.class)
+    @Test
     public void getAgentClassNotexist() throws AgentException {
+        assertThrows(NoSuchAgentException.class, ()->{
         localAgentPeer.getAgentClass(
-                remoteAgentId);
+                remoteAgentId);});
     }
     
     /**
      * 存在しないクラスを指定してエージェントを作成する。
      * ClassNotFoundExceptionが発生するはず。
      */
-    @Test(expected = ClassNotFoundException.class)
+    @Test
     public void createAgentClassNotFound() throws ClassNotFoundException,
             AgentInstantiationException {
+        assertThrows(ClassNotFoundException.class, ()->{
         localAgentPeer.createAgent(
-                "test.agentpeer.XSampleAgent");
+                "test.agentpeer.XSampleAgent");});
     }
     
     /**
@@ -753,10 +765,11 @@ public class TestAgentPeer extends Util {
      * 存在しないエージェントを指定してgiveAgentNameを呼び出す。
      * NoSuchAgentExceptionは発生するはず。
      */
-    @Test(expected = NoSuchAgentException.class)
+    @Test
     public void giveAgentNameException() throws AgentException {
         String name = "changedName";
-        localAgentPeer.giveAgentName(remoteAgentId, name);
+        assertThrows(NoSuchAgentException.class,()->{
+        localAgentPeer.giveAgentName(remoteAgentId, name);});
     }
     
     /**
@@ -800,6 +813,7 @@ public class TestAgentPeer extends Util {
      * リスナーのonDesctructionのテスト
      */
     @Test
+    @Tag("onDestruction")
     public void onDestruction() throws AgentException, InterruptedException {
         localAgentPeer.setListener(new AListener());
         localAgentPeer.destroyAgent(localAgentId);
@@ -827,10 +841,11 @@ public class TestAgentPeer extends Util {
      * PersisitentAgentでないエージェントに対しsleepAgentを適用する。
      * AgentCapabilityExceptionがは発生するはず。
      */
-    @Test(expected = AgentCapabilityException.class)
+    @Test
     public void sleepAgentNotPersistent() throws ObjectStreamException, AgentException,
             IOException, InterruptedException {
-        localAgentPeer.sleepAgent(localAgentId);
+        assertThrows(AgentCapabilityException.class, ()->{
+        localAgentPeer.sleepAgent(localAgentId);});
     }
     
     /**
@@ -858,10 +873,11 @@ public class TestAgentPeer extends Util {
      * PersisitentAgentでないエージェントに対しduplicateAgentを適用する。
      * AgentCapabilityExceptionがは発生するはず。
      */
-    @Test(expected = AgentCapabilityException.class)
+    @Test
     public void duplicateAgentNotPersistent() throws ObjectStreamException, AgentException,
             IOException, InterruptedException {
-        localAgentPeer.duplicateAgent(localAgentId);
+        assertThrows(AgentCapabilityException.class,()->{
+        localAgentPeer.duplicateAgent(localAgentId);});
     }
     
     /**
@@ -885,10 +901,11 @@ public class TestAgentPeer extends Util {
      * PersisitentAgentでないエージェントに対しsaveAgentを適用する。
      * AgentCapabilityExceptionがは発生するはず。
      */
-    @Test(expected = AgentCapabilityException.class)
+    @Test
     public void saveAgentNotPersistent() throws ObjectStreamException, AgentException,
             IOException, InterruptedException {
-        localAgentPeer.saveAgent(localAgentId);
+        assertThrows(AgentCapabilityException.class, ()->{
+        localAgentPeer.saveAgent(localAgentId);});
     }
     
     /**
@@ -919,10 +936,11 @@ public class TestAgentPeer extends Util {
      * PersisitentAgentでないエージェントに対しFile指定のsaveAgentを適用する。
      * AgentCapabilityExceptionがは発生するはず。
      */
-    @Test(expected = AgentCapabilityException.class)
+    @Test
     public void saveAgentNotPersistentToFile() throws ObjectStreamException, AgentException,
             IOException, InterruptedException {
-        localAgentPeer.saveAgent(localAgentId,new File("/tmp/testAgentPeer.jar"));
+        assertThrows(AgentCapabilityException.class, ()->{
+        localAgentPeer.saveAgent(localAgentId,new File("/tmp/testAgentPeer.jar"));});
     }
     
     /**
@@ -955,10 +973,11 @@ public class TestAgentPeer extends Util {
      * MobileAgentでないエージェントに対しtravelAgentを適用する。
      * AgentCapabilityExceptionがは発生するはず。
      */
-    @Test(expected = AgentCapabilityException.class)
+    @Test
     public void travelAgentNotMobile() throws ObjectStreamException, AgentException,
             IOException, InterruptedException, ClassNotFoundException {
-        localAgentPeer.travelAgent(localAgentId,remoteAgentPeer.getPeerId());
+        assertThrows(AgentCapabilityException.class,()->{
+        localAgentPeer.travelAgent(localAgentId,remoteAgentPeer.getPeerId());});
     }
     
     /**
@@ -1057,11 +1076,11 @@ public class TestAgentPeer extends Util {
     /**
      * 後始末
      */
-    @After
-    public void finAgents() throws Exception {
+    @AfterEach
+    public void finAgents(TestInfo info) throws Exception {
         localAgentPeer.setListener(null);
         remoteAgentPeer.setListener(null);
-        if (!testName.getMethodName().equals("onDestruction")) {
+        if (info == null || !info.getTags().contains("onDestruction")) {
             localAgent.destroy();
         }
         remoteAgent.destroy();
@@ -1086,7 +1105,7 @@ public class TestAgentPeer extends Util {
             e.printStackTrace();
         } finally {
             try {
-                o.finAgents();
+                o.finAgents(null);
             } catch (Exception e) {
                 e.printStackTrace();
             }

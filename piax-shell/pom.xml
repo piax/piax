@@ -5,11 +5,11 @@
   <parent>
     <groupId>org.piax</groupId>
     <artifactId>piax-parent</artifactId>
-    <version>3.2-SNAPSHOT</version>
+    <version>4.0</version>
   </parent>
   <groupId>org.piax</groupId>
   <artifactId>piax-shell</artifactId>
-  <version>3.2-SNAPSHOT</version>
+  <version>4.0</version>
   <name>PIAX Shell</name>
   <url>http://www.piax.org</url>
   <properties>
@@ -18,20 +18,32 @@
   </properties>
   <dependencies>
     <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <version>3.8.1</version>
-      <scope>test</scope>
+        <groupId>org.junit.jupiter</groupId>
+        <artifactId>junit-jupiter-api</artifactId>
+        <version>5.0.2</version>
+        <scope>test</scope>
+    </dependency>
+    <dependency>
+        <groupId>org.junit.jupiter</groupId>
+        <artifactId>junit-jupiter-engine</artifactId>
+        <version>5.0.2</version>
+        <scope>test</scope>
+    </dependency>
+     <dependency>
+        <groupId>org.junit.platform</groupId>
+        <artifactId>junit-platform-launcher</artifactId>
+        <version>1.0.2</version>
+        <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.piax</groupId>
       <artifactId>piax-agent</artifactId>
-      <version>3.2-SNAPSHOT</version>
+      <version>${project.version}</version>
     </dependency>
     <dependency>
       <groupId>org.piax</groupId>
       <artifactId>piax-dht</artifactId>
-      <version>3.2-SNAPSHOT</version>
+      <version>${project.version}</version>
     </dependency>
   </dependencies>
   <build>
@@ -58,6 +70,22 @@
             <phase>package</phase>
             <goals>
               <goal>single</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-javadoc-plugin</artifactId>
+        <version>3.0.1</version>
+        <configuration>
+          <source>8</source>
+        </configuration>
+        <executions>
+          <execution>
+            <id>attach-javadocs</id>
+            <goals>
+              <goal>jar</goal>
             </goals>
           </execution>
         </executions>

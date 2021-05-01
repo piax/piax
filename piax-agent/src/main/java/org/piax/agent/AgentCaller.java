@@ -23,36 +23,24 @@ public interface AgentCaller {
     
     /*--- synchronous discovery call ---*/
 
-    /**
-     */
     Object[] discoveryCall(String queryCond, String method, Object... args);
     
-    /**
-     */
     Object[] discoveryCall(String queryCond,
             Class<? extends AgentIf> clazz, String method, Object... args);
     
     /*--- asynchronous discovery call ---*/
 
-    /**
-     */
     FutureQueue<?> discoveryCallAsync(String queryCond,
             String method, Object... args);
     
-    /**
-     */
     FutureQueue<?> discoveryCallAsync(String queryCond,
             Class<? extends AgentIf> clazz, String method, Object... args);
 
     /*--- oneway discovery call ---*/
 
-    /**
-     */
     void discoveryCallOneway(String queryCond,
             String method, Object... args);
     
-    /**
-     */
     void discoveryCallOneway(String queryCond,
             Class<? extends AgentIf> clazz, String method, Object... args);
 

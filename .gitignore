@@ -2,4 +2,8 @@
 .project
 .settings
 .gitignore
+.DS*
+*/bin/
+*/target/
+target/
 /bin/

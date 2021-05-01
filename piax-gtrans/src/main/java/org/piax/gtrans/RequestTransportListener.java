@@ -22,15 +22,15 @@ import org.piax.common.Destination;
 public interface RequestTransportListener<D extends Destination> extends
         TransportListener<D> {
 
-    void onReceive(RequestTransport<D> trans, ReceivedMessage rmsg);
-    
+    default void onReceive(RequestTransport<D> trans, ReceivedMessage rmsg) {
+    }
     /**
      * 
      * @param trans the request transport.
      * @param rmsg the received message.
-     * @return future queue.
+     * @return the response object or a future queue.
      */
-    FutureQueue<?> onReceiveRequest(RequestTransport<D> trans,
+    Object onReceiveRequest(RequestTransport<D> trans,
             ReceivedMessage rmsg);
     
     // valid on Java 8 API

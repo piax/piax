@@ -14,20 +14,23 @@
 package org.piax.gtrans.impl;
 
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 
-import org.piax.common.PeerLocator;
+import org.piax.common.Endpoint;
+import org.piax.common.Option.StringOption;
 import org.piax.common.TransportId;
 import org.piax.common.TransportIdPath;
 import org.piax.gtrans.ChannelTransport;
+import org.piax.gtrans.ConfigurationError;
 import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.Peer;
+import org.piax.gtrans.PeerLocator;
 import org.piax.gtrans.Transport;
-import org.piax.gtrans.raw.LocatorStatusObserver;
 
 /**
  * 
@@ -37,6 +40,9 @@ public class BaseTransportMgr implements LocatorStatusObserver {
 //    private static final Logger logger = 
 //        LoggerFactory.getLogger(BaseTransportMgr.class);
 
+    public static StringOption BASE_TRANSPORT_MANAGER_CLASS = new 
+            StringOption("org.piax.gtrans.netty.NettyBaseTransportGenerator", "-base-trans-mgr-class"); 
+    
     public static LinkStatAndScoreIf statAndScore = null;
 
     private final List<Transport<?>> baseTransList = 
@@ -51,7 +57,14 @@ public class BaseTransportMgr implements LocatorStatusObserver {
     
     public BaseTransportMgr(Peer peer) {
         this.peer = peer;
-        baseTransGen = new DefaultBaseTransportGenerator(peer);
+        try {
+            Class clazz = Class.forName(BASE_TRANSPORT_MANAGER_CLASS.value());
+            baseTransGen = (BaseTransportGenerator) clazz.getConstructor(Peer.class).newInstance(peer);
+        } catch (ClassNotFoundException | InstantiationException | IllegalAccessException | 
+                IllegalArgumentException | InvocationTargetException | 
+                NoSuchMethodException | SecurityException e) {
+            throw new ConfigurationError(e);
+        }
     }
 
     public void fin() {
@@ -83,7 +96,7 @@ public class BaseTransportMgr implements LocatorStatusObserver {
         return false;
     }
 
-    public <E extends PeerLocator> Transport<E> newBaseTransport(
+    public <E extends Endpoint> Transport<E> newBaseTransport(
             String desc, TransportId transId, E myLocator) throws IOException,
             IdConflictException {
         if (myLocator == null)
@@ -99,11 +112,11 @@ public class BaseTransportMgr implements LocatorStatusObserver {
         }
     }
     
-    public <E extends PeerLocator> ChannelTransport<E> newBaseChannelTransport(
+    public <E extends Endpoint> ChannelTransport<E> newBaseChannelTransport(
             String desc, TransportId transId, E myLocator) throws IOException,
             IdConflictException {
         if (myLocator == null)
-            throw new IllegalArgumentException("me should not be null");
+            throw new IllegalArgumentException("The endpopint is not specified.");
         synchronized (baseTransList) {
             if (getRelatedBaseTransport(myLocator) != null) {
                 throw new IOException("this locator is already used:" + myLocator);
@@ -134,16 +147,16 @@ public class BaseTransportMgr implements LocatorStatusObserver {
 
     /**
      * Remove the specified PeerLocator
-     * @param myLocator the locator.
+     * @param ep the Endpoint.
      * @param <E> the type of peer locator.
      * @return the removed transport.
      */
     @SuppressWarnings("unchecked")
-    public <E extends PeerLocator> Transport<E> removeBaseTransport(E myLocator) {
+    public <E extends Endpoint> Transport<E> removeBaseTransport(E ep) {
         Transport<E> match = null;
         synchronized (baseTransList) {
             for (Transport<?> bt : baseTransList) {
-                if (bt.getEndpoint().equals(myLocator)) {
+                if (bt.getEndpoint().equals(ep)) {
                     match = (Transport<E>) bt;
                     break;
                 }
@@ -196,7 +209,7 @@ public class BaseTransportMgr implements LocatorStatusObserver {
      * @return myLocatorと対応するBaseTransport、存在しない場合はnull
      */
     @SuppressWarnings("unchecked")
-    public <E extends PeerLocator> Transport<E> getRelatedBaseTransport(E localLocator) {
+    public <E extends Endpoint> Transport<E> getRelatedBaseTransport(E localLocator) {
         synchronized (baseTransList) {
             for (Transport<?> bt : baseTransList) {
                 if (bt.getEndpoint().equals(localLocator)) {
@@ -309,13 +322,13 @@ public class BaseTransportMgr implements LocatorStatusObserver {
         observers.remove(observer);
     }
     
-    public void onEnabled(PeerLocator loc, boolean isNew) {
+    public void onEnabled(Endpoint loc, boolean isNew) {
         for (LocatorStatusObserver ob : observers) {
             ob.onEnabled(loc, isNew);
         }
     }
 
-    public void onFadeout(PeerLocator loc, boolean isFin) {
+    public void onFadeout(Endpoint loc, boolean isFin) {
         if (isFin) {
             removeBaseTransport(loc);
         }

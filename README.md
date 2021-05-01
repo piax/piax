@@ -10,14 +10,21 @@ PIAX also provides a mobile agent-based programming framework. You can write dis
 
 The structure of PIAX is as follows:
 
-* 'piax-gtrans' - Core modules of GTrans.
+* 'piax-common' - The common modules of PIAX.
+* 'piax-ayame' - Ayame framework.
+* 'piax-ayame-sim' - Ayame simulator.
+* 'piax-gtrans' - GTrans framework.
+* 'piax-gtrans-suzaku' - Suzaku overlay.
 * 'piax-agent' - PIAX Agent modules.
-* 'piax-dht' - A DHT implementation on PIAX.
+* 'piax-compat' - PIAX modules for compatibilities.
 * 'piax-gtrans-dtn' - Modules related to DTN, AdHoc and Bluetooth (experimental).
+* 'piax-dht' - A DHT implementation on PIAX.
 * 'piax-samples' - Some simple samples of GTrans and PIAX Agents.
 * 'piax-shell' - A command-line application to demonstrate PIAX Agents.
 
-## Build from sources
+<img src="images/dependency.png" width="640"/>
+
+# Build from sources
 
 cd into cloned source directory and `mvn -Dmaven.test.skip=true clean package`. 
 Of course you can do tests by eliminating `-Dmaven.test.skip=true` (it takes a while).
@@ -32,7 +39,7 @@ PIAX GTrans:
      <dependency>
         <groupId>org.piax</groupId>
         <artifactId>piax-gtrans</artifactId>
-        <version>3.1.0</version>
+        <version>4.0</version>
      </dependency>
 
 PIAX Agent:
@@ -41,5 +48,15 @@ PIAX Agent:
      <dependency>
         <groupId>org.piax</groupId>
         <artifactId>piax-agent</artifactId>
-        <version>3.1.0</version>
+        <version>4.0</version>
      </dependency>
+
+Suzaku:
+
+     <!-- https://mvnrepository.com/artifact/org.piax/piax-gtrans-suzaku -->
+     <dependency>
+        <groupId>org.piax</groupId>
+        <artifactId>piax-gtrans-suzaku</artifactId>
+        <version>4.0</version>
+     </dependency>
+

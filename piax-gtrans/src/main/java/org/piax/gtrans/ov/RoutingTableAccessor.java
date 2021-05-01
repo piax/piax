@@ -1,10 +1,20 @@
+/*
+ * RoutingTableAccessor.java - Accessor for RoutingTable
+ *
+ * Copyright (c) 2021 PIAX development team
+ *
+ * You can redistribute it and/or modify it under either the terms of
+ * the AGPLv3 or PIAX binary code license. See the file COPYING
+ * included in the PIAX package for more in detail.
+ *
+ */
+ 
 package org.piax.gtrans.ov;
 
 import java.util.Set;
 
 import org.piax.common.Key;
 import org.piax.gtrans.ProtocolUnsupportedException;
-import org.piax.gtrans.ov.ddll.Link;
 
 public interface RoutingTableAccessor {
 

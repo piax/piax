@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.piax</groupId>
   <artifactId>piax-parent</artifactId>
   <packaging>pom</packaging>
-  <version>3.2-SNAPSHOT</version>
+  <version>4.0</version>
   <name>PIAX Parent</name>
   <description>PIAX - A distributed computing framework</description>
   <url>http://www.piax.org/</url>
@@ -59,43 +60,41 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.deploy.skip>false</maven.deploy.skip>
   </properties>
-  <dependencies>
-    <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <version>3.8.1</version>
-      <scope>test</scope>
-    </dependency>
-  </dependencies>
   <modules>
+    <module>piax-common</module>
+    <module>piax-ayame</module>
+    <module>piax-ayame-sim</module>
     <module>piax-agent</module>
     <module>piax-gtrans</module>
+    <module>piax-compat</module>
+    <module>piax-gtrans-suzaku</module>
     <module>piax-gtrans-dtn</module>
     <module>piax-sample</module>
     <module>piax-dht</module>
     <module>piax-shell</module>
+    <module>piax-all</module>
   </modules>
   <build>
     <plugins>
       <plugin>
-          <groupId>org.apache.maven.plugins</groupId>
-          <artifactId>maven-gpg-plugin</artifactId>
-          <version>1.5</version>
-          <executions>
-            <execution>
-              <id>sign-artifacts</id>
-              <configuration>
-	        <gpgArguments>
-                  <arg>-u</arg>
-                  <arg>steering@piax.org</arg>
-                </gpgArguments>
-              </configuration>
-              <phase>verify</phase>
-              <goals>
-                <goal>sign</goal>
-              </goals>
-            </execution>
-          </executions>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-gpg-plugin</artifactId>
+        <version>1.5</version>
+        <executions>
+          <execution>
+            <id>sign-artifacts</id>
+            <configuration>
+              <gpgArguments>
+                <arg>-u</arg>
+                <arg>steering@piax.org</arg>
+              </gpgArguments>
+            </configuration>
+            <phase>verify</phase>
+            <goals>
+              <goal>sign</goal>
+            </goals>
+          </execution>
+        </executions>
       </plugin>
     </plugins>
   </build>

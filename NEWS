@@ -1,5 +1,39 @@
 PIAX NEWS -- User-visible changes in PIAX.
 
+* Changes in 4.0.
+  Version 4.0 is a new major version of PIAX.
+
+** The package structure is rearranged.
+
+The structure of the package is changed as follows:
+
+* 'piax-common' - The common modules of PIAX.
+* 'piax-ayame' - Ayame framework.
+* 'piax-ayame-sim' - Ayame simulator.
+* 'piax-gtrans' - GTrans framework.
+* 'piax-gtrans-suzaku' - Suzaku overlay.
+* 'piax-agent' - PIAX Agent modules.
+* 'piax-compat' - PIAX modules for compatibilities.
+* 'piax-gtrans-dtn' - Modules related to DTN, AdHoc and Bluetooth (experimental).
+* 'piax-dht' - A DHT implementation on PIAX.
+* 'piax-samples' - Some simple samples of GTrans and PIAX Agents.
+* 'piax-shell' - A command-line application to demonstrate PIAX Agents.
+
+** Ayame framework and simulator are newly added.
+
+The Ayame framework integrates discrete event simulation and real networking.
+The Ayame simulator simulates several overlay network algorithms.
+
+** Netty is used as a lower layer networking framework.
+
+Now TCP, SSL, UDT, and UDP are supported by Netty.
+
+** Kryo is used as a serialization framwork.
+
+For faster serialization, Kryo framework is applied.
+You can switch back to Java serialization, if you want.
+
+
 * Changes in 3.1.0.
   Version 3.1.0 is a new updated version of PIAX 3.
 

@@ -11,13 +11,8 @@
 
 package org.piax.samples.gtrans.hello.multi.sender;
 
-import java.net.InetSocketAddress;
-
-import org.piax.common.PeerId;
 import org.piax.common.wrapper.StringKey;
-import org.piax.gtrans.Peer;
-import org.piax.gtrans.ov.sg.MSkipGraph;
-import org.piax.gtrans.raw.tcp.TcpLocator;
+import org.piax.gtrans.ov.suzaku.Suzaku;
 
 /* To run on the localhost, type as follows on the shell:
  *  $ java -jar Receiver.jar localhost 10000 &
@@ -28,32 +23,22 @@ import org.piax.gtrans.raw.tcp.TcpLocator;
  *  
  */
 public class Main {
-	static public void main(String args[]) throws Exception {
-		String selfHostName = null;
-		int selfPort = -1;
-		String seedHostName = null;
-		int seedPort = -1;
-		TcpLocator seedLocator = null;
-		
-		if (!(args.length == 4)) {
-			System.out.println("Usage: Sender self-hostname self-port introducer-hostname introducer-port");
-			System.exit(1);
-		}
-		selfHostName = args[0];
-		selfPort = Integer.parseInt(args[1]);
-		seedHostName = args[2];
-		seedPort = Integer.parseInt(args[3]);
-		seedLocator = new TcpLocator(new InetSocketAddress(seedHostName, seedPort));
-		
-		Peer p = Peer.getInstance(PeerId.newId());
-		MSkipGraph<StringKey, StringKey> t = new MSkipGraph<StringKey, StringKey>(
-				p.newBaseChannelTransport(new TcpLocator(new InetSocketAddress(selfHostName, selfPort))));
-		if (seedLocator != null) {
-			t.join(seedLocator);
-		}
-		t.send(new StringKey("hello"), "world");
-		t.leave();
+    static public void main(String args[]) throws Exception {
+        String selfHostName = null;
+        int selfPort = -1;
+
+        if (!(args.length == 4)) {
+            System.out.println("Usage: Sender self-hostname self-port introducer-hostname introducer-port");
+            System.exit(1);
+        }
+        String self = "tcp:" + args[0] + ":" + args[1];
+        String seed = "tcp:" + args[2] + ":" + args[3];
+        
+        try(Suzaku<StringKey, StringKey> t = new Suzaku<>("id:" + selfHostName+selfPort + ":" + self)) {
+            t.join(seed);
+            t.send(new StringKey("hello"), "world");
+            t.leave();
+        }
 		Thread.sleep(1000);
-		p.fin();
 	}
 }

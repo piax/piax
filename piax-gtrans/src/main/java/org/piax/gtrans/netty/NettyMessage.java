@@ -1,3 +1,14 @@
+/*
+ * NettyMessage.java - Message for Netty transport
+ *
+ * Copyright (c) 2021 PIAX development team
+ *
+ * You can redistribute it and/or modify it under either the terms of
+ * the AGPLv3 or PIAX binary code license. See the file COPYING
+ * included in the PIAX package for more in detail.
+ *
+ */
+ 
 package org.piax.gtrans.netty;
 
 import java.io.Serializable;
@@ -5,11 +16,11 @@ import java.io.Serializable;
 import org.piax.common.ObjectId;
 import org.piax.common.PeerId;
 
-public class NettyMessage implements Serializable {
+public class NettyMessage<E extends NettyEndpoint> implements Serializable {
     private static final long serialVersionUID = -5499407890598183414L;
-    private NettyLocator srcLocator;
-    private final NettyLocator dstLocator;
-    private final NettyLocator channelInitiator;
+    private E src;
+    private final E dst;
+    private final E channelInitiator;
     private final ObjectId sender;
     private final PeerId peerId;
     private final Object msg;
@@ -17,12 +28,12 @@ public class NettyMessage implements Serializable {
     private final int channelNo; // the channel number
     private int hops;
 
-    public NettyMessage(ObjectId upper, NettyLocator src, NettyLocator dst, NettyLocator channelInitiator,
+    public NettyMessage(ObjectId upper, E src, E dst, E channelInitiator,
             PeerId peerId, Object msg, 
             boolean isChannelSend, int channelNo) {
         this.sender = upper;
-        this.srcLocator = src;
-        this.dstLocator = dst;
+        this.src = src;
+        this.dst = dst;
         this.channelInitiator = channelInitiator;
         this.peerId = peerId;
         this.msg = msg;
@@ -35,19 +46,19 @@ public class NettyMessage implements Serializable {
         return sender;
     }
 
-    public NettyLocator getSourceLocator() {
-        return srcLocator;
+    public E getSource() {
+        return src;
     }
     
-    public void setSourceLocator(NettyLocator locator) {
-        this.srcLocator = locator;
+    public void setSource(E locator) {
+        this.src = locator;
     }
     
-    public NettyLocator getDestinationLocator() {
-        return dstLocator;
+    public E getDestination() {
+        return dst;
     }
 
-    public NettyLocator getChannelInitiator() {
+    public E getChannelInitiator() {
         return channelInitiator;
     }
 
@@ -76,6 +87,6 @@ public class NettyMessage implements Serializable {
     }
 
     public String toString() {
-        return "locator=" + srcLocator + ",objectId=" + sender + "msg=" + msg;
+        return "[src=" + src + ",dst=" + dst + ",ischannel=" + isChannelSend + ",msg=" + msg + "]";
     }
 }

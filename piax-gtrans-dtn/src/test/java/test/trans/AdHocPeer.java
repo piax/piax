@@ -4,7 +4,6 @@ import java.io.IOException;
 
 import org.piax.common.ObjectId;
 import org.piax.common.PeerId;
-import org.piax.common.PeerLocator;
 import org.piax.common.TransportId;
 import org.piax.gtrans.Channel;
 import org.piax.gtrans.ChannelListener;
@@ -13,12 +12,15 @@ import org.piax.gtrans.DiscoveryListener;
 import org.piax.gtrans.IdConflictException;
 import org.piax.gtrans.Peer;
 import org.piax.gtrans.PeerInfo;
+import org.piax.gtrans.PeerLocator;
 import org.piax.gtrans.ProtocolUnsupportedException;
 import org.piax.gtrans.ReceivedMessage;
 import org.piax.gtrans.Transport;
 import org.piax.gtrans.TransportListener;
 import org.piax.gtrans.adhoc.AdHocTransport;
 import org.piax.gtrans.tsd.TSDDiscoverable;
+
+import test.Util;
 
 public class AdHocPeer<E extends PeerLocator> extends Util {
 
